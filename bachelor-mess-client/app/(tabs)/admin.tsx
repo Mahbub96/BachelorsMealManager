@@ -8,7 +8,7 @@ import {
 import { ThemedText } from "@/components/ThemedText";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Alert,
   Modal,
@@ -18,29 +18,39 @@ import {
   Switch,
   TextInput,
   View,
+  RefreshControl,
 } from "react-native";
 import { useAuth } from "@/context/AuthContext";
+import DataService from "@/services/dataService";
+import { MessLoadingSpinner } from "@/components/MessLoadingSpinner";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 interface Member {
-  id: string;
+  _id: string;
   name: string;
   email: string;
   phone: string;
   role: "admin" | "member";
   joinDate: string;
   status: "active" | "inactive";
-  totalMeals: number;
-  totalContribution: number;
+  totalMeals?: number;
+  totalContribution?: number;
 }
 
 interface PendingApproval {
-  id: string;
+  _id: string;
   type: "meal" | "bazar";
   memberName: string;
   description: string;
   amount?: number;
   date: string;
   status: "pending" | "approved" | "rejected";
+}
+
+interface DashboardStats {
+  mealStats: any;
+  bazarStats: any;
+  users: any[];
 }
 
 export default function AdminScreen() {
@@ -58,102 +68,116 @@ export default function AdminScreen() {
     role: "member" as "admin" | "member",
   });
 
-  // Mock data - replace with real API data
-  const [members, setMembers] = useState<Member[]>([
-    {
-      id: "1",
-      name: "Mahbub Rahman",
-      email: "mahbub@example.com",
-      phone: "+880 1712345678",
-      role: "admin",
-      joinDate: "2024-01-01",
-      status: "active",
-      totalMeals: 87,
-      totalContribution: 3200,
-    },
-    {
-      id: "2",
-      name: "Rahim Khan",
-      email: "rahim@example.com",
-      phone: "+880 1812345678",
-      role: "member",
-      joinDate: "2024-01-05",
-      status: "active",
-      totalMeals: 76,
-      totalContribution: 2800,
-    },
-    {
-      id: "3",
-      name: "Karim Ahmed",
-      email: "karim@example.com",
-      phone: "+880 1912345678",
-      role: "member",
-      joinDate: "2024-01-10",
-      status: "active",
-      totalMeals: 82,
-      totalContribution: 3100,
-    },
-    {
-      id: "4",
-      name: "Salam Ali",
-      email: "salam@example.com",
-      phone: "+880 1612345678",
-      role: "member",
-      joinDate: "2024-01-15",
-      status: "inactive",
-      totalMeals: 45,
-      totalContribution: 1800,
-    },
-    {
-      id: "5",
-      name: "Fatima Begum",
-      email: "fatima@example.com",
-      phone: "+880 1512345678",
-      role: "member",
-      joinDate: "2024-02-01",
-      status: "active",
-      totalMeals: 65,
-      totalContribution: 2400,
-    },
-  ]);
+  // Real data state
+  const [dashboardData, setDashboardData] = useState<DashboardStats | null>(
+    null
+  );
+  const [members, setMembers] = useState<Member[]>([]);
+  const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>(
+    []
+  );
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([
-    {
-      id: "1",
-      type: "meal",
-      memberName: "Rahim Khan",
-      description: "Breakfast, Lunch, Dinner for 2024-01-16",
-      date: "2024-01-16",
-      status: "pending",
-    },
-    {
-      id: "2",
-      type: "bazar",
-      memberName: "Karim Ahmed",
-      description: "Rice, Vegetables, Meat",
-      amount: 1200,
-      date: "2024-01-15",
-      status: "pending",
-    },
-    {
-      id: "3",
-      type: "meal",
-      memberName: "Mahbub Rahman",
-      description: "Lunch, Dinner for 2024-01-16",
-      date: "2024-01-16",
-      status: "pending",
-    },
-  ]);
+  // Fetch dashboard data
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const data = await DataService.getDashboardData();
+      setDashboardData(data);
+      setMembers(data.users || []);
+
+      // Fetch pending approvals
+      const [pendingMeals, pendingBazar] = await Promise.all([
+        DataService.getAllMeals({ status: "pending", limit: 10 }),
+        DataService.getAllBazar({ status: "pending", limit: 10 }),
+      ]);
+
+      const approvals: PendingApproval[] = [];
+
+      // Add pending meals
+      if (pendingMeals && Array.isArray(pendingMeals)) {
+        pendingMeals.forEach((meal: any) => {
+          approvals.push({
+            _id: meal._id,
+            type: "meal",
+            memberName: meal.userId?.name || "Unknown",
+            description: `Meals for ${new Date(
+              meal.date
+            ).toLocaleDateString()}`,
+            date: meal.date,
+            status: meal.status,
+          });
+        });
+      }
+
+      // Add pending bazar entries
+      if (pendingBazar && Array.isArray(pendingBazar)) {
+        pendingBazar.forEach((bazar: any) => {
+          approvals.push({
+            _id: bazar._id,
+            type: "bazar",
+            memberName: bazar.userId?.name || "Unknown",
+            description: bazar.description || "Bazar entry",
+            amount: bazar.totalAmount,
+            date: bazar.date,
+            status: bazar.status,
+          });
+        });
+      }
+
+      setPendingApprovals(approvals);
+    } catch (error) {
+      console.error("Error fetching admin dashboard data:", error);
+      setError("Failed to load admin dashboard data. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAdmin) {
+      fetchDashboardData();
+    }
+  }, [isAdmin]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchDashboardData();
+    setRefreshing(false);
+  };
 
   // Comprehensive Statistics Calculations
   const calculateStatistics = () => {
+    if (!dashboardData)
+      return {
+        totalMembers: 0,
+        activeMembers: 0,
+        totalMeals: 0,
+        totalRevenue: 0,
+        avgMealsPerMember: "0",
+        avgContributionPerMember: "0",
+        avgContributionPerMeal: "0",
+        pendingApprovalsCount: 0,
+        approvalRate: "0",
+        monthlyRevenue: 0,
+        monthlyMeals: 0,
+        newMembersThisMonth: 0,
+        totalProfit: 0,
+        costPerMeal: 0,
+        topPerformer: null,
+        mealStats: {},
+        bazarStats: {},
+        profitMargin: 15,
+      };
+
     const activeMembers = members.filter((m) => m.status === "active");
     const totalMembers = members.length;
-    const totalMeals = members.reduce((sum, m) => sum + m.totalMeals, 0);
-    const totalRevenue = members.reduce(
-      (sum, m) => sum + m.totalContribution,
-      0
-    );
+    const totalMeals = dashboardData.mealStats?.totalMeals || 0;
+    const totalRevenue = dashboardData.bazarStats?.totalAmount || 0;
     const avgMealsPerMember =
       totalMembers > 0 ? (totalMeals / totalMembers).toFixed(1) : "0";
     const avgContributionPerMember =
@@ -197,22 +221,14 @@ export default function AdminScreen() {
 
     // Performance metrics
     const topPerformer = members.reduce(
-      (max, member) => (member.totalMeals > max.totalMeals ? member : max),
-      members[0]
+      (max, member) =>
+        (member.totalMeals || 0) > (max.totalMeals || 0) ? member : max,
+      members[0] || { totalMeals: 0 }
     );
-
-    const memberEfficiency = members.map((member) => ({
-      ...member,
-      efficiency:
-        member.totalMeals > 0
-          ? (member.totalContribution / member.totalMeals).toFixed(0)
-          : "0",
-    }));
 
     return {
       totalMembers,
       activeMembers: activeMembers.length,
-      inactiveMembers: totalMembers - activeMembers.length,
       totalMeals,
       totalRevenue,
       avgMealsPerMember,
@@ -224,16 +240,146 @@ export default function AdminScreen() {
       monthlyMeals,
       newMembersThisMonth,
       totalProfit,
-      costPerMeal: costPerMeal.toFixed(0),
-      profitMargin,
+      costPerMeal,
       topPerformer,
-      memberEfficiency,
-      memberGrowthRate:
-        totalMembers > 0
-          ? ((newMembersThisMonth / totalMembers) * 100).toFixed(1)
-          : "0",
+      mealStats: dashboardData.mealStats,
+      bazarStats: dashboardData.bazarStats,
+      profitMargin,
     };
   };
+
+  const handleApprove = async (id: string, type: "meal" | "bazar") => {
+    try {
+      if (type === "meal") {
+        await DataService.approveMeal(id);
+      } else {
+        await DataService.approveBazar(id);
+      }
+
+      Alert.alert("Success", `${type} approved successfully!`);
+      fetchDashboardData(); // Refresh data
+    } catch (error) {
+      console.error("Error approving:", error);
+      Alert.alert("Error", `Failed to approve ${type}. Please try again.`);
+    }
+  };
+
+  const handleReject = async (id: string, type: "meal" | "bazar") => {
+    try {
+      if (type === "meal") {
+        await DataService.rejectMeal(id);
+      } else {
+        await DataService.rejectBazar(id);
+      }
+
+      Alert.alert("Success", `${type} rejected successfully!`);
+      fetchDashboardData(); // Refresh data
+    } catch (error) {
+      console.error("Error rejecting:", error);
+      Alert.alert("Error", `Failed to reject ${type}. Please try again.`);
+    }
+  };
+
+  const handleMemberStatusToggle = async (memberId: string) => {
+    try {
+      const member = members.find((m) => m._id === memberId);
+      if (!member) return;
+
+      const newStatus = member.status === "active" ? "inactive" : "active";
+
+      // Update member status via API
+      await DataService.updateUser(memberId, { status: newStatus });
+
+      Alert.alert("Success", `Member status updated to ${newStatus}!`);
+      fetchDashboardData(); // Refresh data
+    } catch (error) {
+      console.error("Error updating member status:", error);
+      Alert.alert("Error", "Failed to update member status. Please try again.");
+    }
+  };
+
+  const handleAddMember = async () => {
+    if (!newMember.name || !newMember.email) {
+      Alert.alert("Error", "Please fill in all required fields.");
+      return;
+    }
+
+    try {
+      await DataService.createUser({
+        ...newMember,
+        password: "defaultPassword123", // You might want to generate this
+      });
+
+      Alert.alert("Success", "Member added successfully!");
+      setShowAddMemberModal(false);
+      setNewMember({ name: "", email: "", phone: "", role: "member" });
+      fetchDashboardData(); // Refresh data
+    } catch (error) {
+      console.error("Error adding member:", error);
+      Alert.alert("Error", "Failed to add member. Please try again.");
+    }
+  };
+
+  const handleDeleteMember = async (memberId: string) => {
+    Alert.alert(
+      "Delete Member",
+      "Are you sure you want to delete this member? This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await DataService.deleteUser(memberId);
+              Alert.alert("Success", "Member deleted successfully!");
+              fetchDashboardData(); // Refresh data
+            } catch (error) {
+              console.error("Error deleting member:", error);
+              Alert.alert(
+                "Error",
+                "Failed to delete member. Please try again."
+              );
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  if (!isAdmin) {
+    return (
+      <View style={styles.unauthorizedContainer}>
+        <Ionicons name="shield-checkmark" size={64} color="#ef4444" />
+        <ThemedText style={styles.unauthorizedText}>Access Denied</ThemedText>
+        <ThemedText style={styles.unauthorizedSubtext}>
+          You need admin privileges to access this page.
+        </ThemedText>
+      </View>
+    );
+  }
+
+  if (loading) {
+    return (
+      <MessLoadingSpinner
+        type="dashboard"
+        size="large"
+        message="Loading admin dashboard..."
+      />
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Ionicons name="alert-circle" size={64} color="#ef4444" />
+        <ThemedText style={styles.errorText}>{error}</ThemedText>
+        <Pressable style={styles.retryButton} onPress={fetchDashboardData}>
+          <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
+        </Pressable>
+      </View>
+    );
+  }
 
   const stats = calculateStatistics();
 
@@ -317,106 +463,6 @@ export default function AdminScreen() {
       approval.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleApprove = (id: string) => {
-    Alert.alert("Approve", `Approve item ${id}?`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Approve",
-        onPress: () => {
-          setPendingApprovals((prev) =>
-            prev.map((item) =>
-              item.id === id ? { ...item, status: "approved" as const } : item
-            )
-          );
-          Alert.alert("Success", "Item approved successfully!");
-        },
-      },
-    ]);
-  };
-
-  const handleReject = (id: string) => {
-    Alert.alert("Reject", `Reject item ${id}?`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Reject",
-        onPress: () => {
-          setPendingApprovals((prev) =>
-            prev.map((item) =>
-              item.id === id ? { ...item, status: "rejected" as const } : item
-            )
-          );
-          Alert.alert("Success", "Item rejected successfully!");
-        },
-      },
-    ]);
-  };
-
-  const handleMemberStatusToggle = (memberId: string) => {
-    Alert.alert("Toggle Status", "Change member status?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Toggle",
-        onPress: () => {
-          setMembers((prev) =>
-            prev.map((member) =>
-              member.id === memberId
-                ? {
-                    ...member,
-                    status: member.status === "active" ? "inactive" : "active",
-                  }
-                : member
-            )
-          );
-          Alert.alert("Success", "Member status updated successfully!");
-        },
-      },
-    ]);
-  };
-
-  const handleAddMember = () => {
-    if (!newMember.name || !newMember.email || !newMember.phone) {
-      Alert.alert("Error", "Please fill in all fields");
-      return;
-    }
-
-    const newMemberData: Member = {
-      id: Date.now().toString(),
-      name: newMember.name,
-      email: newMember.email,
-      phone: newMember.phone,
-      role: newMember.role,
-      joinDate: new Date().toISOString().split("T")[0],
-      status: "active",
-      totalMeals: 0,
-      totalContribution: 0,
-    };
-
-    setMembers((prev) => [...prev, newMemberData]);
-    setNewMember({ name: "", email: "", phone: "", role: "member" });
-    setShowAddMemberModal(false);
-    Alert.alert("Success", "Member added successfully!");
-  };
-
-  const handleDeleteMember = (memberId: string) => {
-    Alert.alert(
-      "Delete Member",
-      "Are you sure you want to delete this member?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => {
-            setMembers((prev) =>
-              prev.filter((member) => member.id !== memberId)
-            );
-            Alert.alert("Success", "Member deleted successfully!");
-          },
-        },
-      ]
-    );
-  };
-
   const renderOverview = () => (
     <View>
       {/* Quick Stats */}
@@ -472,7 +518,7 @@ export default function AdminScreen() {
             .filter((a) => a.status === "pending")
             .slice(0, 3)
             .map((approval) => (
-              <View key={approval.id} style={styles.activityCard}>
+              <View key={approval._id} style={styles.activityCard}>
                 <View
                   style={[
                     styles.activityIcon,
@@ -555,7 +601,7 @@ export default function AdminScreen() {
       {/* Members List */}
       <View style={styles.membersContainer}>
         {filteredMembers.map((member) => (
-          <View key={member.id} style={styles.memberCard}>
+          <View key={member._id} style={styles.memberCard}>
             <View style={styles.memberHeader}>
               <View style={styles.memberInfo}>
                 <ThemedText style={styles.memberName}>{member.name}</ThemedText>
@@ -589,13 +635,13 @@ export default function AdminScreen() {
                 </View>
                 <Switch
                   value={member.status === "active"}
-                  onValueChange={() => handleMemberStatusToggle(member.id)}
+                  onValueChange={() => handleMemberStatusToggle(member._id)}
                   trackColor={{ false: "#e5e7eb", true: "#10b981" }}
                   thumbColor={member.status === "active" ? "#fff" : "#9ca3af"}
                 />
                 <Pressable
                   style={styles.deleteButton}
-                  onPress={() => handleDeleteMember(member.id)}
+                  onPress={() => handleDeleteMember(member._id)}
                 >
                   <Ionicons name="trash" size={16} color="#ef4444" />
                 </Pressable>
@@ -777,7 +823,7 @@ export default function AdminScreen() {
       {/* Approvals List */}
       <View style={styles.approvalsContainer}>
         {filteredApprovals.map((approval) => (
-          <View key={approval.id} style={styles.approvalCard}>
+          <View key={approval._id} style={styles.approvalCard}>
             <View style={styles.approvalHeader}>
               <View style={styles.approvalInfo}>
                 <ThemedText style={styles.approvalType}>
@@ -804,7 +850,7 @@ export default function AdminScreen() {
                 <View style={styles.approvalActions}>
                   <Pressable
                     style={[styles.actionButton, styles.approveButton]}
-                    onPress={() => handleApprove(approval.id)}
+                    onPress={() => handleApprove(approval._id, approval.type)}
                   >
                     <Ionicons name="checkmark" size={16} color="#fff" />
                     <ThemedText style={styles.actionButtonText}>
@@ -813,7 +859,7 @@ export default function AdminScreen() {
                   </Pressable>
                   <Pressable
                     style={[styles.actionButton, styles.rejectButton]}
-                    onPress={() => handleReject(approval.id)}
+                    onPress={() => handleReject(approval._id, approval.type)}
                   >
                     <Ionicons name="close" size={16} color="#fff" />
                     <ThemedText style={styles.actionButtonText}>
@@ -934,7 +980,8 @@ export default function AdminScreen() {
             </ThemedText>
             <ThemedText style={styles.statLabel}>Total Members</ThemedText>
             <ThemedText style={styles.statSubtext}>
-              {stats.activeMembers} Active • {stats.inactiveMembers} Inactive
+              {stats.activeMembers} Active •{" "}
+              {stats.totalMembers - stats.activeMembers} Inactive
             </ThemedText>
           </LinearGradient>
         </View>
@@ -1051,7 +1098,7 @@ export default function AdminScreen() {
               </ThemedText>
               <ThemedText style={styles.performerStats}>
                 {stats.topPerformer.totalMeals} meals • ৳
-                {stats.topPerformer.totalContribution}
+                {stats.topPerformer.totalContribution || 0}
               </ThemedText>
             </View>
           </View>
@@ -1061,11 +1108,13 @@ export default function AdminScreen() {
           <ThemedText style={styles.efficiencyTitle}>
             Member Efficiency (৳/meal)
           </ThemedText>
-          {stats.memberEfficiency
-            .sort((a, b) => parseFloat(b.efficiency) - parseFloat(a.efficiency))
+          {members
+            .sort(
+              (a, b) => (b.totalContribution || 0) - (a.totalContribution || 0)
+            )
             .slice(0, 5)
             .map((member, index) => (
-              <View key={member.id} style={styles.efficiencyItem}>
+              <View key={member._id} style={styles.efficiencyItem}>
                 <View style={styles.efficiencyRank}>
                   <ThemedText style={styles.rankNumber}>{index + 1}</ThemedText>
                 </View>
@@ -1074,17 +1123,53 @@ export default function AdminScreen() {
                     {member.name}
                   </ThemedText>
                   <ThemedText style={styles.efficiencyValue}>
-                    ৳{member.efficiency} per meal
+                    ৳{member.totalContribution || 0}
                   </ThemedText>
                 </View>
-                <View style={styles.efficiencyStats}>
-                  <ThemedText style={styles.efficiencyMeals}>
-                    {member.totalMeals} meals
-                  </ThemedText>
-                  <ThemedText style={styles.efficiencyTotal}>
-                    ৳{member.totalContribution}
-                  </ThemedText>
-                </View>
+              </View>
+            ))}
+        </View>
+
+        {/* Revenue Chart */}
+        <View style={styles.chartContainer}>
+          <ThemedText style={styles.chartTitle}>Revenue Overview</ThemedText>
+          <BarChart
+            data={[
+              {
+                label: "Total Revenue",
+                value: stats.totalRevenue || 0,
+                color: "#667eea",
+                gradient: ["#667eea", "#764ba2"] as const,
+              },
+              {
+                label: "Monthly Revenue",
+                value: stats.monthlyRevenue || 0,
+                color: "#f093fb",
+                gradient: ["#f093fb", "#f5576c"] as const,
+              },
+            ]}
+            height={200}
+          />
+        </View>
+
+        {/* Member Contributions */}
+        <View style={styles.chartContainer}>
+          <ThemedText style={styles.chartTitle}>
+            Member Contributions
+          </ThemedText>
+          {members
+            .sort(
+              (a, b) => (b.totalContribution || 0) - (a.totalContribution || 0)
+            )
+            .slice(0, 5)
+            .map((member) => (
+              <View key={member._id} style={styles.contributionItem}>
+                <ThemedText style={styles.contributionName}>
+                  {member.name}
+                </ThemedText>
+                <ThemedText style={styles.contributionAmount}>
+                  ৳{member.totalContribution || 0}
+                </ThemedText>
               </View>
             ))}
         </View>
@@ -1108,29 +1193,27 @@ export default function AdminScreen() {
           <View style={styles.growthCard}>
             <Ionicons name="trending-up" size={24} color="#6366f1" />
             <ThemedText style={styles.growthValue}>
-              {stats.memberGrowthRate}%
-            </ThemedText>
-            <ThemedText style={styles.growthLabel}>
-              Member Growth Rate
-            </ThemedText>
-          </View>
-
-          <View style={styles.growthCard}>
-            <Ionicons name="checkmark-circle" size={24} color="#f59e0b" />
-            <ThemedText style={styles.growthValue}>
               {stats.approvalRate}%
             </ThemedText>
             <ThemedText style={styles.growthLabel}>Approval Rate</ThemedText>
           </View>
 
           <View style={styles.growthCard}>
-            <Ionicons name="time" size={24} color="#ef4444" />
+            <Ionicons name="checkmark-circle" size={24} color="#f59e0b" />
             <ThemedText style={styles.growthValue}>
               {stats.pendingApprovalsCount}
             </ThemedText>
             <ThemedText style={styles.growthLabel}>
               Pending Approvals
             </ThemedText>
+          </View>
+
+          <View style={styles.growthCard}>
+            <Ionicons name="time" size={24} color="#ef4444" />
+            <ThemedText style={styles.growthValue}>
+              {stats.totalMembers}
+            </ThemedText>
+            <ThemedText style={styles.growthLabel}>Total Members</ThemedText>
           </View>
         </View>
       </View>
@@ -1167,70 +1250,140 @@ export default function AdminScreen() {
   );
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Header */}
-      <LinearGradient
-        colors={["#667eea", "#764ba2"]}
-        style={styles.headerGradient}
+    <ErrorBoundary>
+      <ScrollView
+        style={styles.container}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
-        <View style={styles.header}>
-          <View style={styles.headerContent}>
-            <ThemedText style={styles.headerTitle}>Admin Dashboard</ThemedText>
-            <ThemedText style={styles.headerSubtitle}>
-              Manage your mess efficiently
-            </ThemedText>
+        {/* Header */}
+        <LinearGradient
+          colors={["#667eea", "#764ba2"]}
+          style={styles.headerGradient}
+        >
+          <View style={styles.header}>
+            <View style={styles.headerContent}>
+              <ThemedText style={styles.headerTitle}>
+                Admin Dashboard
+              </ThemedText>
+              <ThemedText style={styles.headerSubtitle}>
+                Welcome back, {user?.name || "Admin"}!
+              </ThemedText>
+            </View>
+            <View style={styles.headerIcon}>
+              <Ionicons name="shield-checkmark" size={32} color="#fff" />
+            </View>
           </View>
-          <View style={styles.headerIcon}>
-            <Ionicons name="settings" size={32} color="#fff" />
+        </LinearGradient>
+
+        <View style={styles.content}>
+          {/* Tab Navigation */}
+          <View style={styles.tabContainer}>
+            {[
+              { key: "overview", label: "Overview", icon: "grid" },
+              { key: "members", label: "Members", icon: "people" },
+              {
+                key: "approvals",
+                label: "Approvals",
+                icon: "checkmark-circle",
+              },
+              { key: "reports", label: "Reports", icon: "document-text" },
+              { key: "statistics", label: "Statistics", icon: "bar-chart" },
+            ].map((tab) => (
+              <Pressable
+                key={tab.key}
+                style={[
+                  styles.tabButton,
+                  activeTab === tab.key && styles.activeTabButton,
+                ]}
+                onPress={() => setActiveTab(tab.key as any)}
+              >
+                <Ionicons
+                  name={tab.icon as any}
+                  size={20}
+                  color={activeTab === tab.key ? "#667eea" : "#6b7280"}
+                />
+                <ThemedText
+                  style={[
+                    styles.tabLabel,
+                    activeTab === tab.key && styles.activeTabLabel,
+                  ]}
+                >
+                  {tab.label}
+                </ThemedText>
+              </Pressable>
+            ))}
+          </View>
+
+          {/* Tab Content */}
+          {activeTab === "overview" && renderOverview()}
+          {activeTab === "members" && renderMembers()}
+          {activeTab === "approvals" && renderApprovals()}
+          {activeTab === "reports" && renderReports()}
+          {activeTab === "statistics" && renderStatistics()}
+        </View>
+      </ScrollView>
+
+      {/* Add Member Modal */}
+      <Modal
+        visible={showAddMemberModal}
+        animationType="slide"
+        transparent={true}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <ThemedText style={styles.modalTitle}>Add New Member</ThemedText>
+
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Full Name"
+              value={newMember.name}
+              onChangeText={(text) =>
+                setNewMember((prev) => ({ ...prev, name: text }))
+              }
+            />
+
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Email"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              value={newMember.email}
+              onChangeText={(text) =>
+                setNewMember((prev) => ({ ...prev, email: text }))
+              }
+            />
+
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Phone (optional)"
+              keyboardType="phone-pad"
+              value={newMember.phone}
+              onChangeText={(text) =>
+                setNewMember((prev) => ({ ...prev, phone: text }))
+              }
+            />
+
+            <View style={styles.modalButtons}>
+              <Pressable
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setShowAddMemberModal(false)}
+              >
+                <ThemedText style={styles.cancelButtonText}>Cancel</ThemedText>
+              </Pressable>
+              <Pressable
+                style={[styles.modalButton, styles.addButton]}
+                onPress={handleAddMember}
+              >
+                <ThemedText style={styles.addButtonText}>Add Member</ThemedText>
+              </Pressable>
+            </View>
           </View>
         </View>
-      </LinearGradient>
-
-      {/* Tab Navigation */}
-      <View style={styles.tabContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {[
-            { key: "overview", title: "Overview", icon: "stats-chart" },
-            { key: "members", title: "Members", icon: "people" },
-            {
-              key: "approvals",
-              title: "Approvals",
-              icon: "checkmark-done-circle",
-            },
-            { key: "reports", title: "Reports", icon: "document-text" },
-            { key: "statistics", title: "Statistics", icon: "bar-chart" },
-          ].map((tab) => (
-            <Pressable
-              key={tab.key}
-              style={[styles.tab, activeTab === tab.key && styles.activeTab]}
-              onPress={() => setActiveTab(tab.key as any)}
-            >
-              <Ionicons
-                name={tab.icon as any}
-                size={20}
-                color={activeTab === tab.key ? "#667eea" : "#9ca3af"}
-              />
-              <ThemedText
-                style={[
-                  styles.tabText,
-                  activeTab === tab.key && styles.activeTabText,
-                ]}
-              >
-                {tab.title}
-              </ThemedText>
-            </Pressable>
-          ))}
-        </ScrollView>
-      </View>
-
-      <View style={styles.content}>
-        {activeTab === "overview" && renderOverview()}
-        {activeTab === "members" && renderMembers()}
-        {activeTab === "approvals" && renderApprovals()}
-        {activeTab === "reports" && renderReports()}
-        {activeTab === "statistics" && renderStatistics()}
-      </View>
-    </ScrollView>
+      </Modal>
+    </ErrorBoundary>
   );
 }
 
@@ -1276,7 +1429,7 @@ const styles = StyleSheet.create({
     borderBottomColor: "#f3f4f6",
     paddingHorizontal: 20,
   },
-  tab: {
+  tabButton: {
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 16,
@@ -1284,16 +1437,16 @@ const styles = StyleSheet.create({
     marginRight: 8,
     borderRadius: 12,
   },
-  activeTab: {
+  activeTabButton: {
     backgroundColor: "#eef2ff",
   },
-  tabText: {
+  tabLabel: {
     fontSize: 14,
     fontWeight: "600",
     color: "#9ca3af",
     marginLeft: 8,
   },
-  activeTabText: {
+  activeTabLabel: {
     color: "#667eea",
   },
   content: {
@@ -1625,19 +1778,13 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
   },
   modalContent: {
     backgroundColor: "#fff",
     borderRadius: 16,
-    padding: 20,
-    width: "100%",
+    padding: 24,
+    width: "90%",
     maxWidth: 400,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 10,
   },
   modalHeader: {
     flexDirection: "row",
@@ -1649,18 +1796,19 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "bold",
     color: "#1f2937",
+    marginBottom: 20,
+    textAlign: "center",
   },
   modalBody: {
     marginBottom: 20,
   },
   modalInput: {
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: "#d1d5db",
     borderRadius: 8,
     padding: 12,
+    marginBottom: 16,
     fontSize: 16,
-    color: "#1f2937",
-    marginBottom: 12,
   },
   roleSelector: {
     marginTop: 8,
@@ -1894,18 +2042,32 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#6b7280",
   },
-  efficiencyStats: {
-    alignItems: "flex-end",
+  chartContainer: {
+    marginBottom: 24,
   },
-  efficiencyMeals: {
-    fontSize: 12,
-    color: "#6b7280",
-    marginBottom: 2,
-  },
-  efficiencyTotal: {
-    fontSize: 12,
+  chartTitle: {
+    fontSize: 18,
     fontWeight: "bold",
     color: "#1f2937",
+    marginBottom: 16,
+  },
+  contributionItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    borderRadius: 8,
+  },
+  contributionName: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#1f2937",
+  },
+  contributionAmount: {
+    fontSize: 12,
+    color: "#6b7280",
   },
   growthSection: {
     marginBottom: 24,
@@ -1941,5 +2103,98 @@ const styles = StyleSheet.create({
     color: "#6b7280",
     textAlign: "center",
     lineHeight: 16,
+  },
+  unauthorizedContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  unauthorizedText: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#ef4444",
+    marginBottom: 16,
+  },
+  unauthorizedSubtext: {
+    fontSize: 16,
+    color: "rgba(255, 255, 255, 0.9)",
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  errorText: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#ef4444",
+    marginBottom: 16,
+  },
+  retryButton: {
+    padding: 16,
+    borderRadius: 8,
+    backgroundColor: "#667eea",
+  },
+  retryButtonText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#fff",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 24,
+    width: "90%",
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#1f2937",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: "#d1d5db",
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    fontSize: 16,
+  },
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 20,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginHorizontal: 8,
+  },
+  cancelButton: {
+    backgroundColor: "#f3f4f6",
+  },
+  addButton: {
+    backgroundColor: "#667eea",
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#6b7280",
+    textAlign: "center",
+  },
+  addButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#fff",
+    textAlign: "center",
   },
 });

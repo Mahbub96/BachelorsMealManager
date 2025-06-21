@@ -359,6 +359,20 @@ export class DataService {
     });
   }
 
+  static async approveBazar(bazarId: string) {
+    return handleApiCall(
+      () => bazarAPI.updateBazarStatus(bazarId, { status: "approved" }),
+      { success: true, message: "Bazar approved successfully" }
+    );
+  }
+
+  static async rejectBazar(bazarId: string) {
+    return handleApiCall(
+      () => bazarAPI.updateBazarStatus(bazarId, { status: "rejected" }),
+      { success: true, message: "Bazar rejected successfully" }
+    );
+  }
+
   // Helper method to normalize API responses
   static normalizeResponse(response: any) {
     if (response && response.data) {
@@ -530,6 +544,27 @@ export class DataService {
         fetch(`${APP_CONFIG.API.BASE_URL}/health`).then((res) => res.json()),
       { message: "Development mode - using dummy data" }
     );
+  }
+
+  static async createUser(userData: any) {
+    return handleApiCall(() => userAPI.createUser(userData), {
+      success: true,
+      message: "User created successfully",
+    });
+  }
+
+  static async updateUser(userId: string, userData: any) {
+    return handleApiCall(() => userAPI.updateUser(userId, userData), {
+      success: true,
+      message: "User updated successfully",
+    });
+  }
+
+  static async deleteUser(userId: string) {
+    return handleApiCall(() => userAPI.deleteUser(userId), {
+      success: true,
+      message: "User deleted successfully",
+    });
   }
 }
 
