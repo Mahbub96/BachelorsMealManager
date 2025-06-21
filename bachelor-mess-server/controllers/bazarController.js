@@ -1,37 +1,62 @@
 const Bazar = require("../models/Bazar");
 const User = require("../models/User");
-const cloudinary = require("cloudinary").v2;
 
-// Configure Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+// Configure Cloudinary (optional)
+let cloudinary = null;
+try {
+  cloudinary = require("cloudinary").v2;
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+} catch (error) {
+  console.log("Cloudinary not configured, using local storage");
+}
 
 // Submit bazar entry
 exports.submitBazar = async (req, res) => {
   try {
-    const { items, totalAmount, description, date } = req.body;
+    const { items, totalAmount, description, date, notes } = req.body;
     const userId = req.user.id;
     let receiptImage = null;
 
     // Handle file upload if present
     if (req.file) {
-      const result = await cloudinary.uploader.upload(req.file.path, {
-        folder: "bazar-receipts",
-        resource_type: "auto",
-      });
-      receiptImage = result.secure_url;
+      if (cloudinary) {
+        // Upload to Cloudinary
+        const result = await cloudinary.uploader.upload(req.file.path, {
+          folder: "bazar-receipts",
+          resource_type: "auto",
+        });
+        receiptImage = result.secure_url;
+      } else {
+        // Use local file path
+        receiptImage = req.file.path;
+      }
+    }
+
+    // Handle items - it should be an array, not JSON string
+    let itemsArray = items;
+    if (typeof items === "string") {
+      try {
+        itemsArray = JSON.parse(items);
+      } catch (e) {
+        return res.status(400).json({
+          message: "Invalid items format",
+          error: "Items must be a valid JSON array",
+        });
+      }
     }
 
     const bazar = new Bazar({
       userId,
       date: date || new Date(),
-      items: JSON.parse(items),
+      items: itemsArray,
       totalAmount,
       description,
       receiptImage,
+      notes,
     });
 
     await bazar.save();

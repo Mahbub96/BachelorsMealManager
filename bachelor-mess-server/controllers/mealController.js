@@ -161,7 +161,15 @@ exports.getMealStats = async (req, res) => {
           totalBreakfast: { $sum: { $cond: ["$breakfast", 1, 0] } },
           totalLunch: { $sum: { $cond: ["$lunch", 1, 0] } },
           totalDinner: { $sum: { $cond: ["$dinner", 1, 0] } },
-          totalMeals: { $sum: { $add: ["$breakfast", "$lunch", "$dinner"] } },
+          totalMeals: {
+            $sum: {
+              $add: [
+                { $cond: ["$breakfast", 1, 0] },
+                { $cond: ["$lunch", 1, 0] },
+                { $cond: ["$dinner", 1, 0] },
+              ],
+            },
+          },
           pendingCount: {
             $sum: { $cond: [{ $eq: ["$status", "pending"] }, 1, 0] },
           },

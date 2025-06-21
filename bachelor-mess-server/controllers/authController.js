@@ -76,3 +76,20 @@ exports.login = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+// Logout a user
+exports.logout = async (req, res) => {
+  try {
+    // In a stateless JWT system, logout is handled client-side
+    // But we can log the logout event and return success
+    console.log(`User ${req.user.id} logged out`);
+
+    res.status(200).json({
+      message: "Logged out successfully",
+      success: true,
+    });
+  } catch (error) {
+    console.error("Logout error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
