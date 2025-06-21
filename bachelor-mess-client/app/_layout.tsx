@@ -1,10 +1,10 @@
 import { Stack } from "expo-router";
-import * as SplashScreen from "expo-splash-screen";
-import { useEffect } from "react";
+import { useState } from "react";
 import { useColorScheme } from "react-native";
 import { AuthProvider } from "@/context/AuthContext";
 import AuthGuard from "@/components/AuthGuard";
 import { AuthErrorBoundary } from "@/components/AuthErrorBoundary";
+import CustomSplashScreen from "@/components/CustomSplashScreen";
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -16,20 +16,23 @@ export const unstable_settings = {
   initialRouteName: "(tabs)",
 };
 
-// Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync();
-
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const [isSplashVisible, setIsSplashVisible] = useState(true);
 
-  useEffect(() => {
-    SplashScreen.hideAsync();
-  }, []);
+  const handleSplashFinish = () => {
+    setIsSplashVisible(false);
+  };
 
   const handleAuthError = () => {
     // This will be handled by the AuthGuard when the auth state changes
     console.log("Auth error detected, redirecting to login");
   };
+
+  // Show custom splash screen immediately
+  if (isSplashVisible) {
+    return <CustomSplashScreen onFinish={handleSplashFinish} />;
+  }
 
   return (
     <AuthErrorBoundary onAuthError={handleAuthError}>

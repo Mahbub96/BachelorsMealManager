@@ -1,23 +1,24 @@
-// API Configuration for Client
+// API Configuration for Client - Perfect Integration
 const API_CONFIG = {
   // Base URLs
   BASE_URL: process.env.EXPO_PUBLIC_API_URL || "http://192.168.0.130:5001",
   API_PATH: "/api",
 
   // Timeouts
-  TIMEOUT: parseInt(process.env.EXPO_PUBLIC_API_TIMEOUT || "10000"),
+  TIMEOUT: parseInt(process.env.EXPO_PUBLIC_API_TIMEOUT || "15000"),
 
   // Headers
   DEFAULT_HEADERS: {
     "Content-Type": "application/json",
   },
 
-  // Endpoints
+  // Endpoints - Complete API Integration
   ENDPOINTS: {
     AUTH: {
       LOGIN: "/auth/login",
       REGISTER: "/auth/register",
       LOGOUT: "/auth/logout",
+      ADMIN_ONLY: "/auth/admin-only",
     },
     USERS: {
       PROFILE: "/users/profile",
@@ -53,6 +54,26 @@ const API_CONFIG = {
 
   // Debug Configuration
   DEBUG: process.env.EXPO_PUBLIC_DEBUG === "true",
+
+  // API Response Codes
+  STATUS_CODES: {
+    SUCCESS: 200,
+    CREATED: 201,
+    BAD_REQUEST: 400,
+    UNAUTHORIZED: 401,
+    FORBIDDEN: 403,
+    NOT_FOUND: 404,
+    SERVER_ERROR: 500,
+  },
+
+  // Error Messages
+  ERROR_MESSAGES: {
+    NETWORK_ERROR: "Network error. Please check your connection.",
+    TIMEOUT_ERROR: "Request timeout. Please try again.",
+    UNAUTHORIZED: "Unauthorized. Please login again.",
+    SERVER_ERROR: "Server error. Please try again later.",
+    VALIDATION_ERROR: "Validation error. Please check your input.",
+  },
 };
 
 export default API_CONFIG;

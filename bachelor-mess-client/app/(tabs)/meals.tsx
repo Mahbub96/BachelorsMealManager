@@ -40,6 +40,7 @@ export default function MealsScreen() {
     dinner: false,
   });
   const [recentMeals, setRecentMeals] = useState<MealEntry[]>([]);
+  const [allMeals, setAllMeals] = useState<MealEntry[]>([]); // For admin to see all meals
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -50,22 +51,28 @@ export default function MealsScreen() {
     try {
       setLoading(true);
       setError(null);
-      const response = await DataService.getUserMeals({ limit: 10 });
 
-      // Use the helper method to normalize the response
-      const mealsData = DataService.normalizeResponse(response);
-
-      // Ensure mealsData is an array
-      if (mealsData && Array.isArray(mealsData)) {
-        setRecentMeals(mealsData);
+      if (isAdmin) {
+        // Admin fetches all meals
+        const response = await DataService.getAllMeals({ limit: 50 });
+        const mealsData = DataService.normalizeResponse(response);
+        if (mealsData && Array.isArray(mealsData)) {
+          setAllMeals(mealsData);
+          setRecentMeals(mealsData.slice(0, 10)); // Show recent 10 for stats
+        }
       } else {
-        console.warn("Invalid meals data received:", response);
-        setRecentMeals([]);
+        // Member fetches only their meals
+        const response = await DataService.getUserMeals({ limit: 10 });
+        const mealsData = DataService.normalizeResponse(response);
+        if (mealsData && Array.isArray(mealsData)) {
+          setRecentMeals(mealsData);
+        }
       }
     } catch (error) {
       console.error("Error fetching meals:", error);
       setError("Failed to load meals. Please try again.");
       setRecentMeals([]);
+      setAllMeals([]);
     } finally {
       setLoading(false);
     }
@@ -137,6 +144,20 @@ export default function MealsScreen() {
         notes: "",
       };
 
+      console.log(
+        "🔍 CLIENT DEBUG - Submitting meal data:",
+        JSON.stringify(mealData, null, 2)
+      );
+      console.log(
+        "🔍 CLIENT DEBUG - Today's date:",
+        new Date().toISOString().split("T")[0]
+      );
+      console.log("🔍 CLIENT DEBUG - Selected meals:", {
+        breakfast: todayMeals.breakfast,
+        lunch: todayMeals.lunch,
+        dinner: todayMeals.dinner,
+      });
+
       await DataService.submitMeals(mealData);
 
       // Refresh meals data
@@ -150,11 +171,39 @@ export default function MealsScreen() {
       });
 
       Alert.alert("Success!", `Submitted ${selectedMeals} meal(s) for today.`);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting meals:", error);
-      Alert.alert("Error", "Failed to submit meals. Please try again.");
+      let errorMessage = "Failed to submit meals. Please try again.";
+      if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      Alert.alert("Error", errorMessage);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleApproveMeal = async (mealId: string) => {
+    try {
+      await DataService.approveMeal(mealId);
+      await fetchUserMeals();
+      Alert.alert("Success!", "Meal approved successfully.");
+    } catch (error) {
+      console.error("Error approving meal:", error);
+      Alert.alert("Error", "Failed to approve meal. Please try again.");
+    }
+  };
+
+  const handleRejectMeal = async (mealId: string) => {
+    try {
+      await DataService.rejectMeal(mealId);
+      await fetchUserMeals();
+      Alert.alert("Success!", "Meal rejected successfully.");
+    } catch (error) {
+      console.error("Error rejecting meal:", error);
+      Alert.alert("Error", "Failed to reject meal. Please try again.");
     }
   };
 
@@ -247,169 +296,245 @@ export default function MealsScreen() {
         >
           <View style={styles.header}>
             <View style={styles.headerContent}>
-              <ThemedText style={styles.headerTitle}>Daily Meals</ThemedText>
+              <ThemedText style={styles.headerTitle}>
+                {isAdmin ? "Manage Meals" : "Daily Meals"}
+              </ThemedText>
               <ThemedText style={styles.headerSubtitle}>
-                Track your daily meal consumption
+                {isAdmin
+                  ? "Approve and manage all member meals"
+                  : "Track your daily meal consumption"}
               </ThemedText>
             </View>
             <View style={styles.headerIcon}>
-              <Ionicons name="restaurant" size={32} color="#fff" />
+              <Ionicons
+                name={isAdmin ? "shield-checkmark" : "restaurant"}
+                size={32}
+                color="#fff"
+              />
             </View>
           </View>
         </LinearGradient>
 
         <View style={styles.content}>
-          {/* Today's Meals Section */}
-          <View style={styles.todaySection}>
-            <ThemedText style={styles.sectionTitle}>
-              Today&apos;s Meals
-            </ThemedText>
+          {/* Today's Meals Section - Only for Members */}
+          {!isAdmin && (
+            <View style={styles.todaySection}>
+              <ThemedText style={styles.sectionTitle}>
+                Today&apos;s Meals
+              </ThemedText>
 
-            <View style={styles.mealsContainer}>
-              {Object.entries(todayMeals).map(([mealType, isSelected]) => (
-                <Pressable
-                  key={mealType}
-                  style={styles.mealCard}
-                  onPress={() =>
-                    handleMealToggle(mealType as keyof typeof todayMeals)
-                  }
-                >
-                  <LinearGradient
-                    colors={
-                      isSelected
-                        ? getMealGradient(mealType)
-                        : (["#f3f4f6", "#e5e7eb"] as const)
+              <View style={styles.mealsContainer}>
+                {Object.entries(todayMeals).map(([mealType, isSelected]) => (
+                  <Pressable
+                    key={mealType}
+                    style={styles.mealCard}
+                    onPress={() =>
+                      handleMealToggle(mealType as keyof typeof todayMeals)
                     }
-                    style={styles.mealGradient}
                   >
-                    <Ionicons
-                      name={getMealIcon(mealType)}
-                      size={32}
-                      color={isSelected ? "#fff" : "#9ca3af"}
-                    />
-                    <ThemedText
-                      style={[
-                        styles.mealTitle,
-                        { color: isSelected ? "#fff" : "#6b7280" },
-                      ]}
+                    <LinearGradient
+                      colors={
+                        isSelected
+                          ? getMealGradient(mealType)
+                          : (["#f3f4f6", "#e5e7eb"] as const)
+                      }
+                      style={styles.mealGradient}
                     >
-                      {mealType && mealType.length > 0
-                        ? mealType.charAt(0).toUpperCase() + mealType.slice(1)
-                        : "Unknown"}
-                    </ThemedText>
-                    <View style={styles.mealToggle}>
-                      <Switch
-                        value={isSelected}
-                        onValueChange={() =>
-                          handleMealToggle(mealType as keyof typeof todayMeals)
-                        }
-                        trackColor={{
-                          false: "rgba(255,255,255,0.3)",
-                          true: "rgba(255,255,255,0.5)",
-                        }}
-                        thumbColor={isSelected ? "#fff" : "#9ca3af"}
+                      <Ionicons
+                        name={getMealIcon(mealType)}
+                        size={32}
+                        color={isSelected ? "#fff" : "#9ca3af"}
                       />
-                    </View>
-                  </LinearGradient>
-                </Pressable>
-              ))}
-            </View>
+                      <ThemedText
+                        style={[
+                          styles.mealTitle,
+                          { color: isSelected ? "#fff" : "#6b7280" },
+                        ]}
+                      >
+                        {mealType && mealType.length > 0
+                          ? mealType.charAt(0).toUpperCase() + mealType.slice(1)
+                          : "Unknown"}
+                      </ThemedText>
+                      <View style={styles.mealToggle}>
+                        <Switch
+                          value={isSelected}
+                          onValueChange={() =>
+                            handleMealToggle(
+                              mealType as keyof typeof todayMeals
+                            )
+                          }
+                          trackColor={{
+                            false: "rgba(255,255,255,0.3)",
+                            true: "rgba(255,255,255,0.5)",
+                          }}
+                          thumbColor={isSelected ? "#fff" : "#9ca3af"}
+                        />
+                      </View>
+                    </LinearGradient>
+                  </Pressable>
+                ))}
+              </View>
 
-            {/* Submit Button */}
-            <Pressable
-              style={[
-                styles.submitButton,
-                submitting && styles.submitButtonDisabled,
-              ]}
-              onPress={handleSubmitMeals}
-              disabled={submitting}
-            >
-              <LinearGradient
-                colors={["#667eea", "#764ba2"]}
-                style={styles.submitButtonGradient}
+              {/* Submit Button */}
+              <Pressable
+                style={[
+                  styles.submitButton,
+                  submitting && styles.submitButtonDisabled,
+                ]}
+                onPress={handleSubmitMeals}
+                disabled={submitting}
               >
-                {submitting ? (
-                  <MessLoadingSpinner size="small" type="meals" />
-                ) : (
-                  <Ionicons name="checkmark-circle" size={24} color="#fff" />
-                )}
-                <ThemedText style={styles.submitButtonText}>
-                  {submitting ? "Submitting..." : "Submit Today&apos;s Meals"}
-                </ThemedText>
-              </LinearGradient>
-            </Pressable>
-          </View>
+                <LinearGradient
+                  colors={["#667eea", "#764ba2"]}
+                  style={styles.submitButtonGradient}
+                >
+                  {submitting ? (
+                    <MessLoadingSpinner size="small" type="meals" />
+                  ) : (
+                    <Ionicons name="checkmark-circle" size={24} color="#fff" />
+                  )}
+                  <ThemedText style={styles.submitButtonText}>
+                    {submitting ? "Submitting..." : "Submit Today&apos;s Meals"}
+                  </ThemedText>
+                </LinearGradient>
+              </Pressable>
+            </View>
+          )}
 
-          {/* Quick Stats */}
+          {/* Quick Stats - Different for Admin and Member */}
           <View style={styles.statsContainer}>
-            <View style={styles.statCard}>
-              <LinearGradient
-                colors={["#667eea", "#764ba2"]}
-                style={styles.statGradient}
-              >
-                <Ionicons name="calendar" size={24} color="#fff" />
-                <ThemedText style={styles.statValue}>
-                  {Object.values(todayMeals).filter(Boolean).length}
-                </ThemedText>
-                <ThemedText style={styles.statLabel}>Today</ThemedText>
-              </LinearGradient>
-            </View>
+            {isAdmin ? (
+              // Admin stats
+              <>
+                <View style={styles.statCard}>
+                  <LinearGradient
+                    colors={["#667eea", "#764ba2"]}
+                    style={styles.statGradient}
+                  >
+                    <Ionicons name="people" size={24} color="#fff" />
+                    <ThemedText style={styles.statValue}>
+                      {allMeals.length > 0
+                        ? new Set(allMeals.map((meal) => meal.userId)).size
+                        : 0}
+                    </ThemedText>
+                    <ThemedText style={styles.statLabel}>
+                      Active Members
+                    </ThemedText>
+                  </LinearGradient>
+                </View>
 
-            <View style={styles.statCard}>
-              <LinearGradient
-                colors={["#f093fb", "#f5576c"]}
-                style={styles.statGradient}
-              >
-                <Ionicons name="stats-chart" size={24} color="#fff" />
-                <ThemedText style={styles.statValue}>
-                  {recentMeals.length > 0
-                    ? recentMeals.reduce(
-                        (sum, meal) =>
-                          sum +
-                          (meal.breakfast ? 1 : 0) +
-                          (meal.lunch ? 1 : 0) +
-                          (meal.dinner ? 1 : 0),
-                        0
-                      )
-                    : 0}
-                </ThemedText>
-                <ThemedText style={styles.statLabel}>This Week</ThemedText>
-              </LinearGradient>
-            </View>
+                <View style={styles.statCard}>
+                  <LinearGradient
+                    colors={["#f093fb", "#f5576c"]}
+                    style={styles.statGradient}
+                  >
+                    <Ionicons name="time" size={24} color="#fff" />
+                    <ThemedText style={styles.statValue}>
+                      {
+                        allMeals.filter((meal) => meal.status === "pending")
+                          .length
+                      }
+                    </ThemedText>
+                    <ThemedText style={styles.statLabel}>
+                      Pending Approval
+                    </ThemedText>
+                  </LinearGradient>
+                </View>
 
-            <View style={styles.statCard}>
-              <LinearGradient
-                colors={["#43e97b", "#38f9d7"]}
-                style={styles.statGradient}
-              >
-                <Ionicons name="trending-up" size={24} color="#fff" />
-                <ThemedText style={styles.statValue}>
-                  {recentMeals.length > 0
-                    ? Math.round(
-                        (recentMeals.reduce(
-                          (sum, meal) =>
-                            sum +
-                            (meal.breakfast ? 1 : 0) +
-                            (meal.lunch ? 1 : 0) +
-                            (meal.dinner ? 1 : 0),
-                          0
-                        ) /
-                          recentMeals.length) *
-                          10
-                      ) / 10
-                    : 0}
-                </ThemedText>
-                <ThemedText style={styles.statLabel}>Avg/Day</ThemedText>
-              </LinearGradient>
-            </View>
+                <View style={styles.statCard}>
+                  <LinearGradient
+                    colors={["#43e97b", "#38f9d7"]}
+                    style={styles.statGradient}
+                  >
+                    <Ionicons name="checkmark-circle" size={24} color="#fff" />
+                    <ThemedText style={styles.statValue}>
+                      {
+                        allMeals.filter((meal) => meal.status === "approved")
+                          .length
+                      }
+                    </ThemedText>
+                    <ThemedText style={styles.statLabel}>
+                      Approved Today
+                    </ThemedText>
+                  </LinearGradient>
+                </View>
+              </>
+            ) : (
+              // Member stats
+              <>
+                <View style={styles.statCard}>
+                  <LinearGradient
+                    colors={["#667eea", "#764ba2"]}
+                    style={styles.statGradient}
+                  >
+                    <Ionicons name="calendar" size={24} color="#fff" />
+                    <ThemedText style={styles.statValue}>
+                      {Object.values(todayMeals).filter(Boolean).length}
+                    </ThemedText>
+                    <ThemedText style={styles.statLabel}>Today</ThemedText>
+                  </LinearGradient>
+                </View>
+
+                <View style={styles.statCard}>
+                  <LinearGradient
+                    colors={["#f093fb", "#f5576c"]}
+                    style={styles.statGradient}
+                  >
+                    <Ionicons name="stats-chart" size={24} color="#fff" />
+                    <ThemedText style={styles.statValue}>
+                      {recentMeals.length > 0
+                        ? recentMeals.reduce(
+                            (sum, meal) =>
+                              sum +
+                              (meal.breakfast ? 1 : 0) +
+                              (meal.lunch ? 1 : 0) +
+                              (meal.dinner ? 1 : 0),
+                            0
+                          )
+                        : 0}
+                    </ThemedText>
+                    <ThemedText style={styles.statLabel}>This Week</ThemedText>
+                  </LinearGradient>
+                </View>
+
+                <View style={styles.statCard}>
+                  <LinearGradient
+                    colors={["#43e97b", "#38f9d7"]}
+                    style={styles.statGradient}
+                  >
+                    <Ionicons name="trending-up" size={24} color="#fff" />
+                    <ThemedText style={styles.statValue}>
+                      {recentMeals.length > 0
+                        ? Math.round(
+                            (recentMeals.reduce(
+                              (sum, meal) =>
+                                sum +
+                                (meal.breakfast ? 1 : 0) +
+                                (meal.lunch ? 1 : 0) +
+                                (meal.dinner ? 1 : 0),
+                              0
+                            ) /
+                              recentMeals.length) *
+                              10
+                          ) / 10
+                        : 0}
+                    </ThemedText>
+                    <ThemedText style={styles.statLabel}>Avg/Day</ThemedText>
+                  </LinearGradient>
+                </View>
+              </>
+            )}
           </View>
 
           {/* Recent Meals History */}
           <View style={styles.historySection}>
-            <ThemedText style={styles.sectionTitle}>Recent History</ThemedText>
+            <ThemedText style={styles.sectionTitle}>
+              {isAdmin ? "All Meals" : "My Recent History"}
+            </ThemedText>
 
-            {recentMeals
+            {(isAdmin ? allMeals : recentMeals)
               .filter((meal) => meal && meal._id)
+              .slice(0, isAdmin ? 20 : 10)
               .map((meal) => (
                 <View key={meal._id} style={styles.historyCard}>
                   <View style={styles.historyHeader}>
@@ -499,43 +624,53 @@ export default function MealsScreen() {
                       </View>
                     ))}
                   </View>
+
+                  {/* Status indicator */}
+                  <View style={styles.statusContainer}>
+                    <View
+                      style={[
+                        styles.statusBadge,
+                        {
+                          backgroundColor:
+                            meal.status === "approved"
+                              ? "#10b981"
+                              : meal.status === "rejected"
+                              ? "#ef4444"
+                              : "#f59e0b",
+                        },
+                      ]}
+                    >
+                      <ThemedText style={styles.statusText}>
+                        {meal.status?.charAt(0).toUpperCase() +
+                          meal.status?.slice(1)}
+                      </ThemedText>
+                    </View>
+                  </View>
+
                   {/* Admin approval actions */}
                   {isAdmin && meal.status === "pending" && (
-                    <View style={{ flexDirection: "row", marginTop: 8 }}>
+                    <View style={styles.adminActions}>
                       <Pressable
-                        style={{
-                          marginRight: 12,
-                          padding: 8,
-                          backgroundColor: "#10b981",
-                          borderRadius: 8,
-                        }}
-                        onPress={() =>
-                          Alert.alert(
-                            "Approve",
-                            "Approve meal functionality coming soon"
-                          )
-                        }
+                        style={styles.approveButton}
+                        onPress={() => handleApproveMeal(meal._id)}
                       >
                         <Ionicons
                           name="checkmark-circle"
                           size={18}
                           color="#fff"
                         />
+                        <ThemedText style={styles.actionButtonText}>
+                          Approve
+                        </ThemedText>
                       </Pressable>
                       <Pressable
-                        style={{
-                          padding: 8,
-                          backgroundColor: "#ef4444",
-                          borderRadius: 8,
-                        }}
-                        onPress={() =>
-                          Alert.alert(
-                            "Reject",
-                            "Reject meal functionality coming soon"
-                          )
-                        }
+                        style={styles.rejectButton}
+                        onPress={() => handleRejectMeal(meal._id)}
                       >
                         <Ionicons name="close-circle" size={18} color="#fff" />
+                        <ThemedText style={styles.actionButtonText}>
+                          Reject
+                        </ThemedText>
                       </Pressable>
                     </View>
                   )}
@@ -751,5 +886,47 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     color: "#fff",
+  },
+  statusContainer: {
+    alignItems: "center",
+    marginTop: 8,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: "bold",
+    color: "#fff",
+  },
+  adminActions: {
+    flexDirection: "row",
+    marginTop: 12,
+    justifyContent: "center",
+    gap: 12,
+  },
+  approveButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: "#10b981",
+    borderRadius: 8,
+  },
+  rejectButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: "#ef4444",
+    borderRadius: 8,
+  },
+  actionButtonText: {
+    fontSize: 12,
+    fontWeight: "bold",
+    color: "#fff",
+    marginLeft: 4,
   },
 });

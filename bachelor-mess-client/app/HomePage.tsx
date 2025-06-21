@@ -37,6 +37,9 @@ export default function HomePage() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Check if user is admin
+  const isAdmin = user?.role === "admin";
+
   // Fetch dashboard data from backend
   const fetchDashboardData = async () => {
     try {
@@ -126,13 +129,22 @@ export default function HomePage() {
         >
           <View style={styles.header}>
             <View style={styles.headerContent}>
-              <ThemedText style={styles.headerTitle}>Dashboard</ThemedText>
+              <ThemedText style={styles.headerTitle}>
+                {isAdmin ? "Admin Dashboard" : "My Dashboard"}
+              </ThemedText>
               <ThemedText style={styles.headerSubtitle}>
                 Welcome back, {user?.name || "User"}!
+                {isAdmin && (
+                  <ThemedText style={styles.adminBadge}> (Admin)</ThemedText>
+                )}
               </ThemedText>
             </View>
             <View style={styles.headerIcon}>
-              <Ionicons name="home" size={32} color="#fff" />
+              <Ionicons
+                name={isAdmin ? "shield-checkmark" : "home"}
+                size={32}
+                color="#fff"
+              />
             </View>
           </View>
         </LinearGradient>
@@ -148,211 +160,370 @@ export default function HomePage() {
           ) : (
             dashboardData && (
               <>
-                {/* Stats Cards */}
+                {/* Stats Cards - Different for Admin and Member */}
                 <View style={styles.statsContainer}>
-                  <View style={styles.statCard}>
-                    <LinearGradient
-                      colors={["#f093fb", "#f5576c"]}
-                      style={styles.statGradient}
-                    >
-                      <Ionicons name="people" size={32} color="#fff" />
-                      <ThemedText style={styles.statValue}>
-                        {dashboardData.mealStats.totalMembers}
-                      </ThemedText>
-                      <ThemedText style={styles.statLabel}>
-                        Total Members
-                      </ThemedText>
-                    </LinearGradient>
-                  </View>
+                  {isAdmin ? (
+                    // Admin sees all stats
+                    <>
+                      <View style={styles.statCard}>
+                        <LinearGradient
+                          colors={["#f093fb", "#f5576c"]}
+                          style={styles.statGradient}
+                        >
+                          <Ionicons name="people" size={32} color="#fff" />
+                          <ThemedText style={styles.statValue}>
+                            {dashboardData.mealStats.totalMembers}
+                          </ThemedText>
+                          <ThemedText style={styles.statLabel}>
+                            Total Members
+                          </ThemedText>
+                        </LinearGradient>
+                      </View>
 
-                  <View style={styles.statCard}>
-                    <LinearGradient
-                      colors={["#4facfe", "#00f2fe"]}
-                      style={styles.statGradient}
-                    >
-                      <Ionicons name="restaurant" size={32} color="#fff" />
-                      <ThemedText style={styles.statValue}>
-                        {dashboardData.mealStats.totalMeals}
-                      </ThemedText>
-                      <ThemedText style={styles.statLabel}>
-                        Total Meals
-                      </ThemedText>
-                    </LinearGradient>
-                  </View>
+                      <View style={styles.statCard}>
+                        <LinearGradient
+                          colors={["#4facfe", "#00f2fe"]}
+                          style={styles.statGradient}
+                        >
+                          <Ionicons name="restaurant" size={32} color="#fff" />
+                          <ThemedText style={styles.statValue}>
+                            {dashboardData.mealStats.totalMeals}
+                          </ThemedText>
+                          <ThemedText style={styles.statLabel}>
+                            Total Meals
+                          </ThemedText>
+                        </LinearGradient>
+                      </View>
 
-                  <View style={styles.statCard}>
-                    <LinearGradient
-                      colors={["#43e97b", "#38f9d7"]}
-                      style={styles.statGradient}
-                    >
-                      <Ionicons name="wallet" size={32} color="#fff" />
-                      <ThemedText style={styles.statValue}>
-                        ৳{dashboardData.bazarStats.totalBazar}
-                      </ThemedText>
-                      <ThemedText style={styles.statLabel}>
-                        Total Bazar
-                      </ThemedText>
-                    </LinearGradient>
-                  </View>
+                      <View style={styles.statCard}>
+                        <LinearGradient
+                          colors={["#43e97b", "#38f9d7"]}
+                          style={styles.statGradient}
+                        >
+                          <Ionicons name="wallet" size={32} color="#fff" />
+                          <ThemedText style={styles.statValue}>
+                            ৳{dashboardData.bazarStats.totalBazar}
+                          </ThemedText>
+                          <ThemedText style={styles.statLabel}>
+                            Total Bazar
+                          </ThemedText>
+                        </LinearGradient>
+                      </View>
 
-                  <View style={styles.statCard}>
-                    <LinearGradient
-                      colors={["#fa709a", "#fee140"]}
-                      style={styles.statGradient}
-                    >
-                      <Ionicons name="trending-up" size={32} color="#fff" />
-                      <ThemedText style={styles.statValue}>
-                        ৳{dashboardData.mealStats.currentMonthRevenue}
-                      </ThemedText>
-                      <ThemedText style={styles.statLabel}>
-                        Monthly Revenue
-                      </ThemedText>
-                    </LinearGradient>
-                  </View>
+                      <View style={styles.statCard}>
+                        <LinearGradient
+                          colors={["#fa709a", "#fee140"]}
+                          style={styles.statGradient}
+                        >
+                          <Ionicons name="trending-up" size={32} color="#fff" />
+                          <ThemedText style={styles.statValue}>
+                            ৳{dashboardData.mealStats.currentMonthRevenue}
+                          </ThemedText>
+                          <ThemedText style={styles.statLabel}>
+                            Monthly Revenue
+                          </ThemedText>
+                        </LinearGradient>
+                      </View>
+                    </>
+                  ) : (
+                    // Member sees only personal stats
+                    <>
+                      <View style={styles.statCard}>
+                        <LinearGradient
+                          colors={["#f093fb", "#f5576c"]}
+                          style={styles.statGradient}
+                        >
+                          <Ionicons name="restaurant" size={32} color="#fff" />
+                          <ThemedText style={styles.statValue}>
+                            {dashboardData.mealStats.userMeals || 0}
+                          </ThemedText>
+                          <ThemedText style={styles.statLabel}>
+                            My Meals
+                          </ThemedText>
+                        </LinearGradient>
+                      </View>
+
+                      <View style={styles.statCard}>
+                        <LinearGradient
+                          colors={["#4facfe", "#00f2fe"]}
+                          style={styles.statGradient}
+                        >
+                          <Ionicons name="wallet" size={32} color="#fff" />
+                          <ThemedText style={styles.statValue}>
+                            ৳{dashboardData.bazarStats.userContribution || 0}
+                          </ThemedText>
+                          <ThemedText style={styles.statLabel}>
+                            My Contribution
+                          </ThemedText>
+                        </LinearGradient>
+                      </View>
+
+                      <View style={styles.statCard}>
+                        <LinearGradient
+                          colors={["#43e97b", "#38f9d7"]}
+                          style={styles.statGradient}
+                        >
+                          <Ionicons name="calendar" size={32} color="#fff" />
+                          <ThemedText style={styles.statValue}>
+                            {dashboardData.mealStats.thisMonthMeals || 0}
+                          </ThemedText>
+                          <ThemedText style={styles.statLabel}>
+                            This Month
+                          </ThemedText>
+                        </LinearGradient>
+                      </View>
+
+                      <View style={styles.statCard}>
+                        <LinearGradient
+                          colors={["#fa709a", "#fee140"]}
+                          style={styles.statGradient}
+                        >
+                          <Ionicons name="card" size={32} color="#fff" />
+                          <ThemedText style={styles.statValue}>
+                            ৳{dashboardData.mealStats.userBalance || 0}
+                          </ThemedText>
+                          <ThemedText style={styles.statLabel}>
+                            My Balance
+                          </ThemedText>
+                        </LinearGradient>
+                      </View>
+                    </>
+                  )}
                 </View>
 
-                {/* Quick Actions */}
+                {/* Quick Actions - Different for Admin and Member */}
                 <View style={styles.quickActionsSection}>
                   <ThemedText style={styles.sectionTitle}>
-                    Quick Actions
+                    {isAdmin ? "Admin Actions" : "Quick Actions"}
                   </ThemedText>
                   <View style={styles.quickActionsGrid}>
-                    <Pressable
-                      style={styles.actionCard}
-                      onPress={() => router.push("/(tabs)/meals")}
-                    >
-                      <LinearGradient
-                        colors={["#667eea", "#764ba2"]}
-                        style={styles.actionGradient}
-                      >
-                        <Ionicons name="restaurant" size={24} color="#fff" />
-                        <ThemedText style={styles.actionTitle}>
-                          Submit Meals
-                        </ThemedText>
-                      </LinearGradient>
-                    </Pressable>
+                    {isAdmin ? (
+                      // Admin actions
+                      <>
+                        <Pressable
+                          style={styles.actionCard}
+                          onPress={() => router.push("/(tabs)/meals")}
+                        >
+                          <LinearGradient
+                            colors={["#667eea", "#764ba2"]}
+                            style={styles.actionGradient}
+                          >
+                            <Ionicons
+                              name="restaurant"
+                              size={24}
+                              color="#fff"
+                            />
+                            <ThemedText style={styles.actionTitle}>
+                              Manage Meals
+                            </ThemedText>
+                          </LinearGradient>
+                        </Pressable>
 
-                    <Pressable
-                      style={styles.actionCard}
-                      onPress={() => router.push("/(tabs)/explore")}
-                    >
-                      <LinearGradient
-                        colors={["#f093fb", "#f5576c"]}
-                        style={styles.actionGradient}
-                      >
-                        <Ionicons name="cart" size={24} color="#fff" />
-                        <ThemedText style={styles.actionTitle}>
-                          Add Bazar
-                        </ThemedText>
-                      </LinearGradient>
-                    </Pressable>
+                        <Pressable
+                          style={styles.actionCard}
+                          onPress={() => router.push("/(tabs)/explore")}
+                        >
+                          <LinearGradient
+                            colors={["#f093fb", "#f5576c"]}
+                            style={styles.actionGradient}
+                          >
+                            <Ionicons name="cart" size={24} color="#fff" />
+                            <ThemedText style={styles.actionTitle}>
+                              Manage Bazar
+                            </ThemedText>
+                          </LinearGradient>
+                        </Pressable>
 
-                    <Pressable
-                      style={styles.actionCard}
-                      onPress={() => router.push("/(tabs)/admin")}
-                    >
-                      <LinearGradient
-                        colors={["#4facfe", "#00f2fe"]}
-                        style={styles.actionGradient}
-                      >
-                        <Ionicons name="people" size={24} color="#fff" />
-                        <ThemedText style={styles.actionTitle}>
-                          Members
-                        </ThemedText>
-                      </LinearGradient>
-                    </Pressable>
+                        <Pressable
+                          style={styles.actionCard}
+                          onPress={() => router.push("/(tabs)/admin")}
+                        >
+                          <LinearGradient
+                            colors={["#4facfe", "#00f2fe"]}
+                            style={styles.actionGradient}
+                          >
+                            <Ionicons name="people" size={24} color="#fff" />
+                            <ThemedText style={styles.actionTitle}>
+                              Manage Members
+                            </ThemedText>
+                          </LinearGradient>
+                        </Pressable>
 
-                    <Pressable
-                      style={styles.actionCard}
-                      onPress={() => router.push("/(tabs)/admin")}
-                    >
-                      <LinearGradient
-                        colors={["#43e97b", "#38f9d7"]}
-                        style={styles.actionGradient}
-                      >
-                        <Ionicons name="stats-chart" size={24} color="#fff" />
-                        <ThemedText style={styles.actionTitle}>
-                          Reports
-                        </ThemedText>
-                      </LinearGradient>
-                    </Pressable>
+                        <Pressable
+                          style={styles.actionCard}
+                          onPress={() => router.push("/(tabs)/admin")}
+                        >
+                          <LinearGradient
+                            colors={["#43e97b", "#38f9d7"]}
+                            style={styles.actionGradient}
+                          >
+                            <Ionicons
+                              name="stats-chart"
+                              size={24}
+                              color="#fff"
+                            />
+                            <ThemedText style={styles.actionTitle}>
+                              Reports & Analytics
+                            </ThemedText>
+                          </LinearGradient>
+                        </Pressable>
+                      </>
+                    ) : (
+                      // Member actions
+                      <>
+                        <Pressable
+                          style={styles.actionCard}
+                          onPress={() => router.push("/(tabs)/meals")}
+                        >
+                          <LinearGradient
+                            colors={["#667eea", "#764ba2"]}
+                            style={styles.actionGradient}
+                          >
+                            <Ionicons
+                              name="restaurant"
+                              size={24}
+                              color="#fff"
+                            />
+                            <ThemedText style={styles.actionTitle}>
+                              Submit Meals
+                            </ThemedText>
+                          </LinearGradient>
+                        </Pressable>
+
+                        <Pressable
+                          style={styles.actionCard}
+                          onPress={() => router.push("/(tabs)/explore")}
+                        >
+                          <LinearGradient
+                            colors={["#f093fb", "#f5576c"]}
+                            style={styles.actionGradient}
+                          >
+                            <Ionicons name="cart" size={24} color="#fff" />
+                            <ThemedText style={styles.actionTitle}>
+                              Add Bazar
+                            </ThemedText>
+                          </LinearGradient>
+                        </Pressable>
+
+                        <Pressable
+                          style={styles.actionCard}
+                          onPress={() => router.push("/(tabs)/profile")}
+                        >
+                          <LinearGradient
+                            colors={["#4facfe", "#00f2fe"]}
+                            style={styles.actionGradient}
+                          >
+                            <Ionicons name="person" size={24} color="#fff" />
+                            <ThemedText style={styles.actionTitle}>
+                              My Profile
+                            </ThemedText>
+                          </LinearGradient>
+                        </Pressable>
+
+                        <Pressable
+                          style={styles.actionCard}
+                          onPress={() => router.push("/help")}
+                        >
+                          <LinearGradient
+                            colors={["#43e97b", "#38f9d7"]}
+                            style={styles.actionGradient}
+                          >
+                            <Ionicons
+                              name="help-circle"
+                              size={24}
+                              color="#fff"
+                            />
+                            <ThemedText style={styles.actionTitle}>
+                              Get Help
+                            </ThemedText>
+                          </LinearGradient>
+                        </Pressable>
+                      </>
+                    )}
                   </View>
                 </View>
 
-                {/* Recent Activity */}
+                {/* Recent Activity - Different for Admin and Member */}
                 <View style={styles.activitySection}>
                   <ThemedText style={styles.sectionTitle}>
-                    Recent Activity
+                    {isAdmin ? "Recent Activity" : "My Recent Activity"}
                   </ThemedText>
                   <View style={styles.activityList}>
-                    {dashboardData.recentActivity.map((activity, index) => (
-                      <View key={index} style={styles.activityItem}>
-                        <View
-                          style={[
-                            styles.activityIcon,
-                            { backgroundColor: activity.color },
-                          ]}
-                        >
-                          <Ionicons
-                            name={activity.icon}
-                            size={20}
-                            color="#fff"
-                          />
-                        </View>
-                        <View style={styles.activityContent}>
-                          <ThemedText style={styles.activityLabel}>
-                            {activity.label}
-                          </ThemedText>
-                          <ThemedText style={styles.activityValue}>
-                            {activity.value}
-                          </ThemedText>
-                          <ThemedText style={styles.activityTime}>
-                            {activity.time}
-                          </ThemedText>
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-
-                {/* Members List */}
-                <View style={styles.membersSection}>
-                  <ThemedText style={styles.sectionTitle}>
-                    Active Members
-                  </ThemedText>
-                  <View style={styles.membersList}>
-                    {dashboardData.users.slice(0, 5).map((member) => (
-                      <View key={member._id} style={styles.memberItem}>
-                        <View style={styles.memberAvatar}>
-                          <Ionicons name="person" size={24} color="#667eea" />
-                        </View>
-                        <View style={styles.memberInfo}>
-                          <ThemedText style={styles.memberName}>
-                            {member.name}
-                          </ThemedText>
-                          <ThemedText style={styles.memberEmail}>
-                            {member.email}
-                          </ThemedText>
-                          <View style={styles.memberStats}>
-                            <ThemedText style={styles.memberStat}>
-                              {member.totalMeals} meals
+                    {dashboardData.recentActivity
+                      .filter(
+                        (activity) => isAdmin || activity.userId === user?.id
+                      )
+                      .slice(0, isAdmin ? 10 : 5)
+                      .map((activity, index) => (
+                        <View key={index} style={styles.activityItem}>
+                          <View
+                            style={[
+                              styles.activityIcon,
+                              { backgroundColor: activity.color },
+                            ]}
+                          >
+                            <Ionicons
+                              name={activity.icon}
+                              size={20}
+                              color="#fff"
+                            />
+                          </View>
+                          <View style={styles.activityContent}>
+                            <ThemedText style={styles.activityLabel}>
+                              {activity.label}
                             </ThemedText>
-                            <ThemedText style={styles.memberStat}>
-                              ৳{member.totalContribution}
+                            <ThemedText style={styles.activityValue}>
+                              {activity.value}
+                            </ThemedText>
+                            <ThemedText style={styles.activityTime}>
+                              {activity.time}
                             </ThemedText>
                           </View>
                         </View>
-                        <View style={styles.memberStatus}>
-                          <Ionicons
-                            name={getStatusIcon(member.status)}
-                            size={20}
-                            color={getStatusColor(member.status)}
-                          />
-                        </View>
-                      </View>
-                    ))}
+                      ))}
                   </View>
                 </View>
+
+                {/* Members List - Only for Admin */}
+                {isAdmin && (
+                  <View style={styles.membersSection}>
+                    <ThemedText style={styles.sectionTitle}>
+                      Active Members
+                    </ThemedText>
+                    <View style={styles.membersList}>
+                      {dashboardData.users.slice(0, 5).map((member) => (
+                        <View key={member._id} style={styles.memberItem}>
+                          <View style={styles.memberAvatar}>
+                            <Ionicons name="person" size={24} color="#667eea" />
+                          </View>
+                          <View style={styles.memberInfo}>
+                            <ThemedText style={styles.memberName}>
+                              {member.name}
+                            </ThemedText>
+                            <ThemedText style={styles.memberEmail}>
+                              {member.email}
+                            </ThemedText>
+                            <View style={styles.memberStats}>
+                              <ThemedText style={styles.memberStat}>
+                                {member.totalMeals} meals
+                              </ThemedText>
+                              <ThemedText style={styles.memberStat}>
+                                ৳{member.totalContribution}
+                              </ThemedText>
+                            </View>
+                          </View>
+                          <View style={styles.memberStatus}>
+                            <Ionicons
+                              name={getStatusIcon(member.status)}
+                              size={20}
+                              color={getStatusColor(member.status)}
+                            />
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
               </>
             )
           )}
@@ -592,5 +763,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     color: "#fff",
+  },
+  adminBadge: {
+    fontSize: 12,
+    fontWeight: "bold",
+    color: "#fff",
+    backgroundColor: "#ef4444",
+    padding: 4,
+    borderRadius: 4,
   },
 });

@@ -232,9 +232,9 @@ const DUMMY_DATA = {
   },
 };
 
-// Environment detection
+// Development flags - Set to false to use real API data
 const isDevelopment = process.env.EXPO_PUBLIC_DEV_MODE === "true";
-const useDummyData = process.env.EXPO_PUBLIC_USE_DUMMY_DATA === "true";
+const useDummyData = false; // Changed to false to use real API data
 
 // Simulate API delay for better UX
 const simulateDelay = (ms: number = 800) =>
@@ -309,8 +309,23 @@ export class DataService {
 
   static async submitMeals(mealData: any) {
     return handleApiCall(() => mealAPI.submitMeals(mealData), {
-      data: { ...mealData, _id: Date.now().toString(), status: "pending" },
+      success: true,
+      message: "Meal submitted successfully",
     });
+  }
+
+  static async approveMeal(mealId: string) {
+    return handleApiCall(
+      () => mealAPI.updateMealStatus(mealId, { status: "approved" }),
+      { success: true, message: "Meal approved successfully" }
+    );
+  }
+
+  static async rejectMeal(mealId: string) {
+    return handleApiCall(
+      () => mealAPI.updateMealStatus(mealId, { status: "rejected" }),
+      { success: true, message: "Meal rejected successfully" }
+    );
   }
 
   static async getMealStats(params?: any) {
@@ -389,19 +404,119 @@ export class DataService {
         };
       }
 
-      const [usersResponse, mealStatsResponse, bazarStatsResponse] =
-        await Promise.all([
-          userAPI.getAllUsers(),
-          mealAPI.getMealStats(),
-          bazarAPI.getBazarStats(),
+      // Get user profile to check role
+      const profileResponse = await userAPI.getProfile();
+      const userRole = profileResponse.data.role;
+      const isAdmin = userRole === "admin";
+
+      if (isAdmin) {
+        // Admin dashboard - get all data
+        const [usersResponse, mealStatsResponse, bazarStatsResponse] =
+          await Promise.all([
+            userAPI.getAllUsers(),
+            mealAPI.getMealStats(),
+            bazarAPI.getBazarStats(),
+          ]);
+
+        return {
+          users: usersResponse.data,
+          mealStats: mealStatsResponse.data,
+          bazarStats: bazarStatsResponse.data,
+          recentActivity: [], // Will be populated from real data
+        };
+      } else {
+        // Member dashboard - get user-specific data
+        const [profile, userMeals, userBazar] = await Promise.all([
+          userAPI.getProfile(),
+          mealAPI.getUserMeals({ limit: 10 }),
+          bazarAPI.getUserBazar({ limit: 10 }),
         ]);
 
-      return {
-        users: usersResponse.data,
-        mealStats: mealStatsResponse.data,
-        bazarStats: bazarStatsResponse.data,
-        recentActivity: [], // Will be populated from real data
-      };
+        // Calculate user-specific stats
+        const totalMeals = userMeals.data.reduce((sum: number, meal: any) => {
+          return (
+            sum +
+            (meal.breakfast ? 1 : 0) +
+            (meal.lunch ? 1 : 0) +
+            (meal.dinner ? 1 : 0)
+          );
+        }, 0);
+
+        const totalBazarAmount = userBazar.data.reduce(
+          (sum: number, entry: any) => sum + entry.totalAmount,
+          0
+        );
+
+        const mealStats = {
+          totalMeals,
+          totalBreakfast: userMeals.data.reduce(
+            (sum: number, meal: any) => sum + (meal.breakfast ? 1 : 0),
+            0
+          ),
+          totalLunch: userMeals.data.reduce(
+            (sum: number, meal: any) => sum + (meal.lunch ? 1 : 0),
+            0
+          ),
+          totalDinner: userMeals.data.reduce(
+            (sum: number, meal: any) => sum + (meal.dinner ? 1 : 0),
+            0
+          ),
+          pendingCount: userMeals.data.filter(
+            (meal: any) => meal.status === "pending"
+          ).length,
+          approvedCount: userMeals.data.filter(
+            (meal: any) => meal.status === "approved"
+          ).length,
+          rejectedCount: userMeals.data.filter(
+            (meal: any) => meal.status === "rejected"
+          ).length,
+          userMeals: totalMeals,
+          thisMonthMeals: totalMeals,
+          userBalance: 0,
+        };
+
+        const bazarStats = {
+          totalAmount: totalBazarAmount,
+          totalEntries: userBazar.data.length,
+          pendingCount: userBazar.data.filter(
+            (entry: any) => entry.status === "pending"
+          ).length,
+          approvedCount: userBazar.data.filter(
+            (entry: any) => entry.status === "approved"
+          ).length,
+          rejectedCount: userBazar.data.filter(
+            (entry: any) => entry.status === "rejected"
+          ).length,
+          averageAmount:
+            userBazar.data.length > 0
+              ? totalBazarAmount / userBazar.data.length
+              : 0,
+          userContribution: totalBazarAmount,
+          totalBazar: totalBazarAmount,
+        };
+
+        return {
+          users: [profile.data], // Only show current user
+          mealStats,
+          bazarStats,
+          recentActivity: [
+            {
+              label: "Your Meals",
+              value: `${totalMeals} total`,
+              icon: "restaurant",
+              color: "#6366f1",
+              time: "This month",
+            },
+            {
+              label: "Your Bazar",
+              value: `${totalBazarAmount} Tk`,
+              icon: "cart",
+              color: "#10b981",
+              time: "This month",
+            },
+          ],
+        };
+      }
     } catch (error) {
       console.error("Dashboard data error:", error);
       throw error;
