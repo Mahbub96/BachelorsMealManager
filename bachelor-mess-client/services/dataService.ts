@@ -344,6 +344,23 @@ export class DataService {
     });
   }
 
+  // Helper method to normalize API responses
+  static normalizeResponse(response: any) {
+    if (response && response.data) {
+      // Handle nested structure: {data: {data: [...]}}
+      if (response.data.data && Array.isArray(response.data.data)) {
+        return response.data.data;
+      }
+      // Handle direct structure: {data: [...]}
+      if (Array.isArray(response.data)) {
+        return response.data;
+      }
+      // Handle object structure: {data: {...}}
+      return response.data;
+    }
+    return response;
+  }
+
   // Dashboard Data
   static async getDashboardData() {
     try {

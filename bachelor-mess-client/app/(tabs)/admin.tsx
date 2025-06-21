@@ -19,6 +19,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useAuth } from "@/context/AuthContext";
 
 interface Member {
   id: string;
@@ -43,8 +44,10 @@ interface PendingApproval {
 }
 
 export default function AdminScreen() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const [activeTab, setActiveTab] = useState<
-    "overview" | "members" | "approvals" | "reports"
+    "overview" | "members" | "approvals" | "reports" | "statistics"
   >("overview");
   const [searchQuery, setSearchQuery] = useState("");
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
@@ -101,6 +104,17 @@ export default function AdminScreen() {
       totalMeals: 45,
       totalContribution: 1800,
     },
+    {
+      id: "5",
+      name: "Fatima Begum",
+      email: "fatima@example.com",
+      phone: "+880 1512345678",
+      role: "member",
+      joinDate: "2024-02-01",
+      status: "active",
+      totalMeals: 65,
+      totalContribution: 2400,
+    },
   ]);
 
   const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([
@@ -130,6 +144,98 @@ export default function AdminScreen() {
       status: "pending",
     },
   ]);
+
+  // Comprehensive Statistics Calculations
+  const calculateStatistics = () => {
+    const activeMembers = members.filter((m) => m.status === "active");
+    const totalMembers = members.length;
+    const totalMeals = members.reduce((sum, m) => sum + m.totalMeals, 0);
+    const totalRevenue = members.reduce(
+      (sum, m) => sum + m.totalContribution,
+      0
+    );
+    const avgMealsPerMember =
+      totalMembers > 0 ? (totalMeals / totalMembers).toFixed(1) : "0";
+    const avgContributionPerMember =
+      totalMembers > 0 ? (totalRevenue / totalMembers).toFixed(0) : "0";
+    const avgContributionPerMeal =
+      totalMeals > 0 ? (totalRevenue / totalMeals).toFixed(0) : "0";
+    const pendingApprovalsCount = pendingApprovals.filter(
+      (a) => a.status === "pending"
+    ).length;
+    const approvalRate =
+      pendingApprovals.length > 0
+        ? (
+            (pendingApprovals.filter((a) => a.status === "approved").length /
+              pendingApprovals.length) *
+            100
+          ).toFixed(1)
+        : "0";
+
+    // Monthly calculations (assuming current month data)
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    const monthlyRevenue = totalRevenue * 0.25; // Simplified calculation
+    const monthlyMeals = totalMeals * 0.25; // Simplified calculation
+
+    // Member growth rate
+    const newMembersThisMonth = members.filter((m) => {
+      const joinDate = new Date(m.joinDate);
+      return (
+        joinDate.getMonth() === currentMonth &&
+        joinDate.getFullYear() === currentYear
+      );
+    }).length;
+
+    // Financial metrics
+    const profitMargin = 15; // Assuming 15% profit margin
+    const totalProfit = (totalRevenue * profitMargin) / 100;
+    const costPerMeal =
+      totalMeals > 0
+        ? (totalRevenue * (100 - profitMargin)) / 100 / totalMeals
+        : 0;
+
+    // Performance metrics
+    const topPerformer = members.reduce(
+      (max, member) => (member.totalMeals > max.totalMeals ? member : max),
+      members[0]
+    );
+
+    const memberEfficiency = members.map((member) => ({
+      ...member,
+      efficiency:
+        member.totalMeals > 0
+          ? (member.totalContribution / member.totalMeals).toFixed(0)
+          : "0",
+    }));
+
+    return {
+      totalMembers,
+      activeMembers: activeMembers.length,
+      inactiveMembers: totalMembers - activeMembers.length,
+      totalMeals,
+      totalRevenue,
+      avgMealsPerMember,
+      avgContributionPerMember,
+      avgContributionPerMeal,
+      pendingApprovalsCount,
+      approvalRate,
+      monthlyRevenue,
+      monthlyMeals,
+      newMembersThisMonth,
+      totalProfit,
+      costPerMeal: costPerMeal.toFixed(0),
+      profitMargin,
+      topPerformer,
+      memberEfficiency,
+      memberGrowthRate:
+        totalMembers > 0
+          ? ((newMembersThisMonth / totalMembers) * 100).toFixed(1)
+          : "0",
+    };
+  };
+
+  const stats = calculateStatistics();
 
   // Chart data
   const memberPerformanceData = members.slice(0, 5).map((member) => ({
@@ -809,6 +915,257 @@ export default function AdminScreen() {
     </View>
   );
 
+  const renderStatistics = () => (
+    <View>
+      <ThemedText style={styles.sectionTitle}>
+        Comprehensive Statistics
+      </ThemedText>
+
+      {/* Key Performance Indicators */}
+      <View style={styles.statsGrid}>
+        <View style={styles.statCard}>
+          <LinearGradient
+            colors={["#667eea", "#764ba2"]}
+            style={styles.statGradient}
+          >
+            <Ionicons name="people" size={24} color="#fff" />
+            <ThemedText style={styles.statValue}>
+              {stats.totalMembers}
+            </ThemedText>
+            <ThemedText style={styles.statLabel}>Total Members</ThemedText>
+            <ThemedText style={styles.statSubtext}>
+              {stats.activeMembers} Active • {stats.inactiveMembers} Inactive
+            </ThemedText>
+          </LinearGradient>
+        </View>
+
+        <View style={styles.statCard}>
+          <LinearGradient
+            colors={["#f093fb", "#f5576c"]}
+            style={styles.statGradient}
+          >
+            <Ionicons name="restaurant" size={24} color="#fff" />
+            <ThemedText style={styles.statValue}>{stats.totalMeals}</ThemedText>
+            <ThemedText style={styles.statLabel}>Total Meals</ThemedText>
+            <ThemedText style={styles.statSubtext}>
+              Avg: {stats.avgMealsPerMember} per member
+            </ThemedText>
+          </LinearGradient>
+        </View>
+
+        <View style={styles.statCard}>
+          <LinearGradient
+            colors={["#43e97b", "#38f9d7"]}
+            style={styles.statGradient}
+          >
+            <Ionicons name="cash" size={24} color="#fff" />
+            <ThemedText style={styles.statValue}>
+              ৳{stats.totalRevenue}
+            </ThemedText>
+            <ThemedText style={styles.statLabel}>Total Revenue</ThemedText>
+            <ThemedText style={styles.statSubtext}>
+              Avg: ৳{stats.avgContributionPerMember} per member
+            </ThemedText>
+          </LinearGradient>
+        </View>
+
+        <View style={styles.statCard}>
+          <LinearGradient
+            colors={["#fa709a", "#fee140"]}
+            style={styles.statGradient}
+          >
+            <Ionicons name="trending-up" size={24} color="#fff" />
+            <ThemedText style={styles.statValue}>
+              ৳{stats.totalProfit}
+            </ThemedText>
+            <ThemedText style={styles.statLabel}>Total Profit</ThemedText>
+            <ThemedText style={styles.statSubtext}>
+              {stats.profitMargin}% margin
+            </ThemedText>
+          </LinearGradient>
+        </View>
+      </View>
+
+      {/* Financial Analytics */}
+      <View style={styles.analyticsSection}>
+        <ThemedText style={styles.sectionTitle}>Financial Analytics</ThemedText>
+
+        <View style={styles.analyticsGrid}>
+          <View style={styles.analyticsCard}>
+            <ThemedText style={styles.analyticsTitle}>
+              Revenue per Meal
+            </ThemedText>
+            <ThemedText style={styles.analyticsValue}>
+              ৳{stats.avgContributionPerMeal}
+            </ThemedText>
+            <ThemedText style={styles.analyticsDescription}>
+              Average contribution per meal consumed
+            </ThemedText>
+          </View>
+
+          <View style={styles.analyticsCard}>
+            <ThemedText style={styles.analyticsTitle}>Cost per Meal</ThemedText>
+            <ThemedText style={styles.analyticsValue}>
+              ৳{stats.costPerMeal}
+            </ThemedText>
+            <ThemedText style={styles.analyticsDescription}>
+              Average cost to prepare one meal
+            </ThemedText>
+          </View>
+
+          <View style={styles.analyticsCard}>
+            <ThemedText style={styles.analyticsTitle}>
+              Monthly Revenue
+            </ThemedText>
+            <ThemedText style={styles.analyticsValue}>
+              ৳{stats.monthlyRevenue}
+            </ThemedText>
+            <ThemedText style={styles.analyticsDescription}>
+              Projected revenue for current month
+            </ThemedText>
+          </View>
+
+          <View style={styles.analyticsCard}>
+            <ThemedText style={styles.analyticsTitle}>Monthly Meals</ThemedText>
+            <ThemedText style={styles.analyticsValue}>
+              {stats.monthlyMeals}
+            </ThemedText>
+            <ThemedText style={styles.analyticsDescription}>
+              Projected meals for current month
+            </ThemedText>
+          </View>
+        </View>
+      </View>
+
+      {/* Member Performance */}
+      <View style={styles.performanceSection}>
+        <ThemedText style={styles.sectionTitle}>Member Performance</ThemedText>
+
+        <View style={styles.performanceCard}>
+          <ThemedText style={styles.performanceTitle}>Top Performer</ThemedText>
+          <View style={styles.topPerformer}>
+            <Ionicons name="trophy" size={24} color="#f59e0b" />
+            <View style={styles.performerInfo}>
+              <ThemedText style={styles.performerName}>
+                {stats.topPerformer.name}
+              </ThemedText>
+              <ThemedText style={styles.performerStats}>
+                {stats.topPerformer.totalMeals} meals • ৳
+                {stats.topPerformer.totalContribution}
+              </ThemedText>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.memberEfficiencyList}>
+          <ThemedText style={styles.efficiencyTitle}>
+            Member Efficiency (৳/meal)
+          </ThemedText>
+          {stats.memberEfficiency
+            .sort((a, b) => parseFloat(b.efficiency) - parseFloat(a.efficiency))
+            .slice(0, 5)
+            .map((member, index) => (
+              <View key={member.id} style={styles.efficiencyItem}>
+                <View style={styles.efficiencyRank}>
+                  <ThemedText style={styles.rankNumber}>{index + 1}</ThemedText>
+                </View>
+                <View style={styles.efficiencyInfo}>
+                  <ThemedText style={styles.efficiencyName}>
+                    {member.name}
+                  </ThemedText>
+                  <ThemedText style={styles.efficiencyValue}>
+                    ৳{member.efficiency} per meal
+                  </ThemedText>
+                </View>
+                <View style={styles.efficiencyStats}>
+                  <ThemedText style={styles.efficiencyMeals}>
+                    {member.totalMeals} meals
+                  </ThemedText>
+                  <ThemedText style={styles.efficiencyTotal}>
+                    ৳{member.totalContribution}
+                  </ThemedText>
+                </View>
+              </View>
+            ))}
+        </View>
+      </View>
+
+      {/* Growth Metrics */}
+      <View style={styles.growthSection}>
+        <ThemedText style={styles.sectionTitle}>Growth Metrics</ThemedText>
+
+        <View style={styles.growthGrid}>
+          <View style={styles.growthCard}>
+            <Ionicons name="person-add" size={24} color="#10b981" />
+            <ThemedText style={styles.growthValue}>
+              {stats.newMembersThisMonth}
+            </ThemedText>
+            <ThemedText style={styles.growthLabel}>
+              New Members This Month
+            </ThemedText>
+          </View>
+
+          <View style={styles.growthCard}>
+            <Ionicons name="trending-up" size={24} color="#6366f1" />
+            <ThemedText style={styles.growthValue}>
+              {stats.memberGrowthRate}%
+            </ThemedText>
+            <ThemedText style={styles.growthLabel}>
+              Member Growth Rate
+            </ThemedText>
+          </View>
+
+          <View style={styles.growthCard}>
+            <Ionicons name="checkmark-circle" size={24} color="#f59e0b" />
+            <ThemedText style={styles.growthValue}>
+              {stats.approvalRate}%
+            </ThemedText>
+            <ThemedText style={styles.growthLabel}>Approval Rate</ThemedText>
+          </View>
+
+          <View style={styles.growthCard}>
+            <Ionicons name="time" size={24} color="#ef4444" />
+            <ThemedText style={styles.growthValue}>
+              {stats.pendingApprovalsCount}
+            </ThemedText>
+            <ThemedText style={styles.growthLabel}>
+              Pending Approvals
+            </ThemedText>
+          </View>
+        </View>
+      </View>
+
+      {/* Export Statistics */}
+      <View style={styles.exportContainer}>
+        <ThemedText style={styles.sectionTitle}>Export Statistics</ThemedText>
+        <View style={styles.exportButtons}>
+          <Pressable style={styles.exportButton}>
+            <LinearGradient
+              colors={["#667eea", "#764ba2"]}
+              style={styles.exportButtonGradient}
+            >
+              <Ionicons name="document-text" size={24} color="#fff" />
+              <ThemedText style={styles.exportButtonText}>
+                Export PDF Report
+              </ThemedText>
+            </LinearGradient>
+          </Pressable>
+          <Pressable style={styles.exportButton}>
+            <LinearGradient
+              colors={["#f093fb", "#f5576c"]}
+              style={styles.exportButtonGradient}
+            >
+              <Ionicons name="tablet-portrait" size={24} color="#fff" />
+              <ThemedText style={styles.exportButtonText}>
+                Export Excel Data
+              </ThemedText>
+            </LinearGradient>
+          </Pressable>
+        </View>
+      </View>
+    </View>
+  );
+
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Header */}
@@ -841,6 +1198,7 @@ export default function AdminScreen() {
               icon: "checkmark-done-circle",
             },
             { key: "reports", title: "Reports", icon: "document-text" },
+            { key: "statistics", title: "Statistics", icon: "bar-chart" },
           ].map((tab) => (
             <Pressable
               key={tab.key}
@@ -870,6 +1228,7 @@ export default function AdminScreen() {
         {activeTab === "members" && renderMembers()}
         {activeTab === "approvals" && renderApprovals()}
         {activeTab === "reports" && renderReports()}
+        {activeTab === "statistics" && renderStatistics()}
       </View>
     </ScrollView>
   );
@@ -1369,5 +1728,218 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: "#fff",
+  },
+  statsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+    marginBottom: 24,
+  },
+  statCard: {
+    flex: 1,
+    minWidth: 150,
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    marginBottom: 12,
+  },
+  statGradient: {
+    padding: 16,
+    alignItems: "center",
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#fff",
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 14,
+    color: "rgba(255, 255, 255, 0.9)",
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  statSubtext: {
+    fontSize: 12,
+    color: "rgba(255, 255, 255, 0.7)",
+    textAlign: "center",
+  },
+  analyticsSection: {
+    marginBottom: 24,
+  },
+  analyticsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+  },
+  analyticsCard: {
+    flex: 1,
+    minWidth: 150,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    marginBottom: 12,
+  },
+  analyticsTitle: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#1f2937",
+    marginBottom: 8,
+  },
+  analyticsValue: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#667eea",
+    marginBottom: 4,
+  },
+  analyticsDescription: {
+    fontSize: 12,
+    color: "#6b7280",
+    lineHeight: 16,
+  },
+  performanceSection: {
+    marginBottom: 24,
+  },
+  performanceCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  performanceTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#1f2937",
+    marginBottom: 16,
+  },
+  topPerformer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  performerInfo: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  performerName: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#1f2937",
+    marginBottom: 4,
+  },
+  performerStats: {
+    fontSize: 14,
+    color: "#6b7280",
+  },
+  memberEfficiencyList: {
+    marginTop: 16,
+  },
+  efficiencyTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#1f2937",
+    marginBottom: 12,
+  },
+  efficiencyItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  efficiencyRank: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#f3f4f6",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  rankNumber: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#1f2937",
+  },
+  efficiencyInfo: {
+    flex: 1,
+  },
+  efficiencyName: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#1f2937",
+    marginBottom: 2,
+  },
+  efficiencyValue: {
+    fontSize: 12,
+    color: "#6b7280",
+  },
+  efficiencyStats: {
+    alignItems: "flex-end",
+  },
+  efficiencyMeals: {
+    fontSize: 12,
+    color: "#6b7280",
+    marginBottom: 2,
+  },
+  efficiencyTotal: {
+    fontSize: 12,
+    fontWeight: "bold",
+    color: "#1f2937",
+  },
+  growthSection: {
+    marginBottom: 24,
+  },
+  growthGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+  },
+  growthCard: {
+    flex: 1,
+    minWidth: 150,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 16,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    marginBottom: 12,
+  },
+  growthValue: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#1f2937",
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  growthLabel: {
+    fontSize: 12,
+    color: "#6b7280",
+    textAlign: "center",
+    lineHeight: 16,
   },
 });

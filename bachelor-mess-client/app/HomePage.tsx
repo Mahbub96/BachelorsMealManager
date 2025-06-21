@@ -14,6 +14,7 @@ import { useAuth } from "@/context/AuthContext";
 import DataService from "@/services/dataService";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { useRouter } from "expo-router";
 
 const { width } = Dimensions.get("window");
 
@@ -26,6 +27,7 @@ interface DashboardData {
 
 export default function HomePage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(
     null
   );
@@ -203,7 +205,10 @@ export default function HomePage() {
                     Quick Actions
                   </ThemedText>
                   <View style={styles.quickActionsGrid}>
-                    <Pressable style={styles.actionCard}>
+                    <Pressable
+                      style={styles.actionCard}
+                      onPress={() => router.push("/(tabs)/meals")}
+                    >
                       <LinearGradient
                         colors={["#667eea", "#764ba2"]}
                         style={styles.actionGradient}
@@ -215,7 +220,10 @@ export default function HomePage() {
                       </LinearGradient>
                     </Pressable>
 
-                    <Pressable style={styles.actionCard}>
+                    <Pressable
+                      style={styles.actionCard}
+                      onPress={() => router.push("/(tabs)/explore")}
+                    >
                       <LinearGradient
                         colors={["#f093fb", "#f5576c"]}
                         style={styles.actionGradient}
@@ -227,7 +235,10 @@ export default function HomePage() {
                       </LinearGradient>
                     </Pressable>
 
-                    <Pressable style={styles.actionCard}>
+                    <Pressable
+                      style={styles.actionCard}
+                      onPress={() => router.push("/(tabs)/admin")}
+                    >
                       <LinearGradient
                         colors={["#4facfe", "#00f2fe"]}
                         style={styles.actionGradient}
@@ -239,7 +250,10 @@ export default function HomePage() {
                       </LinearGradient>
                     </Pressable>
 
-                    <Pressable style={styles.actionCard}>
+                    <Pressable
+                      style={styles.actionCard}
+                      onPress={() => router.push("/(tabs)/admin")}
+                    >
                       <LinearGradient
                         colors={["#43e97b", "#38f9d7"]}
                         style={styles.actionGradient}

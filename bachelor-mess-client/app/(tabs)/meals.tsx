@@ -33,6 +33,7 @@ interface MealEntry {
 
 export default function MealsScreen() {
   const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const [todayMeals, setTodayMeals] = useState({
     breakfast: false,
     lunch: false,
@@ -51,9 +52,12 @@ export default function MealsScreen() {
       setError(null);
       const response = await DataService.getUserMeals({ limit: 10 });
 
-      // Ensure response.data is an array
-      if (response && response.data && Array.isArray(response.data)) {
-        setRecentMeals(response.data);
+      // Use the helper method to normalize the response
+      const mealsData = DataService.normalizeResponse(response);
+
+      // Ensure mealsData is an array
+      if (mealsData && Array.isArray(mealsData)) {
+        setRecentMeals(mealsData);
       } else {
         console.warn("Invalid meals data received:", response);
         setRecentMeals([]);
@@ -433,6 +437,45 @@ export default function MealsScreen() {
                               "N/A"
                             : "N/A"}
                         </ThemedText>
+                        {isAdmin && (
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              marginLeft: 8,
+                            }}
+                          >
+                            <Pressable
+                              onPress={() =>
+                                Alert.alert(
+                                  "Edit",
+                                  "Edit meal functionality coming soon"
+                                )
+                              }
+                              style={{ marginRight: 8 }}
+                            >
+                              <Ionicons
+                                name="create-outline"
+                                size={20}
+                                color="#6366f1"
+                              />
+                            </Pressable>
+                            <Pressable
+                              onPress={() =>
+                                Alert.alert(
+                                  "Delete",
+                                  "Delete meal functionality coming soon"
+                                )
+                              }
+                            >
+                              <Ionicons
+                                name="trash-outline"
+                                size={20}
+                                color="#ef4444"
+                              />
+                            </Pressable>
+                          </View>
+                        )}
                       </View>
 
                       <View style={styles.historyMeals}>
@@ -472,6 +515,50 @@ export default function MealsScreen() {
                           </View>
                         ))}
                       </View>
+                      {/* Admin approval actions */}
+                      {isAdmin && meal.status === "pending" && (
+                        <View style={{ flexDirection: "row", marginTop: 8 }}>
+                          <Pressable
+                            style={{
+                              marginRight: 12,
+                              padding: 8,
+                              backgroundColor: "#10b981",
+                              borderRadius: 8,
+                            }}
+                            onPress={() =>
+                              Alert.alert(
+                                "Approve",
+                                "Approve meal functionality coming soon"
+                              )
+                            }
+                          >
+                            <Ionicons
+                              name="checkmark-circle"
+                              size={18}
+                              color="#fff"
+                            />
+                          </Pressable>
+                          <Pressable
+                            style={{
+                              padding: 8,
+                              backgroundColor: "#ef4444",
+                              borderRadius: 8,
+                            }}
+                            onPress={() =>
+                              Alert.alert(
+                                "Reject",
+                                "Reject meal functionality coming soon"
+                              )
+                            }
+                          >
+                            <Ionicons
+                              name="close-circle"
+                              size={18}
+                              color="#fff"
+                            />
+                          </Pressable>
+                        </View>
+                      )}
                     </View>
                   ))}
               </View>
