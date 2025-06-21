@@ -22,8 +22,14 @@ export default function ProfileScreen() {
         text: "Logout",
         style: "destructive",
         onPress: async () => {
-          await logout();
-          router.replace("/LoginScreen");
+          try {
+            await logout();
+            // AuthGuard will automatically redirect to login when user becomes null
+            // No need for manual navigation
+          } catch (error) {
+            console.error("Logout error:", error);
+            Alert.alert("Error", "Failed to logout. Please try again.");
+          }
         },
       },
     ]);

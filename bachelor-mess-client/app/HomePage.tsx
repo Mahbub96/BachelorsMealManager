@@ -15,6 +15,8 @@ import DataService from "@/services/dataService";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { useRouter } from "expo-router";
+import { ModernLoadingSpinner } from "@/components/ModernLoadingSpinner";
+import { MessLoadingSpinner } from "@/components/MessLoadingSpinner";
 
 const { width } = Dimensions.get("window");
 
@@ -85,6 +87,16 @@ export default function HomePage() {
         return "help-circle";
     }
   };
+
+  if (loading) {
+    return (
+      <MessLoadingSpinner
+        type="dashboard"
+        size="large"
+        message="Loading your dashboard..."
+      />
+    );
+  }
 
   if (error) {
     return (

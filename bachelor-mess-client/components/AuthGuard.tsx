@@ -1,28 +1,45 @@
-import React from "react";
-import { View, ActivityIndicator } from "react-native";
+import React, { useEffect } from "react";
+import { View, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
 import LoginScreen from "@/app/LoginScreen";
+import { MessLoadingSpinner } from "./MessLoadingSpinner";
 
 interface AuthGuardProps {
   children: React.ReactNode;
 }
 
 export default function AuthGuard({ children }: AuthGuardProps) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, token } = useAuth();
   const router = useRouter();
 
-  // Show loading screen while checking authentication
+  // Handle authentication state changes
+  useEffect(() => {
+    if (!isLoading) {
+      if (!user || !token) {
+        // Ensure we're not already on login screen to prevent navigation loops
+        const currentRoute = router.canGoBack() ? "current" : "initial";
+        if (currentRoute !== "initial") {
+          // Clear navigation stack and go to login
+          router.replace("/LoginScreen");
+        }
+      }
+    }
+  }, [user, token, isLoading, router]);
+
+  // Show mess-specific loading screen while checking authentication
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
+      <MessLoadingSpinner
+        type="auth"
+        size="large"
+        message="Initializing your account..."
+      />
     );
   }
 
   // If user is not authenticated, show login screen
-  if (!user) {
+  if (!user || !token) {
     return <LoginScreen />;
   }
 

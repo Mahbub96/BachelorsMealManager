@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { useAuth } from "@/context/AuthContext";
 import DataService from "@/services/dataService";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { MessLoadingSpinner } from "@/components/MessLoadingSpinner";
 import ErrorBoundary from "@/components/ErrorBoundary";
 
 interface MealEntry {
@@ -221,6 +221,16 @@ export default function MealsScreen() {
     );
   }
 
+  if (loading) {
+    return (
+      <MessLoadingSpinner
+        type="meals"
+        size="large"
+        message="Loading your meals..."
+      />
+    );
+  }
+
   return (
     <ErrorBoundary>
       <ScrollView
@@ -249,47 +259,236 @@ export default function MealsScreen() {
         </LinearGradient>
 
         <View style={styles.content}>
-          {loading ? (
-            <LoadingSpinner
-              size="large"
-              text="Loading your meals..."
-              type="pulse"
-              color="#f093fb"
-            />
-          ) : (
-            <>
-              {/* Today's Meals Section */}
-              <View style={styles.todaySection}>
-                <ThemedText style={styles.sectionTitle}>
-                  Today&apos;s Meals
-                </ThemedText>
+          {/* Today's Meals Section */}
+          <View style={styles.todaySection}>
+            <ThemedText style={styles.sectionTitle}>
+              Today&apos;s Meals
+            </ThemedText>
 
-                <View style={styles.mealsContainer}>
-                  {Object.entries(todayMeals).map(([mealType, isSelected]) => (
-                    <Pressable
-                      key={mealType}
-                      style={styles.mealCard}
-                      onPress={() =>
-                        handleMealToggle(mealType as keyof typeof todayMeals)
-                      }
+            <View style={styles.mealsContainer}>
+              {Object.entries(todayMeals).map(([mealType, isSelected]) => (
+                <Pressable
+                  key={mealType}
+                  style={styles.mealCard}
+                  onPress={() =>
+                    handleMealToggle(mealType as keyof typeof todayMeals)
+                  }
+                >
+                  <LinearGradient
+                    colors={
+                      isSelected
+                        ? getMealGradient(mealType)
+                        : (["#f3f4f6", "#e5e7eb"] as const)
+                    }
+                    style={styles.mealGradient}
+                  >
+                    <Ionicons
+                      name={getMealIcon(mealType)}
+                      size={32}
+                      color={isSelected ? "#fff" : "#9ca3af"}
+                    />
+                    <ThemedText
+                      style={[
+                        styles.mealTitle,
+                        { color: isSelected ? "#fff" : "#6b7280" },
+                      ]}
                     >
-                      <LinearGradient
-                        colors={
-                          isSelected
-                            ? getMealGradient(mealType)
-                            : (["#f3f4f6", "#e5e7eb"] as const)
+                      {mealType && mealType.length > 0
+                        ? mealType.charAt(0).toUpperCase() + mealType.slice(1)
+                        : "Unknown"}
+                    </ThemedText>
+                    <View style={styles.mealToggle}>
+                      <Switch
+                        value={isSelected}
+                        onValueChange={() =>
+                          handleMealToggle(mealType as keyof typeof todayMeals)
                         }
-                        style={styles.mealGradient}
+                        trackColor={{
+                          false: "rgba(255,255,255,0.3)",
+                          true: "rgba(255,255,255,0.5)",
+                        }}
+                        thumbColor={isSelected ? "#fff" : "#9ca3af"}
+                      />
+                    </View>
+                  </LinearGradient>
+                </Pressable>
+              ))}
+            </View>
+
+            {/* Submit Button */}
+            <Pressable
+              style={[
+                styles.submitButton,
+                submitting && styles.submitButtonDisabled,
+              ]}
+              onPress={handleSubmitMeals}
+              disabled={submitting}
+            >
+              <LinearGradient
+                colors={["#667eea", "#764ba2"]}
+                style={styles.submitButtonGradient}
+              >
+                {submitting ? (
+                  <MessLoadingSpinner size="small" type="meals" />
+                ) : (
+                  <Ionicons name="checkmark-circle" size={24} color="#fff" />
+                )}
+                <ThemedText style={styles.submitButtonText}>
+                  {submitting ? "Submitting..." : "Submit Today&apos;s Meals"}
+                </ThemedText>
+              </LinearGradient>
+            </Pressable>
+          </View>
+
+          {/* Quick Stats */}
+          <View style={styles.statsContainer}>
+            <View style={styles.statCard}>
+              <LinearGradient
+                colors={["#667eea", "#764ba2"]}
+                style={styles.statGradient}
+              >
+                <Ionicons name="calendar" size={24} color="#fff" />
+                <ThemedText style={styles.statValue}>
+                  {Object.values(todayMeals).filter(Boolean).length}
+                </ThemedText>
+                <ThemedText style={styles.statLabel}>Today</ThemedText>
+              </LinearGradient>
+            </View>
+
+            <View style={styles.statCard}>
+              <LinearGradient
+                colors={["#f093fb", "#f5576c"]}
+                style={styles.statGradient}
+              >
+                <Ionicons name="stats-chart" size={24} color="#fff" />
+                <ThemedText style={styles.statValue}>
+                  {recentMeals.length > 0
+                    ? recentMeals.reduce(
+                        (sum, meal) =>
+                          sum +
+                          (meal.breakfast ? 1 : 0) +
+                          (meal.lunch ? 1 : 0) +
+                          (meal.dinner ? 1 : 0),
+                        0
+                      )
+                    : 0}
+                </ThemedText>
+                <ThemedText style={styles.statLabel}>This Week</ThemedText>
+              </LinearGradient>
+            </View>
+
+            <View style={styles.statCard}>
+              <LinearGradient
+                colors={["#43e97b", "#38f9d7"]}
+                style={styles.statGradient}
+              >
+                <Ionicons name="trending-up" size={24} color="#fff" />
+                <ThemedText style={styles.statValue}>
+                  {recentMeals.length > 0
+                    ? Math.round(
+                        (recentMeals.reduce(
+                          (sum, meal) =>
+                            sum +
+                            (meal.breakfast ? 1 : 0) +
+                            (meal.lunch ? 1 : 0) +
+                            (meal.dinner ? 1 : 0),
+                          0
+                        ) /
+                          recentMeals.length) *
+                          10
+                      ) / 10
+                    : 0}
+                </ThemedText>
+                <ThemedText style={styles.statLabel}>Avg/Day</ThemedText>
+              </LinearGradient>
+            </View>
+          </View>
+
+          {/* Recent Meals History */}
+          <View style={styles.historySection}>
+            <ThemedText style={styles.sectionTitle}>Recent History</ThemedText>
+
+            {recentMeals
+              .filter((meal) => meal && meal._id)
+              .map((meal) => (
+                <View key={meal._id} style={styles.historyCard}>
+                  <View style={styles.historyHeader}>
+                    <ThemedText style={styles.historyDate}>
+                      {meal.date}
+                    </ThemedText>
+                    <ThemedText style={styles.historyTime}>
+                      {meal.createdAt && meal.createdAt.includes("T")
+                        ? meal.createdAt.split("T")[1]?.split(".")[0] || "N/A"
+                        : "N/A"}
+                    </ThemedText>
+                    {isAdmin && (
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          marginLeft: 8,
+                        }}
                       >
-                        <Ionicons
-                          name={getMealIcon(mealType)}
-                          size={32}
-                          color={isSelected ? "#fff" : "#9ca3af"}
-                        />
+                        <Pressable
+                          onPress={() =>
+                            Alert.alert(
+                              "Edit",
+                              "Edit meal functionality coming soon"
+                            )
+                          }
+                          style={{ marginRight: 8 }}
+                        >
+                          <Ionicons
+                            name="create-outline"
+                            size={20}
+                            color="#6366f1"
+                          />
+                        </Pressable>
+                        <Pressable
+                          onPress={() =>
+                            Alert.alert(
+                              "Delete",
+                              "Delete meal functionality coming soon"
+                            )
+                          }
+                        >
+                          <Ionicons
+                            name="trash-outline"
+                            size={20}
+                            color="#ef4444"
+                          />
+                        </Pressable>
+                      </View>
+                    )}
+                  </View>
+
+                  <View style={styles.historyMeals}>
+                    {Object.entries({
+                      breakfast: meal.breakfast || false,
+                      lunch: meal.lunch || false,
+                      dinner: meal.dinner || false,
+                    }).map(([mealType, isSelected]) => (
+                      <View key={mealType} style={styles.historyMealItem}>
+                        <View
+                          style={[
+                            styles.historyMealIcon,
+                            {
+                              backgroundColor: isSelected
+                                ? getMealColor(mealType)
+                                : "#f3f4f6",
+                            },
+                          ]}
+                        >
+                          <Ionicons
+                            name={getMealIcon(mealType)}
+                            size={16}
+                            color={isSelected ? "#fff" : "#9ca3af"}
+                          />
+                        </View>
                         <ThemedText
                           style={[
-                            styles.mealTitle,
-                            { color: isSelected ? "#fff" : "#6b7280" },
+                            styles.historyMealText,
+                            { color: isSelected ? "#1f2937" : "#9ca3af" },
                           ]}
                         >
                           {mealType && mealType.length > 0
@@ -297,273 +496,52 @@ export default function MealsScreen() {
                               mealType.slice(1)
                             : "Unknown"}
                         </ThemedText>
-                        <View style={styles.mealToggle}>
-                          <Switch
-                            value={isSelected}
-                            onValueChange={() =>
-                              handleMealToggle(
-                                mealType as keyof typeof todayMeals
-                              )
-                            }
-                            trackColor={{
-                              false: "rgba(255,255,255,0.3)",
-                              true: "rgba(255,255,255,0.5)",
-                            }}
-                            thumbColor={isSelected ? "#fff" : "#9ca3af"}
-                          />
-                        </View>
-                      </LinearGradient>
-                    </Pressable>
-                  ))}
-                </View>
-
-                {/* Submit Button */}
-                <Pressable
-                  style={[
-                    styles.submitButton,
-                    submitting && styles.submitButtonDisabled,
-                  ]}
-                  onPress={handleSubmitMeals}
-                  disabled={submitting}
-                >
-                  <LinearGradient
-                    colors={["#667eea", "#764ba2"]}
-                    style={styles.submitButtonGradient}
-                  >
-                    {submitting ? (
-                      <LoadingSpinner
-                        size="small"
-                        type="dots"
-                        color="#fff"
-                        showIcon={false}
-                      />
-                    ) : (
-                      <Ionicons
-                        name="checkmark-circle"
-                        size={24}
-                        color="#fff"
-                      />
-                    )}
-                    <ThemedText style={styles.submitButtonText}>
-                      {submitting
-                        ? "Submitting..."
-                        : "Submit Today&apos;s Meals"}
-                    </ThemedText>
-                  </LinearGradient>
-                </Pressable>
-              </View>
-
-              {/* Quick Stats */}
-              <View style={styles.statsContainer}>
-                <View style={styles.statCard}>
-                  <LinearGradient
-                    colors={["#667eea", "#764ba2"]}
-                    style={styles.statGradient}
-                  >
-                    <Ionicons name="calendar" size={24} color="#fff" />
-                    <ThemedText style={styles.statValue}>
-                      {Object.values(todayMeals).filter(Boolean).length}
-                    </ThemedText>
-                    <ThemedText style={styles.statLabel}>Today</ThemedText>
-                  </LinearGradient>
-                </View>
-
-                <View style={styles.statCard}>
-                  <LinearGradient
-                    colors={["#f093fb", "#f5576c"]}
-                    style={styles.statGradient}
-                  >
-                    <Ionicons name="stats-chart" size={24} color="#fff" />
-                    <ThemedText style={styles.statValue}>
-                      {recentMeals.length > 0
-                        ? recentMeals.reduce(
-                            (sum, meal) =>
-                              sum +
-                              (meal.breakfast ? 1 : 0) +
-                              (meal.lunch ? 1 : 0) +
-                              (meal.dinner ? 1 : 0),
-                            0
+                      </View>
+                    ))}
+                  </View>
+                  {/* Admin approval actions */}
+                  {isAdmin && meal.status === "pending" && (
+                    <View style={{ flexDirection: "row", marginTop: 8 }}>
+                      <Pressable
+                        style={{
+                          marginRight: 12,
+                          padding: 8,
+                          backgroundColor: "#10b981",
+                          borderRadius: 8,
+                        }}
+                        onPress={() =>
+                          Alert.alert(
+                            "Approve",
+                            "Approve meal functionality coming soon"
                           )
-                        : 0}
-                    </ThemedText>
-                    <ThemedText style={styles.statLabel}>This Week</ThemedText>
-                  </LinearGradient>
-                </View>
-
-                <View style={styles.statCard}>
-                  <LinearGradient
-                    colors={["#43e97b", "#38f9d7"]}
-                    style={styles.statGradient}
-                  >
-                    <Ionicons name="trending-up" size={24} color="#fff" />
-                    <ThemedText style={styles.statValue}>
-                      {recentMeals.length > 0
-                        ? Math.round(
-                            (recentMeals.reduce(
-                              (sum, meal) =>
-                                sum +
-                                (meal.breakfast ? 1 : 0) +
-                                (meal.lunch ? 1 : 0) +
-                                (meal.dinner ? 1 : 0),
-                              0
-                            ) /
-                              recentMeals.length) *
-                              10
-                          ) / 10
-                        : 0}
-                    </ThemedText>
-                    <ThemedText style={styles.statLabel}>Avg/Day</ThemedText>
-                  </LinearGradient>
-                </View>
-              </View>
-
-              {/* Recent Meals History */}
-              <View style={styles.historySection}>
-                <ThemedText style={styles.sectionTitle}>
-                  Recent History
-                </ThemedText>
-
-                {recentMeals
-                  .filter((meal) => meal && meal._id)
-                  .map((meal) => (
-                    <View key={meal._id} style={styles.historyCard}>
-                      <View style={styles.historyHeader}>
-                        <ThemedText style={styles.historyDate}>
-                          {meal.date}
-                        </ThemedText>
-                        <ThemedText style={styles.historyTime}>
-                          {meal.createdAt && meal.createdAt.includes("T")
-                            ? meal.createdAt.split("T")[1]?.split(".")[0] ||
-                              "N/A"
-                            : "N/A"}
-                        </ThemedText>
-                        {isAdmin && (
-                          <View
-                            style={{
-                              flexDirection: "row",
-                              alignItems: "center",
-                              marginLeft: 8,
-                            }}
-                          >
-                            <Pressable
-                              onPress={() =>
-                                Alert.alert(
-                                  "Edit",
-                                  "Edit meal functionality coming soon"
-                                )
-                              }
-                              style={{ marginRight: 8 }}
-                            >
-                              <Ionicons
-                                name="create-outline"
-                                size={20}
-                                color="#6366f1"
-                              />
-                            </Pressable>
-                            <Pressable
-                              onPress={() =>
-                                Alert.alert(
-                                  "Delete",
-                                  "Delete meal functionality coming soon"
-                                )
-                              }
-                            >
-                              <Ionicons
-                                name="trash-outline"
-                                size={20}
-                                color="#ef4444"
-                              />
-                            </Pressable>
-                          </View>
-                        )}
-                      </View>
-
-                      <View style={styles.historyMeals}>
-                        {Object.entries({
-                          breakfast: meal.breakfast || false,
-                          lunch: meal.lunch || false,
-                          dinner: meal.dinner || false,
-                        }).map(([mealType, isSelected]) => (
-                          <View key={mealType} style={styles.historyMealItem}>
-                            <View
-                              style={[
-                                styles.historyMealIcon,
-                                {
-                                  backgroundColor: isSelected
-                                    ? getMealColor(mealType)
-                                    : "#f3f4f6",
-                                },
-                              ]}
-                            >
-                              <Ionicons
-                                name={getMealIcon(mealType)}
-                                size={16}
-                                color={isSelected ? "#fff" : "#9ca3af"}
-                              />
-                            </View>
-                            <ThemedText
-                              style={[
-                                styles.historyMealText,
-                                { color: isSelected ? "#1f2937" : "#9ca3af" },
-                              ]}
-                            >
-                              {mealType && mealType.length > 0
-                                ? mealType.charAt(0).toUpperCase() +
-                                  mealType.slice(1)
-                                : "Unknown"}
-                            </ThemedText>
-                          </View>
-                        ))}
-                      </View>
-                      {/* Admin approval actions */}
-                      {isAdmin && meal.status === "pending" && (
-                        <View style={{ flexDirection: "row", marginTop: 8 }}>
-                          <Pressable
-                            style={{
-                              marginRight: 12,
-                              padding: 8,
-                              backgroundColor: "#10b981",
-                              borderRadius: 8,
-                            }}
-                            onPress={() =>
-                              Alert.alert(
-                                "Approve",
-                                "Approve meal functionality coming soon"
-                              )
-                            }
-                          >
-                            <Ionicons
-                              name="checkmark-circle"
-                              size={18}
-                              color="#fff"
-                            />
-                          </Pressable>
-                          <Pressable
-                            style={{
-                              padding: 8,
-                              backgroundColor: "#ef4444",
-                              borderRadius: 8,
-                            }}
-                            onPress={() =>
-                              Alert.alert(
-                                "Reject",
-                                "Reject meal functionality coming soon"
-                              )
-                            }
-                          >
-                            <Ionicons
-                              name="close-circle"
-                              size={18}
-                              color="#fff"
-                            />
-                          </Pressable>
-                        </View>
-                      )}
+                        }
+                      >
+                        <Ionicons
+                          name="checkmark-circle"
+                          size={18}
+                          color="#fff"
+                        />
+                      </Pressable>
+                      <Pressable
+                        style={{
+                          padding: 8,
+                          backgroundColor: "#ef4444",
+                          borderRadius: 8,
+                        }}
+                        onPress={() =>
+                          Alert.alert(
+                            "Reject",
+                            "Reject meal functionality coming soon"
+                          )
+                        }
+                      >
+                        <Ionicons name="close-circle" size={18} color="#fff" />
+                      </Pressable>
                     </View>
-                  ))}
-              </View>
-            </>
-          )}
+                  )}
+                </View>
+              ))}
+          </View>
         </View>
       </ScrollView>
     </ErrorBoundary>

@@ -17,6 +17,7 @@ const API_CONFIG = {
     AUTH: {
       LOGIN: "/auth/login",
       REGISTER: "/auth/register",
+      LOGOUT: "/auth/logout",
     },
     USERS: {
       PROFILE: "/users/profile",

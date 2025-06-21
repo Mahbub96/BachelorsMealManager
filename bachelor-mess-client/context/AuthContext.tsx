@@ -98,16 +98,30 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const logout = async () => {
     try {
-      // Clear storage
+      // Clear storage first
       await Promise.all([
         AsyncStorage.removeItem(API_CONFIG.STORAGE_KEYS.AUTH_TOKEN),
         AsyncStorage.removeItem(API_CONFIG.STORAGE_KEYS.USER_DATA),
       ]);
 
-      // Clear state
+      // Clear state immediately to prevent race conditions
       setAuthState({ user: null, token: null, role: null });
+
+      // Optional: Call logout API endpoint if available
+      // This would invalidate the token on the server
+      try {
+        // await authAPI.logout(); // Uncomment if you have a logout endpoint
+      } catch (apiError) {
+        console.warn("Logout API call failed:", apiError);
+        // Don't throw error here as we've already cleared local data
+      }
+
+      console.log("✅ Logout successful");
     } catch (error) {
-      console.error("Error during logout:", error);
+      console.error("❌ Error during logout:", error);
+      // Even if storage clearing fails, clear the state
+      setAuthState({ user: null, token: null, role: null });
+      throw error; // Re-throw to let calling component handle it
     }
   };
 

@@ -56,39 +56,55 @@ async function createTestUser() {
     );
     console.log("✅ Connected to MongoDB");
 
-    // Check if test user already exists
-    const existingUser = await User.findOne({ email: "test@example.com" });
-    if (existingUser) {
-      console.log("⚠️  Test user already exists");
+    // Create admin user if not exists
+    const existingAdmin = await User.findOne({ email: "test@example.com" });
+    if (!existingAdmin) {
+      const hashedPassword = await bcrypt.hash(
+        "admin1230",
+        APP_CONFIG.AUTH.PASSWORD_SALT_ROUNDS
+      );
+      const testUser = new User({
+        name: "Test Admin",
+        email: "test@example.com",
+        password: hashedPassword,
+        phone: "+880 1712345678",
+        role: "admin",
+        status: "active",
+      });
+      await testUser.save();
+      console.log("✅ Test admin user created successfully");
       console.log("Email: test@example.com");
       console.log("Password: admin1230");
       console.log("Role: admin");
-      return;
+    } else {
+      console.log("⚠️  Test admin user already exists");
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(
-      "admin1230",
-      APP_CONFIG.AUTH.PASSWORD_SALT_ROUNDS
-    );
-
-    // Create test user
-    const testUser = new User({
-      name: "Test Admin",
-      email: "test@example.com",
-      password: hashedPassword,
-      phone: "+880 1712345678",
-      role: "admin",
-      status: "active",
-    });
-
-    await testUser.save();
-    console.log("✅ Test user created successfully");
-    console.log("Email: test@example.com");
-    console.log("Password: admin1230");
-    console.log("Role: admin");
+    // Create member user if not exists
+    const existingMember = await User.findOne({ email: "mahbub@example.com" });
+    if (!existingMember) {
+      const hashedPassword = await bcrypt.hash(
+        "mahbub1230",
+        APP_CONFIG.AUTH.PASSWORD_SALT_ROUNDS
+      );
+      const memberUser = new User({
+        name: "Mahbub",
+        email: "mahbub@example.com",
+        password: hashedPassword,
+        phone: "+880 1812345678",
+        role: "member",
+        status: "active",
+      });
+      await memberUser.save();
+      console.log("✅ Member user created successfully");
+      console.log("Email: mahbub@example.com");
+      console.log("Password: mahbub1230");
+      console.log("Role: member");
+    } else {
+      console.log("⚠️  Member user already exists");
+    }
   } catch (error) {
-    console.error("❌ Error creating test user:", error);
+    console.error("❌ Error creating test users:", error);
   } finally {
     await mongoose.disconnect();
     console.log("🔌 Disconnected from MongoDB");

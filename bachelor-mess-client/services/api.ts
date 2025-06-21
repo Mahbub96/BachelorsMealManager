@@ -36,8 +36,13 @@ api.interceptors.response.use(
   async (error) => {
     if (error.response?.status === 401) {
       // Token expired or invalid, clear storage and redirect to login
-      await AsyncStorage.removeItem(API_CONFIG.STORAGE_KEYS.AUTH_TOKEN);
-      await AsyncStorage.removeItem(API_CONFIG.STORAGE_KEYS.USER_DATA);
+      try {
+        await AsyncStorage.removeItem(API_CONFIG.STORAGE_KEYS.AUTH_TOKEN);
+        await AsyncStorage.removeItem(API_CONFIG.STORAGE_KEYS.USER_DATA);
+        console.log("🔒 Token expired, cleared storage");
+      } catch (storageError) {
+        console.error("Error clearing storage on 401:", storageError);
+      }
       // You might want to trigger a navigation to login screen here
     }
     return Promise.reject(error);
@@ -50,6 +55,18 @@ export const authAPI = {
     api.post(API_CONFIG.ENDPOINTS.AUTH.LOGIN, credentials),
   register: (userData: any) =>
     api.post(API_CONFIG.ENDPOINTS.AUTH.REGISTER, userData),
+  logout: async () => {
+    try {
+      // Clear any cached tokens from axios instance
+      delete api.defaults.headers.common["Authorization"];
+      // Call logout endpoint if available
+      return await api.post(API_CONFIG.ENDPOINTS.AUTH.LOGOUT || "/auth/logout");
+    } catch (error) {
+      console.warn("Logout API call failed:", error);
+      // Don't throw error as we've already cleared the token
+      return { success: true };
+    }
+  },
 };
 
 // User API
