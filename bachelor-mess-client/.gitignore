@@ -1,0 +1,495 @@
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+app-example
+
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# Expo
+.expo/
+dist/
+web-build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+expo-env.d.ts
+
+# Native
+*.orig
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+web-build/
+
+# Metro
+.metro-health-check*
+
+# Debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.production
+
+# typescript
+*.tsbuildinfo
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Grunt intermediate storage (https://gruntjs.com/creating-plugins#storing-task-files)
+.grunt
+
+# Bower dependency directory (https://bower.io/)
+bower_components
+
+# node-waf configuration
+.lock-wscript
+
+# Compiled binary addons (https://nodejs.org/api/addons.html)
+build/Release
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variables file
+.env
+.env.test
+.env.production
+
+# parcel-bundler cache (https://parceljs.org/)
+.cache
+.parcel-cache
+
+# Next.js build output
+.next
+
+# Nuxt.js build / generate output
+.nuxt
+dist
+
+# Gatsby files
+.cache/
+public
+
+# Storybook build outputs
+.out
+.storybook-out
+
+# Temporary folders
+tmp/
+temp/
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Server specific
+server/uploads/
+server/logs/
+server/.env
+server/config/database.js
+server/config/email.js
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Test files
+test-results/
+coverage/
+
+# Build artifacts
+build/
+dist/
+out/
+
+# API keys and secrets
+**/config/secrets.js
+**/config/keys.js
+**/config/credentials.js
+
+# SSL certificates
+*.crt
+*.key
+*.pem
+
+# Mobile app specific
+*.ipa
+*.apk
+*.aab
+
+# React Native
+*.hprof
+
+# Flipper
+ios/Pods/
+
+# CocoaPods
+/ios/Pods/
+
+# Expo
+.expo/
+web-build/
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+
+# Bundle artifacts
+*.jsbundle
+
+# Ruby / CocoaPods
+/ios/Pods/
+/vendor/bundle/
+
+# Temporary files created by Metro to check the health of the file watcher
+.metro-health-check*
+
+# Testing
+/coverage
+
+# Production
+/build
+
+# Misc
+*.tgz
+*.tar.gz
+
+# Yarn
+.yarn-integrity
+
+# Local Netlify folder
+.netlify
+
+# Vercel
+.vercel
+
+# Server environment files
+../bachelor-mess-server/.env
+../bachelor-mess-server/.env.local
+../bachelor-mess-server/.env.development
+../bachelor-mess-server/.env.test
+../bachelor-mess-server/.env.production
+
+# Server uploads and logs
+../bachelor-mess-server/uploads/
+../bachelor-mess-server/logs/
+../bachelor-mess-server/node_modules/
+
+# Server database files
+../bachelor-mess-server/*.db
+../bachelor-mess-server/*.sqlite
+../bachelor-mess-server/*.sqlite3
+
+# Server SSL certificates
+../bachelor-mess-server/*.crt
+../bachelor-mess-server/*.key
+../bachelor-mess-server/*.pem
+
+# Server package lock
+../bachelor-mess-server/package-lock.json
+
+# Server build artifacts
+../bachelor-mess-server/build/
+../bachelor-mess-server/dist/
+
+# Server test coverage
+../bachelor-mess-server/coverage/
+../bachelor-mess-server/.nyc_output/
+
+# Server logs
+../bachelor-mess-server/logs/
+../bachelor-mess-server/*.log
+
+# Server temporary files
+../bachelor-mess-server/tmp/
+../bachelor-mess-server/temp/
+
+# Server IDE files
+../bachelor-mess-server/.vscode/
+../bachelor-mess-server/.idea/
+
+# Server OS files
+../bachelor-mess-server/.DS_Store
+../bachelor-mess-server/Thumbs.db
+
+# Server backup files
+../bachelor-mess-server/*.bak
+../bachelor-mess-server/*.backup
+../bachelor-mess-server/*.old
+
+# Server secrets and configs
+../bachelor-mess-server/config/secrets.js
+../bachelor-mess-server/config/keys.js
+../bachelor-mess-server/config/credentials.js
+../bachelor-mess-server/config/database.js
+../bachelor-mess-server/config/email.js
+
+# Client environment files (already covered above, but being explicit)
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Client secrets and configs
+config/secrets.js
+config/keys.js
+config/credentials.js
+config/database.js
+config/email.js
+
+# Client uploads and logs
+uploads/
+logs/
+*.log
+
+# Client database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Client SSL certificates
+*.crt
+*.key
+*.pem
+
+# Client backup files
+*.bak
+*.backup
+*.old
+
+# Client temporary files
+tmp/
+temp/
+
+# Client IDE files
+.vscode/
+.idea/
+
+# Client OS files
+.DS_Store
+Thumbs.db
+
+# Client build artifacts
+build/
+dist/
+out/
+
+# Client test coverage
+coverage/
+.nyc_output/
+
+# Client package lock
+package-lock.json
+
+# Client node modules
+node_modules/
+
+# Client Expo files
+.expo/
+web-build/
+
+# Client Metro cache
+.metro-health-check*
+
+# Client bundle artifacts
+*.jsbundle
+
+# Client mobile app files
+*.ipa
+*.apk
+*.aab
+
+# Client React Native files
+*.hprof
+
+# Client Flipper files
+ios/Pods/
+
+# Client CocoaPods files
+/ios/Pods/
+/vendor/bundle/
+
+# Client Fastlane files
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+
+# Client Ruby files
+/ios/Pods/
+/vendor/bundle/
+
+# Client testing files
+test-results/
+coverage/
+
+# Client production files
+/build
+
+# Client misc files
+*.tgz
+*.tar.gz
+
+# Client Yarn files
+.yarn-integrity
+
+# Client Netlify files
+.netlify
+
+# Client Vercel files
+.vercel
+
+# Client temporary files created by Metro
+.metro-health-check*
+
+# Client testing
+/coverage
+
+# Client production
+/build
+
+# Client misc
+*.tgz
+*.tar.gz
+
+# Client Yarn
+.yarn-integrity
+
+# Client Local Netlify folder
+.netlify
+
+# Client Vercel
+.vercel
