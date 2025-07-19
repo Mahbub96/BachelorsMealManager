@@ -290,10 +290,14 @@ export const useBazar = (): UseBazarReturn => {
     await Promise.all([getUserBazarEntries(), getBazarStats()]);
   }, [getUserBazarEntries, getBazarStats]);
 
-  // Initial load
+  // Initial load - only run once on mount
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+    // Only load on initial mount, not on every refresh change
+    const initialLoad = async () => {
+      await Promise.all([getUserBazarEntries(), getBazarStats()]);
+    };
+    initialLoad();
+  }, []); // Empty dependency array to run only once
 
   return {
     bazarEntries,

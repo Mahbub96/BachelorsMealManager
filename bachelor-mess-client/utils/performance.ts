@@ -14,11 +14,14 @@ export const debounce = <T extends (...args: any[]) => any>(
   func: T,
   wait: number
 ): ((...args: Parameters<T>) => void) => {
-  let timeout: NodeJS.Timeout;
-  
+  let timeout: NodeJS.Timeout | null = null;
+
   return (...args: Parameters<T>) => {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func(...args), wait);
+    if (timeout) clearTimeout(timeout);
+    timeout = setTimeout(
+      () => func(...args),
+      wait
+    ) as unknown as NodeJS.Timeout;
   };
 };
 
@@ -30,7 +33,7 @@ export const throttle = <T extends (...args: any[]) => any>(
   limit: number
 ): ((...args: Parameters<T>) => void) => {
   let inThrottle: boolean;
-  
+
   return (...args: Parameters<T>) => {
     if (!inThrottle) {
       func(...args);
@@ -48,14 +51,14 @@ export const memoize = <T extends (...args: any[]) => any>(
   resolver?: (...args: Parameters<T>) => string
 ): T => {
   const cache = new Map<string, ReturnType<T>>();
-  
+
   return ((...args: Parameters<T>): ReturnType<T> => {
     const key = resolver ? resolver(...args) : JSON.stringify(args);
-    
+
     if (cache.has(key)) {
       return cache.get(key)!;
     }
-    
+
     const result = func(...args);
     cache.set(key, result);
     return result;
@@ -65,27 +68,31 @@ export const memoize = <T extends (...args: any[]) => any>(
 /**
  * Lazy loading utility for components
  */
-export const lazyLoad = <T>(
+export const lazyLoad = <T extends React.ComponentType<any>>(
   importFunc: () => Promise<{ default: T }>,
   fallback?: React.ComponentType
-): T => {
+): React.ComponentType<any> => {
   const LazyComponent = React.lazy(importFunc);
-  
+
   if (fallback) {
-    return (
-      <React.Suspense fallback={<fallback />}>
-        <LazyComponent />
-      </React.Suspense>
-    );
+    const SuspenseWrapper = () =>
+      React.createElement(
+        React.Suspense,
+        { fallback: React.createElement(fallback) },
+        React.createElement(LazyComponent)
+      );
+    return SuspenseWrapper;
   }
-  
-  return LazyComponent as T;
+
+  return LazyComponent as React.ComponentType<any>;
 };
 
 /**
  * Interaction manager utility for heavy operations
  */
-export const runAfterInteractions = (task: () => void | Promise<void>): void => {
+export const runAfterInteractions = (
+  task: () => void | Promise<void>
+): void => {
   InteractionManager.runAfterInteractions(() => {
     task();
   });
@@ -187,7 +194,11 @@ export class PerformanceMonitor {
 /**
  * Image optimization utility
  */
-export const optimizeImage = (uri: string, width: number, height: number): string => {
+export const optimizeImage = (
+  uri: string,
+  width: number,
+  height: number
+): string => {
   // Add image optimization parameters
   const params = new URLSearchParams({
     w: width.toString(),
@@ -356,4 +367,4 @@ export class NetworkOptimizer {
 // Export singleton instances
 export const performanceMonitor = PerformanceMonitor.getInstance();
 export const memoryManager = MemoryManager.getInstance();
-export const networkOptimizer = NetworkOptimizer.getInstance(); 
+export const networkOptimizer = NetworkOptimizer.getInstance();

@@ -32,6 +32,15 @@ export const MealForm: React.FC<MealFormProps> = ({
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [existingMealWarning, setExistingMealWarning] = useState<string | null>(
+    null
+  );
+  const [existingMealId, setExistingMealId] = useState<string | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [checkTimeout, setCheckTimeout] = useState<ReturnType<
+    typeof setTimeout
+  > | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<MealSubmission>({
     breakfast: false,
     lunch: false,
@@ -41,6 +50,20 @@ export const MealForm: React.FC<MealFormProps> = ({
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Check for existing meal when component mounts with initial date
+  useEffect(() => {
+    if (initialDate) {
+      checkExistingMeal(initialDate);
+    }
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (checkTimeout) {
+        clearTimeout(checkTimeout);
+      }
+    };
+  }, [initialDate]);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -69,24 +92,72 @@ export const MealForm: React.FC<MealFormProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
+  const clearWarnings = () => {
+    setExistingMealWarning(null);
+    setExistingMealId(null);
+    setIsUpdating(false);
+    setIsSubmitting(false);
+  };
+
   const handleSubmit = async () => {
     if (!validateForm()) {
       return;
     }
 
     setLoading(true);
+    setIsSubmitting(true);
     try {
-      const response = await mealService.submitMeal(formData);
+      let response;
+
+      if (existingMealId && isUpdating) {
+        // Update existing meal
+        response = await mealService.updateMeal(existingMealId, {
+          breakfast: formData.breakfast,
+          lunch: formData.lunch,
+          dinner: formData.dinner,
+          notes: formData.notes,
+        });
+      } else {
+        // Submit new meal
+        response = await mealService.submitMeal(formData);
+      }
 
       if (response.success) {
-        Alert.alert('Success', 'Meal entry submitted successfully!');
+        Alert.alert(
+          'Success',
+          isUpdating
+            ? 'Meal entry updated successfully!'
+            : 'Meal entry submitted successfully!'
+        );
+        clearWarnings(); // Clear warnings on success
         onSuccess?.();
         resetForm();
       } else {
-        // Check if it's an offline submission
-        if (
+        // Check for specific error types
+        if (response.error?.includes('already exists for this date')) {
+          Alert.alert(
+            'Meal Already Exists',
+            'You have already submitted a meal entry for this date. Would you like to update your existing entry instead?',
+            [
+              {
+                text: 'Cancel',
+                style: 'cancel',
+                onPress: () => {
+                  clearWarnings(); // Clear warnings when user cancels
+                },
+              },
+              {
+                text: 'Update Existing',
+                onPress: () => {
+                  setIsUpdating(true);
+                  handleSubmit(); // Retry submission as update
+                },
+              },
+            ]
+          );
+        } else if (
           response.error?.includes('offline') ||
-          response.error?.includes('offline')
+          response.error?.includes('network')
         ) {
           Alert.alert(
             'Offline Submission',
@@ -95,6 +166,7 @@ export const MealForm: React.FC<MealFormProps> = ({
               {
                 text: 'OK',
                 onPress: () => {
+                  clearWarnings(); // Clear warnings on offline success
                   onSuccess?.();
                   resetForm();
                 },
@@ -109,6 +181,7 @@ export const MealForm: React.FC<MealFormProps> = ({
       Alert.alert('Error', 'An unexpected error occurred');
     } finally {
       setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -121,6 +194,7 @@ export const MealForm: React.FC<MealFormProps> = ({
       notes: '',
     });
     setErrors({});
+    clearWarnings();
   };
 
   const toggleMeal = (mealType: 'breakfast' | 'lunch' | 'dinner') => {
@@ -147,6 +221,69 @@ export const MealForm: React.FC<MealFormProps> = ({
       if (errors.date) {
         setErrors(prev => ({ ...prev, date: '' }));
       }
+
+      // Clear existing timeout
+      if (checkTimeout) {
+        clearTimeout(checkTimeout);
+      }
+
+      // Debounce the existing meal check
+      const timeout = setTimeout(() => {
+        checkExistingMeal(dateString);
+      }, 500); // Wait 500ms after user stops changing date
+
+      setCheckTimeout(timeout);
+    }
+  };
+
+  const checkExistingMeal = async (date: string) => {
+    // Skip check if currently submitting
+    if (isSubmitting) {
+      return;
+    }
+
+    try {
+      // Format date properly for API call
+      const formattedDate = new Date(date).toISOString().split('T')[0];
+
+      // Check if there's already a meal for this date
+      const response = await mealService.getUserMeals({
+        startDate: formattedDate,
+        endDate: formattedDate,
+        limit: 1,
+      });
+
+      console.log(
+        '🔍 Checking existing meal for date:',
+        formattedDate,
+        'Response:',
+        response
+      );
+
+      if (
+        response.success &&
+        response.data &&
+        response.data.meals &&
+        response.data.meals.length > 0
+      ) {
+        const existingMeal = response.data.meals[0];
+        setExistingMealId(existingMeal.id);
+        setExistingMealWarning(
+          `You already have a meal entry for ${new Date(
+            formattedDate
+          ).toLocaleDateString()}. Submitting will update your existing entry.`
+        );
+        console.log('⚠️ Found existing meal:', existingMeal);
+      } else {
+        setExistingMealId(null);
+        setExistingMealWarning(null);
+        console.log('✅ No existing meal found for date:', formattedDate);
+      }
+    } catch (error) {
+      // Silently fail - this is just a warning check
+      console.log('❌ Error checking existing meal:', error);
+      setExistingMealId(null);
+      setExistingMealWarning(null);
     }
   };
 
@@ -190,9 +327,13 @@ export const MealForm: React.FC<MealFormProps> = ({
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <ThemedView style={styles.formContainer}>
         <View style={styles.header}>
-          <ThemedText style={styles.title}>Add Meal Entry</ThemedText>
+          <ThemedText style={styles.title}>
+            {isUpdating ? 'Update Meal Entry' : 'Add Meal Entry'}
+          </ThemedText>
           <ThemedText style={styles.subtitle}>
-            Select the meals you had today
+            {isUpdating
+              ? 'Update your meal selection for this date'
+              : 'Select the meals you had today'}
           </ThemedText>
         </View>
 
@@ -217,6 +358,20 @@ export const MealForm: React.FC<MealFormProps> = ({
           </TouchableOpacity>
           {errors.date && (
             <ThemedText style={styles.errorText}>{errors.date}</ThemedText>
+          )}
+          {existingMealWarning && (
+            <View style={styles.warningContainer}>
+              <Ionicons name='warning' size={16} color='#f59e0b' />
+              <ThemedText style={styles.warningText}>
+                {existingMealWarning}
+              </ThemedText>
+              <TouchableOpacity
+                onPress={clearWarnings}
+                style={styles.warningCloseButton}
+              >
+                <Ionicons name='close' size={16} color='#d97706' />
+              </TouchableOpacity>
+            </View>
           )}
         </View>
 
@@ -310,7 +465,11 @@ export const MealForm: React.FC<MealFormProps> = ({
                 <Ionicons name='checkmark' size={20} color='#fff' />
               )}
               <ThemedText style={styles.submitButtonText}>
-                {loading ? 'Submitting...' : 'Submit Meals'}
+                {loading
+                  ? 'Submitting...'
+                  : isUpdating
+                  ? 'Update Meal'
+                  : 'Submit Meals'}
               </ThemedText>
             </LinearGradient>
           </TouchableOpacity>
@@ -592,6 +751,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#ef4444',
     marginTop: 8,
+  },
+  warningContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fffbeb',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: '#fde68a',
+  },
+  warningText: {
+    fontSize: 14,
+    color: '#d97706',
+    marginLeft: 8,
+    flex: 1,
+  },
+  warningCloseButton: {
+    padding: 4,
   },
   // Modal styles
   modalOverlay: {

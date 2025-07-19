@@ -1,14 +1,22 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 const User = require('../src/models/User');
 const Meal = require('../src/models/Meal');
 const Bazar = require('../src/models/Bazar');
 
+// Use environment variables for database connection
+const MONGODB_URI =
+  process.env.MONGODB_URI || 'mongodb://localhost:27017/bachelor-mess';
+
+// Use environment variables for test credentials
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@mess.com';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'AdminPassword123';
+const MEMBER_PASSWORD = process.env.MEMBER_PASSWORD || 'MemberPassword123';
+
 // Database connection
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(
-      process.env.MONGODB_URI || 'mongodb://localhost:27017/bachelor-mess'
-    );
+    const conn = await mongoose.connect(MONGODB_URI);
     console.log(`MongoDB Connected: ${conn.connection.host}`);
     return conn;
   } catch (error) {
@@ -123,105 +131,104 @@ const generateBazarData = (userId, date) => {
   };
 };
 
+// Create admin user
+const adminUser = new User({
+  name: 'Admin User',
+  email: ADMIN_EMAIL,
+  password: ADMIN_PASSWORD,
+  role: 'admin',
+  status: 'active',
+  phone: '+8801712345678',
+  joinDate: new Date('2024-01-01'),
+  lastLogin: new Date(),
+});
+
+// Create member users with secure passwords
+const memberUsers = [
+  {
+    name: 'Rahim Khan',
+    email: 'rahim@mess.com',
+    password: MEMBER_PASSWORD,
+    role: 'member',
+    status: 'active',
+    phone: '+8801712345679',
+    joinDate: new Date('2024-01-05'),
+  },
+  {
+    name: 'Karim Ahmed',
+    email: 'karim@mess.com',
+    password: MEMBER_PASSWORD,
+    role: 'member',
+    status: 'active',
+    phone: '+8801712345680',
+    joinDate: new Date('2024-01-10'),
+  },
+  {
+    name: 'Salam Hossain',
+    email: 'salam@mess.com',
+    password: MEMBER_PASSWORD,
+    role: 'member',
+    status: 'active',
+    phone: '+8801712345681',
+    joinDate: new Date('2024-01-15'),
+  },
+  {
+    name: 'Nazrul Islam',
+    email: 'nazrul@mess.com',
+    password: MEMBER_PASSWORD,
+    role: 'member',
+    status: 'active',
+    phone: '+8801712345682',
+    joinDate: new Date('2024-01-20'),
+  },
+  {
+    name: 'Momin Ali',
+    email: 'momin@mess.com',
+    password: MEMBER_PASSWORD,
+    role: 'member',
+    status: 'active',
+    phone: '+8801712345683',
+    joinDate: new Date('2024-01-25'),
+  },
+  {
+    name: 'Jahangir Hossain',
+    email: 'jahangir@mess.com',
+    password: MEMBER_PASSWORD,
+    role: 'member',
+    status: 'active',
+    phone: '+8801712345684',
+    joinDate: new Date('2024-01-30'),
+  },
+  {
+    name: 'Aziz Rahman',
+    email: 'aziz@mess.com',
+    password: MEMBER_PASSWORD,
+    role: 'member',
+    status: 'inactive',
+    phone: '+8801712345685',
+    joinDate: new Date('2024-02-01'),
+  },
+];
+
 // Create dummy users
 const createUsers = async () => {
   try {
     console.log('👥 Creating users...');
 
-    const userData = [
-      {
-        name: 'Mahbub Alam',
-        email: 'mahbub@mess.com',
-        password: 'Password123',
-        phone: '+8801712345678',
-        role: 'admin',
-        status: 'active',
-        joinDate: new Date('2024-01-01'),
-        isEmailVerified: true,
-      },
-      {
-        name: 'Rahim Khan',
-        email: 'rahim@mess.com',
-        password: 'Password123',
-        phone: '+8801713456789',
-        role: 'member',
-        status: 'active',
-        joinDate: new Date('2024-01-05'),
-        isEmailVerified: true,
-      },
-      {
-        name: 'Karim Ahmed',
-        email: 'karim@mess.com',
-        password: 'Password123',
-        phone: '+8801714567890',
-        role: 'member',
-        status: 'active',
-        joinDate: new Date('2024-01-10'),
-        isEmailVerified: true,
-      },
-      {
-        name: 'Salam Hossain',
-        email: 'salam@mess.com',
-        password: 'Password123',
-        phone: '+8801715678901',
-        role: 'member',
-        status: 'active',
-        joinDate: new Date('2024-01-15'),
-        isEmailVerified: true,
-      },
-      {
-        name: 'Nazrul Islam',
-        email: 'nazrul@mess.com',
-        password: 'Password123',
-        phone: '+8801716789012',
-        role: 'member',
-        status: 'active',
-        joinDate: new Date('2024-01-20'),
-        isEmailVerified: true,
-      },
-      {
-        name: 'Momin Ali',
-        email: 'momin@mess.com',
-        password: 'Password123',
-        phone: '+8801712890123',
-        role: 'member',
-        status: 'active',
-        joinDate: new Date('2024-02-01'),
-        isEmailVerified: true,
-      },
-      {
-        name: 'Jahangir Khan',
-        email: 'jahangir@mess.com',
-        password: 'Password123',
-        phone: '+8801713901234',
-        role: 'member',
-        status: 'active',
-        joinDate: new Date('2024-02-05'),
-        isEmailVerified: true,
-      },
-      {
-        name: 'Aziz Rahman',
-        email: 'aziz@mess.com',
-        password: 'Password123',
-        phone: '+8801714012345',
-        role: 'member',
-        status: 'inactive',
-        joinDate: new Date('2024-01-25'),
-        isEmailVerified: false,
-      },
-    ];
+    // Create admin user
+    await adminUser.save();
+    console.log(`✅ Created admin user: ${ADMIN_EMAIL}`);
 
-    // Create users individually to ensure password hashing
-    const createdUsers = [];
-    for (const userDataItem of userData) {
+    // Create member users
+    const createdMemberUsers = [];
+    for (const userDataItem of memberUsers) {
       const user = new User(userDataItem);
       await user.save(); // This will trigger the pre-save middleware for password hashing
-      createdUsers.push(user);
+      createdMemberUsers.push(user);
     }
+    console.log(`✅ Created ${createdMemberUsers.length} member users`);
 
-    console.log(`✅ Created ${createdUsers.length} users`);
-
-    return createdUsers;
+    return [adminUser, ...createdMemberUsers];
   } catch (error) {
     console.error('❌ Error creating users:', error);
     throw error;
@@ -366,15 +373,15 @@ const seedDatabase = async () => {
     await generateStatistics();
 
     console.log('\n🎉 Database seeding completed successfully!');
-    console.log('\n📋 Test Credentials:');
-    console.log('   Admin: mahbub@mess.com / Password123');
-    console.log('   Member: rahim@mess.com / Password123');
-    console.log('   Member: karim@mess.com / Password123');
-    console.log('   Member: salam@mess.com / Password123');
-    console.log('   Member: nazrul@mess.com / Password123');
-    console.log('   Member: momin@mess.com / Password123');
-    console.log('   Member: jahangir@mess.com / Password123');
-    console.log('   Inactive: aziz@mess.com / Password123');
+    console.log('\n🔑 Test Credentials:');
+    console.log(`   Admin: ${ADMIN_EMAIL} / ${ADMIN_PASSWORD}`);
+    console.log('   Member: rahim@mess.com / ' + MEMBER_PASSWORD);
+    console.log('   Member: karim@mess.com / ' + MEMBER_PASSWORD);
+    console.log('   Member: salam@mess.com / ' + MEMBER_PASSWORD);
+    console.log('   Member: nazrul@mess.com / ' + MEMBER_PASSWORD);
+    console.log('   Member: momin@mess.com / ' + MEMBER_PASSWORD);
+    console.log('   Member: jahangir@mess.com / ' + MEMBER_PASSWORD);
+    console.log('   Inactive: aziz@mess.com / ' + MEMBER_PASSWORD);
 
     process.exit(0);
   } catch (error) {

@@ -88,6 +88,15 @@ router.get(
   mealController.getUserMealStats
 );
 
+// @desc    Get user meal statistics (alternative endpoint)
+// @route   GET /api/meals/user/stats
+// @access  Private
+router.get(
+  '/user/stats',
+  AuthMiddleware.protect(),
+  mealController.getUserMealStats
+);
+
 // @desc    Bulk approve meals (admin only)
 // @route   POST /api/meals/bulk-approve
 // @access  Private/Admin

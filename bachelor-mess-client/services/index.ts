@@ -4,6 +4,9 @@
 // Core HTTP Client
 export { default as httpClient } from './httpClient';
 
+// Network Service
+export { default as networkService } from './networkService';
+
 // Configuration
 export * from './config';
 

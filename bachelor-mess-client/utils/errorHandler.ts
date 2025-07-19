@@ -333,11 +333,14 @@ export const debounce = <T extends any[], R>(
   fn: (...args: T) => R,
   delay: number = 300
 ) => {
-  let timeoutId: NodeJS.Timeout;
+  let timeoutId: NodeJS.Timeout | null = null;
 
   return (...args: T): void => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => fn(...args), delay);
+    if (timeoutId) clearTimeout(timeoutId);
+    timeoutId = setTimeout(
+      () => fn(...args),
+      delay
+    ) as unknown as NodeJS.Timeout;
   };
 };
 

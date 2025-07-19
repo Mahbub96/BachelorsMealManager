@@ -1,4 +1,4 @@
-import { API_CONFIG } from './config';
+import { config as API_CONFIG } from './config';
 
 export interface NetworkTestResult {
   success: boolean;
@@ -10,7 +10,7 @@ export class NetworkTester {
   private baseURL: string;
 
   constructor() {
-    this.baseURL = API_CONFIG.BASE_URL;
+    this.baseURL = API_CONFIG.apiUrl;
   }
 
   async testConnection(): Promise<NetworkTestResult> {

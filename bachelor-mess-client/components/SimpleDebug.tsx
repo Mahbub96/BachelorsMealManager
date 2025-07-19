@@ -1,114 +1,116 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { ThemedText } from './ThemedText';
-import { ThemedView } from './ThemedView';
-import mealService from '@/services/mealService';
-import bazarService from '@/services/bazarService';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+} from 'react-native';
+import { config } from '@/services/config';
+import httpClient from '@/services/httpClient';
+import networkService from '@/services/networkService';
 
 export const SimpleDebug: React.FC = () => {
-  const [loading, setLoading] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<any>({});
+  const [isLoading, setIsLoading] = useState(false);
 
-  const testMeals = async () => {
-    setLoading(true);
+  const runDebugTests = async () => {
+    setIsLoading(true);
+    const info: any = {};
+
     try {
-      console.log('🧪 Testing meals API...');
-      const response = await mealService.getUserMeals({
-        status: 'approved',
-        limit: 5,
-      });
+      // Test 1: Configuration
+      info.config = {
+        apiUrl: config.apiUrl,
+        timeout: config.timeout,
+        maxRetries: config.maxRetries,
+      };
 
-      if (response.success) {
-        Alert.alert(
-          '✅ Meals API Success',
-          `Loaded ${response.data?.meals?.length || 0} meals`
-        );
-        console.log('✅ Meals API Success:', response);
-      } else {
-        Alert.alert('❌ Meals API Error', response.error || 'Unknown error');
-        console.log('❌ Meals API Error:', response);
+      // Test 2: Network Status
+      const networkStatus = await networkService.getStatus();
+      const networkType = await networkService.getNetworkType();
+      const isOnline = await networkService.isOnline();
+
+      info.network = {
+        status: networkStatus,
+        type: networkType,
+        isOnline,
+      };
+
+      // Test 3: API Connectivity
+      try {
+        const healthResponse = await httpClient.get('/health', {
+          skipAuth: true,
+          timeout: 5000,
+        });
+        info.apiConnectivity = {
+          success: healthResponse.success,
+          status: healthResponse.statusCode,
+          message: healthResponse.message,
+        };
+      } catch (error) {
+        info.apiConnectivity = {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        };
       }
-    } catch (error) {
-      Alert.alert('❌ Meals API Exception', String(error));
-      console.log('❌ Meals API Exception:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const testBazar = async () => {
-    setLoading(true);
-    try {
-      console.log('🧪 Testing bazar API...');
-      const response = await bazarService.getUserBazarEntries({
-        status: 'approved',
-        limit: 5,
-      });
-
-      if (response.success) {
-        Alert.alert(
-          '✅ Bazar API Success',
-          `Loaded ${response.data?.length || 0} entries`
-        );
-        console.log('✅ Bazar API Success:', response);
-      } else {
-        Alert.alert('❌ Bazar API Error', response.error || 'Unknown error');
-        console.log('❌ Bazar API Error:', response);
+      // Test 4: HTTP Client Status
+      try {
+        const offlineStatus = await httpClient.getOfflineStatus();
+        info.httpClient = {
+          offlineStatus,
+        };
+      } catch (error) {
+        info.httpClient = {
+          error: error instanceof Error ? error.message : 'Unknown error',
+        };
       }
+
+      setDebugInfo(info);
     } catch (error) {
-      Alert.alert('❌ Bazar API Exception', String(error));
-      console.log('❌ Bazar API Exception:', error);
+      console.error('Debug test failed:', error);
+      setDebugInfo({
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const clearCache = async () => {
-    setLoading(true);
-    try {
-      console.log('🗑️ Clearing cache...');
-      await mealService.clearMealCache();
-      await bazarService.clearBazarCache();
-      Alert.alert(
-        '✅ Cache Cleared',
-        'All cache has been cleared successfully'
-      );
-      console.log('✅ Cache cleared successfully');
-    } catch (error) {
-      Alert.alert('❌ Cache Clear Error', String(error));
-      console.log('❌ Cache clear error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    runDebugTests();
+  }, []);
 
   return (
-    <ThemedView style={styles.container}>
-      <ThemedText style={styles.title}>Simple Debug</ThemedText>
+    <ScrollView style={styles.container}>
+      <Text style={styles.title}>Debug Information</Text>
 
       <TouchableOpacity
-        style={[styles.button, loading && styles.buttonDisabled]}
-        onPress={testMeals}
-        disabled={loading}
+        style={[styles.button, isLoading && styles.buttonDisabled]}
+        onPress={runDebugTests}
+        disabled={isLoading}
       >
-        <ThemedText style={styles.buttonText}>Test Meals API</ThemedText>
+        <Text style={styles.buttonText}>
+          {isLoading ? 'Running Tests...' : 'Refresh Debug Info'}
+        </Text>
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={[styles.button, loading && styles.buttonDisabled]}
-        onPress={testBazar}
-        disabled={loading}
-      >
-        <ThemedText style={styles.buttonText}>Test Bazar API</ThemedText>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[styles.button, styles.clearButton]}
-        onPress={clearCache}
-        disabled={loading}
-      >
-        <ThemedText style={styles.buttonText}>Clear Cache</ThemedText>
-      </TouchableOpacity>
-    </ThemedView>
+      {Object.keys(debugInfo).length > 0 && (
+        <View style={styles.infoContainer}>
+          {Object.entries(debugInfo).map(([key, value]) => (
+            <View key={key} style={styles.section}>
+              <Text style={styles.sectionTitle}>{key.toUpperCase()}</Text>
+              <Text style={styles.sectionContent}>
+                {typeof value === 'object'
+                  ? JSON.stringify(value, null, 2)
+                  : String(value)}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
+    </ScrollView>
   );
 };
 
@@ -116,30 +118,51 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    justifyContent: 'center',
+    backgroundColor: '#f5f5f5',
   },
   title: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 30,
+    marginBottom: 20,
     textAlign: 'center',
   },
   button: {
-    backgroundColor: '#667eea',
+    backgroundColor: '#2196F3',
     padding: 15,
-    borderRadius: 10,
+    borderRadius: 8,
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: 20,
   },
   buttonDisabled: {
-    opacity: 0.5,
-  },
-  clearButton: {
-    backgroundColor: '#ef4444',
+    backgroundColor: '#ccc',
   },
   buttonText: {
-    color: '#fff',
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  infoContainer: {
+    backgroundColor: 'white',
+    borderRadius: 8,
+    padding: 15,
+  },
+  section: {
+    marginBottom: 15,
+  },
+  sectionTitle: {
     fontSize: 16,
     fontWeight: 'bold',
+    marginBottom: 5,
+    color: '#333',
+  },
+  sectionContent: {
+    fontSize: 12,
+    fontFamily: 'monospace',
+    backgroundColor: '#f8f8f8',
+    padding: 10,
+    borderRadius: 4,
+    color: '#666',
   },
 });
+
+export default SimpleDebug;

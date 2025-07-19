@@ -151,10 +151,7 @@ class BazarServiceImpl implements BazarService {
 
       console.log('🔄 Bazar Service - Making request to endpoint:', endpoint);
 
-      const response = await httpClient.get<{
-        bazarEntries: BazarEntry[];
-        pagination: any;
-      }>(endpoint, {
+      const response = await httpClient.get<BazarEntry[]>(endpoint, {
         cache: true,
         cacheKey: `user_bazar_${JSON.stringify(filters)}`,
       });
@@ -168,7 +165,7 @@ class BazarServiceImpl implements BazarService {
 
       // Transform the response to match expected structure
       if (response.success && response.data) {
-        const bazarEntries = response.data.bazarEntries || response.data;
+        const bazarEntries = response.data;
 
         console.log('🔄 Bazar Service - Bazar entries before transform:', {
           count: Array.isArray(bazarEntries)
@@ -210,8 +207,9 @@ class BazarServiceImpl implements BazarService {
       }
 
       console.log('❌ Bazar Service - Response not successful:', response);
-      return response as unknown as ApiResponse<BazarEntry[]>;
+      return response;
     } catch (error) {
+      console.error('❌ Error fetching user bazar entries:', error);
       return {
         success: false,
         error:

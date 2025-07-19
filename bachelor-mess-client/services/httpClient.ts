@@ -1,6 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_CONFIG, ApiResponse, HTTP_STATUS } from './config';
+import { config as API_CONFIG, ApiResponse, HTTP_STATUS } from './config';
 import offlineStorage from './offlineStorage';
+import authService from './authService';
+import authEventEmitter from './authEventEmitter';
 
 // Request configuration interface
 interface RequestConfig {
@@ -30,10 +32,10 @@ class HttpClient {
     [];
   private responseInterceptors: ((response: Response) => Response)[] = [];
   private isOnlineCache: { status: boolean; timestamp: number } | null = null;
-  private readonly ONLINE_CACHE_DURATION = 30000; // 30 seconds
+  private readonly ONLINE_CACHE_DURATION = 60000; // 60 seconds (increased to reduce health check frequency)
 
   constructor() {
-    this.baseURL = API_CONFIG.BASE_URL;
+    this.baseURL = API_CONFIG.apiUrl;
     this.defaultHeaders = {
       'Content-Type': 'application/json',
       Accept: 'application/json',
@@ -88,8 +90,8 @@ class HttpClient {
         ...(token && { Authorization: `Bearer ${token}` }),
         ...config.headers,
       },
-      timeout: API_CONFIG.TIMEOUT,
-      retries: API_CONFIG.MAX_RETRIES,
+      timeout: API_CONFIG.timeout,
+      retries: API_CONFIG.maxRetries,
       offlineFallback: true,
     };
 
@@ -110,6 +112,7 @@ class HttpClient {
     }
 
     try {
+      // Simple health check
       const healthUrl = `${this.baseURL.replace('/api', '')}/health`;
       console.log('🔍 Checking API connectivity at:', healthUrl);
 
@@ -126,30 +129,27 @@ class HttpClient {
 
       clearTimeout(timeoutId);
 
-      const isOnline = response.ok;
-      console.log(
-        '📡 API connectivity check result:',
-        isOnline,
-        'Status:',
-        response.status
-      );
-
-      // Cache the result
-      this.isOnlineCache = {
-        status: isOnline,
-        timestamp: Date.now(),
-      };
-
-      return isOnline;
+      if (response.ok) {
+        console.log('✅ API connectivity check successful');
+        this.isOnlineCache = {
+          status: true,
+          timestamp: Date.now(),
+        };
+        return true;
+      } else {
+        console.log('❌ Health check failed with status:', response.status);
+        this.isOnlineCache = {
+          status: false,
+          timestamp: Date.now(),
+        };
+        return false;
+      }
     } catch (error) {
       console.log('❌ API connectivity check failed:', error);
-
-      // Cache offline status
       this.isOnlineCache = {
         status: false,
         timestamp: Date.now(),
       };
-
       return false;
     }
   }
@@ -181,7 +181,7 @@ class HttpClient {
       const controller = new AbortController();
       const timeoutId = setTimeout(
         () => controller.abort(),
-        config.timeout || API_CONFIG.TIMEOUT
+        config.timeout || API_CONFIG.timeout
       );
 
       const response = await fetch(url, {
@@ -192,15 +192,29 @@ class HttpClient {
       });
 
       clearTimeout(timeoutId);
+
+      // Handle rate limiting (429)
+      if (response.status === 429) {
+        console.log('⚠️ Rate limited, waiting before retry...');
+        await new Promise(
+          resolve => setTimeout(resolve, 5000 * (retryCount + 1)) // Increased delay
+        );
+
+        if (retryCount < (config.retries || API_CONFIG.maxRetries)) {
+          return this.retryRequest(url, config, retryCount + 1);
+        }
+      }
+
       return this.applyResponseInterceptors(response);
     } catch (error) {
-      const maxRetries = config.retries || API_CONFIG.MAX_RETRIES;
+      const maxRetries = config.retries || API_CONFIG.maxRetries;
 
       if (retryCount < maxRetries) {
         // Exponential backoff with jitter
-        const baseDelay = API_CONFIG.RETRY_DELAY * Math.pow(2, retryCount);
-        const jitter = Math.random() * 0.1 * baseDelay; // 10% jitter
-        const delay = baseDelay + jitter;
+        const baseDelay = API_CONFIG.retryDelay;
+        const exponentialDelay = baseDelay * Math.pow(2, retryCount);
+        const jitter = Math.random() * 0.1 * exponentialDelay;
+        const delay = exponentialDelay + jitter;
 
         console.log(
           `🔄 Retrying request (${
@@ -333,13 +347,35 @@ class HttpClient {
     try {
       await AsyncStorage.removeItem('auth_token');
       await AsyncStorage.removeItem('user_data');
+      await AsyncStorage.removeItem('auth_user');
 
       // Clear online cache to force re-check
       this.isOnlineCache = null;
 
       console.log('🔐 Auth token cleared due to unauthorized access');
+
+      // Trigger logout event to redirect user to login
+      this.triggerLogout();
     } catch (error) {
       console.error('Error clearing auth data:', error);
+    }
+  }
+
+  // Trigger logout event
+  private triggerLogout(): void {
+    try {
+      // Use auth service to trigger logout
+      authService.logout().catch(error => {
+        console.error('Error during auto-logout:', error);
+      });
+
+      // Emit auth event
+      authEventEmitter.emitAuthEvent({
+        type: 'session_expired',
+        data: { message: 'Session expired. Please login again.' },
+      });
+    } catch (error) {
+      console.error('Error triggering logout:', error);
     }
   }
 
@@ -351,7 +387,7 @@ class HttpClient {
       const cached = await AsyncStorage.getItem(`cache_${cacheKey}`);
       if (cached) {
         const { data, timestamp } = JSON.parse(cached);
-        if (Date.now() - timestamp < API_CONFIG.CACHE_DURATION) {
+        if (Date.now() - timestamp < API_CONFIG.cacheDuration) {
           return data;
         }
       }
@@ -390,7 +426,7 @@ class HttpClient {
 
       console.log(`🌐 Making ${requestConfig.method} request to: ${url}`);
 
-      // Check if online
+      // Check if device is online
       const online = await this.isOnline();
 
       if (!online) {
@@ -591,12 +627,42 @@ class HttpClient {
   // Cache management
   async clearCache(): Promise<void> {
     try {
+      // Clear all cached responses
       const keys = await AsyncStorage.getAllKeys();
-      const cacheKeys = keys.filter(key => key.startsWith('cache_'));
-      await AsyncStorage.multiRemove(cacheKeys);
-      console.log('🗑️ Cache cleared');
+      const cacheKeys = keys.filter(
+        key =>
+          key.startsWith('cache_') ||
+          key.includes('_stats') ||
+          key.includes('_dashboard') ||
+          key.includes('_analytics') ||
+          key.includes('_meals') ||
+          key.includes('_bazar')
+      );
+
+      if (cacheKeys.length > 0) {
+        await AsyncStorage.multiRemove(cacheKeys);
+        console.log(`🗑️ Cleared ${cacheKeys.length} cached responses`);
+      }
+
+      // Clear online cache
+      this.isOnlineCache = null;
+
+      // Clear offline requests
+      const offlineKeys = keys.filter(
+        key =>
+          key.includes('offline_request') ||
+          key.includes('req_') ||
+          key.includes('pending_request')
+      );
+
+      if (offlineKeys.length > 0) {
+        await AsyncStorage.multiRemove(offlineKeys);
+        console.log(`🗑️ Cleared ${offlineKeys.length} offline requests`);
+      }
+
+      console.log('✅ HTTP Client cache cleared');
     } catch (error) {
-      console.error('Error clearing cache:', error);
+      console.error('❌ Error clearing HTTP Client cache:', error);
     }
   }
 
@@ -626,20 +692,26 @@ class HttpClient {
 
       for (const request of pendingRequests) {
         try {
-          const response = await this.request(request.endpoint, {
+          const url = `${this.baseURL}${request.endpoint}`;
+          console.log(`🔄 Retrying offline request to: ${url}`);
+
+          const response = await this.retryRequest(url, {
             method: request.method as any,
             body: request.data,
             headers: request.headers,
-            offlineFallback: false, // Prevent infinite loop
+            timeout: API_CONFIG.timeout,
+            retries: 1, // Only retry once for offline requests
           });
 
-          if (response.success) {
+          const result = await this.handleResponse(response);
+
+          if (result.success) {
             await offlineStorage.removeRequest(request.id);
             console.log(`✅ Offline request successful: ${request.endpoint}`);
           } else {
             console.log(
               `❌ Offline request failed: ${request.endpoint}`,
-              response.error
+              result.error
             );
           }
         } catch (error) {

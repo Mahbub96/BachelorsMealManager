@@ -7,6 +7,7 @@ import React, {
 } from 'react';
 import { useRouter } from 'expo-router';
 import authService from '@/services/authService';
+import authEventEmitter from '@/services/authEventEmitter';
 import { User } from '@/services/authService';
 
 interface AuthData {
@@ -75,6 +76,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
 
     checkAuth();
+
+    // Listen for auth events
+    const handleAuthEvent = (event: any) => {
+      console.log('🔔 Auth Event Received:', event);
+
+      if (event.type === 'session_expired' || event.type === 'logout') {
+        console.log('🔄 Handling auth event:', event.type);
+        logout();
+      }
+    };
+
+    authEventEmitter.onAuthEvent(handleAuthEvent);
+
+    // Cleanup listener on unmount
+    return () => {
+      authEventEmitter.removeAuthListener(handleAuthEvent);
+    };
   }, []);
 
   const setAuth = (data: AuthData) => setAuthState(data);

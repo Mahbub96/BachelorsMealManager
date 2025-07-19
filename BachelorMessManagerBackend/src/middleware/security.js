@@ -75,6 +75,14 @@ class SecurityMiddleware {
       legacyHeaders: false,
       skipSuccessfulRequests: false,
       skipFailedRequests: false,
+      skip: req => {
+        // Skip rate limiting for health checks and development
+        return (
+          req.path === '/health' ||
+          req.path === '/api/health' ||
+          config.server.nodeEnv === 'development'
+        );
+      },
       keyGenerator: req => {
         return (
           req.ip ||

@@ -269,8 +269,69 @@ export default function ProfileScreen() {
   }, [loadUserData]);
 
   useEffect(() => {
-    loadUserData();
-  }, [loadUserData]);
+    // Only load on initial mount, not on every loadUserData change
+    const initialLoad = async () => {
+      try {
+        await getProfile();
+
+        // Load meal and bazar data
+        const mealResponse = await getUserMeals();
+        const bazarResponse = await getBazarStats();
+
+        // Calculate statistics
+        const currentDate = new Date();
+        const currentMonth = currentDate.getMonth();
+        const currentYear = currentDate.getFullYear();
+
+        // Mock data for demonstration (replace with real calculations)
+        const mockStats = {
+          totalMeals: 87,
+          totalBazar: 23,
+          totalAmount: 12500,
+          thisMonthMeals: 12,
+          thisMonthBazar: 3,
+          thisMonthAmount: 1800,
+          averageDailyMeals: 2.1,
+          averageBazarAmount: 543,
+        };
+
+        setUserStats(mockStats);
+
+        // Mock recent activity
+        const mockActivity = [
+          {
+            type: 'meal',
+            action: 'Submitted breakfast and lunch',
+            date: '2 hours ago',
+            icon: 'fast-food',
+          },
+          {
+            type: 'bazar',
+            action: 'Added grocery items worth ৳450',
+            date: '1 day ago',
+            icon: 'cart',
+          },
+          {
+            type: 'payment',
+            action: 'Paid monthly mess bill',
+            date: '3 days ago',
+            icon: 'card',
+          },
+          {
+            type: 'meal',
+            action: 'Submitted dinner',
+            date: '4 days ago',
+            icon: 'moon',
+          },
+        ];
+
+        setRecentActivity(mockActivity);
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      }
+    };
+    initialLoad();
+  }, []); // Empty dependency array to run only once
 
   const handleMenuPress = (item: any) => {
     if (item.action === 'logout') {

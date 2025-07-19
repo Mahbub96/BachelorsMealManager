@@ -17,7 +17,6 @@ import bazarService, {
   BazarFilters,
 } from '../services/bazarService';
 import { useAuth } from '../context/AuthContext';
-import { useRouter } from 'expo-router';
 
 interface BazarListProps {
   filters?: BazarFilters;
@@ -25,6 +24,11 @@ interface BazarListProps {
   onBazarPress?: (bazar: BazarEntry) => void;
   onRefresh?: () => void;
   isAdmin?: boolean;
+  bazarEntries?: BazarEntry[];
+  loading?: boolean;
+  error?: string | null;
+  onStatusUpdate?: (bazarId: string, status: 'approved' | 'rejected') => void;
+  onDelete?: (bazarId: string) => void;
 }
 
 export const BazarList: React.FC<BazarListProps> = ({
@@ -33,76 +37,42 @@ export const BazarList: React.FC<BazarListProps> = ({
   onBazarPress,
   onRefresh,
   isAdmin = false,
+  bazarEntries: externalBazarEntries,
+  loading: externalLoading,
+  error: externalError,
+  onStatusUpdate,
+  onDelete,
 }) => {
-  const { user } = useAuth();
-  const router = useRouter();
   const [bazarEntries, setBazarEntries] = useState<BazarEntry[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 10,
-    total: 0,
-    pages: 0,
-  });
 
-  const loadBazarEntries = async (page = 1, isRefresh = false) => {
-    if (isRefresh) {
-      setRefreshing(true);
-    } else {
-      setLoading(true);
-    }
-    setError(null);
+  // Use external state if provided, otherwise use internal state
+  const displayBazarEntries =
+    externalBazarEntries !== undefined ? externalBazarEntries : bazarEntries;
+  const displayLoading =
+    externalLoading !== undefined ? externalLoading : loading;
+  const displayError = externalError !== undefined ? externalError : error;
+
+  const loadBazarEntries = async (isRefresh = false) => {
+    // Only load bazar entries if not provided externally
+    if (externalBazarEntries !== undefined) return;
 
     try {
-      console.log('🔄 BazarList - Loading bazar entries, isAdmin:', isAdmin);
+      setLoading(!isRefresh);
+      setError(null);
 
-      const response = isAdmin
-        ? await bazarService.getAllBazarEntries({
-            ...filters,
-            page,
-            limit: pagination.limit,
-          })
-        : await bazarService.getUserBazarEntries({
-            ...filters,
-            page,
-            limit: pagination.limit,
-          });
-
-      console.log('🔄 BazarList - Response received:', {
-        success: response.success,
-        hasData: !!response.data,
-        dataLength: Array.isArray(response.data)
-          ? response.data.length
-          : 'not array',
-        error: response.error,
-      });
+      const response = await bazarService.getUserBazarEntries(filters);
 
       if (response.success && response.data) {
-        console.log(
-          '🔄 BazarList - Setting bazar entries:',
-          response.data.length
-        );
-
-        if (page === 1 || isRefresh) {
-          setBazarEntries(response.data);
-        } else {
-          setBazarEntries(prev => [...prev, ...response.data!]);
-        }
-        // Note: Backend returns pagination info, but for now we'll handle it manually
-        setPagination(prev => ({
-          ...prev,
-          page,
-          total: response.data?.length || 0,
-        }));
+        setBazarEntries(Array.isArray(response.data) ? response.data : []);
       } else {
-        console.log('❌ BazarList - Response not successful:', response);
-        setError(response.error || 'Failed to load bazar entries');
+        setError(response.message || 'Failed to load bazar entries');
       }
-    } catch (err) {
-      console.error('❌ BazarList - Exception occurred:', err);
-      setError('An unexpected error occurred');
+    } catch (error) {
+      console.error('Error loading bazar entries:', error);
+      setError('Failed to load bazar entries. Please try again.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -110,45 +80,76 @@ export const BazarList: React.FC<BazarListProps> = ({
   };
 
   const handleRefresh = async () => {
-    await loadBazarEntries(1, true);
+    setRefreshing(true);
+    await loadBazarEntries(true);
     onRefresh?.();
   };
 
-  const handleLoadMore = () => {
-    if (pagination.page < pagination.pages && !loading) {
-      loadBazarEntries(pagination.page + 1);
-    }
+  const handleBazarPress = (bazar: BazarEntry) => {
+    onBazarPress?.(bazar);
   };
 
-  const handleBazarStatusUpdate = async (
+  // Load bazar entries on mount
+  useEffect(() => {
+    loadBazarEntries();
+  }, [filters]);
+
+  if (displayLoading && displayBazarEntries.length === 0) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size='large' color='#667eea' />
+        <ThemedText style={styles.loadingText}>
+          Loading bazar entries...
+        </ThemedText>
+      </View>
+    );
+  }
+
+  if (displayError && displayBazarEntries.length === 0) {
+    return (
+      <View style={styles.errorContainer}>
+        <Ionicons name='alert-circle' size={48} color='#ef4444' />
+        <ThemedText style={styles.errorText}>{displayError}</ThemedText>
+        <TouchableOpacity style={styles.retryButton} onPress={handleRefresh}>
+          <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (displayBazarEntries.length === 0) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Ionicons name='basket-outline' size={48} color='#9ca3af' />
+        <ThemedText style={styles.emptyText}>No bazar entries found</ThemedText>
+        <ThemedText style={styles.emptySubtext}>
+          Submit your first bazar entry to get started
+        </ThemedText>
+      </View>
+    );
+  }
+
+  const handleStatusUpdate = async (
     bazarId: string,
     status: 'approved' | 'rejected'
   ) => {
     try {
       const response = await bazarService.updateBazarStatus(bazarId, {
         status,
-        notes: `Status updated by ${user?.name || 'Admin'}`,
       });
-
       if (response.success) {
-        // Update the local state
-        setBazarEntries(prev =>
-          prev.map(bazar =>
-            bazar.id === bazarId
-              ? { ...bazar, status, approvedAt: new Date().toISOString() }
-              : bazar
-          )
-        );
-        Alert.alert('Success', `Bazar entry ${status} successfully`);
+        // Refresh the list
+        await loadBazarEntries(true);
+        onStatusUpdate?.(bazarId, status);
       } else {
         Alert.alert('Error', response.error || 'Failed to update status');
       }
     } catch (error) {
-      Alert.alert('Error', 'An unexpected error occurred');
+      Alert.alert('Error', 'Failed to update status');
     }
   };
 
-  const handleDeleteBazar = async (bazarId: string) => {
+  const handleDelete = async (bazarId: string) => {
     Alert.alert(
       'Delete Bazar Entry',
       'Are you sure you want to delete this bazar entry?',
@@ -161,10 +162,9 @@ export const BazarList: React.FC<BazarListProps> = ({
             try {
               const response = await bazarService.deleteBazar(bazarId);
               if (response.success) {
-                setBazarEntries(prev =>
-                  prev.filter(bazar => bazar.id !== bazarId)
-                );
-                Alert.alert('Success', 'Bazar entry deleted successfully');
+                // Refresh the list
+                await loadBazarEntries(true);
+                onDelete?.(bazarId);
               } else {
                 Alert.alert(
                   'Error',
@@ -172,17 +172,13 @@ export const BazarList: React.FC<BazarListProps> = ({
                 );
               }
             } catch (error) {
-              Alert.alert('Error', 'An unexpected error occurred');
+              Alert.alert('Error', 'Failed to delete bazar entry');
             }
           },
         },
       ]
     );
   };
-
-  useEffect(() => {
-    loadBazarEntries();
-  }, [filters]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -244,10 +240,10 @@ export const BazarList: React.FC<BazarListProps> = ({
             onBazarPress(bazar);
           } else {
             // Navigate to bazar details screen
-            router.push({
-              pathname: '/bazar-details',
-              params: { id: bazar.id },
-            });
+            // router.push({
+            //   pathname: '/bazar-details',
+            //   params: { id: bazar.id },
+            // });
           }
         }}
         activeOpacity={0.7}
@@ -322,7 +318,7 @@ export const BazarList: React.FC<BazarListProps> = ({
               <>
                 <TouchableOpacity
                   style={[styles.actionButton, styles.approveButton]}
-                  onPress={() => handleBazarStatusUpdate(bazar.id, 'approved')}
+                  onPress={() => handleStatusUpdate(bazar.id, 'approved')}
                 >
                   <Ionicons name='checkmark' size={16} color='#fff' />
                   <ThemedText style={styles.actionButtonText}>
@@ -331,7 +327,7 @@ export const BazarList: React.FC<BazarListProps> = ({
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.actionButton, styles.rejectButton]}
-                  onPress={() => handleBazarStatusUpdate(bazar.id, 'rejected')}
+                  onPress={() => handleStatusUpdate(bazar.id, 'rejected')}
                 >
                   <Ionicons name='close' size={16} color='#fff' />
                   <ThemedText style={styles.actionButtonText}>
@@ -342,7 +338,7 @@ export const BazarList: React.FC<BazarListProps> = ({
             )}
             <TouchableOpacity
               style={[styles.actionButton, styles.deleteButton]}
-              onPress={() => handleDeleteBazar(bazar.id)}
+              onPress={() => handleDelete(bazar.id)}
             >
               <Ionicons name='trash' size={16} color='#fff' />
               <ThemedText style={styles.actionButtonText}>Delete</ThemedText>
@@ -395,7 +391,7 @@ export const BazarList: React.FC<BazarListProps> = ({
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
       }
-      onEndReached={handleLoadMore}
+      onEndReached={handleRefresh}
       onEndReachedThreshold={0.1}
       ListEmptyComponent={renderEmptyState}
       ListFooterComponent={renderFooter}
@@ -558,5 +554,54 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6b7280',
     marginTop: 8,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 64,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 64,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#ef4444',
+    textAlign: 'center',
+    marginTop: 16,
+    marginBottom: 24,
+  },
+  retryButton: {
+    backgroundColor: '#667eea',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 64,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#6b7280',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#9ca3af',
+    textAlign: 'center',
+    paddingHorizontal: 32,
   },
 });

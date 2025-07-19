@@ -62,7 +62,16 @@ class MealController {
         return sendErrorResponse(
           res,
           400,
-          'Meal entry already exists for this date'
+          `Meal entry already exists for ${new Date(mealDate).toLocaleDateString()}. You can update your existing entry instead.`,
+          {
+            existingMealId: existingMeal._id,
+            existingMealStatus: existingMeal.status,
+            existingMeals: {
+              breakfast: existingMeal.breakfast,
+              lunch: existingMeal.lunch,
+              dinner: existingMeal.dinner,
+            },
+          }
         );
       }
 

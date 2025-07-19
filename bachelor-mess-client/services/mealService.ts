@@ -153,10 +153,7 @@ class MealServiceImpl implements MealService {
       const endpoint = `${API_ENDPOINTS.MEALS.USER}${queryParams}`;
       console.log('🔗 Meal Service - Making request to endpoint:', endpoint);
 
-      const response = await httpClient.get<{
-        meals: MealEntry[];
-        pagination: MealPagination;
-      }>(endpoint, {
+      const response = await httpClient.get<MealResponse>(endpoint, {
         cache: true,
         cacheKey: `user_meals_${JSON.stringify(filters)}`,
       });
@@ -203,8 +200,13 @@ class MealServiceImpl implements MealService {
         return {
           ...response,
           data: {
-            ...response.data,
             meals: transformedMeals,
+            pagination: response.data.pagination || {
+              page: 1,
+              limit: 20,
+              total: transformedMeals?.length || 0,
+              pages: 1,
+            },
           },
         } as unknown as ApiResponse<MealResponse>;
       }

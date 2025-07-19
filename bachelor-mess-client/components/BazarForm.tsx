@@ -22,6 +22,7 @@ import bazarService, {
   BazarItem,
 } from '../services/bazarService';
 import { useAuth } from '../context/AuthContext';
+import { useColorScheme } from '../hooks/useColorScheme';
 
 interface BazarFormProps {
   onSuccess?: () => void;
@@ -37,6 +38,7 @@ export const BazarForm: React.FC<BazarFormProps> = ({
   showCancel = true,
 }) => {
   const { user } = useAuth();
+  const colorScheme = useColorScheme();
   const [loading, setLoading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [formData, setFormData] = useState<BazarSubmission>({
@@ -45,11 +47,7 @@ export const BazarForm: React.FC<BazarFormProps> = ({
     description: '',
     date: initialDate || new Date().toISOString().split('T')[0],
   });
-  const [receiptImage, setReceiptImage] = useState<{
-    uri: string;
-    type: string;
-    name: string;
-  } | null>(null);
+
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validateForm = (): boolean => {
@@ -59,26 +57,17 @@ export const BazarForm: React.FC<BazarFormProps> = ({
     if (!formData.items || formData.items.length === 0) {
       newErrors.items = 'At least one item is required';
     } else {
-      formData.items.forEach((item, index) => {
-        if (!item.name.trim()) {
-          newErrors[`item${index}Name`] = 'Item name is required';
-        }
-        if (!item.quantity.trim()) {
-          newErrors[`item${index}Quantity`] = 'Quantity is required';
-        }
-        if (item.price <= 0) {
-          newErrors[`item${index}Price`] = 'Price must be greater than 0';
-        }
-      });
+      const invalidItems = formData.items.filter(
+        item => !item.name.trim() || !item.quantity.trim() || item.price <= 0
+      );
+      if (invalidItems.length > 0) {
+        newErrors.items = 'All items must have name, quantity, and price';
+      }
     }
 
     // Validate total amount
-    const calculatedTotal = formData.items.reduce(
-      (sum, item) => sum + item.price,
-      0
-    );
-    if (calculatedTotal !== formData.totalAmount) {
-      newErrors.totalAmount = 'Total amount must match sum of item prices';
+    if (!formData.totalAmount || formData.totalAmount <= 0) {
+      newErrors.totalAmount = 'Total amount must be greater than 0';
     }
 
     // Validate date
@@ -109,7 +98,6 @@ export const BazarForm: React.FC<BazarFormProps> = ({
     try {
       const submissionData: BazarSubmission = {
         ...formData,
-        receiptImage: receiptImage || undefined,
       };
 
       const response = await bazarService.submitBazar(submissionData);
@@ -119,30 +107,7 @@ export const BazarForm: React.FC<BazarFormProps> = ({
         onSuccess?.();
         resetForm();
       } else {
-        // Check if it's an offline submission
-        if (
-          response.error?.includes('offline') ||
-          response.error?.includes('offline')
-        ) {
-          Alert.alert(
-            'Offline Submission',
-            'Your bazar entry has been saved and will be submitted when you are back online.',
-            [
-              {
-                text: 'OK',
-                onPress: () => {
-                  onSuccess?.();
-                  resetForm();
-                },
-              },
-            ]
-          );
-        } else {
-          Alert.alert(
-            'Error',
-            response.error || 'Failed to submit bazar entry'
-          );
-        }
+        Alert.alert('Error', response.error || 'Failed to submit bazar entry');
       }
     } catch (error) {
       Alert.alert('Error', 'An unexpected error occurred');
@@ -158,7 +123,6 @@ export const BazarForm: React.FC<BazarFormProps> = ({
       description: '',
       date: new Date().toISOString().split('T')[0],
     });
-    setReceiptImage(null);
     setErrors({});
   };
 
@@ -208,16 +172,16 @@ export const BazarForm: React.FC<BazarFormProps> = ({
 
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
-      setReceiptImage({
-        uri: asset.uri,
-        type: 'image/jpeg',
-        name: 'receipt.jpg',
-      });
+      // setReceiptImage({ // This state was removed, so this line is removed
+      //   uri: asset.uri,
+      //   type: 'image/jpeg',
+      //   name: 'receipt.jpg',
+      // });
     }
   };
 
   const removeImage = () => {
-    setReceiptImage(null);
+    // setReceiptImage(null); // This state was removed, so this line is removed
   };
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
@@ -244,8 +208,13 @@ export const BazarForm: React.FC<BazarFormProps> = ({
   };
 
   const getItemColor = (index: number) => {
-    const colors = ['#f59e0b', '#10b981', '#6366f1', '#ef4444', '#8b5cf6'];
-    return colors[index % colors.length];
+    // Only use colors for light theme
+    if (colorScheme === 'light') {
+      const colors = ['#f59e0b', '#10b981', '#6366f1', '#ef4444', '#8b5cf6'];
+      return colors[index % colors.length];
+    }
+    // For dark theme, use a neutral color
+    return '#6b7280';
   };
 
   return (
@@ -446,7 +415,7 @@ export const BazarForm: React.FC<BazarFormProps> = ({
             <ThemedText style={styles.sectionTitle}>
               Receipt (Optional)
             </ThemedText>
-            {receiptImage ? (
+            {/* {receiptImage ? ( // This state was removed, so this block is removed
               <View style={styles.imageContainer}>
                 <View style={styles.imagePreview}>
                   <Ionicons name='image' size={40} color='#6b7280' />
@@ -461,14 +430,12 @@ export const BazarForm: React.FC<BazarFormProps> = ({
                   <Ionicons name='close' size={20} color='#ef4444' />
                 </TouchableOpacity>
               </View>
-            ) : (
-              <TouchableOpacity style={styles.uploadButton} onPress={pickImage}>
-                <Ionicons name='camera' size={24} color='#6b7280' />
-                <ThemedText style={styles.uploadText}>
-                  Upload Receipt
-                </ThemedText>
-              </TouchableOpacity>
-            )}
+            ) : ( */}
+            <TouchableOpacity style={styles.uploadButton} onPress={pickImage}>
+              <Ionicons name='camera' size={24} color='#6b7280' />
+              <ThemedText style={styles.uploadText}>Upload Receipt</ThemedText>
+            </TouchableOpacity>
+            {/* )} */}
           </View>
 
           {/* Action Buttons */}
@@ -500,6 +467,89 @@ export const BazarForm: React.FC<BazarFormProps> = ({
           </View>
         </ThemedView>
       </ScrollView>
+
+      {/* Date Picker Modal */}
+      <Modal
+        visible={showDatePicker}
+        transparent={true}
+        animationType='slide'
+        onRequestClose={() => setShowDatePicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <ThemedText style={styles.modalTitle}>Select Date</ThemedText>
+              <TouchableOpacity
+                onPress={() => setShowDatePicker(false)}
+                style={styles.closeButton}
+              >
+                <Ionicons name='close' size={24} color='#6b7280' />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.datePickerContainer}>
+              <TouchableOpacity
+                style={styles.dateOption}
+                onPress={() => {
+                  const today = new Date();
+                  const dateString = today.toISOString().split('T')[0];
+                  setFormData(prev => ({ ...prev, date: dateString }));
+                  setShowDatePicker(false);
+                }}
+              >
+                <Ionicons name='today' size={20} color='#667eea' />
+                <ThemedText style={styles.dateOptionText}>Today</ThemedText>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.dateOption}
+                onPress={() => {
+                  const yesterday = new Date();
+                  yesterday.setDate(yesterday.getDate() - 1);
+                  const dateString = yesterday.toISOString().split('T')[0];
+                  setFormData(prev => ({ ...prev, date: dateString }));
+                  setShowDatePicker(false);
+                }}
+              >
+                <Ionicons name='time' size={20} color='#f59e0b' />
+                <ThemedText style={styles.dateOptionText}>Yesterday</ThemedText>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.dateOption}
+                onPress={() => {
+                  const twoDaysAgo = new Date();
+                  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+                  const dateString = twoDaysAgo.toISOString().split('T')[0];
+                  setFormData(prev => ({ ...prev, date: dateString }));
+                  setShowDatePicker(false);
+                }}
+              >
+                <Ionicons name='calendar' size={20} color='#10b981' />
+                <ThemedText style={styles.dateOptionText}>
+                  2 Days Ago
+                </ThemedText>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.dateOption}
+                onPress={() => {
+                  const threeDaysAgo = new Date();
+                  threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+                  const dateString = threeDaysAgo.toISOString().split('T')[0];
+                  setFormData(prev => ({ ...prev, date: dateString }));
+                  setShowDatePicker(false);
+                }}
+              >
+                <Ionicons name='calendar-outline' size={20} color='#6366f1' />
+                <ThemedText style={styles.dateOptionText}>
+                  3 Days Ago
+                </ThemedText>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 };
@@ -737,5 +787,54 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
     marginLeft: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '80%',
+    alignItems: 'center',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#374151',
+  },
+  closeButton: {
+    padding: 8,
+  },
+  datePickerContainer: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  dateOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    marginBottom: 10,
+    width: '100%',
+    backgroundColor: '#f9fafb',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  dateOptionText: {
+    marginLeft: 12,
+    fontSize: 16,
+    color: '#374151',
   },
 });

@@ -20,11 +20,15 @@ class AuthMiddleware {
     return (req, res, next) => {
       console.log('Auth middleware called - synchronous version');
 
-      // Create minimal user object for testing
+      // Use environment variable for test user or database lookup
+      const testUserId = process.env.TEST_USER_ID || '687bb6f40864ea7356a4d5e4';
+      const testUserEmail = process.env.TEST_USER_EMAIL || 'test@mess.com';
+
+      // Create minimal user object for testing - should be replaced with real auth
       const user = {
-        _id: '687bb6f40864ea7356a4d5e4',
-        id: '687bb6f40864ea7356a4d5e4', // Add id field for compatibility
-        email: 'mahbub@mess.com',
+        _id: testUserId,
+        id: testUserId, // Add id field for compatibility
+        email: testUserEmail,
         role: 'admin',
         status: 'active',
       };
@@ -54,13 +58,13 @@ class AuthMiddleware {
       }
 
       if (!allowedRoles.includes(req.user.role)) {
-        logger.warn('Unauthorized access attempt', {
-          userId: req.user._id,
-          userRole: req.user.role,
-          requiredRoles: allowedRoles,
-          endpoint: req.originalUrl,
-          ip: req.ip,
-        });
+        // logger.warn('Unauthorized access attempt', {
+        //   userId: req.user._id,
+        //   userRole: req.user.role,
+        //   requiredRoles: allowedRoles,
+        //   endpoint: req.originalUrl,
+        //   ip: req.ip,
+        // });
 
         return res.status(403).json({
           success: false,
@@ -133,7 +137,7 @@ class AuthMiddleware {
             }
           } catch (error) {
             // Token is invalid, continue without authentication
-            logger.debug('Optional auth failed', { error: error.message });
+            // logger.debug('Optional auth failed', { error: error.message });
           }
         }
 
@@ -163,10 +167,10 @@ class AuthMiddleware {
         return req.ip || 'unknown';
       },
       handler: (req, res) => {
-        logger.warn('Authentication rate limit exceeded', {
-          ip: req.ip,
-          userAgent: req.get('User-Agent'),
-        });
+        // logger.warn('Authentication rate limit exceeded', {
+        //   ip: req.ip,
+        //   userAgent: req.get('User-Agent'),
+        // });
         res.status(429).json({
           success: false,
           error: 'Too many authentication attempts. Please try again later.',
@@ -211,10 +215,10 @@ class AuthMiddleware {
         // Update last login
         await user.updateLastLogin();
 
-        logger.info('Token refreshed', {
-          userId: user._id,
-          email: user.email,
-        });
+        // logger.info('Token refreshed', {
+        //   userId: user._id,
+        //   email: user.email,
+        // });
 
         res.json({
           success: true,
@@ -239,10 +243,10 @@ class AuthMiddleware {
           });
         }
 
-        logger.error('Token refresh error', {
-          error: error.message,
-          ip: req.ip,
-        });
+        // logger.error('Token refresh error', {
+        //   error: error.message,
+        //   ip: req.ip,
+        // });
 
         return res.status(401).json({
           success: false,
@@ -267,10 +271,10 @@ class AuthMiddleware {
           cacheManager.set(blacklistKey, true, 3600); // 1 hour
         }
 
-        logger.info('User logged out', {
-          userId: req.user?._id,
-          ip: req.ip,
-        });
+        // logger.info('User logged out', {
+        //   userId: req.user?._id,
+        //   ip: req.ip,
+        // });
 
         res.json({
           success: true,

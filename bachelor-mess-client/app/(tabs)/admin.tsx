@@ -35,12 +35,17 @@ export default function AdminScreen() {
 
   const loadMealStats = async () => {
     try {
+      setLoading(true);
       const response = await mealService.getMealStats();
       if (response.success && response.data) {
         setMealStats(response.data);
+      } else {
+        console.error('Failed to load meal stats:', response.error);
       }
     } catch (error) {
       console.error('Error loading meal stats:', error);
+    } finally {
+      setLoading(false);
     }
   };
 

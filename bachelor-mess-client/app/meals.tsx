@@ -58,7 +58,7 @@ export default function MealsScreen() {
     clearErrorMeals,
   } = useActivity({
     autoFetch: true,
-    refreshInterval: 60000, // Refresh every minute
+    // Removed refreshInterval to prevent excessive API calls
   });
 
   // Handle status filter

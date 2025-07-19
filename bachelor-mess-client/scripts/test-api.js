@@ -1,22 +1,19 @@
-const fetch = require('node-fetch');
+const axios = require('axios');
+
+// Test configuration
+const baseUrl = 'http://localhost:3000';
 
 async function testApiConnection() {
-  const baseUrl = 'http://localhost:3000';
-
   console.log('🧪 Testing API connection...');
   console.log(`🔗 Testing URL: ${baseUrl}/health`);
 
   try {
-    const response = await fetch(`${baseUrl}/health`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+    const response = await axios.get(`${baseUrl}/health`, {
       timeout: 5000,
     });
 
-    if (response.ok) {
-      const data = await response.json();
+    if (response.status === 200) {
+      const data = response.data;
       console.log('✅ API is running and accessible!');
       console.log('📊 Health check response:', data);
       return true;
@@ -39,20 +36,15 @@ async function testUserStatsEndpoint() {
   console.log(`🔗 Testing URL: ${baseUrl}/user-stats/dashboard`);
 
   try {
-    const response = await fetch(`${baseUrl}/user-stats/dashboard`, {
-      method: 'GET',
+    const response = await axios.get(`${baseUrl}/user-stats/dashboard`, {
       headers: {
-        'Content-Type': 'application/json',
         Authorization: 'Bearer test-token', // This will fail auth but we can see if endpoint exists
       },
       timeout: 5000,
     });
 
     console.log('📊 Response status:', response.status);
-    console.log(
-      '📊 Response headers:',
-      Object.fromEntries(response.headers.entries())
-    );
+    console.log('📊 Response headers:', response.headers);
 
     if (response.status === 401) {
       console.log('✅ Endpoint exists but requires authentication (expected)');
