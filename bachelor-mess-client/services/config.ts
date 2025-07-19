@@ -2,7 +2,7 @@
 export const API_CONFIG = {
   // Base URL - Change this to switch between development and production
   BASE_URL: __DEV__
-    ? 'http://localhost:3000/api'
+    ? 'http://192.168.0.130:3000/api'
     : 'https://your-production-domain.com/api',
 
   // API Version

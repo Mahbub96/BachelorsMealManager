@@ -1,29 +1,110 @@
-# Bachelor Mess API - Setup Guide
+# Bachelor Mess Manager Backend - Complete Setup Guide
 
-## 🚀 Complete Setup Instructions
+This guide will help you set up the Bachelor Mess Manager Backend with a perfect environment configuration.
 
-This guide will help you set up the Bachelor Mess API from scratch.
+## 🎯 Overview
+
+The backend is designed with modern architecture principles, comprehensive security, and scalability in mind. This setup guide ensures you have everything configured perfectly for development, testing, and production environments.
 
 ## 📋 Prerequisites
 
-1. **Node.js** (v18 or higher)
-2. **MongoDB** (local installation or MongoDB Atlas account)
-3. **Cloudinary** account (for file uploads)
-4. **Git** (for version control)
+### System Requirements
 
-## 🛠️ Installation Steps
+- **Node.js**: 18.0.0 or higher
+- **npm**: 8.0.0 or higher
+- **MongoDB**: 6.0 or higher
+- **Git**: Latest version
+- **Docker**: 20.0 or higher (optional)
 
-### Step 1: Clone and Setup
+### Verify Prerequisites
 
 ```bash
-# Clone the repository (if using git)
-git clone <repository-url>
-cd bachelor-mess-api
+# Check Node.js version
+node --version
 
-# Or create the project directory
-mkdir bachelor-mess-api
-cd bachelor-mess-api
+# Check npm version
+npm --version
+
+# Check Git version
+git --version
+
+# Check Docker version (if using Docker)
+docker --version
+docker-compose --version
 ```
+
+## 🚀 Quick Setup (Recommended)
+
+### 1. Clone and Navigate
+
+```bash
+git clone <repository-url>
+cd BachelorMessManagerBackend
+```
+
+### 2. Run Automated Setup
+
+```bash
+npm run dev:setup
+```
+
+This single command will:
+
+- ✅ Check all prerequisites
+- ✅ Create environment configuration
+- ✅ Install dependencies
+- ✅ Generate secure secrets
+- ✅ Create necessary directories
+- ✅ Run code quality checks
+- ✅ Test the setup
+
+### 3. Start Development Server
+
+```bash
+npm run dev
+```
+
+Your backend is now running at `http://localhost:3000`!
+
+## 🔧 Manual Setup (Advanced)
+
+If you prefer manual setup or need to customize specific components:
+
+### Step 1: Environment Configuration
+
+1. **Copy environment template**
+
+   ```bash
+   cp env.example .env
+   ```
+
+2. **Configure environment variables**
+
+   ```bash
+   # Edit .env file with your values
+   nano .env
+   ```
+
+3. **Required configurations**
+
+   ```env
+   # Server Configuration
+   NODE_ENV=development
+   PORT=3000
+   HOST=0.0.0.0
+
+   # Database Configuration
+   MONGODB_URI=mongodb://localhost:27017/bachelor-mess
+
+   # JWT Configuration (will be auto-generated)
+   JWT_SECRET=your-secure-jwt-secret
+   JWT_REFRESH_SECRET=your-secure-refresh-secret
+
+   # Cloudinary Configuration (for file uploads)
+   CLOUDINARY_CLOUD_NAME=your-cloud-name
+   CLOUDINARY_API_KEY=your-api-key
+   CLOUDINARY_API_SECRET=your-api-secret
+   ```
 
 ### Step 2: Install Dependencies
 
@@ -31,367 +112,438 @@ cd bachelor-mess-api
 npm install
 ```
 
-### Step 3: Environment Configuration
+### Step 3: Create Directories
 
 ```bash
-# Copy the environment template
-cp env.example .env
-
-# Edit the .env file with your configuration
-nano .env
+mkdir -p logs uploads backups temp
 ```
 
-**Required Environment Variables:**
+### Step 4: Generate Secure Secrets
 
-```env
-# Server Configuration
-NODE_ENV=development
-PORT=3000
-
-# Database Configuration
-MONGODB_URI=mongodb://localhost:27017/bachelor-mess
-MONGODB_URI_PROD=mongodb+srv://username:password@cluster.mongodb.net/bachelor-mess
-
-# JWT Configuration (CHANGE THESE IN PRODUCTION!)
-JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
-JWT_EXPIRES_IN=7d
-JWT_REFRESH_SECRET=your-refresh-secret-key
-JWT_REFRESH_EXPIRES_IN=30d
-
-# Cloudinary Configuration
-CLOUDINARY_CLOUD_NAME=your-cloud-name
-CLOUDINARY_API_KEY=your-api-key
-CLOUDINARY_API_SECRET=your-api-secret
-
-# Security Configuration
-BCRYPT_ROUNDS=12
-RATE_LIMIT_WINDOW_MS=900000
-RATE_LIMIT_MAX_REQUESTS=100
-SLOW_DOWN_DELAY_MS=500
-
-# File Upload Configuration
-MAX_FILE_SIZE=5242880
-ALLOWED_FILE_TYPES=image/jpeg,image/png,image/webp
-
-# Logging Configuration
-LOG_LEVEL=info
-LOG_FILE_PATH=logs/app.log
-
-# CORS Configuration
-CORS_ORIGIN=http://localhost:3000,http://localhost:3001
-CORS_CREDENTIALS=true
-
-# API Configuration
-API_PREFIX=/api
-API_VERSION=v1
+```bash
+node scripts/generate-secrets.js
 ```
 
-### Step 4: Database Setup
+### Step 5: Database Setup
 
 #### Option A: Local MongoDB
 
-1. Install MongoDB locally
-2. Start MongoDB service
-3. Create database: `bachelor-mess`
+1. **Install MongoDB**
 
-#### Option B: MongoDB Atlas
+   ```bash
+   # macOS (using Homebrew)
+   brew install mongodb-community
 
-1. Create MongoDB Atlas account
-2. Create a new cluster
+   # Ubuntu/Debian
+   sudo apt-get install mongodb
+
+   # Windows
+   # Download from https://www.mongodb.com/try/download/community
+   ```
+
+2. **Start MongoDB**
+
+   ```bash
+   # macOS
+   brew services start mongodb-community
+
+   # Ubuntu/Debian
+   sudo systemctl start mongod
+
+   # Windows
+   # Start MongoDB service
+   ```
+
+#### Option B: Docker MongoDB
+
+```bash
+# Start MongoDB with Docker
+docker run -d \
+  --name mongodb \
+  -p 27017:27017 \
+  -v mongodb_data:/data/db \
+  mongo:6.0
+
+# Or use Docker Compose
+docker-compose up mongo -d
+```
+
+#### Option C: MongoDB Atlas (Cloud)
+
+1. Create account at [MongoDB Atlas](https://www.mongodb.com/atlas)
+2. Create a cluster
 3. Get connection string
 4. Update `MONGODB_URI_PROD` in `.env`
 
-### Step 5: Cloudinary Setup
-
-1. Create Cloudinary account
-2. Get your credentials from dashboard
-3. Update Cloudinary variables in `.env`
-
-### Step 6: Start the Server
+### Step 6: Verify Setup
 
 ```bash
-# Development mode
-npm run dev
+# Run health check
+npm run health:check
 
-# Production mode
-npm start
-```
+# Run tests
+npm test
 
-The API will be available at `http://localhost:3000`
-
-## 🧪 Testing the API
-
-### Health Check
-
-```bash
-curl http://localhost:3000/health
-```
-
-Expected response:
-```json
-{
-  "success": true,
-  "message": "Bachelor Mess API is running",
-  "timestamp": "2024-01-15T10:30:00.000Z",
-  "environment": "development",
-  "version": "1.0.0"
-}
-```
-
-### Register a User
-
-```bash
-curl -X POST http://localhost:3000/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Admin User",
-    "email": "admin@example.com",
-    "password": "AdminPass123",
-    "role": "admin"
-  }'
-```
-
-### Login
-
-```bash
-curl -X POST http://localhost:3000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "admin@example.com",
-    "password": "AdminPass123"
-  }'
+# Run linting
+npm run lint
 ```
 
 ## 🐳 Docker Setup
 
-### Using Docker Compose
+### Complete Docker Environment
 
 ```bash
-# Build and start all services
+# Start all services (API, MongoDB, Redis, Mongo Express)
 docker-compose up -d
 
 # View logs
-docker-compose logs -f app
+docker-compose logs -f
 
 # Stop services
 docker-compose down
 ```
 
-### Manual Docker Build
+### Individual Docker Services
 
 ```bash
-# Build the image
-docker build -t bachelor-mess-api .
+# Build API image
+npm run docker:build
 
-# Run the container
-docker run -p 3000:3000 --env-file .env bachelor-mess-api
+# Run API container
+npm run docker:run
+
+# Start MongoDB only
+docker-compose up mongo -d
+
+# Start Redis only
+docker-compose up redis -d
 ```
 
-## 📊 API Endpoints Overview
+### Docker Environment Variables
 
-### Authentication
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - User login
-- `GET /api/auth/profile` - Get user profile
-- `PUT /api/auth/profile` - Update user profile
-- `POST /api/auth/refresh` - Refresh token
-- `POST /api/auth/logout` - User logout
+The `docker-compose.yml` includes all necessary environment variables. You can override them by creating a `.env` file in the project root.
 
-### Dashboard
-- `GET /api/dashboard/stats` - Get dashboard statistics
-- `GET /api/dashboard/activities` - Get recent activities
-- `GET /api/dashboard` - Get combined dashboard data
+## 🔒 Security Configuration
 
-### Meals
-- `POST /api/meals/submit` - Submit daily meals
-- `GET /api/meals/user` - Get user meals
-- `GET /api/meals/all` - Get all meals (admin)
-- `PUT /api/meals/:id/status` - Update meal status (admin)
-- `GET /api/meals/stats` - Get meal statistics (admin)
+### JWT Secrets
 
-### Bazar
-- `POST /api/bazar/submit` - Submit bazar entry
-- `GET /api/bazar/user` - Get user bazar entries
-- `GET /api/bazar/all` - Get all bazar entries (admin)
-- `PUT /api/bazar/:id/status` - Update bazar status (admin)
-- `GET /api/bazar/stats` - Get bazar statistics (admin)
+The setup automatically generates secure JWT secrets. If you need to regenerate:
 
-### Users (Admin Only)
-- `GET /api/users/all` - Get all users
-- `GET /api/users/:id` - Get user by ID
-- `POST /api/users/create` - Create user
-- `PUT /api/users/:id` - Update user
-- `DELETE /api/users/:id` - Delete user
+```bash
+# Generate new secrets
+node scripts/generate-secrets.js
 
-### Analytics
-- `GET /api/analytics` - Get analytics data
-- `GET /api/analytics/meals` - Get meal analytics
-- `GET /api/analytics/expenses` - Get expense analytics
-- `GET /api/analytics/users` - Get user analytics (admin)
-- `GET /api/analytics/comparison` - Get comparison analytics
-- `GET /api/analytics/realtime` - Get real-time analytics
+# Or manually update .env
+JWT_SECRET=your-64-character-secret
+JWT_REFRESH_SECRET=your-64-character-refresh-secret
+```
 
-## 🔒 Security Features
+### Environment-Specific Security
 
-### Authentication & Authorization
-- JWT-based authentication
-- Role-based access control (Admin/Member)
-- Password hashing with bcrypt
-- Token refresh mechanism
+#### Development
 
-### Input Validation
-- Express-validator for request validation
-- Joi for complex schema validation
-- XSS protection
-- NoSQL injection protection
+```env
+NODE_ENV=development
+ENABLE_SECURITY=true
+LOG_LEVEL=debug
+```
 
-### Rate Limiting
-- Request rate limiting
-- Slow down mechanism
-- IP-based restrictions
+#### Production
 
-### File Upload Security
-- File type validation
-- File size limits
-- Secure upload to Cloudinary
+```env
+NODE_ENV=production
+ENABLE_SECURITY=true
+LOG_LEVEL=info
+ENABLE_MONITORING=true
+```
 
-## 📝 Development Workflow
+#### Testing
+
+```env
+NODE_ENV=test
+ENABLE_SECURITY=false
+LOG_LEVEL=error
+```
+
+## 📊 Database Configuration
+
+### Connection Options
+
+```env
+# Basic connection
+MONGODB_URI=mongodb://localhost:27017/bachelor-mess
+
+# With authentication
+MONGODB_URI=mongodb://username:password@localhost:27017/bachelor-mess
+
+# MongoDB Atlas
+MONGODB_URI_PROD=mongodb+srv://username:password@cluster.mongodb.net/bachelor-mess
+```
+
+### Connection Pool Settings
+
+```env
+MONGODB_MAX_POOL_SIZE=10
+MONGODB_MIN_POOL_SIZE=2
+MONGODB_SERVER_SELECTION_TIMEOUT=5000
+MONGODB_SOCKET_TIMEOUT=45000
+MONGODB_MAX_IDLE_TIME=30000
+```
+
+## 🔧 Development Tools
 
 ### Code Quality
 
 ```bash
-# Lint code
-npm run lint
+# Linting
+npm run lint              # Check code style
+npm run lint:fix          # Fix code style issues
+npm run lint:check        # Strict linting check
 
-# Fix linting issues
-npm run lint:fix
+# Formatting
+npm run format            # Format code
+npm run format:check      # Check formatting
 
-# Format code
-npm run format
-
-# Security audit
-npm run security-check
+# Security
+npm run security-check    # Security audit
+npm run security-fix      # Fix vulnerabilities
 ```
 
 ### Testing
 
 ```bash
-# Run tests
+# Run all tests
 npm test
 
-# Run tests in watch mode
-npm run test:watch
+# Run specific test types
+npm run test:unit         # Unit tests only
+npm run test:integration  # Integration tests only
+npm run test:coverage     # With coverage report
+
+# Watch mode
+npm run test:watch        # Run tests in watch mode
 ```
 
-### Database Management
+### Debugging
 
 ```bash
-# Access MongoDB shell
-mongosh bachelor-mess
+# Start with debugging
+npm run dev:debug
 
-# Backup database
-mongodump --db bachelor-mess --out ./backup
+# Debug with Node.js inspector
+node --inspect server.js
 
-# Restore database
-mongorestore --db bachelor-mess ./backup/bachelor-mess
+# Debug with Chrome DevTools
+node --inspect-brk server.js
 ```
 
-## 🚀 Production Deployment
+## 📝 Logging Configuration
 
-### Environment Setup
+### Log Levels
 
-1. Set `NODE_ENV=production`
-2. Use strong JWT secrets
-3. Configure production MongoDB URI
-4. Set up proper CORS origins
-5. Configure Cloudinary credentials
+```env
+LOG_LEVEL=info            # error, warn, info, debug
+LOG_FILE_PATH=logs/app.log
+ENABLE_LOGGING=true
+LOG_MAX_FILES=5
+LOG_MAX_SIZE=10m
+```
 
-### Performance Optimization
+### Log Rotation
 
-1. Enable compression
-2. Use PM2 for process management
-3. Set up monitoring and logging
-4. Configure load balancing
-5. Use CDN for static files
+```bash
+# Manual log rotation
+npm run logs:rotate
 
-### Security Checklist
+# View logs
+npm run logs:view
 
-- [ ] Change default JWT secrets
-- [ ] Set up HTTPS
-- [ ] Configure firewall rules
-- [ ] Enable rate limiting
-- [ ] Set up monitoring
-- [ ] Regular security audits
-- [ ] Database backups
-- [ ] Log monitoring
+# Clear logs
+npm run logs:clear
+```
 
-## 🆘 Troubleshooting
+## 🔍 Monitoring & Health Checks
+
+### Health Check Endpoint
+
+```bash
+# Check application health
+curl http://localhost:3000/api/v1/health
+
+# Or use the script
+npm run health:check
+```
+
+### Monitoring Dashboard
+
+```bash
+# Start monitoring
+npm run monitor:start
+
+# Check monitoring status
+npm run monitor:status
+```
+
+## 🚀 Deployment Preparation
+
+### Staging Deployment
+
+```bash
+# Run deployment checks
+npm run deploy:staging
+
+# This includes:
+# - Running all tests
+# - Code quality checks
+# - Security audit
+# - Build verification
+```
+
+### Production Deployment
+
+```bash
+# Full production deployment
+npm run deploy:production
+
+# This includes:
+# - All staging checks
+# - Docker image build
+# - Production configuration
+```
+
+## 🐛 Troubleshooting
 
 ### Common Issues
 
-1. **MongoDB Connection Error**
-   - Check if MongoDB is running
-   - Verify connection string
-   - Check network connectivity
-
-2. **JWT Token Issues**
-   - Verify JWT_SECRET is set
-   - Check token expiration
-   - Validate token format
-
-3. **File Upload Errors**
-   - Check Cloudinary credentials
-   - Verify file size limits
-   - Check file type restrictions
-
-4. **CORS Errors**
-   - Update CORS_ORIGIN in .env
-   - Check frontend origin
-   - Verify CORS configuration
-
-### Logs
+#### 1. MongoDB Connection Failed
 
 ```bash
-# View application logs
-tail -f logs/combined.log
+# Check if MongoDB is running
+docker-compose up mongo -d
 
-# View error logs
-tail -f logs/error.log
+# Or start local MongoDB
+mongod
 
-# View Docker logs
-docker-compose logs -f app
+# Check connection
+mongo --eval "db.adminCommand('ping')"
 ```
 
-## 📞 Support
+#### 2. Port Already in Use
 
-For issues and questions:
-1. Check the logs for error messages
-2. Verify environment configuration
-3. Test individual endpoints
-4. Check database connectivity
-5. Review security settings
+```bash
+# Find process using port
+lsof -i :3000
 
-## 🔄 Updates and Maintenance
+# Kill process
+kill -9 <PID>
 
-### Regular Maintenance Tasks
+# Or change port in .env
+PORT=3001
+```
 
-1. **Weekly**
-   - Check application logs
-   - Monitor performance metrics
-   - Review security alerts
+#### 3. Permission Issues
 
-2. **Monthly**
-   - Update dependencies
-   - Backup database
-   - Review access logs
-   - Security audit
+```bash
+# Fix file permissions
+chmod +x scripts/*.js
 
-3. **Quarterly**
-   - Performance optimization
-   - Security updates
-   - Feature updates
-   - Documentation review
+# Fix directory permissions
+chmod 755 logs uploads backups
+```
 
----
+#### 4. Node.js Version Issues
 
-**Happy Coding! 🎉** 
+```bash
+# Check Node.js version
+node --version
+
+# Install correct version (using nvm)
+nvm install 18
+nvm use 18
+```
+
+#### 5. Dependency Issues
+
+```bash
+# Clear npm cache
+npm cache clean --force
+
+# Remove node_modules and reinstall
+rm -rf node_modules package-lock.json
+npm install
+```
+
+### Debug Mode
+
+```bash
+# Start with verbose logging
+NODE_ENV=development LOG_LEVEL=debug npm run dev
+
+# Start with debugging enabled
+npm run dev:debug
+```
+
+### Log Analysis
+
+```bash
+# View real-time logs
+npm run logs:view
+
+# Search for errors
+grep "ERROR" logs/app.log
+
+# Search for specific patterns
+grep "MongoDB" logs/app.log
+```
+
+## 📚 Additional Resources
+
+### Documentation
+
+- [API Documentation](./API_REQUIREMENT_DOC.md)
+- [Authentication Guide](./AUTHENTICATION_IMPLEMENTATION.md)
+- [Uniform Utilities Guide](./UNIFORM_UTILITIES_GUIDE.md)
+
+### External Resources
+
+- [Node.js Documentation](https://nodejs.org/docs/)
+- [Express.js Guide](https://expressjs.com/)
+- [MongoDB Documentation](https://docs.mongodb.com/)
+- [JWT.io](https://jwt.io/)
+
+### Community Support
+
+- GitHub Issues
+- Stack Overflow
+- Node.js Community
+
+## ✅ Verification Checklist
+
+After setup, verify these items:
+
+- [ ] Node.js version is 18+ (`node --version`)
+- [ ] MongoDB is running and accessible
+- [ ] Environment variables are configured
+- [ ] Dependencies are installed (`npm list`)
+- [ ] Health check passes (`npm run health:check`)
+- [ ] Tests pass (`npm test`)
+- [ ] Linting passes (`npm run lint`)
+- [ ] Application starts without errors (`npm run dev`)
+- [ ] API endpoints are accessible
+- [ ] Database collections are created
+- [ ] Default admin user exists
+- [ ] Logs are being written
+- [ ] File uploads work (if Cloudinary configured)
+
+## 🎉 Success!
+
+Your Bachelor Mess Manager Backend is now perfectly configured and ready for development!
+
+**Next Steps:**
+
+1. Configure your specific environment variables
+2. Set up Cloudinary for file uploads
+3. Start developing your features
+4. Deploy to your preferred platform
+
+**Happy Coding! 🚀**

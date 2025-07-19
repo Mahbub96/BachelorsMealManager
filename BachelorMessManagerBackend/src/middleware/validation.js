@@ -8,7 +8,7 @@ const handleValidationErrors = (req, res, next) => {
     return res.status(400).json({
       success: false,
       error: 'Validation failed',
-      details: errors.array()
+      details: errors.array(),
     });
   }
   next();
@@ -28,12 +28,14 @@ const validateRegistration = [
     .isLength({ min: 6 })
     .withMessage('Password must be at least 6 characters long')
     .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
-    .withMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number'),
+    .withMessage(
+      'Password must contain at least one uppercase letter, one lowercase letter, and one number'
+    ),
   body('role')
     .optional()
     .isIn(['admin', 'member'])
     .withMessage('Role must be either admin or member'),
-  handleValidationErrors
+  handleValidationErrors,
 ];
 
 // User login validation
@@ -42,34 +44,24 @@ const validateLogin = [
     .isEmail()
     .normalizeEmail()
     .withMessage('Please provide a valid email'),
-  body('password')
-    .notEmpty()
-    .withMessage('Password is required'),
-  handleValidationErrors
+  body('password').notEmpty().withMessage('Password is required'),
+  handleValidationErrors,
 ];
 
 // Meal submission validation
 const validateMealSubmission = [
-  body('date')
-    .isISO8601()
-    .withMessage('Please provide a valid date'),
+  body('date').isISO8601().withMessage('Please provide a valid date'),
   body('breakfast')
     .optional()
     .isBoolean()
     .withMessage('Breakfast must be a boolean'),
-  body('lunch')
-    .optional()
-    .isBoolean()
-    .withMessage('Lunch must be a boolean'),
-  body('dinner')
-    .optional()
-    .isBoolean()
-    .withMessage('Dinner must be a boolean'),
+  body('lunch').optional().isBoolean().withMessage('Lunch must be a boolean'),
+  body('dinner').optional().isBoolean().withMessage('Dinner must be a boolean'),
   body('notes')
     .optional()
     .isLength({ max: 500 })
     .withMessage('Notes must be less than 500 characters'),
-  handleValidationErrors
+  handleValidationErrors,
 ];
 
 // Bazar submission validation
@@ -95,10 +87,8 @@ const validateBazarSubmission = [
     .optional()
     .isLength({ max: 500 })
     .withMessage('Description must be less than 500 characters'),
-  body('date')
-    .isISO8601()
-    .withMessage('Please provide a valid date'),
-  handleValidationErrors
+  body('date').isISO8601().withMessage('Please provide a valid date'),
+  handleValidationErrors,
 ];
 
 // Status update validation
@@ -110,7 +100,7 @@ const validateStatusUpdate = [
     .optional()
     .isLength({ max: 500 })
     .withMessage('Notes must be less than 500 characters'),
-  handleValidationErrors
+  handleValidationErrors,
 ];
 
 // User creation/update validation
@@ -125,7 +115,7 @@ const validateUserData = [
     .withMessage('Please provide a valid email'),
   body('phone')
     .optional()
-    .matches(/^[\+]?[1-9][\d]{0,15}$/)
+    .matches(/^[+]?[1-9][\d]{0,15}$/)
     .withMessage('Please provide a valid phone number'),
   body('role')
     .optional()
@@ -135,7 +125,7 @@ const validateUserData = [
     .optional()
     .isIn(['active', 'inactive'])
     .withMessage('Status must be either active or inactive'),
-  handleValidationErrors
+  handleValidationErrors,
 ];
 
 // User creation validation (admin only)
@@ -152,7 +142,9 @@ const validateUserCreation = [
     .isLength({ min: 6 })
     .withMessage('Password must be at least 6 characters long')
     .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
-    .withMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number'),
+    .withMessage(
+      'Password must contain at least one uppercase letter, one lowercase letter, and one number'
+    ),
   body('phone')
     .optional()
     .matches(/^[\+]?[1-9][\d]{0,15}$/)
@@ -161,7 +153,7 @@ const validateUserCreation = [
     .optional()
     .isIn(['admin', 'member'])
     .withMessage('Role must be either admin or member'),
-  handleValidationErrors
+  handleValidationErrors,
 ];
 
 // User update validation (admin only)
@@ -188,7 +180,41 @@ const validateUserUpdate = [
     .optional()
     .isIn(['active', 'inactive'])
     .withMessage('Status must be either active or inactive'),
-  handleValidationErrors
+  handleValidationErrors,
+];
+
+// Profile update validation (current user)
+const validateProfileUpdate = [
+  body('name')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 50 })
+    .withMessage('Name must be between 2 and 50 characters'),
+  body('phone')
+    .optional()
+    .matches(/^[\+]?[1-9][\d]{0,15}$/)
+    .withMessage('Please provide a valid phone number'),
+  body('currentPassword')
+    .optional()
+    .isLength({ min: 6 })
+    .withMessage('Current password must be at least 6 characters long'),
+  body('newPassword')
+    .optional()
+    .isLength({ min: 6 })
+    .withMessage('New password must be at least 6 characters long')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+    .withMessage(
+      'New password must contain at least one uppercase letter, one lowercase letter, and one number'
+    ),
+  body('confirmPassword')
+    .optional()
+    .custom((value, { req }) => {
+      if (req.body.newPassword && value !== req.body.newPassword) {
+        throw new Error('Password confirmation does not match');
+      }
+      return true;
+    }),
+  handleValidationErrors,
 ];
 
 // Query parameter validation
@@ -213,15 +239,13 @@ const validateQueryParams = [
     .optional()
     .isIn(['week', 'month', 'year'])
     .withMessage('Timeframe must be week, month, or year'),
-  handleValidationErrors
+  handleValidationErrors,
 ];
 
 // ObjectId validation
 const validateObjectId = [
-  param('id')
-    .isMongoId()
-    .withMessage('Invalid ID format'),
-  handleValidationErrors
+  param('id').isMongoId().withMessage('Invalid ID format'),
+  handleValidationErrors,
 ];
 
 // Joi schemas for complex validation
@@ -230,24 +254,27 @@ const mealSchema = Joi.object({
   breakfast: Joi.boolean().default(false),
   lunch: Joi.boolean().default(false),
   dinner: Joi.boolean().default(false),
-  notes: Joi.string().max(500).optional()
+  notes: Joi.string().max(500).optional(),
 });
 
 const bazarSchema = Joi.object({
-  items: Joi.array().items(
-    Joi.object({
-      name: Joi.string().min(1).max(100).required(),
-      quantity: Joi.string().min(1).max(50).required(),
-      price: Joi.number().positive().required()
-    })
-  ).min(1).required(),
+  items: Joi.array()
+    .items(
+      Joi.object({
+        name: Joi.string().min(1).max(100).required(),
+        quantity: Joi.string().min(1).max(50).required(),
+        price: Joi.number().positive().required(),
+      })
+    )
+    .min(1)
+    .required(),
   totalAmount: Joi.number().positive().required(),
   description: Joi.string().max(500).optional(),
-  date: Joi.date().iso().required()
+  date: Joi.date().iso().required(),
 });
 
 // Joi validation middleware
-const validateWithJoi = (schema) => {
+const validateWithJoi = schema => {
   return (req, res, next) => {
     const { error, value } = schema.validate(req.body);
     if (error) {
@@ -256,8 +283,8 @@ const validateWithJoi = (schema) => {
         error: 'Validation failed',
         details: error.details.map(detail => ({
           field: detail.path.join('.'),
-          message: detail.message
-        }))
+          message: detail.message,
+        })),
       });
     }
     req.body = value;
@@ -275,9 +302,10 @@ module.exports = {
   validateUserData,
   validateUserCreation,
   validateUserUpdate,
+  validateProfileUpdate,
   validateQueryParams,
   validateObjectId,
   validateWithJoi,
   mealSchema,
-  bazarSchema
-}; 
+  bazarSchema,
+};

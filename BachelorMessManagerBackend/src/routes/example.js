@@ -5,7 +5,7 @@
 
 const express = require('express');
 const router = express.Router();
-const { protect, authorize } = require('../middleware/auth');
+const AuthMiddleware = require('../middleware/auth');
 const { validateObjectId } = require('../middleware/validation');
 
 // Import uniform utilities
@@ -40,7 +40,7 @@ const Meal = require('../models/Meal');
 /**
  * Example: Create a new user with uniform response and logging
  */
-router.post('/users', protect, authorize('admin'), async (req, res, next) => {
+router.post('/users', AuthMiddleware.protect(), AuthMiddleware.requireAdmin(), async (req, res, next) => {
   try {
     const { name, email, password, role = 'member' } = req.body;
     const context = getRequestContext(req);
@@ -98,7 +98,7 @@ router.post('/users', protect, authorize('admin'), async (req, res, next) => {
 /**
  * Example: Get users with pagination and uniform response
  */
-router.get('/users', protect, authorize('admin'), async (req, res, next) => {
+router.get('/users', AuthMiddleware.protect(), AuthMiddleware.requireAdmin(), async (req, res, next) => {
   try {
     const { page = 1, limit = 10, search, role, status } = req.query;
     const context = getRequestContext(req);
@@ -145,7 +145,7 @@ router.get('/users', protect, authorize('admin'), async (req, res, next) => {
 /**
  * Example: Get user by ID with uniform response
  */
-router.get('/users/:userId', protect, async (req, res, next) => {
+router.get('/users/:userId', AuthMiddleware.protect(), async (req, res, next) => {
   try {
     const { userId } = req.params;
     const context = getRequestContext(req);
@@ -199,7 +199,7 @@ router.get('/users/:userId', protect, async (req, res, next) => {
 /**
  * Example: Update user with uniform response
  */
-router.put('/users/:userId', protect, async (req, res, next) => {
+router.put('/users/:userId', AuthMiddleware.protect(), async (req, res, next) => {
   try {
     const { userId } = req.params;
     const { name, email, role, status } = req.body;
@@ -270,7 +270,7 @@ router.put('/users/:userId', protect, async (req, res, next) => {
 /**
  * Example: Delete user with uniform response
  */
-router.delete('/users/:userId', protect, authorize('admin'), async (req, res, next) => {
+router.delete('/users/:userId', AuthMiddleware.protect(), AuthMiddleware.requireAdmin(), async (req, res, next) => {
   try {
     const { userId } = req.params;
     const context = getRequestContext(req);
@@ -320,7 +320,7 @@ router.delete('/users/:userId', protect, authorize('admin'), async (req, res, ne
 /**
  * Example: Get user statistics with uniform response
  */
-router.get('/users/stats', protect, authorize('admin'), async (req, res, next) => {
+router.get('/users/stats', AuthMiddleware.protect(), AuthMiddleware.requireAdmin(), async (req, res, next) => {
   try {
     const context = getRequestContext(req);
 
@@ -357,7 +357,7 @@ router.get('/users/stats', protect, authorize('admin'), async (req, res, next) =
 /**
  * Example: Get meals with advanced filtering and pagination
  */
-router.get('/meals', protect, async (req, res, next) => {
+router.get('/meals', AuthMiddleware.protect(), async (req, res, next) => {
   try {
     const { page = 1, limit = 10, status, startDate, endDate, userId } = req.query;
     const context = getRequestContext(req);

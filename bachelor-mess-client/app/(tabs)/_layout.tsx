@@ -1,25 +1,47 @@
-import { Ionicons } from "@expo/vector-icons";
-import { Tabs } from "expo-router";
-import React from "react";
+import { Ionicons } from '@expo/vector-icons';
+import { Tabs } from 'expo-router';
+import React from 'react';
+import { View, StyleSheet, Text } from 'react-native';
 
-import { HapticTab } from "@/components/HapticTab";
+import { HapticTab } from '@/components/HapticTab';
+import { AuthAvatar } from '@/components/AuthAvatar';
+import { LoginButton } from '@/components/LoginButton';
+import { useAuth } from '@/context/AuthContext';
 
 export default function TabLayout() {
+  const { user } = useAuth();
+
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: "#667eea",
-        tabBarInactiveTintColor: "#9ca3af",
-        headerShown: false,
+        tabBarActiveTintColor: '#667eea',
+        tabBarInactiveTintColor: '#9ca3af',
+        headerShown: true,
+        header: () => (
+          <View style={styles.header}>
+            <View style={styles.headerContent}>
+              {user && (
+                <View style={styles.welcomeText}>
+                  <Text style={styles.welcomeTitle}>
+                    Welcome, {user.name?.split(' ')[0] || 'User'}!
+                  </Text>
+                </View>
+              )}
+              <View style={styles.headerActions}>
+                {user ? <AuthAvatar size={40} /> : <LoginButton size={40} />}
+              </View>
+            </View>
+          </View>
+        ),
         tabBarButton: HapticTab,
         tabBarStyle: {
-          backgroundColor: "#ffffff",
+          backgroundColor: '#ffffff',
           borderTopWidth: 1,
-          borderTopColor: "#f3f4f6",
+          borderTopColor: '#f3f4f6',
           height: 88,
           paddingBottom: 20,
           paddingTop: 12,
-          shadowColor: "#000",
+          shadowColor: '#000',
           shadowOffset: { width: 0, height: -2 },
           shadowOpacity: 0.1,
           shadowRadius: 8,
@@ -27,7 +49,7 @@ export default function TabLayout() {
         },
         tabBarLabelStyle: {
           fontSize: 12,
-          fontWeight: "600",
+          fontWeight: '600',
           marginTop: 4,
         },
         tabBarIconStyle: {
@@ -36,12 +58,12 @@ export default function TabLayout() {
       }}
     >
       <Tabs.Screen
-        name="index"
+        name='index'
         options={{
-          title: "Home",
+          title: 'Home',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              name={focused ? "home" : "home-outline"}
+              name={focused ? 'home' : 'home-outline'}
               size={24}
               color={color}
             />
@@ -49,12 +71,12 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name='explore'
         options={{
-          title: "Bazar",
+          title: 'Bazar',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              name={focused ? "cart" : "cart-outline"}
+              name={focused ? 'cart' : 'cart-outline'}
               size={24}
               color={color}
             />
@@ -62,12 +84,12 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="meals"
+        name='meals'
         options={{
-          title: "Meals",
+          title: 'Meals',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              name={focused ? "restaurant" : "restaurant-outline"}
+              name={focused ? 'restaurant' : 'restaurant-outline'}
               size={24}
               color={color}
             />
@@ -75,12 +97,12 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="admin"
+        name='admin'
         options={{
-          title: "Admin",
+          title: 'Admin',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              name={focused ? "settings" : "settings-outline"}
+              name={focused ? 'settings' : 'settings-outline'}
               size={24}
               color={color}
             />
@@ -90,3 +112,31 @@ export default function TabLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  header: {
+    backgroundColor: '#fff',
+    paddingTop: 50,
+    paddingHorizontal: 20,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  welcomeText: {
+    flex: 1,
+  },
+  welcomeTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1f2937',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+});

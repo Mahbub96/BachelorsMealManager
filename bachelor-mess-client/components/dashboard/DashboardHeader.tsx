@@ -1,18 +1,19 @@
-import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
-import React from "react";
-import { StyleSheet, TouchableOpacity, View } from "react-native";
-import { ThemedText } from "../ThemedText";
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import React from 'react';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ThemedText } from '../ThemedText';
+import { useAuth } from '@/context/AuthContext';
 
 const DESIGN_SYSTEM = {
   colors: {
-    primary: "#667eea",
-    secondary: "#764ba2",
-    dark: "#1f2937",
+    primary: '#667eea',
+    secondary: '#764ba2',
+    dark: '#1f2937',
     gray: {
-      500: "#6b7280",
-      600: "#4b5563",
+      500: '#6b7280',
+      600: '#4b5563',
     },
   },
   spacing: {
@@ -26,7 +27,7 @@ const DESIGN_SYSTEM = {
   },
   shadows: {
     medium: {
-      shadowColor: "#000",
+      shadowColor: '#000',
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.12,
       shadowRadius: 12,
@@ -41,56 +42,74 @@ interface DashboardHeaderProps {
 }
 
 export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
-  title = "Dashboard",
-  subtitle = "Welcome back! Here&apos;s your mess overview",
+  title = 'Dashboard',
+  subtitle,
 }) => {
   const router = useRouter();
+  const { user } = useAuth();
+
+  const getSubtitle = () => {
+    if (subtitle) return subtitle;
+    if (user) {
+      return `Welcome back, ${
+        user.name?.split(' ')[0] || 'User'
+      }! Here's your mess overview`;
+    }
+    return 'Welcome! Please login to access your mess dashboard';
+  };
 
   return (
     <View style={styles.header}>
       <View style={styles.headerContent}>
         <ThemedText style={styles.headerTitle}>{title}</ThemedText>
-        <ThemedText style={styles.headerSubtitle}>{subtitle}</ThemedText>
+        <ThemedText style={styles.headerSubtitle}>{getSubtitle()}</ThemedText>
         <ThemedText style={styles.headerDate}>
-          {new Date().toLocaleDateString("en-US", {
-            weekday: "long",
-            year: "numeric",
-            month: "long",
-            day: "numeric",
+          {new Date().toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
           })}
         </ThemedText>
       </View>
-      <TouchableOpacity
-        style={styles.notificationButton}
-        onPress={() => router.push("/notifications")}
-      >
-        <LinearGradient
-          colors={[
-            DESIGN_SYSTEM.colors.primary,
-            DESIGN_SYSTEM.colors.secondary,
-          ]}
-          style={styles.notificationGradient}
+      <View style={styles.headerActions}>
+        <TouchableOpacity
+          style={styles.notificationButton}
+          onPress={() => router.push('/notifications')}
         >
-          <Ionicons name="notifications" size={24} color="#fff" />
-        </LinearGradient>
-      </TouchableOpacity>
+          <LinearGradient
+            colors={[
+              DESIGN_SYSTEM.colors.primary,
+              DESIGN_SYSTEM.colors.secondary,
+            ]}
+            style={styles.notificationGradient}
+          >
+            <Ionicons name='notifications' size={24} color='#fff' />
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
     marginBottom: DESIGN_SYSTEM.spacing.xl,
   },
   headerContent: {
     flex: 1,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   headerTitle: {
     fontSize: DESIGN_SYSTEM.fontSize.xxxl,
-    fontWeight: "bold",
+    fontWeight: 'bold',
     color: DESIGN_SYSTEM.colors.dark,
     marginBottom: DESIGN_SYSTEM.spacing.xs,
   },
@@ -107,12 +126,12 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    overflow: "hidden",
+    overflow: 'hidden',
     ...DESIGN_SYSTEM.shadows.medium,
   },
   notificationGradient: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

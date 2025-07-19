@@ -4,60 +4,172 @@ services:
   app:
     build: .
     ports:
-      - "3000:3000"
+      - '3000:3000'
     environment:
+      # Server Configuration
       - NODE_ENV=production
       - PORT=3000
+      - HOST=0.0.0.0
+      - API_PREFIX=/api
+      - API_VERSION=v1
+
+      # Database Configuration
       - MONGODB_URI=mongodb://mongo:27017/bachelor-mess
-      - JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+      - MONGODB_MAX_POOL_SIZE=10
+      - MONGODB_MIN_POOL_SIZE=2
+      - MONGODB_SERVER_SELECTION_TIMEOUT=5000
+      - MONGODB_SOCKET_TIMEOUT=45000
+      - MONGODB_MAX_IDLE_TIME=30000
+
+      # JWT Configuration
+      - JWT_SECRET=bachelor-mess-super-secret-jwt-key-2024-change-in-production
       - JWT_EXPIRES_IN=7d
-      - JWT_REFRESH_SECRET=your-refresh-secret-key
+      - JWT_REFRESH_SECRET=bachelor-mess-refresh-secret-key-2024-change-in-production
       - JWT_REFRESH_EXPIRES_IN=30d
+
+      # Cloudinary Configuration
       - CLOUDINARY_CLOUD_NAME=your-cloud-name
       - CLOUDINARY_API_KEY=your-api-key
       - CLOUDINARY_API_SECRET=your-api-secret
+
+      # Security Configuration
       - BCRYPT_ROUNDS=12
       - RATE_LIMIT_WINDOW_MS=900000
       - RATE_LIMIT_MAX_REQUESTS=100
       - SLOW_DOWN_DELAY_MS=500
+      - ENABLE_SECURITY=true
+
+      # File Upload Configuration
       - MAX_FILE_SIZE=5242880
       - ALLOWED_FILE_TYPES=image/jpeg,image/png,image/webp
+      - UPLOAD_PATH=./uploads
+
+      # Logging Configuration
       - LOG_LEVEL=info
-      - CORS_ORIGIN=http://localhost:3000,http://localhost:3001
+      - LOG_FILE_PATH=logs/app.log
+      - ENABLE_LOGGING=true
+      - LOG_MAX_FILES=5
+      - LOG_MAX_SIZE=10m
+
+      # CORS Configuration
+      - CORS_ORIGIN=http://localhost:3000,http://localhost:3001,http://localhost:8081
       - CORS_CREDENTIALS=true
-      - API_PREFIX=/api
-      - API_VERSION=v1
+
+      # Performance Configuration
+      - ENABLE_COMPRESSION=true
+      - BODY_LIMIT=10mb
+      - ENABLE_HEALTH_CHECK=true
+      - ENABLE_METRICS=true
+      - GRACEFUL_SHUTDOWN_TIMEOUT=30000
+
+      # Monitoring Configuration
+      - ENABLE_MONITORING=false
+      - METRICS_PORT=9090
+      - HEALTH_CHECK_INTERVAL=30000
+
+      # Pagination Configuration
+      - DEFAULT_PAGINATION_LIMIT=10
+      - MAX_PAGINATION_LIMIT=100
+
+      # Cache Configuration
+      - ENABLE_CACHE=true
+      - CACHE_TTL=300
+      - CACHE_MAX_SIZE=100
+
+      # Feature Flags
+      - ENABLE_USER_REGISTRATION=true
+      - ENABLE_EMAIL_VERIFICATION=false
+      - ENABLE_SMS_VERIFICATION=false
+      - ENABLE_PASSWORD_RESET=true
+      - ENABLE_TWO_FACTOR_AUTH=false
+      - ENABLE_AUDIT_LOG=true
+      - ENABLE_BACKUP=true
+
+      # Business Logic Configuration
+      - DEFAULT_MEAL_PRICE=120
+      - MAX_MEALS_PER_DAY=3
+      - MAX_BAZAR_AMOUNT=10000
+      - MEAL_APPROVAL_REQUIRED=false
+      - BAZAR_APPROVAL_REQUIRED=false
+      - AUTO_APPROVE_MEALS=true
+      - AUTO_APPROVE_BAZAR=true
     depends_on:
       - mongo
     volumes:
       - ./uploads:/app/uploads
       - ./logs:/app/logs
+      - ./backups:/app/backups
     restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'node', 'healthcheck.js']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   mongo:
     image: mongo:6.0
     ports:
-      - "27017:27017"
+      - '27017:27017'
     environment:
       - MONGO_INITDB_DATABASE=bachelor-mess
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=admin123
     volumes:
       - mongo_data:/data/db
+      - ./scripts/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
     restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   mongo-express:
     image: mongo-express:1.0.0
     ports:
-      - "8081:8081"
+      - '8081:8081'
     environment:
       - ME_CONFIG_MONGODB_SERVER=mongo
       - ME_CONFIG_MONGODB_PORT=27017
-      - ME_CONFIG_MONGODB_ADMINUSERNAME=
-      - ME_CONFIG_MONGODB_ADMINPASSWORD=
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=admin
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=admin123
       - ME_CONFIG_BASICAUTH_USERNAME=admin
       - ME_CONFIG_BASICAUTH_PASSWORD=admin123
+      - ME_CONFIG_MONGODB_AUTH_DATABASE=admin
     depends_on:
       - mongo
     restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'wget',
+          '--no-verbose',
+          '--tries=1',
+          '--spider',
+          'http://localhost:8081',
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 volumes:
-  mongo_data: 
+  mongo_data:
+  redis_data:

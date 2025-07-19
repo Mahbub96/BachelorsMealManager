@@ -1,9 +1,12 @@
-import React, { createContext, ReactNode, useContext, useState } from 'react';
-
-interface User {
-  name: string;
-  email: string;
-}
+import React, {
+  createContext,
+  ReactNode,
+  useContext,
+  useState,
+  useEffect,
+} from 'react';
+import authService from '@/services/authService';
+import { User } from '@/services/authService';
 
 interface AuthData {
   user: User | null;
@@ -13,7 +16,8 @@ interface AuthData {
 
 interface AuthContextType extends AuthData {
   setAuth: (data: AuthData) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
+  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -21,7 +25,8 @@ const AuthContext = createContext<AuthContextType>({
   token: null,
   role: null,
   setAuth: () => {},
-  logout: () => {},
+  logout: async () => {},
+  isLoading: true,
 });
 
 interface AuthProviderProps {
@@ -34,12 +39,48 @@ export function AuthProvider({ children }: AuthProviderProps) {
     token: null,
     role: null,
   });
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Check for existing authentication on app start
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const isAuthenticated = await authService.isAuthenticated();
+        if (isAuthenticated) {
+          const token = await authService.getStoredToken();
+          const user = await authService.getStoredUser();
+          if (token && user) {
+            setAuthState({
+              user,
+              token,
+              role: user.role,
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error checking authentication:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
 
   const setAuth = (data: AuthData) => setAuthState(data);
-  const logout = () => setAuthState({ user: null, token: null, role: null });
+
+  const logout = async () => {
+    try {
+      await authService.logout();
+    } catch (error) {
+      console.error('Error during logout:', error);
+    } finally {
+      setAuthState({ user: null, token: null, role: null });
+    }
+  };
 
   return (
-    <AuthContext.Provider value={{ ...auth, setAuth, logout }}>
+    <AuthContext.Provider value={{ ...auth, setAuth, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

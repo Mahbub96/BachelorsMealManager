@@ -1,7 +1,10 @@
 const User = require('../models/User');
 const { config } = require('../config/config');
 const logger = require('../utils/logger');
-const { sendSuccessResponse, sendErrorResponse } = require('../utils/responseHandler');
+const {
+  sendSuccessResponse,
+  sendErrorResponse,
+} = require('../utils/responseHandler');
 
 class UserController {
   // Get all users (admin only)
@@ -11,7 +14,7 @@ class UserController {
 
       // Build query
       const query = {};
-      
+
       if (status) {
         query.status = status;
       }
@@ -23,13 +26,13 @@ class UserController {
       if (search) {
         query.$or = [
           { name: { $regex: search, $options: 'i' } },
-          { email: { $regex: search, $options: 'i' } }
+          { email: { $regex: search, $options: 'i' } },
         ];
       }
 
       // Calculate pagination
       const skip = (parseInt(page) - 1) * parseInt(limit);
-      
+
       // Get users with pagination
       const users = await User.find(query)
         .select('-password')
@@ -46,8 +49,8 @@ class UserController {
           page: parseInt(page),
           limit: parseInt(limit),
           total,
-          pages: Math.ceil(total / parseInt(limit))
-        }
+          pages: Math.ceil(total / parseInt(limit)),
+        },
       });
     } catch (error) {
       next(error);
@@ -87,7 +90,7 @@ class UserController {
         email,
         password,
         phone,
-        role
+        role,
       });
 
       logger.info(`New user created by admin ${req.user.email}: ${email}`);
@@ -98,7 +101,7 @@ class UserController {
         email: user.email,
         phone: user.phone,
         role: user.role,
-        status: user.status
+        status: user.status,
       });
     } catch (error) {
       next(error);
@@ -132,15 +135,21 @@ class UserController {
       if (role) updateData.role = role;
       if (status) updateData.status = status;
 
-      const updatedUser = await User.findByIdAndUpdate(
-        userId,
-        updateData,
-        { new: true, runValidators: true }
-      ).select('-password');
+      const updatedUser = await User.findByIdAndUpdate(userId, updateData, {
+        new: true,
+        runValidators: true,
+      }).select('-password');
 
-      logger.info(`User updated by admin ${req.user.email}: ${updatedUser.email}`);
+      logger.info(
+        `User updated by admin ${req.user.email}: ${updatedUser.email}`
+      );
 
-      return sendSuccessResponse(res, 200, 'User updated successfully', updatedUser);
+      return sendSuccessResponse(
+        res,
+        200,
+        'User updated successfully',
+        updatedUser
+      );
     } catch (error) {
       next(error);
     }
@@ -187,14 +196,19 @@ class UserController {
       if (startDate && endDate) {
         dateQuery.date = {
           $gte: new Date(startDate),
-          $lte: new Date(endDate)
+          $lte: new Date(endDate),
         };
       }
 
       // Get user statistics
       const stats = await User.getUserStats(userId, dateQuery);
 
-      return sendSuccessResponse(res, 200, 'User statistics retrieved successfully', stats);
+      return sendSuccessResponse(
+        res,
+        200,
+        'User statistics retrieved successfully',
+        stats
+      );
     } catch (error) {
       next(error);
     }
@@ -204,8 +218,13 @@ class UserController {
   async getCurrentUserProfile(req, res, next) {
     try {
       const user = await User.findById(req.user.id).select('-password');
-      
-      return sendSuccessResponse(res, 200, 'Profile retrieved successfully', user.fullProfile);
+
+      return sendSuccessResponse(
+        res,
+        200,
+        'Profile retrieved successfully',
+        user.fullProfile
+      );
     } catch (error) {
       next(error);
     }
@@ -214,19 +233,65 @@ class UserController {
   // Update current user profile
   async updateCurrentUserProfile(req, res, next) {
     try {
-      const { name, phone } = req.body;
+      const { name, phone, currentPassword, newPassword, confirmPassword } =
+        req.body;
       const updateData = {};
 
+      // Basic profile updates
       if (name) updateData.name = name;
       if (phone !== undefined) updateData.phone = phone;
 
-      const user = await User.findByIdAndUpdate(
-        req.user.id,
-        updateData,
-        { new: true, runValidators: true }
-      ).select('-password');
+      // Handle password change
+      if (newPassword) {
+        if (!currentPassword) {
+          return sendErrorResponse(
+            res,
+            400,
+            'Current password is required to change password'
+          );
+        }
 
-      return sendSuccessResponse(res, 200, 'Profile updated successfully', user.fullProfile);
+        if (newPassword !== confirmPassword) {
+          return sendErrorResponse(
+            res,
+            400,
+            'Password confirmation does not match'
+          );
+        }
+
+        // Get user with password for verification
+        const user = await User.findById(req.user.id).select('+password');
+        if (!user) {
+          return sendErrorResponse(res, 404, 'User not found');
+        }
+
+        // Verify current password
+        const isPasswordValid = await user.matchPassword(currentPassword);
+        if (!isPasswordValid) {
+          return sendErrorResponse(res, 400, 'Current password is incorrect');
+        }
+
+        // Update password
+        updateData.password = newPassword;
+      }
+
+      const user = await User.findByIdAndUpdate(req.user.id, updateData, {
+        new: true,
+        runValidators: true,
+      }).select('-password');
+
+      if (!user) {
+        return sendErrorResponse(res, 404, 'User not found');
+      }
+
+      logger.info(`Profile updated by user: ${user.email}`);
+
+      return sendSuccessResponse(
+        res,
+        200,
+        'Profile updated successfully',
+        user.fullProfile
+      );
     } catch (error) {
       next(error);
     }
@@ -249,18 +314,24 @@ class UserController {
 
       // Prevent admin from deactivating themselves
       if (userId === req.user.id && status === 'inactive') {
-        return sendErrorResponse(res, 400, 'Cannot deactivate your own account');
+        return sendErrorResponse(
+          res,
+          400,
+          'Cannot deactivate your own account'
+        );
       }
 
       user.status = status;
       await user.save();
 
-      logger.info(`User status changed by admin ${req.user.email}: ${user.email} -> ${status}`);
+      logger.info(
+        `User status changed by admin ${req.user.email}: ${user.email} -> ${status}`
+      );
 
       return sendSuccessResponse(res, 200, 'User status updated successfully', {
         id: user._id,
         email: user.email,
-        status: user.status
+        status: user.status,
       });
     } catch (error) {
       next(error);
@@ -290,12 +361,14 @@ class UserController {
       user.role = role;
       await user.save();
 
-      logger.info(`User role changed by admin ${req.user.email}: ${user.email} -> ${role}`);
+      logger.info(
+        `User role changed by admin ${req.user.email}: ${user.email} -> ${role}`
+      );
 
       return sendSuccessResponse(res, 200, 'User role updated successfully', {
         id: user._id,
         email: user.email,
-        role: user.role
+        role: user.role,
       });
     } catch (error) {
       next(error);
@@ -316,7 +389,12 @@ class UserController {
       // Get user activity (this would need to be implemented based on your activity tracking)
       const activity = await User.getUserActivity(userId, parseInt(limit));
 
-      return sendSuccessResponse(res, 200, 'User activity retrieved successfully', activity);
+      return sendSuccessResponse(
+        res,
+        200,
+        'User activity retrieved successfully',
+        activity
+      );
     } catch (error) {
       next(error);
     }
@@ -337,20 +415,23 @@ class UserController {
 
       // Prevent admin from updating themselves
       if (userIds.includes(req.user.id)) {
-        return sendErrorResponse(res, 400, 'Cannot update your own account in bulk operation');
+        return sendErrorResponse(
+          res,
+          400,
+          'Cannot update your own account in bulk operation'
+        );
       }
 
       // Update multiple users
-      const result = await User.updateMany(
-        { _id: { $in: userIds } },
-        updates
-      );
+      const result = await User.updateMany({ _id: { $in: userIds } }, updates);
 
-      logger.info(`Bulk user update by admin ${req.user.email}: ${result.modifiedCount} users updated`);
+      logger.info(
+        `Bulk user update by admin ${req.user.email}: ${result.modifiedCount} users updated`
+      );
 
       return sendSuccessResponse(res, 200, 'Bulk user update successful', {
         updatedCount: result.modifiedCount,
-        totalRequested: userIds.length
+        totalRequested: userIds.length,
       });
     } catch (error) {
       next(error);
@@ -362,7 +443,12 @@ class UserController {
     try {
       const stats = await User.getStats();
 
-      return sendSuccessResponse(res, 200, 'System statistics retrieved successfully', stats);
+      return sendSuccessResponse(
+        res,
+        200,
+        'System statistics retrieved successfully',
+        stats
+      );
     } catch (error) {
       next(error);
     }
@@ -382,8 +468,8 @@ class UserController {
         $or: [
           { name: { $regex: q, $options: 'i' } },
           { email: { $regex: q, $options: 'i' } },
-          { phone: { $regex: q, $options: 'i' } }
-        ]
+          { phone: { $regex: q, $options: 'i' } },
+        ],
       };
 
       if (role) {
@@ -399,15 +485,20 @@ class UserController {
         .sort({ name: 1 })
         .limit(parseInt(limit));
 
-      return sendSuccessResponse(res, 200, 'Users search completed successfully', {
-        users,
-        query: q,
-        count: users.length
-      });
+      return sendSuccessResponse(
+        res,
+        200,
+        'Users search completed successfully',
+        {
+          users,
+          query: q,
+          count: users.length,
+        }
+      );
     } catch (error) {
       next(error);
     }
   }
 }
 
-module.exports = new UserController(); 
+module.exports = new UserController();

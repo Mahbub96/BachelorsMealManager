@@ -1,351 +1,394 @@
-# Bachelor Mess Management API
+# Bachelor Mess Manager Backend
 
-A comprehensive RESTful API for managing bachelor mess operations including meal tracking, expense management, user administration, and analytics.
-
-## 🚀 Features
-
-- **JWT Authentication** with role-based access control
-- **Real-time Analytics** with multiple timeframe support
-- **File Upload** for receipt images (Cloudinary integration)
-- **Comprehensive CRUD** operations for all entities
-- **Advanced Filtering** and search capabilities
-- **Statistics & Reporting** with aggregation pipelines
-- **High Security** with multiple security layers
-- **Scalable Architecture** with proper error handling
-
-## 🛠️ Tech Stack
-
-- **Runtime**: Node.js (v18+)
-- **Framework**: Express.js
-- **Database**: MongoDB with Mongoose ODM
-- **Authentication**: JWT (JSON Web Tokens)
-- **File Upload**: Multer + Cloudinary
-- **Validation**: Express-validator + Joi
-- **Security**: Helmet, CORS, Rate Limiting, XSS Protection
-- **Logging**: Winston
-- **Testing**: Jest
-
-## 📋 Prerequisites
-
-- Node.js (v18 or higher)
-- MongoDB (local or Atlas)
-- Cloudinary account (for file uploads)
+A comprehensive RESTful API for managing bachelor mess operations with modern architecture, security, and scalability.
 
 ## 🚀 Quick Start
 
-### 1. Clone the repository
+### Prerequisites
+
+- **Node.js** 18.0.0 or higher
+- **npm** 8.0.0 or higher
+- **MongoDB** 6.0 or higher
+- **Docker** (optional, for containerized setup)
+
+### Installation
+
+1. **Clone the repository**
+
+   ```bash
+   git clone <repository-url>
+   cd BachelorMessManagerBackend
+   ```
+
+2. **Run the setup script**
+
+   ```bash
+   npm run dev:setup
+   ```
+
+   This will:
+   - Check Node.js version
+   - Create `.env` file from `env.example`
+   - Install dependencies
+   - Generate secure JWT secrets
+   - Create necessary directories
+   - Run linting and tests
+
+3. **Start the development server**
+   ```bash
+   npm run dev
+   ```
+
+## 🐳 Docker Setup
+
+### Using Docker Compose (Recommended)
 
 ```bash
-git clone <repository-url>
-cd bachelor-mess-api
+# Start all services
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop services
+docker-compose down
 ```
 
-### 2. Install dependencies
+### Manual Docker Build
 
 ```bash
-npm install
+# Build the image
+npm run docker:build
+
+# Run the container
+npm run docker:run
 ```
 
-### 3. Environment setup
+## 📋 Environment Configuration
+
+### Required Environment Variables
+
+Copy `env.example` to `.env` and configure:
 
 ```bash
-# Copy environment template
-cp env.example .env
-
-# Edit .env with your configuration
-nano .env
-```
-
-### 4. Database setup
-
-Make sure MongoDB is running locally or update the `MONGODB_URI` in your `.env` file.
-
-### 5. Start the server
-
-```bash
-# Development mode
-npm run dev
-
-# Production mode
-npm start
-```
-
-The API will be available at `http://localhost:3000`
-
-## 🔧 Environment Variables
-
-Create a `.env` file in the root directory:
-
-```env
 # Server Configuration
 NODE_ENV=development
 PORT=3000
+HOST=0.0.0.0
+API_PREFIX=/api
+API_VERSION=v1
 
 # Database Configuration
 MONGODB_URI=mongodb://localhost:27017/bachelor-mess
 MONGODB_URI_PROD=mongodb+srv://username:password@cluster.mongodb.net/bachelor-mess
 
 # JWT Configuration
-JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
-JWT_EXPIRES_IN=7d
-JWT_REFRESH_SECRET=your-refresh-secret-key
-JWT_REFRESH_EXPIRES_IN=30d
+JWT_SECRET=your-secure-jwt-secret
+JWT_REFRESH_SECRET=your-secure-refresh-secret
 
-# Cloudinary Configuration
+# Cloudinary Configuration (for file uploads)
 CLOUDINARY_CLOUD_NAME=your-cloud-name
 CLOUDINARY_API_KEY=your-api-key
 CLOUDINARY_API_SECRET=your-api-secret
-
-# Security Configuration
-BCRYPT_ROUNDS=12
-RATE_LIMIT_WINDOW_MS=900000
-RATE_LIMIT_MAX_REQUESTS=100
-SLOW_DOWN_DELAY_MS=500
-
-# File Upload Configuration
-MAX_FILE_SIZE=5242880
-ALLOWED_FILE_TYPES=image/jpeg,image/png,image/webp
-
-# Logging Configuration
-LOG_LEVEL=info
-LOG_FILE_PATH=logs/app.log
-
-# CORS Configuration
-CORS_ORIGIN=http://localhost:3000,http://localhost:3001
-CORS_CREDENTIALS=true
-
-# API Configuration
-API_PREFIX=/api
-API_VERSION=v1
 ```
 
-## 📚 API Documentation
+### Environment Profiles
 
-### Authentication Endpoints
+- **Development**: `NODE_ENV=development`
+- **Production**: `NODE_ENV=production`
+- **Testing**: `NODE_ENV=test`
 
-#### Register User
-```http
-POST /api/auth/register
-Content-Type: application/json
+## 🗄️ Database Setup
 
-{
-  "name": "Mahbub Alam",
-  "email": "mahbub@example.com",
-  "password": "SecurePass123",
-  "role": "member"
-}
+### MongoDB Connection
+
+The application supports both local and cloud MongoDB instances:
+
+```bash
+# Local MongoDB
+MONGODB_URI=mongodb://localhost:27017/bachelor-mess
+
+# MongoDB Atlas
+MONGODB_URI_PROD=mongodb+srv://username:password@cluster.mongodb.net/bachelor-mess
 ```
 
-#### Login User
-```http
-POST /api/auth/login
-Content-Type: application/json
+### Database Initialization
 
-{
-  "email": "mahbub@example.com",
-  "password": "SecurePass123"
-}
+The application automatically:
+
+- Creates collections with proper validation
+- Sets up indexes for optimal performance
+- Creates a default admin user
+- Adds sample data for development
+
+### Default Admin Credentials
+
+```
+Username: admin
+Password: admin123
+Email: admin@bachelor-mess.com
 ```
 
-### Meal Management
+## 🔧 Available Scripts
 
-#### Submit Daily Meals
-```http
-POST /api/meals/submit
-Authorization: Bearer <token>
-Content-Type: application/json
+### Development
 
-{
-  "breakfast": true,
-  "lunch": false,
-  "dinner": true,
-  "date": "2024-01-15",
-  "notes": "Extra rice for dinner"
-}
+```bash
+npm run dev              # Start development server
+npm run dev:debug        # Start with debugging
+npm run dev:setup        # Run complete setup
 ```
 
-#### Get User Meals
-```http
-GET /api/meals/user?startDate=2024-01-01&endDate=2024-01-31&status=approved&limit=10
-Authorization: Bearer <token>
+### Testing
+
+```bash
+npm test                 # Run all tests
+npm run test:watch       # Run tests in watch mode
+npm run test:coverage    # Run tests with coverage
+npm run test:unit        # Run unit tests only
+npm run test:integration # Run integration tests only
 ```
 
-### Bazar Management
+### Code Quality
 
-#### Submit Bazar Entry
-```http
-POST /api/bazar/submit
-Authorization: Bearer <token>
-Content-Type: multipart/form-data
-
-items: [{"name": "Rice", "quantity": "5kg", "price": 250}]
-totalAmount: 1250
-description: "Weekly grocery shopping"
-date: 2024-01-15
-receiptImage: [file upload]
+```bash
+npm run lint             # Check code style
+npm run lint:fix         # Fix code style issues
+npm run lint:check       # Strict linting check
+npm run format           # Format code with Prettier
+npm run format:check     # Check code formatting
 ```
 
-#### Get Bazar Entries
-```http
-GET /api/bazar/user?startDate=2024-01-01&endDate=2024-01-31&status=approved&limit=10
-Authorization: Bearer <token>
+### Security
+
+```bash
+npm run security-check   # Run security audit
+npm run security-fix     # Fix security vulnerabilities
 ```
 
-### Dashboard & Analytics
+### Docker
 
-#### Get Dashboard Stats
-```http
-GET /api/dashboard/stats
-Authorization: Bearer <token>
+```bash
+npm run docker:build           # Build Docker image
+npm run docker:run            # Run Docker container
+npm run docker:compose        # Start with Docker Compose
+npm run docker:compose:down   # Stop Docker Compose
+npm run docker:compose:logs   # View Docker logs
+npm run docker:compose:restart # Restart services
 ```
 
-#### Get Analytics Data
-```http
-GET /api/analytics?timeframe=week
-Authorization: Bearer <token>
+### Database
+
+```bash
+npm run db:migrate      # Run database migrations
+npm run db:seed         # Seed database with sample data
+npm run db:reset        # Reset database
+npm run db:backup       # Create database backup
+npm run db:restore      # Restore database from backup
 ```
 
-### User Management (Admin Only)
+### Monitoring
 
-#### Get All Users
-```http
-GET /api/users/all?status=active&role=member&search=mahbub
-Authorization: Bearer <token>
+```bash
+npm run health:check    # Check application health
+npm run monitor:start   # Start monitoring
+npm run monitor:status  # Check monitoring status
 ```
 
-#### Create User
-```http
-POST /api/users/create
-Authorization: Bearer <token>
-Content-Type: application/json
+### Logs
 
-{
-  "name": "New User",
-  "email": "newuser@example.com",
-  "password": "SecurePass123",
-  "phone": "+880 1712-345678",
-  "role": "member"
-}
+```bash
+npm run logs:view       # View application logs
+npm run logs:clear      # Clear log files
+npm run logs:rotate     # Rotate log files
+```
+
+### Deployment
+
+```bash
+npm run deploy:staging    # Deploy to staging
+npm run deploy:production # Deploy to production
+```
+
+## 🌐 API Endpoints
+
+### Base URL
+
+```
+http://localhost:3000/api/v1
+```
+
+### Authentication
+
+```
+POST   /auth/register     # User registration
+POST   /auth/login        # User login
+POST   /auth/refresh      # Refresh token
+POST   /auth/logout       # User logout
+```
+
+### Users
+
+```
+GET    /users             # Get all users
+GET    /users/:id         # Get user by ID
+PUT    /users/:id         # Update user
+DELETE /users/:id         # Delete user
+```
+
+### Meals
+
+```
+GET    /meals             # Get all meals
+POST   /meals             # Create meal
+GET    /meals/:id         # Get meal by ID
+PUT    /meals/:id         # Update meal
+DELETE /meals/:id         # Delete meal
+```
+
+### Bazar
+
+```
+GET    /bazar             # Get all bazar entries
+POST   /bazar             # Create bazar entry
+GET    /bazar/:id         # Get bazar by ID
+PUT    /bazar/:id         # Update bazar
+DELETE /bazar/:id         # Delete bazar
+```
+
+### Dashboard
+
+```
+GET    /dashboard         # Get dashboard data
+GET    /dashboard/stats   # Get statistics
+GET    /dashboard/analytics # Get analytics
+```
+
+### Health & Monitoring
+
+```
+GET    /health            # Health check
+GET    /metrics           # Application metrics
 ```
 
 ## 🔒 Security Features
 
 - **JWT Authentication** with refresh tokens
-- **Role-based Access Control** (Admin/Member)
 - **Rate Limiting** to prevent abuse
-- **Input Validation** with express-validator and Joi
-- **XSS Protection** with xss-clean
-- **NoSQL Injection Protection** with mongo-sanitize
-- **CORS Configuration** for cross-origin requests
-- **Helmet** for security headers
-- **Password Hashing** with bcryptjs
-- **File Upload Security** with type and size validation
+- **Input Validation** and sanitization
+- **CORS** configuration
+- **Helmet** security headers
+- **XSS Protection**
+- **SQL Injection Protection**
+- **Password Hashing** with bcrypt
+- **Request Logging**
 
-## 📊 Database Models
+## 📊 Monitoring & Health Checks
 
-### User Model
-- Authentication and authorization
-- Profile management
-- Role-based access control
-- Activity tracking
+### Health Check Endpoint
 
-### Meal Model
-- Daily meal tracking (breakfast, lunch, dinner)
-- Approval workflow
-- Statistics and analytics
-- Date-based queries
-
-### Bazar Model
-- Expense tracking with items
-- Receipt image upload
-- Approval workflow
-- Category breakdown
-
-## 🧪 Testing
-
-```bash
-# Run tests
-npm test
-
-# Run tests in watch mode
-npm run test:watch
+```
+GET /api/v1/health
 ```
 
-## 📝 Scripts
+Response:
 
-```bash
-# Development
-npm run dev
-
-# Production
-npm start
-
-# Testing
-npm test
-npm run test:watch
-
-# Linting
-npm run lint
-npm run lint:fix
-
-# Security check
-npm run security-check
-
-# Code formatting
-npm run format
+```json
+{
+  "status": "healthy",
+  "timestamp": "2024-01-01T00:00:00.000Z",
+  "environment": "development",
+  "version": "1.0.0",
+  "checks": {
+    "database": {
+      "status": "healthy",
+      "message": "Database connection is active"
+    },
+    "memory": {
+      "status": "healthy",
+      "message": "Memory usage: 45.2MB / 512MB"
+    },
+    "uptime": { "status": "healthy", "message": "Uptime: 2d 5h 30m" },
+    "environment": {
+      "status": "healthy",
+      "message": "All required environment variables are set"
+    }
+  }
+}
 ```
 
-## 🚀 Deployment
+## 🐛 Troubleshooting
 
-### Local Development
+### Common Issues
+
+1. **MongoDB Connection Failed**
+
+   ```bash
+   # Check if MongoDB is running
+   docker-compose up mongo
+
+   # Or start local MongoDB
+   mongod
+   ```
+
+2. **Port Already in Use**
+
+   ```bash
+   # Change port in .env
+   PORT=3001
+   ```
+
+3. **JWT Secret Issues**
+
+   ```bash
+   # Regenerate JWT secrets
+   npm run dev:setup
+   ```
+
+4. **Permission Issues**
+   ```bash
+   # Fix file permissions
+   chmod +x scripts/*.js
+   ```
+
+### Logs
+
+View application logs:
+
 ```bash
-npm run dev
+npm run logs:view
 ```
 
-### Production Deployment
-1. Set `NODE_ENV=production`
-2. Configure production MongoDB URI
-3. Set secure JWT secrets
-4. Configure Cloudinary credentials
-5. Set up proper CORS origins
-6. Run `npm start`
+### Debug Mode
 
-### Docker Deployment
-```dockerfile
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-COPY . .
-EXPOSE 3000
-CMD ["npm", "start"]
+Start with debugging enabled:
+
+```bash
+npm run dev:debug
 ```
 
 ## 📁 Project Structure
 
 ```
-src/
-├── config/
-│   └── database.js          # Database configuration
-├── middleware/
-│   ├── auth.js             # JWT authentication
-│   ├── errorHandler.js     # Global error handling
-│   ├── notFound.js         # 404 handler
-│   ├── upload.js           # File upload middleware
-│   └── validation.js       # Input validation
-├── models/
-│   ├── User.js            # User model
-│   ├── Meal.js            # Meal model
-│   └── Bazar.js           # Bazar model
-├── routes/
-│   ├── auth.js            # Authentication routes
-│   ├── dashboard.js       # Dashboard routes
-│   ├── meals.js           # Meal management routes
-│   ├── bazar.js           # Bazar management routes
-│   ├── users.js           # User management routes
-│   └── analytics.js       # Analytics routes
-└── utils/
-    └── logger.js          # Logging utility
+BachelorMessManagerBackend/
+├── src/
+│   ├── config/          # Configuration files
+│   ├── controllers/     # Route controllers
+│   ├── middleware/      # Custom middleware
+│   ├── models/          # Database models
+│   ├── routes/          # API routes
+│   └── utils/           # Utility functions
+├── scripts/             # Setup and utility scripts
+├── tests/               # Test files
+├── logs/                # Application logs
+├── uploads/             # File uploads
+├── backups/             # Database backups
+├── docker-compose.yml   # Docker Compose configuration
+├── Dockerfile           # Docker configuration
+├── server.js            # Main application file
+├── healthcheck.js       # Health check script
+├── package.json         # Dependencies and scripts
+└── env.example          # Environment variables template
 ```
 
 ## 🤝 Contributing
@@ -353,8 +396,8 @@ src/
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Add tests for new functionality
-5. Run the test suite
+4. Run tests: `npm test`
+5. Run linting: `npm run lint`
 6. Submit a pull request
 
 ## 📄 License
@@ -364,19 +407,11 @@ This project is licensed under the MIT License.
 ## 🆘 Support
 
 For support and questions:
+
 - Create an issue in the repository
-- Contact the development team
-- Check the API documentation
-
-## 🔄 Version History
-
-- **v1.0.0** - Initial release with core functionality
-- Complete CRUD operations for all entities
-- JWT authentication with role-based access
-- File upload with Cloudinary integration
-- Comprehensive analytics and reporting
-- High-security implementation
+- Check the documentation
+- Review the troubleshooting section
 
 ---
 
-**Built with ❤️ for efficient mess management** 
+**Happy Coding! 🚀**
