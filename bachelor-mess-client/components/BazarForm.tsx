@@ -96,21 +96,58 @@ export const BazarForm: React.FC<BazarFormProps> = ({
 
     setLoading(true);
     try {
+      console.log('🔄 Submitting bazar entry:', formData);
+
       const submissionData: BazarSubmission = {
         ...formData,
+        // Ensure items are properly formatted
+        items: formData.items.map(item => ({
+          name: item.name.trim(),
+          quantity: item.quantity.trim(),
+          price: Number(item.price) || 0,
+        })),
+        totalAmount: Number(formData.totalAmount) || 0,
+        description: formData.description?.trim() || '',
+        date: formData.date,
       };
+
+      console.log('🔄 Formatted submission data:', submissionData);
 
       const response = await bazarService.submitBazar(submissionData);
 
+      console.log('🔄 Bazar submission response:', {
+        success: response.success,
+        error: response.error,
+        data: response.data,
+      });
+
       if (response.success) {
-        Alert.alert('Success', 'Bazar entry submitted successfully!');
-        onSuccess?.();
-        resetForm();
+        Alert.alert('Success', 'Bazar entry submitted successfully!', [
+          {
+            text: 'OK',
+            onPress: () => {
+              onSuccess?.();
+              resetForm();
+            },
+          },
+        ]);
       } else {
-        Alert.alert('Error', response.error || 'Failed to submit bazar entry');
+        const errorMessage = response.error || 'Failed to submit bazar entry';
+        console.error('❌ Bazar submission failed:', errorMessage);
+        Alert.alert('Submission Error', errorMessage);
       }
     } catch (error) {
-      Alert.alert('Error', 'An unexpected error occurred');
+      console.error('❌ Unexpected error during bazar submission:', error);
+      Alert.alert('Error', 'An unexpected error occurred. Please try again.', [
+        {
+          text: 'Retry',
+          onPress: () => handleSubmit(),
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ]);
     } finally {
       setLoading(false);
     }
@@ -437,6 +474,31 @@ export const BazarForm: React.FC<BazarFormProps> = ({
             </TouchableOpacity>
             {/* )} */}
           </View>
+
+          {/* Debug Section - Only show in development */}
+          {__DEV__ && (
+            <View style={styles.debugSection}>
+              <ThemedText style={styles.debugTitle}>Debug Info</ThemedText>
+              <View style={styles.debugContent}>
+                <ThemedText style={styles.debugText}>
+                  Items: {formData.items.length} | Total: $
+                  {formData.totalAmount}
+                </ThemedText>
+                <ThemedText style={styles.debugText}>
+                  Date: {formData.date} | Valid:{' '}
+                  {Object.keys(errors).length === 0 ? 'Yes' : 'No'}
+                </ThemedText>
+                <ThemedText style={styles.debugText}>
+                  User: {user?.id ? 'Authenticated' : 'Not authenticated'}
+                </ThemedText>
+                {Object.keys(errors).length > 0 && (
+                  <ThemedText style={styles.debugError}>
+                    Errors: {Object.keys(errors).join(', ')}
+                  </ThemedText>
+                )}
+              </View>
+            </View>
+          )}
 
           {/* Action Buttons */}
           <View style={styles.actions}>
@@ -836,5 +898,33 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     fontSize: 16,
     color: '#374151',
+  },
+  debugSection: {
+    marginTop: 20,
+    padding: 16,
+    backgroundColor: '#f3f4f6',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  debugTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+    color: '#374151',
+  },
+  debugContent: {
+    gap: 4,
+  },
+  debugText: {
+    fontSize: 12,
+    color: '#6b7280',
+    fontFamily: 'monospace',
+  },
+  debugError: {
+    fontSize: 12,
+    color: '#ef4444',
+    fontFamily: 'monospace',
+    fontWeight: '600',
   },
 });

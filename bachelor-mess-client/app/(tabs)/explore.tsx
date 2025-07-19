@@ -34,6 +34,12 @@ export default function BazarScreen() {
   const [showAddBazarModal, setShowAddBazarModal] = useState(false);
   const [filters, setFilters] = useState({});
 
+  console.log('🔄 Explore Screen - User info:', {
+    userId: user?.id,
+    userRole: user?.role,
+    isAuthenticated: !!user,
+  });
+
   // Mock data - replace with real API data
   const bazarItems: BazarItem[] = [
     {
@@ -233,7 +239,7 @@ export default function BazarScreen() {
             showUserInfo={user?.role === 'admin'}
             onBazarPress={handleBazarPress}
             onRefresh={handleRefresh}
-            isAdmin={false}
+            isAdmin={user?.role === 'admin'}
           />
         </View>
       </View>

@@ -55,6 +55,8 @@ export const BazarList: React.FC<BazarListProps> = ({
     externalLoading !== undefined ? externalLoading : loading;
   const displayError = externalError !== undefined ? externalError : error;
 
+  const finalDisplayData = displayBazarEntries;
+
   const loadBazarEntries = async (isRefresh = false) => {
     // Only load bazar entries if not provided externally
     if (externalBazarEntries !== undefined) return;
@@ -66,12 +68,15 @@ export const BazarList: React.FC<BazarListProps> = ({
       const response = await bazarService.getUserBazarEntries(filters);
 
       if (response.success && response.data) {
-        setBazarEntries(Array.isArray(response.data) ? response.data : []);
+        const entries = Array.isArray(response.data) ? response.data : [];
+
+        setBazarEntries(entries);
       } else {
-        setError(response.message || 'Failed to load bazar entries');
+        const errorMsg =
+          response.error || response.message || 'Failed to load bazar entries';
+        setError(errorMsg);
       }
     } catch (error) {
-      console.error('Error loading bazar entries:', error);
       setError('Failed to load bazar entries. Please try again.');
     } finally {
       setLoading(false);
@@ -117,17 +122,7 @@ export const BazarList: React.FC<BazarListProps> = ({
     );
   }
 
-  if (displayBazarEntries.length === 0) {
-    return (
-      <View style={styles.emptyContainer}>
-        <Ionicons name='basket-outline' size={48} color='#9ca3af' />
-        <ThemedText style={styles.emptyText}>No bazar entries found</ThemedText>
-        <ThemedText style={styles.emptySubtext}>
-          Submit your first bazar entry to get started
-        </ThemedText>
-      </View>
-    );
-  }
+  // Remove early return for empty state - let FlatList handle it
 
   const handleStatusUpdate = async (
     bazarId: string,
@@ -373,17 +368,10 @@ export const BazarList: React.FC<BazarListProps> = ({
     );
   };
 
-  console.log('🔄 BazarList - Rendering component:', {
-    loading,
-    refreshing,
-    error,
-    bazarEntriesLength: bazarEntries.length,
-    isAdmin,
-  });
-
+  // Always render the FlatList, let it handle empty states
   return (
     <FlatList
-      data={bazarEntries}
+      data={finalDisplayData}
       renderItem={renderBazarItem}
       keyExtractor={item => item.id}
       style={styles.container}
@@ -603,5 +591,17 @@ const styles = StyleSheet.create({
     color: '#9ca3af',
     textAlign: 'center',
     paddingHorizontal: 32,
+  },
+  debugButton: {
+    backgroundColor: '#667eea',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginTop: 16,
+  },
+  debugButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

@@ -87,12 +87,16 @@ export const API_ENDPOINTS = {
     BULK_APPROVE: '/meals/bulk-approve',
   },
   BAZAR: {
-    SUBMIT: '/bazar/submit',
+    SUBMIT: '/bazar',
     USER: '/bazar/user',
-    ALL: '/bazar',
+    ALL: '/bazar/all',
     STATUS: (id: string) => `/bazar/${id}/status`,
     STATS: '/bazar/stats/overview',
     DELETE: (id: string) => `/bazar/${id}`,
+    BY_ID: (id: string) => `/bazar/${id}`,
+    UPDATE: (id: string) => `/bazar/${id}`,
+    USER_STATS: '/bazar/stats/user',
+    BULK_APPROVE: '/bazar/bulk-approve',
   },
   DASHBOARD: {
     HEALTH: '/health', // Public health endpoint
