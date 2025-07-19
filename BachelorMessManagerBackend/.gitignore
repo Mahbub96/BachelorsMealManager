@@ -230,6 +230,8 @@ docs/api/
 # Swagger/OpenAPI generated files
 swagger.json
 openapi.json
+# Note: These patterns are specific to API documentation files, not package-lock.json
+!package-lock.json
 
 # Database dumps
 *.dump
@@ -257,6 +259,8 @@ build/
 # Local configuration overrides
 config.local.js
 config.local.json
+# Note: These patterns are specific to local configuration files
+!package-lock.json
 
 # Temporary uploads
 temp-uploads/
