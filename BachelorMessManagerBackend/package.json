@@ -1,0 +1,114 @@
+{
+  "name": "bachelor-mess-api",
+  "version": "1.0.0",
+  "description": "Bachelor Mess Management API - A comprehensive RESTful API for managing bachelor mess operations",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "dev:debug": "nodemon --inspect server.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:ci": "jest --ci --coverage --watchAll=false",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "security-check": "npm audit",
+    "security-fix": "npm audit fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "docker:build": "docker build -t bachelor-mess-api .",
+    "docker:run": "docker run -p 3000:3000 bachelor-mess-api",
+    "docker:compose": "docker-compose up -d",
+    "docker:compose:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "health:check": "node healthcheck.js",
+    "db:migrate": "node scripts/migrate.js",
+    "db:seed": "node scripts/seed.js",
+    "db:reset": "node scripts/reset.js",
+    "logs:view": "tail -f logs/app.log",
+    "logs:clear": "rm -rf logs/*.log",
+    "backup:db": "node scripts/backup.js",
+    "monitor:start": "node scripts/monitor.js",
+    "deploy:staging": "npm run test:ci && npm run lint && npm run security-check",
+    "deploy:production": "npm run deploy:staging && npm run docker:build"
+  },
+  "keywords": [
+    "express",
+    "mongodb",
+    "jwt",
+    "api",
+    "mess-management",
+    "rest-api",
+    "nodejs",
+    "typescript",
+    "docker",
+    "microservices"
+  ],
+  "author": "Mahbub Alam",
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cloudinary": "^1.41.0",
+    "compression": "^1.7.4",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-mongo-sanitize": "^2.2.0",
+    "express-rate-limit": "^7.1.5",
+    "express-slow-down": "^2.0.1",
+    "express-validator": "^7.0.1",
+    "helmet": "^7.1.0",
+    "hpp": "^0.2.3",
+    "joi": "^17.11.0",
+    "jsonwebtoken": "^9.0.2",
+    "lodash": "^4.17.21",
+    "moment": "^2.29.4",
+    "mongoose": "^8.0.3",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "multer-storage-cloudinary": "^4.0.0",
+    "winston": "^3.11.0",
+    "xss-clean": "^0.1.4"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.8",
+    "cross-env": "^7.0.3",
+    "eslint": "^8.55.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "husky": "^8.0.3",
+    "jest": "^29.7.0",
+    "lint-staged": "^15.0.0",
+    "nodemon": "^3.0.2",
+    "prettier": "^3.1.1",
+    "rimraf": "^5.0.5",
+    "supertest": "^6.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/bachelor-mess-api.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/bachelor-mess-api/issues"
+  },
+  "homepage": "https://github.com/yourusername/bachelor-mess-api#readme",
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "*.js": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.json": [
+      "prettier --write"
+    ]
+  }
+}

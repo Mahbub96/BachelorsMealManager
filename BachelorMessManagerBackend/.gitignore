@@ -1,0 +1,317 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Grunt intermediate storage (https://gruntjs.com/creating-plugins#storing-task-files)
+.grunt
+
+# Bower dependency directory (https://bower.io/)
+bower_components
+
+# node-waf configuration
+.lock-wscript
+
+# Compiled binary addons (https://nodejs.org/api/addons.html)
+build/Release
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# TypeScript v1 declaration files
+typings/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variables file
+.env
+.env.test
+
+# parcel-bundler cache (https://parceljs.org/)
+.cache
+.parcel-cache
+
+# Next.js build output
+.next
+
+# Nuxt.js build / generate output
+.nuxt
+dist
+
+# Gatsby files
+.cache/
+
+# vuepress build output
+.vuepress/dist
+
+# Serverless directories
+.serverless/
+
+# FuseBox cache
+.fusebox/
+
+# DynamoDB Local files
+.dynamodb/
+
+# TernJS port file
+.tern-port
+
+# Stores VSCode versions used for testing VSCode extensions
+.vscode-test
+
+# yarn v2
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# Application specific
+uploads/
+backups/
+temp/
+tmp/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Docker
+.dockerignore
+
+# Testing
+coverage/
+.nyc_output/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Backup files
+*.bak
+*.backup
+
+# Certificate files
+*.pem
+*.key
+*.crt
+
+# Documentation build
+docs/build/
+
+# PM2
+.pm2/
+
+# ESLint
+.eslintcache
+
+# Prettier
+.prettierignore
+
+# Jest
+.jest/
+
+# Storybook build outputs
+.out
+.storybook-out
+
+# Temporary folders
+tmp/
+temp/
+
+# Local development
+.local/
+
+# Application specific - Bachelor Mess Manager
+# Health check files
+healthcheck.js
+
+# Monitoring and metrics
+metrics/
+
+# Backup and restore files
+*.backup
+*.restore
+
+# Cloudinary upload cache
+cloudinary-cache/
+
+# Rate limiting cache
+rate-limit-cache/
+
+# Session storage
+sessions/
+
+# PM2 ecosystem files
+ecosystem.config.js
+
+# Docker volumes
+docker-volumes/
+
+# SSL certificates
+ssl/
+*.pem
+*.key
+*.crt
+*.csr
+
+# API documentation build
+docs/api/
+
+# Swagger/OpenAPI generated files
+swagger.json
+openapi.json
+
+# Database dumps
+*.dump
+*.sql
+
+# Performance monitoring
+performance-logs/
+
+# Security audit reports
+security-audit/
+
+# Load testing results
+load-test-results/
+
+# Deployment artifacts
+deploy/
+build/
+
+# Environment specific
+.env.staging
+.env.production
+.env.development
+.env.test
+
+# Local configuration overrides
+config.local.js
+config.local.json
+
+# Temporary uploads
+temp-uploads/
+
+# Cache directories
+.cache/
+cache/
+
+# Lock files (keep package-lock.json but ignore others)
+yarn.lock
+pnpm-lock.yaml
+# Note: package-lock.json should be committed for reproducible builds
+
+# IDE specific
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
+.idea/workspace.xml
+.idea/tasks.xml
+
+# OS specific
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Log rotation
+*.log.1
+*.log.2
+*.log.3
+*.log.4
+*.log.5
+
+# Application logs
+app.log
+error.log
+access.log
+combined.log
+
+# Database logs
+mongodb.log
+redis.log
+
+# Process management
+*.pid
+*.sock
+
+# Memory dumps
+*.dmp
+*.hprof
+
+# Profiling data
+*.cpuprofile
+*.heapprofile 
