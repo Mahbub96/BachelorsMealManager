@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState } from 'react';
 
 // Types for mess data
 interface Member {
@@ -6,9 +6,9 @@ interface Member {
   name: string;
   email: string;
   phone: string;
-  role: "admin" | "member";
+  role: 'admin' | 'member';
   joinDate: string;
-  status: "active" | "inactive";
+  status: 'active' | 'inactive';
   totalMeals: number;
   totalContribution: number;
   monthlyContribution: number;
@@ -32,22 +32,22 @@ interface BazarEntry {
   items: string[];
   totalAmount: number;
   submittedBy: string;
-  status: "pending" | "approved" | "rejected";
+  status: 'pending' | 'approved' | 'rejected';
   approvedBy?: string;
   approvedAt?: string;
 }
 
 interface Activity {
   id: string;
-  type: "meal" | "payment" | "bazar" | "member" | "approval";
+  type: 'meal' | 'payment' | 'bazar' | 'member' | 'approval';
   title: string;
   description: string;
   time: string;
-  priority: "low" | "medium" | "high";
+  priority: 'low' | 'medium' | 'high';
   amount?: number;
   user?: string;
   icon?: string;
-  status?: "pending" | "approved" | "rejected";
+  status?: 'pending' | 'approved' | 'rejected';
 }
 
 interface MonthlyRevenue {
@@ -107,7 +107,7 @@ interface MessDataContextType {
     forecast: number;
     color: string;
     gradient: readonly [string, string];
-    trend: "up" | "down";
+    trend: 'up' | 'down';
   }[];
 
   monthlyRevenueData: {
@@ -130,16 +130,16 @@ interface MessDataContextType {
     forecast: number;
     color: string;
     gradient: readonly [string, string];
-    trend: "up" | "down";
+    trend: 'up' | 'down';
   }[];
 
   // Methods
-  addMealEntry: (entry: Omit<MealEntry, "id">) => void;
-  addBazarEntry: (entry: Omit<BazarEntry, "id">) => void;
+  addMealEntry: (entry: Omit<MealEntry, 'id'>) => void;
+  addBazarEntry: (entry: Omit<BazarEntry, 'id'>) => void;
   approveBazar: (id: string, approvedBy: string) => void;
-  addMember: (member: Omit<Member, "id">) => void;
-  updateMemberStatus: (id: string, status: "active" | "inactive") => void;
-  addActivity: (activity: Omit<Activity, "id">) => void;
+  addMember: (member: Omit<Member, 'id'>) => void;
+  updateMemberStatus: (id: string, status: 'active' | 'inactive') => void;
+  addActivity: (activity: Omit<Activity, 'id'>) => void;
   refreshData: () => void;
 }
 
@@ -150,7 +150,7 @@ const MessDataContext = createContext<MessDataContextType | undefined>(
 export const useMessData = () => {
   const context = useContext(MessDataContext);
   if (!context) {
-    throw new Error("useMessData must be used within a MessDataProvider");
+    throw new Error('useMessData must be used within a MessDataProvider');
   }
   return context;
 };
@@ -164,82 +164,82 @@ const generateRealisticData = () => {
   // Generate members with realistic Bangladeshi names
   const members: Member[] = [
     {
-      id: "1",
-      name: "Mahbub Alam",
-      email: "mahbub.rahman@gmail.com",
-      phone: "+880 1712-345678",
-      role: "admin",
-      joinDate: "2024-01-01",
-      status: "active",
+      id: '1',
+      name: 'Admin User',
+      email: 'admin@mess.com',
+      phone: '+880 1712-345678',
+      role: 'admin',
+      joinDate: '2024-01-01',
+      status: 'active',
       totalMeals: 87,
       totalContribution: 4350,
       monthlyContribution: 500,
-      lastPaymentDate: "2024-01-15",
+      lastPaymentDate: '2024-01-15',
     },
     {
-      id: "2",
-      name: "Rahim Khan",
-      email: "rahim.khan@yahoo.com",
-      phone: "+880 1812-345679",
-      role: "member",
-      joinDate: "2024-01-05",
-      status: "active",
+      id: '2',
+      name: 'Member One',
+      email: 'member1@mess.com',
+      phone: '+880 1812-345679',
+      role: 'member',
+      joinDate: '2024-01-05',
+      status: 'active',
       totalMeals: 76,
       totalContribution: 3800,
       monthlyContribution: 500,
-      lastPaymentDate: "2024-01-10",
+      lastPaymentDate: '2024-01-10',
     },
     {
-      id: "3",
-      name: "Karim Ahmed",
-      email: "karim.ahmed@hotmail.com",
-      phone: "+880 1912-345680",
-      role: "member",
-      joinDate: "2024-01-10",
-      status: "active",
+      id: '3',
+      name: 'Member Two',
+      email: 'member2@mess.com',
+      phone: '+880 1912-345680',
+      role: 'member',
+      joinDate: '2024-01-10',
+      status: 'active',
       totalMeals: 82,
       totalContribution: 4100,
       monthlyContribution: 500,
-      lastPaymentDate: "2024-01-12",
+      lastPaymentDate: '2024-01-12',
     },
     {
-      id: "4",
-      name: "Salam Ali",
-      email: "salam.ali@gmail.com",
-      phone: "+880 1612-345681",
-      role: "member",
-      joinDate: "2024-01-15",
-      status: "active",
+      id: '4',
+      name: 'Member Three',
+      email: 'member3@mess.com',
+      phone: '+880 1612-345681',
+      role: 'member',
+      joinDate: '2024-01-15',
+      status: 'active',
       totalMeals: 45,
       totalContribution: 2250,
       monthlyContribution: 500,
-      lastPaymentDate: "2024-01-08",
+      lastPaymentDate: '2024-01-08',
     },
     {
-      id: "5",
-      name: "Nurul Islam",
-      email: "nurul.islam@yahoo.com",
-      phone: "+880 1512-345682",
-      role: "member",
-      joinDate: "2024-01-20",
-      status: "active",
+      id: '5',
+      name: 'Member Four',
+      email: 'member4@mess.com',
+      phone: '+880 1512-345682',
+      role: 'member',
+      joinDate: '2024-01-20',
+      status: 'active',
       totalMeals: 38,
       totalContribution: 1900,
       monthlyContribution: 500,
-      lastPaymentDate: "2024-01-18",
+      lastPaymentDate: '2024-01-18',
     },
     {
-      id: "6",
-      name: "Azizul Haque",
-      email: "azizul.haque@gmail.com",
-      phone: "+880 1412-345683",
-      role: "member",
-      joinDate: "2024-01-25",
-      status: "active",
+      id: '6',
+      name: 'Member Five',
+      email: 'member5@mess.com',
+      phone: '+880 1412-345683',
+      role: 'member',
+      joinDate: '2024-01-25',
+      status: 'active',
       totalMeals: 32,
       totalContribution: 1600,
       monthlyContribution: 500,
-      lastPaymentDate: "2024-01-22",
+      lastPaymentDate: '2024-01-22',
     },
   ];
 
@@ -253,7 +253,7 @@ const generateRealisticData = () => {
   for (let i = 29; i >= 0; i--) {
     const date = new Date();
     date.setDate(date.getDate() - i);
-    const dateStr = date.toISOString().split("T")[0];
+    const dateStr = date.toISOString().split('T')[0];
 
     // Realistic meal patterns (weekends have more meals, weekdays vary)
     const dayOfWeek = date.getDay();
@@ -283,33 +283,33 @@ const generateRealisticData = () => {
 
   // Generate bazar entries
   const bazarItems = [
-    "Rice",
-    "Dal",
-    "Oil",
-    "Onion",
-    "Potato",
-    "Tomato",
-    "Egg",
-    "Chicken",
-    "Fish",
-    "Vegetables",
-    "Spices",
-    "Salt",
-    "Sugar",
-    "Tea",
-    "Milk",
-    "Bread",
-    "Banana",
-    "Apple",
-    "Orange",
-    "Lemon",
+    'Rice',
+    'Dal',
+    'Oil',
+    'Onion',
+    'Potato',
+    'Tomato',
+    'Egg',
+    'Chicken',
+    'Fish',
+    'Vegetables',
+    'Spices',
+    'Salt',
+    'Sugar',
+    'Tea',
+    'Milk',
+    'Bread',
+    'Banana',
+    'Apple',
+    'Orange',
+    'Lemon',
   ];
 
   const bazarEntries: BazarEntry[] = [];
   for (let i = 0; i < 8; i++) {
     const date = new Date();
     date.setDate(date.getDate() - i * 3);
-    const dateStr = date.toISOString().split("T")[0];
+    const dateStr = date.toISOString().split('T')[0];
 
     const itemCount = Math.floor(Math.random() * 8) + 5; // 5-12 items
     const items = [];
@@ -320,7 +320,7 @@ const generateRealisticData = () => {
     const totalAmount = Math.floor(Math.random() * 2000) + 1500; // 1500-3500 BDT
     const submittedBy =
       members[Math.floor(Math.random() * members.length)].name;
-    const status = i < 3 ? "pending" : "approved";
+    const status = i < 3 ? 'pending' : 'approved';
 
     bazarEntries.push({
       id: `bazar-${i}`,
@@ -329,26 +329,26 @@ const generateRealisticData = () => {
       totalAmount,
       submittedBy,
       status,
-      approvedBy: status === "approved" ? "Mahbub Alam" : undefined,
-      approvedAt: status === "approved" ? `${dateStr} 14:30:00` : undefined,
+      approvedBy: status === 'approved' ? 'Admin User' : undefined,
+      approvedAt: status === 'approved' ? `${dateStr} 14:30:00` : undefined,
     });
   }
 
   // Generate monthly revenue data (full year)
   const monthlyRevenue: MonthlyRevenue[] = [];
   const months = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
 
   for (let i = 0; i < 12; i++) {
@@ -389,69 +389,70 @@ const generateRealisticData = () => {
   // Generate activities
   const activities: Activity[] = [
     {
-      id: "1",
-      type: "meal",
-      title: "Lunch added",
-      description: "Mahbub Alam recorded lunch meal for today",
-      time: "2 hours ago",
-      priority: "medium",
-      user: "Mahbub Alam",
-      icon: "restaurant",
+      id: '1',
+      type: 'meal',
+      title: 'Lunch added',
+      description: 'Admin User recorded lunch meal for today',
+      time: '2 hours ago',
+      priority: 'medium',
+      user: 'Admin User',
+      icon: 'restaurant',
     },
     {
-      id: "2",
-      type: "bazar",
-      title: "Bazar uploaded",
-      description: "Karim uploaded bazar list for this week",
-      time: "4 hours ago",
-      priority: "high",
+      id: '2',
+      type: 'bazar',
+      title: 'Bazar uploaded',
+      description: 'Member Two uploaded bazar list for this week',
+      time: '4 hours ago',
+      priority: 'low' as const,
       amount: 2500,
-      user: "Karim Ahmed",
-      icon: "cart",
-      status: "pending",
+      user: 'Member Two',
+      icon: 'cart',
     },
     {
-      id: "3",
-      type: "payment",
-      title: "Payment received",
-      description: "Rahim paid monthly contribution",
-      time: "1 day ago",
-      priority: "low",
+      id: '3',
+      type: 'payment',
+      title: 'Payment received',
+      description: 'Member One paid ৳500',
+      time: '1 day ago',
+      priority: 'low' as const,
       amount: 500,
-      user: "Rahim Khan",
-      icon: "card",
+      user: 'Member One',
+      icon: 'card',
     },
     {
-      id: "4",
-      type: "member",
-      title: "New member joined",
-      description: "Azizul joined the mess",
-      time: "2 days ago",
-      priority: "medium",
-      user: "Azizul Haque",
-      icon: "person-add",
+      id: '4',
+      type: 'member',
+      title: 'New member joined',
+      description: 'Member Three joined the mess',
+      time: '2 days ago',
+      priority: 'low' as const,
+      amount: 0,
+      user: 'Member Three',
+      icon: 'person-add',
     },
     {
-      id: "5",
-      type: "approval",
-      title: "Bazar approved",
-      description: "Weekly bazar list approved",
-      time: "3 days ago",
-      priority: "high",
+      id: '5',
+      type: 'approval',
+      title: 'Bazar approved',
+      description: 'Weekly bazar list approved',
+      time: '3 days ago',
+      priority: 'high',
       amount: 3200,
-      user: "Mahbub Alam",
-      icon: "checkmark-circle",
-      status: "approved",
+      user: 'Mahbub Alam',
+      icon: 'checkmark-circle',
+      status: 'approved',
     },
     {
-      id: "6",
-      type: "meal",
-      title: "Breakfast added",
-      description: "Salam recorded breakfast for yesterday",
-      time: "4 days ago",
-      priority: "medium",
-      user: "Salam Ali",
-      icon: "sunny",
+      id: '6',
+      type: 'meal',
+      title: 'Breakfast added',
+      description: 'Member Three recorded breakfast for yesterday',
+      time: '3 days ago',
+      priority: 'low' as const,
+      amount: 0,
+      user: 'Member Three',
+      icon: 'sunny',
     },
   ];
 
@@ -470,16 +471,14 @@ export const MessDataProvider: React.FC<{ children: React.ReactNode }> = ({
   const [data, setData] = useState(generateRealisticData());
 
   // Computed values
-  const activeMembers = data.members.filter((m) => m.status === "active");
+  const activeMembers = data.members.filter(m => m.status === 'active');
   const recentMeals = data.mealEntries.slice(0, 7);
-  const pendingBazar = data.bazarEntries.filter((b) => b.status === "pending");
-  const approvedBazar = data.bazarEntries.filter(
-    (b) => b.status === "approved"
-  );
+  const pendingBazar = data.bazarEntries.filter(b => b.status === 'pending');
+  const approvedBazar = data.bazarEntries.filter(b => b.status === 'approved');
   const recentActivities = data.activities.slice(0, 5);
 
   // Monthly meal statistics
-  const currentMonthMeals = data.mealEntries.filter((meal) => {
+  const currentMonthMeals = data.mealEntries.filter(meal => {
     const mealDate = new Date(meal.date);
     return mealDate.getMonth() === new Date().getMonth();
   });
@@ -543,60 +542,60 @@ export const MessDataProvider: React.FC<{ children: React.ReactNode }> = ({
   // Chart data
   const weeklyMealsData = [
     {
-      label: "Mon",
+      label: 'Mon',
       value: 12,
       forecast: 14,
-      color: "#f59e0b",
-      gradient: ["#fbbf24", "#f59e0b"] as const,
-      trend: "up" as const,
+      color: '#f59e0b',
+      gradient: ['#fbbf24', '#f59e0b'] as const,
+      trend: 'up' as const,
     },
     {
-      label: "Tue",
+      label: 'Tue',
       value: 15,
       forecast: 16,
-      color: "#10b981",
-      gradient: ["#34d399", "#10b981"] as const,
-      trend: "up" as const,
+      color: '#10b981',
+      gradient: ['#34d399', '#10b981'] as const,
+      trend: 'up' as const,
     },
     {
-      label: "Wed",
+      label: 'Wed',
       value: 18,
       forecast: 17,
-      color: "#6366f1",
-      gradient: ["#818cf8", "#6366f1"] as const,
-      trend: "down" as const,
+      color: '#6366f1',
+      gradient: ['#818cf8', '#6366f1'] as const,
+      trend: 'down' as const,
     },
     {
-      label: "Thu",
+      label: 'Thu',
       value: 14,
       forecast: 15,
-      color: "#f093fb",
-      gradient: ["#f093fb", "#f5576c"] as const,
-      trend: "up" as const,
+      color: '#f093fb',
+      gradient: ['#f093fb', '#f5576c'] as const,
+      trend: 'up' as const,
     },
     {
-      label: "Fri",
+      label: 'Fri',
       value: 16,
       forecast: 18,
-      color: "#43e97b",
-      gradient: ["#43e97b", "#38f9d7"] as const,
-      trend: "up" as const,
+      color: '#43e97b',
+      gradient: ['#43e97b', '#38f9d7'] as const,
+      trend: 'up' as const,
     },
     {
-      label: "Sat",
+      label: 'Sat',
       value: 20,
       forecast: 22,
-      color: "#667eea",
-      gradient: ["#667eea", "#764ba2"] as const,
-      trend: "up" as const,
+      color: '#667eea',
+      gradient: ['#667eea', '#764ba2'] as const,
+      trend: 'up' as const,
     },
     {
-      label: "Sun",
+      label: 'Sun',
       value: 13,
       forecast: 15,
-      color: "#f97316",
-      gradient: ["#fb923c", "#f97316"] as const,
-      trend: "up" as const,
+      color: '#f97316',
+      gradient: ['#fb923c', '#f97316'] as const,
+      trend: 'up' as const,
     },
   ];
 
@@ -633,95 +632,95 @@ export const MessDataProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const monthlyRevenueData = generateMonthlyData(
-    "Dec",
+    'Dec',
     data.monthlyRevenue[data.monthlyRevenue.length - 1]?.revenue || 30000
   );
 
   const expenseBreakdownData = [
     {
-      label: "Groceries",
+      label: 'Groceries',
       value: 45,
       forecast: 48,
-      color: "#10b981",
-      gradient: ["#34d399", "#10b981"] as const,
+      color: '#10b981',
+      gradient: ['#34d399', '#10b981'] as const,
     },
     {
-      label: "Utilities",
+      label: 'Utilities',
       value: 25,
       forecast: 26,
-      color: "#6366f1",
-      gradient: ["#818cf8", "#6366f1"] as const,
+      color: '#6366f1',
+      gradient: ['#818cf8', '#6366f1'] as const,
     },
     {
-      label: "Maintenance",
+      label: 'Maintenance',
       value: 20,
       forecast: 18,
-      color: "#f59e0b",
-      gradient: ["#fbbf24", "#f59e0b"] as const,
+      color: '#f59e0b',
+      gradient: ['#fbbf24', '#f59e0b'] as const,
     },
     {
-      label: "Others",
+      label: 'Others',
       value: 10,
       forecast: 12,
-      color: "#f093fb",
-      gradient: ["#f093fb", "#f5576c"] as const,
+      color: '#f093fb',
+      gradient: ['#f093fb', '#f5576c'] as const,
     },
   ];
 
   const memberActivityData = data.members.slice(0, 4).map((member, index) => ({
-    label: member.name.split(" ")[0],
+    label: member.name.split(' ')[0],
     value: member.totalMeals,
     forecast: member.totalMeals + Math.floor(Math.random() * 10),
     color:
       index === 0
-        ? "#667eea"
+        ? '#667eea'
         : index === 1
-        ? "#f093fb"
+        ? '#f093fb'
         : index === 2
-        ? "#43e97b"
-        : "#f59e0b",
+        ? '#43e97b'
+        : '#f59e0b',
     gradient:
       index === 0
-        ? (["#667eea", "#764ba2"] as const)
+        ? (['#667eea', '#764ba2'] as const)
         : index === 1
-        ? (["#f093fb", "#f5576c"] as const)
+        ? (['#f093fb', '#f5576c'] as const)
         : index === 2
-        ? (["#43e97b", "#38f9d7"] as const)
-        : (["#fbbf24", "#f59e0b"] as const),
-    trend: "up" as const,
+        ? (['#43e97b', '#38f9d7'] as const)
+        : (['#fbbf24', '#f59e0b'] as const),
+    trend: 'up' as const,
   }));
 
   // Methods
-  const addMealEntry = (entry: Omit<MealEntry, "id">) => {
+  const addMealEntry = (entry: Omit<MealEntry, 'id'>) => {
     const newEntry: MealEntry = {
       ...entry,
       id: `meal-${Date.now()}`,
     };
-    setData((prev) => ({
+    setData(prev => ({
       ...prev,
       mealEntries: [newEntry, ...prev.mealEntries],
     }));
   };
 
-  const addBazarEntry = (entry: Omit<BazarEntry, "id">) => {
+  const addBazarEntry = (entry: Omit<BazarEntry, 'id'>) => {
     const newEntry: BazarEntry = {
       ...entry,
       id: `bazar-${Date.now()}`,
     };
-    setData((prev) => ({
+    setData(prev => ({
       ...prev,
       bazarEntries: [newEntry, ...prev.bazarEntries],
     }));
   };
 
   const approveBazar = (id: string, approvedBy: string) => {
-    setData((prev) => ({
+    setData(prev => ({
       ...prev,
-      bazarEntries: prev.bazarEntries.map((entry) =>
+      bazarEntries: prev.bazarEntries.map(entry =>
         entry.id === id
           ? {
               ...entry,
-              status: "approved",
+              status: 'approved',
               approvedBy,
               approvedAt: new Date().toISOString(),
             }
@@ -730,32 +729,32 @@ export const MessDataProvider: React.FC<{ children: React.ReactNode }> = ({
     }));
   };
 
-  const addMember = (member: Omit<Member, "id">) => {
+  const addMember = (member: Omit<Member, 'id'>) => {
     const newMember: Member = {
       ...member,
       id: `member-${Date.now()}`,
     };
-    setData((prev) => ({
+    setData(prev => ({
       ...prev,
       members: [...prev.members, newMember],
     }));
   };
 
-  const updateMemberStatus = (id: string, status: "active" | "inactive") => {
-    setData((prev) => ({
+  const updateMemberStatus = (id: string, status: 'active' | 'inactive') => {
+    setData(prev => ({
       ...prev,
-      members: prev.members.map((member) =>
+      members: prev.members.map(member =>
         member.id === id ? { ...member, status } : member
       ),
     }));
   };
 
-  const addActivity = (activity: Omit<Activity, "id">) => {
+  const addActivity = (activity: Omit<Activity, 'id'>) => {
     const newActivity: Activity = {
       ...activity,
       id: `activity-${Date.now()}`,
     };
-    setData((prev) => ({
+    setData(prev => ({
       ...prev,
       activities: [newActivity, ...prev.activities],
     }));

@@ -53,6 +53,11 @@ export interface CombinedDashboardData {
   analytics: AnalyticsData;
   stats: DashboardStats;
   activities: Activity[];
+  charts?: {
+    weeklyMeals: AnalyticsData['mealDistribution'];
+    monthlyRevenue: AnalyticsData['expenseTrend'];
+    expenseBreakdown: AnalyticsData['categoryBreakdown'];
+  };
 }
 
 export interface DashboardFilters {
@@ -112,6 +117,7 @@ class DashboardServiceImpl implements DashboardService {
         {
           cache: true,
           cacheKey: 'dashboard_stats',
+          offlineFallback: false, // Disable offline fallback for critical data
         }
       );
 
@@ -134,6 +140,7 @@ class DashboardServiceImpl implements DashboardService {
         {
           cache: true,
           cacheKey: 'dashboard_activities',
+          offlineFallback: false, // Disable offline fallback for critical data
         }
       );
 
@@ -181,6 +188,7 @@ class DashboardServiceImpl implements DashboardService {
       const response = await httpClient.get<CombinedDashboardData>(endpoint, {
         cache: true,
         cacheKey: `combined_dashboard_${JSON.stringify(filters)}`,
+        offlineFallback: false, // Disable offline fallback for critical data
       });
 
       return response;

@@ -18,6 +18,25 @@ router.get(
   userController.getAllUsers
 );
 
+// @desc    Get current user profile
+// @route   GET /api/users/profile
+// @access  Private
+router.get(
+  '/profile',
+  AuthMiddleware.protect(),
+  userController.getCurrentUserProfile
+);
+
+// @desc    Update current user profile
+// @route   PUT /api/users/profile
+// @access  Private
+router.put(
+  '/profile',
+  AuthMiddleware.protect(),
+  validateProfileUpdate,
+  userController.updateCurrentUserProfile
+);
+
 // @desc    Get user by ID (admin only)
 // @route   GET /api/users/:userId
 // @access  Private/Admin
@@ -68,25 +87,6 @@ router.get(
   AuthMiddleware.protect(),
   AuthMiddleware.requireAdmin(),
   userController.getUserStats
-);
-
-// @desc    Get current user profile
-// @route   GET /api/users/profile
-// @access  Private
-router.get(
-  '/profile',
-  AuthMiddleware.protect(),
-  userController.getCurrentUserProfile
-);
-
-// @desc    Update current user profile
-// @route   PUT /api/users/profile
-// @access  Private
-router.put(
-  '/profile',
-  AuthMiddleware.protect(),
-  validateProfileUpdate,
-  userController.updateCurrentUserProfile
 );
 
 // @desc    Change user status (admin only)

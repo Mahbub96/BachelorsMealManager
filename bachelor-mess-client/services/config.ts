@@ -1,8 +1,9 @@
 // API Configuration - Centralized settings for easy maintenance
 export const API_CONFIG = {
   // Base URL - Change this to switch between development and production
+  // For React Native development, we might need to use the computer's IP address
   BASE_URL: __DEV__
-    ? 'http://192.168.0.130:3000/api'
+    ? 'http://192.168.0.130:3000/api' // Computer's IP address for React Native development
     : 'https://your-production-domain.com/api',
 
   // API Version
@@ -31,7 +32,7 @@ export const API_CONFIG = {
 export const ENV_CONFIG = {
   development: {
     logLevel: 'debug',
-    enableMockData: true,
+    enableMockData: false, // Disable mock data to use real database
   },
   production: {
     logLevel: 'error',

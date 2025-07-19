@@ -52,18 +52,34 @@ class AuthServiceImpl implements AuthService {
     credentials: LoginCredentials
   ): Promise<ApiResponse<LoginResponse>> {
     try {
+      console.log('🔐 Attempting login for:', credentials.email);
+
       const response = await httpClient.post<LoginResponse>(
         API_ENDPOINTS.AUTH.LOGIN,
-        credentials
+        credentials,
+        {
+          offlineFallback: false, // Disable offline fallback for login
+          timeout: 10000, // 10 second timeout for login
+        }
       );
+
+      console.log(
+        '📥 Login response:',
+        response.success ? 'Success' : 'Failed'
+      );
+      if (!response.success) {
+        console.log('❌ Login error:', response.error);
+      }
 
       if (response.success && response.data) {
         // Store token and user data
         await this.storeAuthData(response.data.token, response.data.user);
+        console.log('✅ Auth data stored successfully');
       }
 
       return response;
     } catch (error) {
+      console.log('💥 Login exception:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Login failed',
@@ -91,14 +107,46 @@ class AuthServiceImpl implements AuthService {
 
   async logout(): Promise<void> {
     try {
-      // Call logout endpoint if available
-      await httpClient.post(API_ENDPOINTS.AUTH.LOGOUT);
+      console.log('🔐 Starting logout process...');
+
+      // Get current token for logout request
+      const token = await this.getStoredToken();
+      console.log('🔑 Token found:', token ? 'Yes' : 'No');
+
+      if (token) {
+        // Call logout endpoint with proper error handling
+        try {
+          console.log('📤 Calling logout API...');
+          const response = await httpClient.post(
+            API_ENDPOINTS.AUTH.LOGOUT,
+            {},
+            {
+              timeout: 10000, // 10 second timeout for logout
+              offlineFallback: false, // Disable offline fallback for logout
+            }
+          );
+
+          if (response.success) {
+            console.log('✅ Logout API call successful');
+          } else {
+            console.warn('⚠️ Logout API call failed:', response.error);
+          }
+        } catch (error) {
+          console.warn(
+            '⚠️ Logout API call failed, proceeding with local logout:',
+            error
+          );
+        }
+      } else {
+        console.log('ℹ️ No token found, proceeding with local logout only');
+      }
     } catch (error) {
-      // Continue with local logout even if API call fails
-      console.warn('Logout API call failed, proceeding with local logout');
+      console.warn('❌ Error during logout process:', error);
     } finally {
-      // Clear stored auth data
+      // Always clear stored auth data regardless of API call result
+      console.log('🧹 Clearing local auth data...');
       await this.clearStoredAuth();
+      console.log('✅ Local auth data cleared');
     }
   }
 
@@ -194,11 +242,13 @@ class AuthServiceImpl implements AuthService {
 
   async clearStoredAuth(): Promise<void> {
     try {
+      console.log('🧹 Clearing stored auth data...');
       await AsyncStorage.multiRemove([this.TOKEN_KEY, this.USER_KEY]);
       // Clear all API cache
       await httpClient.clearCache();
+      console.log('✅ Stored auth data cleared');
     } catch (error) {
-      console.error('Error clearing stored auth:', error);
+      console.error('❌ Error clearing stored auth:', error);
     }
   }
 

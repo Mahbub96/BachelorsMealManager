@@ -44,7 +44,6 @@ export const AuthAvatar: React.FC<AuthAvatarProps> = ({
         style: 'destructive',
         onPress: async () => {
           await logout();
-          router.replace('/LoginScreen');
         },
       },
     ]);

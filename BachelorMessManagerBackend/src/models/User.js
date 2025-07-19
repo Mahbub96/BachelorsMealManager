@@ -56,6 +56,9 @@ const userSchema = new mongoose.Schema(
     lastLogin: {
       type: Date,
     },
+    lastLogoutAt: {
+      type: Date,
+    },
     passwordChangedAt: {
       type: Date,
     },

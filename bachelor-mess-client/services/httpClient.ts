@@ -89,9 +89,39 @@ class HttpClient {
     });
   }
 
-  // Check if we're online
+  // Check if online by testing API connectivity
   private async isOnline(): Promise<boolean> {
-    return await offlineStorage.isOnline();
+    try {
+      // Test API connectivity by making a simple health check
+      const healthUrl = `${this.baseURL.replace('/api', '')}/health`;
+      console.log('🔍 Checking API connectivity at:', healthUrl);
+
+      const response = await fetch(healthUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(5000), // 5 second timeout
+      });
+
+      const isOnline = response.ok;
+      console.log(
+        '📡 API connectivity check result:',
+        isOnline,
+        'Status:',
+        response.status
+      );
+
+      if (!isOnline) {
+        const responseText = await response.text();
+        console.log('📄 Response text:', responseText);
+      }
+
+      return isOnline;
+    } catch (error) {
+      console.log('❌ API connectivity check failed:', error);
+      return false;
+    }
   }
 
   // Store request for offline retry
@@ -189,6 +219,76 @@ class HttpClient {
     return { success: true, data: text as any };
   }
 
+  // Handle response errors
+  private handleResponseError(error: any): ApiResponse<any> {
+    if (error.response) {
+      const { status, data } = error.response;
+
+      // Handle specific HTTP status codes
+      switch (status) {
+        case 401:
+          // Unauthorized - clear auth data and redirect to login
+          this.handleAuthError();
+          return {
+            success: false,
+            error: 'Session expired. Please login again.',
+          };
+        case 403:
+          return {
+            success: false,
+            error:
+              'Access denied. You do not have permission to perform this action.',
+          };
+        case 404:
+          return {
+            success: false,
+            error: 'Resource not found.',
+          };
+        case 422:
+          return {
+            success: false,
+            error:
+              data?.message || 'Validation error. Please check your input.',
+          };
+        case 500:
+          return {
+            success: false,
+            error: 'Server error. Please try again later.',
+          };
+        default:
+          return {
+            success: false,
+            error: data?.message || `Request failed with status ${status}`,
+          };
+      }
+    } else if (error.request) {
+      // Network error
+      return {
+        success: false,
+        error: 'Network error. Please check your connection.',
+      };
+    } else {
+      // Other error
+      return {
+        success: false,
+        error: error.message || 'An unexpected error occurred.',
+      };
+    }
+  }
+
+  // Handle authentication errors
+  private async handleAuthError(): Promise<void> {
+    try {
+      // Clear auth data
+      await AsyncStorage.multiRemove(['auth_token', 'auth_user']);
+      // Clear cache
+      this.clearCache();
+      console.log('Auth data cleared due to 401 error');
+    } catch (error) {
+      console.error('Error clearing auth data:', error);
+    }
+  }
+
   // Cache management
   private async getCachedResponse<T>(
     cacheKey: string
@@ -230,81 +330,56 @@ class HttpClient {
     endpoint: string,
     config: RequestConfig = {}
   ): Promise<ApiResponse<T>> {
-    const requestConfig = await this.createRequestConfig(endpoint, config);
-    const url = `${this.baseURL}${endpoint}`;
-
-    // Check if we should use cache for GET requests
-    if (
-      requestConfig.method === 'GET' &&
-      requestConfig.cache &&
-      requestConfig.cacheKey
-    ) {
-      const cached = await this.getCachedResponse<T>(requestConfig.cacheKey);
-      if (cached) {
-        return cached;
-      }
-    }
-
     try {
-      // Check if we're online
-      const online = await this.isOnline();
+      // Check cache first if enabled
+      if (config.cache && config.cacheKey) {
+        const cached = await this.getCachedResponse<T>(config.cacheKey);
+        if (cached) {
+          return cached;
+        }
+      }
 
-      if (
-        !online &&
-        requestConfig.offlineFallback &&
-        requestConfig.method !== 'GET'
-      ) {
-        // Store request for offline retry
-        const requestId = await this.storeForOfflineRetry(
-          endpoint,
-          requestConfig
-        );
-
+      // Check if online
+      const isOnline = await this.isOnline();
+      if (!isOnline) {
+        if (config.offlineFallback) {
+          // Store request for later retry
+          await this.storeForOfflineRetry(endpoint, config);
+          return {
+            success: false,
+            error:
+              'You are offline. Request will be retried when connection is restored.',
+          };
+        }
         return {
           success: false,
-          error:
-            "You're offline. Your request will be saved and synced when you're back online.",
-          data: { offlineRequestId: requestId } as any,
+          error: 'No internet connection. Please check your network settings.',
         };
       }
 
-      const response = await this.retryRequest(url, requestConfig);
+      // Create request configuration
+      const requestConfig = await this.createRequestConfig(endpoint, config);
+
+      // Make the request
+      const response = await this.retryRequest(
+        `${this.baseURL}${endpoint}`,
+        requestConfig
+      );
+
+      // Handle response
       const result = await this.handleResponse<T>(response);
 
-      // Cache successful GET responses
-      if (
-        requestConfig.method === 'GET' &&
-        result.success &&
-        requestConfig.cache &&
-        requestConfig.cacheKey
-      ) {
-        await this.setCachedResponse(requestConfig.cacheKey, result);
+      // Cache successful responses
+      if (config.cache && config.cacheKey && result.success) {
+        await this.setCachedResponse(config.cacheKey, result);
       }
 
       return result;
     } catch (error) {
-      // If offline fallback is enabled and it's not a GET request, store for retry
-      if (requestConfig.offlineFallback && requestConfig.method !== 'GET') {
-        try {
-          const requestId = await this.storeForOfflineRetry(
-            endpoint,
-            requestConfig
-          );
-          return {
-            success: false,
-            error:
-              "Network error. Your request will be saved and synced when you're back online.",
-            data: { offlineRequestId: requestId } as any,
-          };
-        } catch (storageError) {
-          console.error('Error storing offline request:', storageError);
-        }
-      }
+      console.error('Request error:', error);
 
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Network error',
-      };
+      // Use improved error handling
+      return this.handleResponseError(error);
     }
   }
 

@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Dimensions,
@@ -17,12 +17,13 @@ import {
   PieChart,
   ProgressChart,
   StatsGrid,
-} from './ModernCharts';
-import { ThemedText } from './ThemedText';
+} from '../ModernCharts';
+import { ThemedText } from '../ThemedText';
+import { useDashboard } from '../../hooks/useDashboard';
 
 const { width } = Dimensions.get('window');
 
-interface DashboardProps {
+interface ApiDashboardProps {
   onRefresh?: () => void;
   refreshing?: boolean;
 }
@@ -46,7 +47,7 @@ interface ActivityItem {
   color: string;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({
+export const ApiDashboard: React.FC<ApiDashboardProps> = ({
   onRefresh,
   refreshing = false,
 }) => {
@@ -55,33 +56,112 @@ export const Dashboard: React.FC<DashboardProps> = ({
     'week' | 'month' | 'year'
   >('week');
 
-  // Mock data - replace with real API data
-  const stats = [
-    {
-      title: 'Total Members',
-      value: '12',
-      icon: 'people',
-      gradient: ['#667eea', '#764ba2'] as const,
-    },
-    {
-      title: 'This Month',
-      value: '৳32,400',
-      icon: 'cash',
-      gradient: ['#f093fb', '#f5576c'] as const,
-    },
-    {
-      title: 'Avg. Meals',
-      value: '2.4',
-      icon: 'restaurant',
-      gradient: ['#43e97b', '#38f9d7'] as const,
-    },
-    {
-      title: 'Balance',
-      value: '৳1,200',
-      icon: 'wallet',
-      gradient: ['#fa709a', '#fee140'] as const,
-    },
-  ];
+  const {
+    stats,
+    activities,
+    analytics,
+    combinedData,
+    loading,
+    error,
+    getCombinedData,
+    refresh,
+    clearError,
+  } = useDashboard();
+
+  // Load data on component mount
+  useEffect(() => {
+    getCombinedData({ timeframe: selectedTimeframe });
+  }, [selectedTimeframe, getCombinedData]);
+
+  // Handle refresh
+  const handleRefresh = async () => {
+    await refresh();
+    onRefresh?.();
+  };
+
+  // Handle timeframe change
+  const handleTimeframeChange = (timeframe: 'week' | 'month' | 'year') => {
+    setSelectedTimeframe(timeframe);
+  };
+
+  // Format stats for display
+  const formatStats = () => {
+    if (!stats) return [];
+
+    return [
+      {
+        title: 'Total Members',
+        value: stats.totalMembers?.toString() || '0',
+        icon: 'people',
+        gradient: ['#667eea', '#764ba2'] as const,
+      },
+      {
+        title: 'Monthly Expense',
+        value: `৳${(stats.monthlyExpense || 0).toLocaleString()}`,
+        icon: 'cash',
+        gradient: ['#f093fb', '#f5576c'] as const,
+      },
+      {
+        title: 'Avg. Meals',
+        value: stats.averageMeals?.toString() || '0',
+        icon: 'restaurant',
+        gradient: ['#43e97b', '#38f9d7'] as const,
+      },
+      {
+        title: 'Balance',
+        value: `৳${(stats.balance || 0).toLocaleString()}`,
+        icon: 'wallet',
+        gradient: ['#fa709a', '#fee140'] as const,
+      },
+    ];
+  };
+
+  // Format activities for display
+  const formatActivities = (): ActivityItem[] => {
+    if (!activities || activities.length === 0) return [];
+
+    return activities.slice(0, 4).map(activity => ({
+      id: activity.id,
+      type: activity.type as ActivityItem['type'],
+      title: activity.title,
+      subtitle: activity.description,
+      time: activity.time,
+      icon: getActivityIcon(activity.type),
+      color: getActivityColor(activity.type),
+    }));
+  };
+
+  // Get activity icon
+  const getActivityIcon = (type: string): keyof typeof Ionicons.glyphMap => {
+    switch (type) {
+      case 'meal':
+        return 'fast-food';
+      case 'bazar':
+        return 'cart';
+      case 'payment':
+        return 'card';
+      case 'notification':
+        return 'notifications';
+      default:
+        return 'information-circle';
+    }
+  };
+
+  // Get activity color
+  const getActivityColor = (type: string): string => {
+    switch (type) {
+      case 'meal':
+        return '#10b981';
+      case 'bazar':
+        return '#6366f1';
+      case 'payment':
+        return '#f59e0b';
+      case 'notification':
+        return '#8b5cf6';
+      default:
+        return '#6b7280';
+    }
+  };
 
   const quickActions: QuickAction[] = [
     {
@@ -118,163 +198,51 @@ export const Dashboard: React.FC<DashboardProps> = ({
     },
   ];
 
-  const recentActivity: ActivityItem[] = [
-    {
-      id: '1',
-      type: 'meal',
-      title: 'Lunch added',
-      subtitle: 'Admin User recorded lunch meal',
-      time: '2 hours ago',
-      icon: 'fast-food',
-      color: '#10b981',
-    },
-    {
-      id: '2',
-      type: 'bazar',
-      title: 'Bazar uploaded',
-      subtitle: 'Member Two uploaded bazar list',
-      time: '4 hours ago',
-      icon: 'cart',
-      color: '#6366f1',
-    },
-    {
-      id: '3',
-      type: 'payment',
-      title: 'Payment received',
-      subtitle: 'Member One paid ৳500',
-      time: '1 day ago',
-      icon: 'card',
-      color: '#f59e0b',
-    },
-    {
-      id: '4',
-      type: 'notification',
-      title: 'New member joined',
-      subtitle: 'Member Three joined the mess',
-      time: '2 days ago',
-      icon: 'person-add',
-      color: '#8b5cf6',
-    },
-  ];
-
-  const weeklyMealsData = [
-    {
-      label: 'Mon',
-      value: 12,
-      forecast: 14,
-      color: '#f59e0b',
-      gradient: ['#fbbf24', '#f59e0b'] as const,
-      trend: 'up' as const,
-    },
-    {
-      label: 'Tue',
-      value: 15,
-      forecast: 16,
-      color: '#10b981',
-      gradient: ['#34d399', '#10b981'] as const,
-      trend: 'up' as const,
-    },
-    {
-      label: 'Wed',
-      value: 18,
-      forecast: 17,
-      color: '#6366f1',
-      gradient: ['#818cf8', '#6366f1'] as const,
-      trend: 'down' as const,
-    },
-    {
-      label: 'Thu',
-      value: 14,
-      forecast: 15,
-      color: '#f093fb',
-      gradient: ['#f093fb', '#f5576c'] as const,
-      trend: 'up' as const,
-    },
-    {
-      label: 'Fri',
-      value: 16,
-      forecast: 18,
-      color: '#43e97b',
-      gradient: ['#43e97b', '#38f9d7'] as const,
-      trend: 'up' as const,
-    },
-    {
-      label: 'Sat',
-      value: 20,
-      forecast: 22,
-      color: '#667eea',
-      gradient: ['#667eea', '#764ba2'] as const,
-      trend: 'up' as const,
-    },
-    {
-      label: 'Sun',
-      value: 13,
-      forecast: 15,
-      color: '#f97316',
-      gradient: ['#fb923c', '#f97316'] as const,
-      trend: 'up' as const,
-    },
-  ];
-
-  const expenseBreakdownData = [
-    {
-      label: 'Groceries',
-      value: 45,
-      forecast: 48,
-      color: '#10b981',
-      gradient: ['#34d399', '#10b981'] as const,
-    },
-    {
-      label: 'Utilities',
-      value: 25,
-      forecast: 26,
-      color: '#6366f1',
-      gradient: ['#818cf8', '#6366f1'] as const,
-    },
-    {
-      label: 'Maintenance',
-      value: 20,
-      forecast: 18,
-      color: '#f59e0b',
-      gradient: ['#fbbf24', '#f59e0b'] as const,
-    },
-    {
-      label: 'Others',
-      value: 10,
-      forecast: 12,
-      color: '#f093fb',
-      gradient: ['#f093fb', '#f5576c'] as const,
-    },
-  ];
-
-  const monthlyRevenueData = [
-    { date: 'Week 1', value: 8500, forecast: 9000 },
-    { date: 'Week 2', value: 9200, forecast: 9500 },
-    { date: 'Week 3', value: 7800, forecast: 8200 },
-    { date: 'Week 4', value: 10500, forecast: 11000 },
-  ];
-
-  const getActivityIcon = (type: ActivityItem['type']) => {
-    switch (type) {
-      case 'meal':
-        return 'fast-food';
-      case 'bazar':
-        return 'cart';
-      case 'payment':
-        return 'card';
-      case 'notification':
-        return 'notifications';
-      default:
-        return 'information-circle';
+  // Get chart data from API
+  const getWeeklyMealsData = () => {
+    if (!combinedData?.charts?.weeklyMeals) {
+      return [];
     }
+    return combinedData.charts.weeklyMeals;
   };
+
+  const getMonthlyRevenueData = () => {
+    if (!combinedData?.charts?.monthlyRevenue) {
+      return [];
+    }
+    return combinedData.charts.monthlyRevenue;
+  };
+
+  const getExpenseBreakdownData = () => {
+    if (!combinedData?.charts?.expenseBreakdown) {
+      return [];
+    }
+    return combinedData.charts.expenseBreakdown;
+  };
+
+  // Show error if any
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <ThemedText style={styles.errorText}>
+          Error loading dashboard: {error}
+        </ThemedText>
+        <Pressable style={styles.retryButton} onPress={handleRefresh}>
+          <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
+        </Pressable>
+      </View>
+    );
+  }
 
   return (
     <ScrollView
       style={styles.container}
       showsVerticalScrollIndicator={false}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        <RefreshControl
+          refreshing={refreshing || loading}
+          onRefresh={handleRefresh}
+        />
       }
     >
       {/* Header */}
@@ -295,7 +263,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
       {/* Stats Grid */}
       <View style={styles.section}>
-        <StatsGrid stats={stats} />
+        <StatsGrid stats={formatStats()} />
       </View>
 
       {/* Quick Actions */}
@@ -340,7 +308,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   selectedTimeframe === timeframe &&
                     styles.timeframeButtonActive,
                 ]}
-                onPress={() => setSelectedTimeframe(timeframe)}
+                onPress={() => handleTimeframeChange(timeframe)}
               >
                 <ThemedText
                   style={[
@@ -359,7 +327,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         {/* Weekly Meals Chart */}
         <View style={styles.chartContainer}>
           <BarChart
-            data={weeklyMealsData}
+            data={getWeeklyMealsData()}
             title='Weekly Meals'
             height={200}
             showForecast={true}
@@ -370,7 +338,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         {/* Revenue Chart */}
         <View style={styles.chartContainer}>
           <LineChart
-            data={monthlyRevenueData}
+            data={getMonthlyRevenueData()}
             title='Monthly Revenue (৳)'
             color='#667eea'
             showForecast={true}
@@ -380,7 +348,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         {/* Expense Breakdown */}
         <View style={styles.chartContainer}>
           <PieChart
-            data={expenseBreakdownData}
+            data={getExpenseBreakdownData()}
             title='Expense Breakdown'
             showForecast={true}
           />
@@ -396,12 +364,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </Pressable>
         </View>
         <View style={styles.activityList}>
-          {recentActivity.map(activity => (
+          {formatActivities().map(activity => (
             <Pressable
               key={activity.id}
               style={styles.activityItem}
               onPress={() => {
-                // Navigate to activity detail page
                 router.push({
                   pathname: '/activity-details',
                   params: {
@@ -425,7 +392,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 ]}
               >
                 <Ionicons
-                  name={getActivityIcon(activity.type)}
+                  name={activity.icon}
                   size={20}
                   color={activity.color}
                 />
@@ -453,15 +420,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <View style={styles.progressContainer}>
           <ProgressChart
             title='Meal Target'
-            current={87}
-            target={100}
+            current={analytics?.monthlyProgress?.current || 0}
+            target={analytics?.monthlyProgress?.target || 100}
             color='#10b981'
             gradient={['#34d399', '#10b981']}
           />
           <ProgressChart
             title='Revenue Target'
-            current={32400}
-            target={40000}
+            current={stats?.monthlyExpense || 0}
+            target={stats?.monthlyBudget || 40000}
             color='#6366f1'
             gradient={['#818cf8', '#6366f1']}
           />
@@ -653,6 +620,29 @@ const styles = StyleSheet.create({
   bottomSpacing: {
     height: 100,
   },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#ef4444',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: '#667eea',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
 });
 
-export default Dashboard;
+export default ApiDashboard;

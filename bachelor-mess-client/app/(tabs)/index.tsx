@@ -1,5 +1,5 @@
-import { ModularDashboard } from "@/components/dashboard/ModularDashboard";
+import { ApiDashboard } from '@/components/dashboard/ApiDashboard';
 
 export default function HomeScreen() {
-  return <ModularDashboard />;
+  return <ApiDashboard />;
 }

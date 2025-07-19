@@ -5,6 +5,7 @@ import React, {
   useState,
   useEffect,
 } from 'react';
+import { useRouter } from 'expo-router';
 import authService from '@/services/authService';
 import { User } from '@/services/authService';
 
@@ -34,6 +35,7 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
+  const router = useRouter();
   const [auth, setAuthState] = useState<AuthData>({
     user: null,
     token: null,
@@ -55,10 +57,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
               token,
               role: user.role,
             });
+          } else {
+            // Clear invalid auth state
+            setAuthState({ user: null, token: null, role: null });
           }
+        } else {
+          // No authentication found
+          setAuthState({ user: null, token: null, role: null });
         }
       } catch (error) {
         console.error('Error checking authentication:', error);
+        // Clear auth state on error
+        setAuthState({ user: null, token: null, role: null });
       } finally {
         setIsLoading(false);
       }
@@ -71,11 +81,39 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const logout = async () => {
     try {
-      await authService.logout();
-    } catch (error) {
-      console.error('Error during logout:', error);
-    } finally {
+      console.log('🚪 Starting logout from AuthContext...');
+
+      // Clear auth state first
       setAuthState({ user: null, token: null, role: null });
+      console.log('🧹 Auth state cleared');
+
+      // Call logout service
+      await authService.logout();
+      console.log('✅ Logout service completed');
+
+      // Navigate to login screen
+      try {
+        router.replace('/LoginScreen');
+        console.log('🔄 Navigated to login screen');
+      } catch (navError) {
+        console.error('❌ Navigation error:', navError);
+        // Fallback navigation
+        try {
+          router.push('/LoginScreen');
+          console.log('🔄 Fallback navigation to login screen');
+        } catch (fallbackError) {
+          console.error('❌ Fallback navigation also failed:', fallbackError);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error during logout:', error);
+      // Even if logout fails, ensure we clear state and navigate
+      setAuthState({ user: null, token: null, role: null });
+      try {
+        router.replace('/LoginScreen');
+      } catch (navError) {
+        console.error('❌ Navigation error after logout failure:', navError);
+      }
     }
   };
 

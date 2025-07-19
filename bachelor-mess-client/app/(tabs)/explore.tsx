@@ -1,7 +1,7 @@
-import { ThemedText } from "@/components/ThemedText";
-import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import { useState } from "react";
+import { ThemedText } from '@/components/ThemedText';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -9,105 +9,105 @@ import {
   StyleSheet,
   TextInput,
   View,
-} from "react-native";
+} from 'react-native';
 
 interface BazarItem {
   id: string;
   name: string;
   amount: number;
   date: string;
-  status: "pending" | "approved" | "rejected";
+  status: 'pending' | 'approved' | 'rejected';
   submittedBy: string;
 }
 
 export default function BazarScreen() {
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Mock data - replace with real API data
   const bazarItems: BazarItem[] = [
     {
-      id: "1",
-      name: "Rice, Vegetables, Meat",
+      id: '1',
+      name: 'Rice, Vegetables, Meat',
       amount: 1200,
-      date: "2024-01-15",
-      status: "approved",
-      submittedBy: "Mahbub Alam",
+      date: '2024-01-15',
+      status: 'approved',
+      submittedBy: 'Member One',
     },
     {
-      id: "2",
-      name: "Fish, Spices, Oil",
+      id: '2',
+      name: 'Fish, Spices, Oil',
       amount: 800,
-      date: "2024-01-14",
-      status: "pending",
-      submittedBy: "Rahim",
+      date: '2024-01-14',
+      status: 'pending',
+      submittedBy: 'Member Two',
     },
     {
-      id: "3",
-      name: "Chicken, Vegetables",
+      id: '3',
+      name: 'Chicken, Vegetables',
       amount: 950,
-      date: "2024-01-13",
-      status: "approved",
-      submittedBy: "Karim",
+      date: '2024-01-13',
+      status: 'approved',
+      submittedBy: 'Member Two',
     },
     {
-      id: "4",
-      name: "Eggs, Milk, Bread",
+      id: '4',
+      name: 'Eggs, Milk, Bread',
       amount: 450,
-      date: "2024-01-12",
-      status: "rejected",
-      submittedBy: "Salam",
+      date: '2024-01-12',
+      status: 'rejected',
+      submittedBy: 'Member Three',
     },
   ];
 
   const filteredItems = bazarItems.filter(
-    (item) =>
+    item =>
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.submittedBy.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "approved":
-        return "#10b981";
-      case "pending":
-        return "#f59e0b";
-      case "rejected":
-        return "#ef4444";
+      case 'approved':
+        return '#10b981';
+      case 'pending':
+        return '#f59e0b';
+      case 'rejected':
+        return '#ef4444';
       default:
-        return "#6b7280";
+        return '#6b7280';
     }
   };
 
   const getStatusBgColor = (status: string) => {
     switch (status) {
-      case "approved":
-        return "#ecfdf5";
-      case "pending":
-        return "#fffbeb";
-      case "rejected":
-        return "#fef2f2";
+      case 'approved':
+        return '#ecfdf5';
+      case 'pending':
+        return '#fffbeb';
+      case 'rejected':
+        return '#fef2f2';
       default:
-        return "#f3f4f6";
+        return '#f3f4f6';
     }
   };
 
   const handleAddBazar = () => {
-    Alert.alert("Add Bazar", "This would open a form to add new bazar items");
+    Alert.alert('Add Bazar', 'This would open a form to add new bazar items');
   };
 
   const handleApprove = (id: string) => {
-    Alert.alert("Approve", `Approve bazar item ${id}`);
+    Alert.alert('Approve', `Approve bazar item ${id}`);
   };
 
   const handleReject = (id: string) => {
-    Alert.alert("Reject", `Reject bazar item ${id}`);
+    Alert.alert('Reject', `Reject bazar item ${id}`);
   };
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Header */}
       <LinearGradient
-        colors={["#4facfe", "#00f2fe"]}
+        colors={['#4facfe', '#00f2fe']}
         style={styles.headerGradient}
       >
         <View style={styles.header}>
@@ -118,7 +118,7 @@ export default function BazarScreen() {
             </ThemedText>
           </View>
           <View style={styles.headerIcon}>
-            <Ionicons name="cart" size={32} color="#fff" />
+            <Ionicons name='cart' size={32} color='#fff' />
           </View>
         </View>
       </LinearGradient>
@@ -128,17 +128,17 @@ export default function BazarScreen() {
         <View style={styles.searchContainer}>
           <View style={styles.searchBar}>
             <Ionicons
-              name="search"
+              name='search'
               size={20}
-              color="#9ca3af"
+              color='#9ca3af'
               style={styles.searchIcon}
             />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search bazar items..."
+              placeholder='Search bazar items...'
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor='#9ca3af'
             />
           </View>
         </View>
@@ -147,12 +147,12 @@ export default function BazarScreen() {
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
             <LinearGradient
-              colors={["#667eea", "#764ba2"]}
+              colors={['#667eea', '#764ba2']}
               style={styles.statGradient}
             >
-              <Ionicons name="checkmark-circle" size={24} color="#fff" />
+              <Ionicons name='checkmark-circle' size={24} color='#fff' />
               <ThemedText style={styles.statValue}>
-                {bazarItems.filter((item) => item.status === "approved").length}
+                {bazarItems.filter(item => item.status === 'approved').length}
               </ThemedText>
               <ThemedText style={styles.statLabel}>Approved</ThemedText>
             </LinearGradient>
@@ -160,12 +160,12 @@ export default function BazarScreen() {
 
           <View style={styles.statCard}>
             <LinearGradient
-              colors={["#f093fb", "#f5576c"]}
+              colors={['#f093fb', '#f5576c']}
               style={styles.statGradient}
             >
-              <Ionicons name="time" size={24} color="#fff" />
+              <Ionicons name='time' size={24} color='#fff' />
               <ThemedText style={styles.statValue}>
-                {bazarItems.filter((item) => item.status === "pending").length}
+                {bazarItems.filter(item => item.status === 'pending').length}
               </ThemedText>
               <ThemedText style={styles.statLabel}>Pending</ThemedText>
             </LinearGradient>
@@ -173,10 +173,10 @@ export default function BazarScreen() {
 
           <View style={styles.statCard}>
             <LinearGradient
-              colors={["#43e97b", "#38f9d7"]}
+              colors={['#43e97b', '#38f9d7']}
               style={styles.statGradient}
             >
-              <Ionicons name="cash" size={24} color="#fff" />
+              <Ionicons name='cash' size={24} color='#fff' />
               <ThemedText style={styles.statValue}>
                 {bazarItems.reduce((sum, item) => sum + item.amount, 0)}৳
               </ThemedText>
@@ -188,10 +188,10 @@ export default function BazarScreen() {
         {/* Add Bazar Button */}
         <Pressable style={styles.addButton} onPress={handleAddBazar}>
           <LinearGradient
-            colors={["#667eea", "#764ba2"]}
+            colors={['#667eea', '#764ba2']}
             style={styles.addButtonGradient}
           >
-            <Ionicons name="add" size={24} color="#fff" />
+            <Ionicons name='add' size={24} color='#fff' />
             <ThemedText style={styles.addButtonText}>Add New Bazar</ThemedText>
           </LinearGradient>
         </Pressable>
@@ -202,7 +202,7 @@ export default function BazarScreen() {
             Recent Bazar Items
           </ThemedText>
 
-          {filteredItems.map((item) => (
+          {filteredItems.map(item => (
             <View key={item.id} style={styles.itemCard}>
               <View style={styles.itemHeader}>
                 <View style={styles.itemInfo}>
@@ -244,13 +244,13 @@ export default function BazarScreen() {
               </View>
 
               {/* Admin Actions */}
-              {item.status === "pending" && (
+              {item.status === 'pending' && (
                 <View style={styles.actionButtons}>
                   <Pressable
                     style={[styles.actionButton, styles.approveButton]}
                     onPress={() => handleApprove(item.id)}
                   >
-                    <Ionicons name="checkmark" size={16} color="#fff" />
+                    <Ionicons name='checkmark' size={16} color='#fff' />
                     <ThemedText style={styles.actionButtonText}>
                       Approve
                     </ThemedText>
@@ -259,7 +259,7 @@ export default function BazarScreen() {
                     style={[styles.actionButton, styles.rejectButton]}
                     onPress={() => handleReject(item.id)}
                   >
-                    <Ionicons name="close" size={16} color="#fff" />
+                    <Ionicons name='close' size={16} color='#fff' />
                     <ThemedText style={styles.actionButtonText}>
                       Reject
                     </ThemedText>
@@ -277,7 +277,7 @@ export default function BazarScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8fafc",
+    backgroundColor: '#f8fafc',
   },
   headerGradient: {
     paddingTop: 60,
@@ -285,30 +285,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   headerContent: {
     flex: 1,
   },
   headerTitle: {
     fontSize: 28,
-    fontWeight: "bold",
-    color: "#fff",
+    fontWeight: 'bold',
+    color: '#fff',
     marginBottom: 4,
   },
   headerSubtitle: {
     fontSize: 16,
-    color: "rgba(255, 255, 255, 0.9)",
+    color: 'rgba(255, 255, 255, 0.9)',
   },
   headerIcon: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    justifyContent: "center",
-    alignItems: "center",
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   content: {
     padding: 20,
@@ -317,13 +317,13 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   searchBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    shadowColor: "#000",
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -335,19 +335,19 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: "#1f2937",
+    color: '#1f2937',
   },
   statsContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: 24,
   },
   statCard: {
     flex: 1,
     marginHorizontal: 4,
     borderRadius: 16,
-    overflow: "hidden",
-    shadowColor: "#000",
+    overflow: 'hidden',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
@@ -355,40 +355,40 @@ const styles = StyleSheet.create({
   },
   statGradient: {
     padding: 16,
-    alignItems: "center",
+    alignItems: 'center',
   },
   statValue: {
     fontSize: 20,
-    fontWeight: "bold",
-    color: "#fff",
+    fontWeight: 'bold',
+    color: '#fff',
     marginTop: 8,
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 12,
-    color: "rgba(255, 255, 255, 0.9)",
+    color: 'rgba(255, 255, 255, 0.9)',
   },
   addButton: {
     marginBottom: 24,
     borderRadius: 16,
-    overflow: "hidden",
-    shadowColor: "#000",
+    overflow: 'hidden',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 8,
   },
   addButtonGradient: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 16,
     paddingHorizontal: 24,
   },
   addButtonText: {
     fontSize: 16,
-    fontWeight: "bold",
-    color: "#fff",
+    fontWeight: 'bold',
+    color: '#fff',
     marginLeft: 8,
   },
   listContainer: {
@@ -396,25 +396,25 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 20,
-    fontWeight: "bold",
-    color: "#1f2937",
+    fontWeight: 'bold',
+    color: '#1f2937',
     marginBottom: 16,
   },
   itemCard: {
-    backgroundColor: "#fff",
+    backgroundColor: '#fff',
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
-    shadowColor: "#000",
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
   },
   itemHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
     marginBottom: 12,
   },
   itemInfo: {
@@ -422,13 +422,13 @@ const styles = StyleSheet.create({
   },
   itemName: {
     fontSize: 16,
-    fontWeight: "bold",
-    color: "#1f2937",
+    fontWeight: 'bold',
+    color: '#1f2937',
     marginBottom: 4,
   },
   itemDate: {
     fontSize: 14,
-    color: "#6b7280",
+    color: '#6b7280',
   },
   statusBadge: {
     paddingHorizontal: 12,
@@ -437,48 +437,48 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 12,
-    fontWeight: "bold",
+    fontWeight: 'bold',
   },
   itemDetails: {
     marginBottom: 12,
   },
   detailRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: 4,
   },
   detailLabel: {
     fontSize: 14,
-    color: "#6b7280",
+    color: '#6b7280',
   },
   detailValue: {
     fontSize: 14,
-    fontWeight: "bold",
-    color: "#1f2937",
+    fontWeight: 'bold',
+    color: '#1f2937',
   },
   actionButtons: {
-    flexDirection: "row",
+    flexDirection: 'row',
     gap: 12,
   },
   actionButton: {
     flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 8,
   },
   approveButton: {
-    backgroundColor: "#10b981",
+    backgroundColor: '#10b981',
   },
   rejectButton: {
-    backgroundColor: "#ef4444",
+    backgroundColor: '#ef4444',
   },
   actionButtonText: {
     fontSize: 14,
-    fontWeight: "bold",
-    color: "#fff",
+    fontWeight: 'bold',
+    color: '#fff',
     marginLeft: 4,
   },
 });

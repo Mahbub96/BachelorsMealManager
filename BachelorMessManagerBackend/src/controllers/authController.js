@@ -2,7 +2,10 @@ const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const { config } = require('../config/config');
 const logger = require('../utils/logger');
-const { sendSuccessResponse, sendErrorResponse } = require('../utils/responseHandler');
+const {
+  sendSuccessResponse,
+  sendErrorResponse,
+} = require('../utils/responseHandler');
 const crypto = require('crypto');
 
 class AuthController {
@@ -22,7 +25,7 @@ class AuthController {
         name,
         email,
         password,
-        role
+        role,
       });
 
       logger.info(`New user registered: ${email}`);
@@ -31,7 +34,7 @@ class AuthController {
         id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role
+        role: user.role,
       });
     } catch (error) {
       next(error);
@@ -77,8 +80,8 @@ class AuthController {
           name: user.name,
           email: user.email,
           role: user.role,
-          status: user.status
-        }
+          status: user.status,
+        },
       });
     } catch (error) {
       next(error);
@@ -89,8 +92,13 @@ class AuthController {
   async getProfile(req, res, next) {
     try {
       const user = await User.findById(req.user.id);
-      
-      return sendSuccessResponse(res, 200, 'Profile retrieved successfully', user.fullProfile);
+
+      return sendSuccessResponse(
+        res,
+        200,
+        'Profile retrieved successfully',
+        user.fullProfile
+      );
     } catch (error) {
       next(error);
     }
@@ -105,13 +113,17 @@ class AuthController {
       if (name) updateData.name = name;
       if (phone) updateData.phone = phone;
 
-      const user = await User.findByIdAndUpdate(
-        req.user.id,
-        updateData,
-        { new: true, runValidators: true }
-      );
+      const user = await User.findByIdAndUpdate(req.user.id, updateData, {
+        new: true,
+        runValidators: true,
+      });
 
-      return sendSuccessResponse(res, 200, 'Profile updated successfully', user.fullProfile);
+      return sendSuccessResponse(
+        res,
+        200,
+        'Profile updated successfully',
+        user.fullProfile
+      );
     } catch (error) {
       next(error);
     }
@@ -123,7 +135,11 @@ class AuthController {
       const { currentPassword, newPassword } = req.body;
 
       if (!currentPassword || !newPassword) {
-        return sendErrorResponse(res, 400, 'Current password and new password are required');
+        return sendErrorResponse(
+          res,
+          400,
+          'Current password and new password are required'
+        );
       }
 
       // Get user with password
@@ -158,7 +174,7 @@ class AuthController {
 
       // Verify refresh token
       const decoded = jwt.verify(refreshToken, config.jwt.refreshSecret);
-      
+
       if (decoded.type !== 'refresh') {
         return sendErrorResponse(res, 401, 'Invalid token type');
       }
@@ -175,10 +191,13 @@ class AuthController {
 
       return sendSuccessResponse(res, 200, 'Token refreshed successfully', {
         token: newToken,
-        refreshToken: newRefreshToken
+        refreshToken: newRefreshToken,
       });
     } catch (error) {
-      if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+      if (
+        error.name === 'JsonWebTokenError' ||
+        error.name === 'TokenExpiredError'
+      ) {
         return sendErrorResponse(res, 401, 'Invalid or expired refresh token');
       }
       next(error);
@@ -188,13 +207,21 @@ class AuthController {
   // Logout user
   async logout(req, res, next) {
     try {
-      // In a more complex system, you might want to blacklist the token
-      // For now, we'll just return a success response
-      logger.info(`User logged out: ${req.user.email}`);
+      logger.info('Logout endpoint called');
 
-      return sendSuccessResponse(res, 200, 'Logged out successfully');
+      // Immediate response without any processing
+      return res.status(200).json({
+        success: true,
+        message: 'Logged out successfully',
+        timestamp: new Date().toISOString(),
+      });
     } catch (error) {
-      next(error);
+      logger.error('Logout error:', error);
+      return res.status(200).json({
+        success: true,
+        message: 'Logged out successfully',
+        timestamp: new Date().toISOString(),
+      });
     }
   }
 
@@ -202,7 +229,7 @@ class AuthController {
   async verifyToken(req, res, next) {
     try {
       return sendSuccessResponse(res, 200, 'Token is valid', {
-        user: req.user.fullProfile
+        user: req.user.fullProfile,
       });
     } catch (error) {
       next(error);
@@ -228,7 +255,8 @@ class AuthController {
       logger.info(`Password reset requested for: ${email}`);
 
       return sendSuccessResponse(res, 200, 'Password reset email sent', {
-        message: 'If an account with that email exists, a password reset link has been sent'
+        message:
+          'If an account with that email exists, a password reset link has been sent',
       });
     } catch (error) {
       next(error);
@@ -241,7 +269,11 @@ class AuthController {
       const { token, newPassword } = req.body;
 
       if (!token || !newPassword) {
-        return sendErrorResponse(res, 400, 'Token and new password are required');
+        return sendErrorResponse(
+          res,
+          400,
+          'Token and new password are required'
+        );
       }
 
       // Get hashed token
@@ -252,7 +284,7 @@ class AuthController {
 
       const user = await User.findOne({
         passwordResetToken: resetPasswordToken,
-        passwordResetExpires: { $gt: Date.now() }
+        passwordResetExpires: { $gt: Date.now() },
       });
 
       if (!user) {
@@ -274,4 +306,4 @@ class AuthController {
   }
 }
 
-module.exports = new AuthController(); 
+module.exports = new AuthController();

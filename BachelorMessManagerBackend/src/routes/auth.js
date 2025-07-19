@@ -1,7 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { protect } = require('../middleware/auth');
-const { validateRegistration, validateLogin } = require('../middleware/validation');
+const { protect } = require('../middleware/auth-simple');
+const {
+  validateRegistration,
+  validateLogin,
+} = require('../middleware/validation');
 const authController = require('../controllers/authController');
 
 // @desc    Register user
@@ -54,4 +57,4 @@ router.post('/forgot-password', authController.forgotPassword);
 // @access  Public
 router.post('/reset-password', authController.resetPassword);
 
-module.exports = router; 
+module.exports = router;
