@@ -6,47 +6,68 @@ const logger = require('../utils/logger');
 const { sendSuccessResponse } = require('../utils/responseHandler');
 
 class DashboardController {
-  // Get dashboard statistics
+  // Get dashboard statistics - Simplified version to fix hanging issue
   async getDashboardStats(req, res, next) {
     try {
       const userId = req.user.id;
       const isAdmin = req.user.role === 'admin';
 
-      // Get user statistics
-      const userStats = await User.getStats();
+      logger.info(
+        `Getting dashboard stats for user: ${userId}, isAdmin: ${isAdmin}`
+      );
 
-      // Get meal statistics
-      const mealQuery = isAdmin ? {} : { userId };
-      const mealStats = await Meal.getStats(mealQuery);
+      // Get basic counts instead of complex stats
+      const userCount = await User.countDocuments({ status: 'active' });
+      const mealCount = await Meal.countDocuments(isAdmin ? {} : { userId });
+      const bazarCount = await Bazar.countDocuments(isAdmin ? {} : { userId });
 
-      // Get bazar statistics
-      const bazarQuery = isAdmin ? {} : { userId };
-      const bazarStats = await Bazar.getStats(bazarQuery);
+      // Get pending counts
+      const pendingMeals = await Meal.countDocuments({
+        ...(isAdmin ? {} : { userId }),
+        status: 'pending',
+      });
 
-      // Calculate dashboard metrics
+      const pendingBazar = await Bazar.countDocuments({
+        ...(isAdmin ? {} : { userId }),
+        status: 'pending',
+      });
+
+      // Calculate total bazar amount
+      const bazarAmounts = await Bazar.aggregate([
+        { $match: isAdmin ? {} : { userId } },
+        { $group: { _id: null, totalAmount: { $sum: '$totalAmount' } } },
+      ]);
+
+      const totalBazarAmount = bazarAmounts[0]?.totalAmount || 0;
+
+      // Calculate average meals per user
+      const averageMeals =
+        userCount > 0 ? (mealCount / userCount).toFixed(1) : 0;
+
+      // Calculate budget usage
+      const monthlyBudget = config.business?.monthlyBudget || 40000;
+      const budgetUsed =
+        monthlyBudget > 0
+          ? Math.round((totalBazarAmount / monthlyBudget) * 100)
+          : 0;
+
       const stats = {
-        totalMembers: userStats.totalUsers || 0,
-        activeMembers: userStats.activeUsers || 0,
-        totalMeals: mealStats.totalMeals || 0,
-        pendingMeals: mealStats.pendingCount || 0,
-        totalBazarAmount: bazarStats.totalAmount || 0,
-        pendingBazar: bazarStats.pendingCount || 0,
-        monthlyExpense: bazarStats.totalAmount || 0,
-        averageMeals:
-          mealStats.totalMeals > 0
-            ? (mealStats.totalMeals / userStats.activeUsers).toFixed(1)
-            : 0,
+        totalMembers: userCount,
+        activeMembers: userCount,
+        totalMeals: mealCount,
+        pendingMeals: pendingMeals,
+        totalBazarAmount: totalBazarAmount,
+        pendingBazar: pendingBazar,
+        monthlyExpense: totalBazarAmount,
+        averageMeals: parseFloat(averageMeals),
         balance: 0, // This would be calculated based on your business logic
-        monthlyBudget: config.business?.monthlyBudget || 40000,
-        budgetUsed:
-          bazarStats.totalAmount > 0
-            ? Math.round(
-                (bazarStats.totalAmount /
-                  (config.business?.monthlyBudget || 40000)) *
-                  100
-              )
-            : 0,
+        monthlyBudget: monthlyBudget,
+        budgetUsed: budgetUsed,
       };
+
+      logger.info(
+        `Dashboard stats calculated successfully for user: ${userId}`
+      );
 
       return sendSuccessResponse(
         res,
@@ -55,6 +76,7 @@ class DashboardController {
         stats
       );
     } catch (error) {
+      logger.error('Error in getDashboardStats:', error);
       next(error);
     }
   }
@@ -94,7 +116,7 @@ class DashboardController {
           priority: meal.status === 'pending' ? 'medium' : 'low',
           amount: 0,
           user: meal.userId.name,
-          icon: '🍽️',
+          icon: 'restaurant',
           status: meal.status,
         });
       });
@@ -138,13 +160,14 @@ class DashboardController {
       // Get analytics data
       const analytics = await this.getAnalyticsData(timeframe, userId, isAdmin);
 
-      // Get basic stats
-      const stats = await this.getDashboardStats(req, res, next);
-      const statsData = stats.data || {};
+      // Get basic stats data directly
+      const statsData = await this.getDashboardStatsData(userId, isAdmin);
 
-      // Get recent activities
-      const activities = await this.getRecentActivities(req, res, next);
-      const activitiesData = activities.data || [];
+      // Get recent activities data directly
+      const activitiesData = await this.getRecentActivitiesData(
+        userId,
+        isAdmin
+      );
 
       // Get weekly meals data
       const weeklyMealsData = await this.getWeeklyMealsData(userId, isAdmin);
@@ -561,6 +584,176 @@ class DashboardController {
     }
   }
 
+  // Helper method to get dashboard stats data
+  async getDashboardStatsData(userId, isAdmin) {
+    try {
+      const currentDate = new Date();
+      const currentMonth = currentDate.getMonth();
+      const currentYear = currentDate.getFullYear();
+
+      // Build query based on user role
+      const query = {};
+      if (!isAdmin) {
+        query.userId = userId;
+      }
+
+      // Get total members
+      const totalMembers = await User.countDocuments();
+
+      // Get monthly expenses (bazar entries)
+      const startOfMonth = new Date(currentYear, currentMonth, 1);
+      const endOfMonth = new Date(currentYear, currentMonth + 1, 0);
+
+      const monthlyBazarQuery = {
+        createdAt: {
+          $gte: startOfMonth,
+          $lte: endOfMonth,
+        },
+        ...query,
+      };
+
+      const monthlyBazarEntries = await Bazar.find(monthlyBazarQuery);
+      const monthlyExpense = monthlyBazarEntries.reduce(
+        (sum, entry) => sum + entry.totalAmount,
+        0
+      );
+
+      // Get total meals for current month
+      const monthlyMealsQuery = {
+        date: {
+          $gte: startOfMonth.toISOString().split('T')[0],
+          $lte: endOfMonth.toISOString().split('T')[0],
+        },
+        ...query,
+      };
+
+      const monthlyMeals = await Meal.find(monthlyMealsQuery);
+      const totalMeals = monthlyMeals.reduce((sum, meal) => {
+        return (
+          sum +
+          (meal.breakfast ? 1 : 0) +
+          (meal.lunch ? 1 : 0) +
+          (meal.dinner ? 1 : 0)
+        );
+      }, 0);
+
+      // Calculate average meals per day
+      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+      const averageMeals =
+        daysInMonth > 0 ? Math.round(totalMeals / daysInMonth) : 0;
+
+      // Get balance (mock data for now)
+      const balance = 5000; // This should be calculated based on actual payment logic
+
+      // Get pending payments (mock data for now)
+      const pendingPayments = 2;
+
+      // Get monthly budget (mock data for now)
+      const monthlyBudget = 15000;
+
+      // Calculate budget used percentage
+      const budgetUsed = Math.round((monthlyExpense / monthlyBudget) * 100);
+
+      return {
+        totalMembers,
+        monthlyExpense,
+        averageMeals,
+        balance,
+        totalMeals,
+        pendingPayments,
+        monthlyBudget,
+        budgetUsed,
+      };
+    } catch (error) {
+      logger.error('Error getting dashboard stats data:', error);
+      return {
+        totalMembers: 0,
+        monthlyExpense: 0,
+        averageMeals: 0,
+        balance: 0,
+        totalMeals: 0,
+        pendingPayments: 0,
+        monthlyBudget: 0,
+        budgetUsed: 0,
+      };
+    }
+  }
+
+  // Helper method to get recent activities data
+  async getRecentActivitiesData(userId, isAdmin) {
+    try {
+      const activities = [];
+
+      // Get recent meals
+      const recentMealsQuery = {};
+      if (!isAdmin) {
+        recentMealsQuery.userId = userId;
+      }
+
+      const recentMeals = await Meal.find(recentMealsQuery)
+        .sort({ date: -1 })
+        .limit(5)
+        .populate('userId', 'name');
+
+      for (const meal of recentMeals) {
+        const mealTypes = [];
+        if (meal.breakfast) mealTypes.push('Breakfast');
+        if (meal.lunch) mealTypes.push('Lunch');
+        if (meal.dinner) mealTypes.push('Dinner');
+
+        if (mealTypes.length > 0) {
+          activities.push({
+            id: meal._id.toString(),
+            type: 'meal',
+            title: `${mealTypes.join(', ')} Added`,
+            description: `Meal recorded for ${meal.date}`,
+            time: this.getTimeAgo(meal.createdAt),
+            priority: 'low',
+            user: meal.userId?.name || 'Unknown',
+            icon: 'restaurant',
+          });
+        }
+      }
+
+      // Get recent bazar entries
+      const recentBazarQuery = {};
+      if (!isAdmin) {
+        recentBazarQuery.userId = userId;
+      }
+
+      const recentBazar = await Bazar.find(recentBazarQuery)
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .populate('userId', 'name');
+
+      for (const bazar of recentBazar) {
+        activities.push({
+          id: bazar._id.toString(),
+          type: 'bazar',
+          title: 'Bazar Entry Added',
+          description: `${bazar.items.length} items purchased for ${bazar.totalAmount}৳`,
+          time: this.getTimeAgo(bazar.createdAt),
+          priority: 'medium',
+          amount: bazar.totalAmount,
+          user: bazar.userId?.name || 'Unknown',
+          icon: '🛒',
+        });
+      }
+
+      // Sort activities by time (most recent first)
+      activities.sort((a, b) => {
+        const timeA = new Date(a.time).getTime();
+        const timeB = new Date(b.time).getTime();
+        return timeB - timeA;
+      });
+
+      return activities.slice(0, 10); // Return top 10 activities
+    } catch (error) {
+      logger.error('Error getting recent activities data:', error);
+      return [];
+    }
+  }
+
   // Helper methods
   getStartDate(timeframe) {
     const now = new Date();
@@ -634,4 +827,16 @@ class DashboardController {
   }
 }
 
-module.exports = new DashboardController();
+const dashboardController = new DashboardController();
+
+// Bind methods to preserve 'this' context
+const boundController = {
+  getDashboardStats:
+    dashboardController.getDashboardStats.bind(dashboardController),
+  getRecentActivities:
+    dashboardController.getRecentActivities.bind(dashboardController),
+  getCombinedDashboard:
+    dashboardController.getCombinedDashboard.bind(dashboardController),
+};
+
+module.exports = boundController;

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { protect } = require('../middleware/auth');
+const { protect } = require('../middleware/auth-simple');
 const dashboardController = require('../controllers/dashboardController');
 
 // @desc    Get dashboard statistics
@@ -18,4 +18,4 @@ router.get('/activities', protect, dashboardController.getRecentActivities);
 // @access  Private
 router.get('/', protect, dashboardController.getCombinedDashboard);
 
-module.exports = router; 
+module.exports = router;

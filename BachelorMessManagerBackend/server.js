@@ -18,11 +18,7 @@ require('dotenv').config();
 const logger = require('./src/utils/logger');
 const errorHandler = require('./src/middleware/errorHandler');
 const notFound = require('./src/middleware/notFound');
-const {
-  connectDB,
-  checkDatabaseHealth,
-  getDatabaseStats,
-} = require('./src/config/database');
+const { connectDB, checkDatabaseHealth } = require('./src/config/database');
 
 // Import uniform logging middleware
 const {
@@ -40,6 +36,12 @@ const bazarRoutes = require('./src/routes/bazar');
 const userRoutes = require('./src/routes/users');
 const analyticsRoutes = require('./src/routes/analytics');
 const monitoringRoutes = require('./src/routes/monitoring');
+const userStatsRoutes = require('./src/routes/userStats');
+const activityRoutes = require('./src/routes/activity');
+const statisticsRoutes = require('./src/routes/statistics');
+
+// Import statistics service
+const StatisticsService = require('./src/services/statisticsService');
 
 // Configuration
 const config = {
@@ -80,7 +82,7 @@ if (
     cluster.fork();
   }
 
-  cluster.on('exit', (worker, code, signal) => {
+  cluster.on('exit', (worker, _code, _signal) => {
     logger.warn(`Worker ${worker.process.pid} died. Restarting...`);
     cluster.fork();
   });
@@ -98,6 +100,17 @@ function startServer() {
 
   // Connect to MongoDB
   connectDB();
+
+  // Initialize statistics service
+  StatisticsService.initializeStatistics()
+    .then(() => {
+      logger.info('Statistics service initialized successfully');
+      // Schedule periodic updates
+      StatisticsService.schedulePeriodicUpdates();
+    })
+    .catch(error => {
+      logger.error('Error initializing statistics service:', error);
+    });
 
   // Security Middleware
   if (config.enableSecurity) {
@@ -346,6 +359,9 @@ function startServer() {
   app.use(`${config.apiPrefix}/users`, userRoutes);
   app.use(`${config.apiPrefix}/analytics`, analyticsRoutes);
   app.use(`${config.apiPrefix}/monitoring`, monitoringRoutes);
+  app.use(`${config.apiPrefix}/user-stats`, userStatsRoutes);
+  app.use(`${config.apiPrefix}/activity`, activityRoutes);
+  app.use(`${config.apiPrefix}/statistics`, statisticsRoutes);
 
   // API Documentation endpoint
   app.get(`${config.apiPrefix}/docs`, (req, res) => {
@@ -360,6 +376,7 @@ function startServer() {
         bazar: `${config.apiPrefix}/bazar`,
         users: `${config.apiPrefix}/users`,
         analytics: `${config.apiPrefix}/analytics`,
+        activity: `${config.apiPrefix}/activity`,
       },
       documentation:
         'Refer to API_REQUIREMENT_DOC.md for complete documentation',
@@ -428,7 +445,7 @@ function startServer() {
   });
 
   // Start server
-  const server = app.listen(config.port, () => {
+  const server = app.listen(config.port, '0.0.0.0', () => {
     logger.info(
       `Server running in ${config.nodeEnv} mode on port ${config.port}`
     );
@@ -441,6 +458,9 @@ function startServer() {
     );
     logger.info(
       `API Documentation at: http://localhost:${config.port}${config.apiPrefix}/docs`
+    );
+    logger.info(
+      `Network accessible at: http://192.168.0.130:${config.port}${config.apiPrefix}`
     );
   });
 

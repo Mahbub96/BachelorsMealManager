@@ -70,6 +70,51 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    // Payment-related fields
+    monthlyContribution: {
+      type: Number,
+      default: 5000,
+      min: [0, 'Monthly contribution cannot be negative'],
+    },
+    lastPaymentDate: {
+      type: Date,
+    },
+    paymentStatus: {
+      type: String,
+      enum: {
+        values: ['paid', 'pending', 'overdue'],
+        message: 'Payment status must be paid, pending, or overdue',
+      },
+      default: 'pending',
+    },
+    totalPaid: {
+      type: Number,
+      default: 0,
+      min: [0, 'Total paid cannot be negative'],
+    },
+    paymentHistory: [
+      {
+        amount: {
+          type: Number,
+          required: true,
+        },
+        date: {
+          type: Date,
+          default: Date.now,
+        },
+        method: {
+          type: String,
+          enum: ['cash', 'bank_transfer', 'mobile_banking'],
+          default: 'cash',
+        },
+        status: {
+          type: String,
+          enum: ['completed', 'pending', 'failed'],
+          default: 'completed',
+        },
+        notes: String,
+      },
+    ],
   },
   {
     timestamps: true,

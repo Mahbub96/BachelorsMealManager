@@ -11,7 +11,15 @@ interface RequestConfig {
   retries?: number;
   cache?: boolean;
   cacheKey?: string;
-  offlineFallback?: boolean; // New option for offline fallback
+  offlineFallback?: boolean;
+  skipAuth?: boolean; // Skip auth token for public endpoints
+}
+
+// Enhanced error types
+interface ApiError extends Error {
+  status?: number;
+  code?: string;
+  response?: any;
 }
 
 // HTTP Client Class
@@ -21,6 +29,8 @@ class HttpClient {
   private requestInterceptors: ((config: RequestConfig) => RequestConfig)[] =
     [];
   private responseInterceptors: ((response: Response) => Response)[] = [];
+  private isOnlineCache: { status: boolean; timestamp: number } | null = null;
+  private readonly ONLINE_CACHE_DURATION = 30000; // 30 seconds
 
   constructor() {
     this.baseURL = API_CONFIG.BASE_URL;
@@ -69,7 +79,7 @@ class HttpClient {
     endpoint: string,
     config: RequestConfig = {}
   ): Promise<RequestConfig> {
-    const token = await this.getAuthToken();
+    const token = config.skipAuth ? null : await this.getAuthToken();
 
     const defaultConfig: RequestConfig = {
       method: 'GET',
@@ -80,7 +90,7 @@ class HttpClient {
       },
       timeout: API_CONFIG.TIMEOUT,
       retries: API_CONFIG.MAX_RETRIES,
-      offlineFallback: true, // Enable offline fallback by default
+      offlineFallback: true,
     };
 
     return this.applyRequestInterceptors({
@@ -89,20 +99,32 @@ class HttpClient {
     });
   }
 
-  // Check if online by testing API connectivity
+  // Enhanced online check with caching
   private async isOnline(): Promise<boolean> {
+    // Check cache first
+    if (
+      this.isOnlineCache &&
+      Date.now() - this.isOnlineCache.timestamp < this.ONLINE_CACHE_DURATION
+    ) {
+      return this.isOnlineCache.status;
+    }
+
     try {
-      // Test API connectivity by making a simple health check
       const healthUrl = `${this.baseURL.replace('/api', '')}/health`;
       console.log('🔍 Checking API connectivity at:', healthUrl);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
 
       const response = await fetch(healthUrl, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
-        signal: AbortSignal.timeout(5000), // 5 second timeout
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       const isOnline = response.ok;
       console.log(
@@ -112,14 +134,22 @@ class HttpClient {
         response.status
       );
 
-      if (!isOnline) {
-        const responseText = await response.text();
-        console.log('📄 Response text:', responseText);
-      }
+      // Cache the result
+      this.isOnlineCache = {
+        status: isOnline,
+        timestamp: Date.now(),
+      };
 
       return isOnline;
     } catch (error) {
       console.log('❌ API connectivity check failed:', error);
+
+      // Cache offline status
+      this.isOnlineCache = {
+        status: false,
+        timestamp: Date.now(),
+      };
+
       return false;
     }
   }
@@ -134,13 +164,14 @@ class HttpClient {
       method: config.method!,
       data: config.body,
       headers: config.headers,
-      maxRetries: 3, // Default max retries
+      maxRetries: 3,
+      timestamp: Date.now(),
     };
 
     return await offlineStorage.storeRequest(offlineRequest);
   }
 
-  // Retry logic with exponential backoff
+  // Enhanced retry logic with exponential backoff and jitter
   private async retryRequest(
     url: string,
     config: RequestConfig,
@@ -163,37 +194,55 @@ class HttpClient {
       clearTimeout(timeoutId);
       return this.applyResponseInterceptors(response);
     } catch (error) {
-      if (retryCount < (config.retries || API_CONFIG.MAX_RETRIES)) {
-        const delay = API_CONFIG.RETRY_DELAY * Math.pow(2, retryCount);
+      const maxRetries = config.retries || API_CONFIG.MAX_RETRIES;
+
+      if (retryCount < maxRetries) {
+        // Exponential backoff with jitter
+        const baseDelay = API_CONFIG.RETRY_DELAY * Math.pow(2, retryCount);
+        const jitter = Math.random() * 0.1 * baseDelay; // 10% jitter
+        const delay = baseDelay + jitter;
+
+        console.log(
+          `🔄 Retrying request (${
+            retryCount + 1
+          }/${maxRetries}) after ${delay}ms`
+        );
+
         await new Promise(resolve => setTimeout(resolve, delay));
         return this.retryRequest(url, config, retryCount + 1);
       }
+
       throw error;
     }
   }
 
-  // Handle API response
+  // Enhanced response handling
   private async handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
     const contentType = response.headers.get('content-type');
     const isJson = contentType?.includes('application/json');
 
     if (!response.ok) {
       let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      let errorData: any = null;
 
       if (isJson) {
         try {
-          const errorData = await response.json();
+          errorData = await response.json();
           errorMessage = errorData.error || errorData.message || errorMessage;
         } catch {
           // Fallback to default error message
         }
       }
 
+      // Create enhanced error object
+      const error: ApiError = new Error(errorMessage) as ApiError;
+      error.status = response.status;
+      error.response = errorData;
+
       // Handle specific status codes
       switch (response.status) {
         case HTTP_STATUS.UNAUTHORIZED:
-          // Clear auth token and redirect to login
-          await AsyncStorage.removeItem('auth_token');
+          await this.handleAuthError();
           throw new Error('Session expired. Please login again.');
         case HTTP_STATUS.FORBIDDEN:
           throw new Error('Access denied. Insufficient permissions.');
@@ -201,8 +250,10 @@ class HttpClient {
           throw new Error('Resource not found.');
         case HTTP_STATUS.INTERNAL_SERVER_ERROR:
           throw new Error('Server error. Please try again later.');
+        case HTTP_STATUS.BAD_REQUEST:
+          throw new Error(errorData?.message || 'Invalid request data.');
         default:
-          throw new Error(errorMessage);
+          throw error;
       }
     }
 
@@ -219,15 +270,22 @@ class HttpClient {
     return { success: true, data: text as any };
   }
 
-  // Handle response errors
+  // Enhanced error handling
   private handleResponseError(error: any): ApiResponse<any> {
+    console.error('🚨 HTTP Client Error:', error);
+
+    if (error.name === 'AbortError') {
+      return {
+        success: false,
+        error: 'Request timeout. Please check your connection and try again.',
+      };
+    }
+
     if (error.response) {
       const { status, data } = error.response;
 
-      // Handle specific HTTP status codes
       switch (status) {
         case 401:
-          // Unauthorized - clear auth data and redirect to login
           this.handleAuthError();
           return {
             success: false,
@@ -244,12 +302,6 @@ class HttpClient {
             success: false,
             error: 'Resource not found.',
           };
-        case 422:
-          return {
-            success: false,
-            error:
-              data?.message || 'Validation error. Please check your input.',
-          };
         case 500:
           return {
             success: false,
@@ -258,38 +310,40 @@ class HttpClient {
         default:
           return {
             success: false,
-            error: data?.message || `Request failed with status ${status}`,
+            error: data?.message || `HTTP ${status} error occurred.`,
           };
       }
-    } else if (error.request) {
-      // Network error
+    }
+
+    if (error.code === 'NETWORK_ERROR') {
       return {
         success: false,
-        error: 'Network error. Please check your connection.',
-      };
-    } else {
-      // Other error
-      return {
-        success: false,
-        error: error.message || 'An unexpected error occurred.',
+        error: 'Network error. Please check your internet connection.',
       };
     }
+
+    return {
+      success: false,
+      error: error.message || 'An unexpected error occurred.',
+    };
   }
 
   // Handle authentication errors
   private async handleAuthError(): Promise<void> {
     try {
-      // Clear auth data
-      await AsyncStorage.multiRemove(['auth_token', 'auth_user']);
-      // Clear cache
-      this.clearCache();
-      console.log('Auth data cleared due to 401 error');
+      await AsyncStorage.removeItem('auth_token');
+      await AsyncStorage.removeItem('user_data');
+
+      // Clear online cache to force re-check
+      this.isOnlineCache = null;
+
+      console.log('🔐 Auth token cleared due to unauthorized access');
     } catch (error) {
       console.error('Error clearing auth data:', error);
     }
   }
 
-  // Cache management
+  // Enhanced caching
   private async getCachedResponse<T>(
     cacheKey: string
   ): Promise<ApiResponse<T> | null> {
@@ -302,7 +356,7 @@ class HttpClient {
         }
       }
     } catch (error) {
-      console.error('Cache read error:', error);
+      console.error('Error reading cache:', error);
     }
     return null;
   }
@@ -321,69 +375,108 @@ class HttpClient {
         JSON.stringify(cacheData)
       );
     } catch (error) {
-      console.error('Cache write error:', error);
+      console.error('Error writing cache:', error);
     }
   }
 
-  // Main request method with offline support
+  // Main request method with enhanced error handling
   async request<T>(
     endpoint: string,
     config: RequestConfig = {}
   ): Promise<ApiResponse<T>> {
     try {
-      // Check cache first if enabled
-      if (config.cache && config.cacheKey) {
-        const cached = await this.getCachedResponse<T>(config.cacheKey);
-        if (cached) {
-          return cached;
-        }
-      }
+      const requestConfig = await this.createRequestConfig(endpoint, config);
+      const url = `${this.baseURL}${endpoint}`;
+
+      console.log(`🌐 Making ${requestConfig.method} request to: ${url}`);
 
       // Check if online
-      const isOnline = await this.isOnline();
-      if (!isOnline) {
-        if (config.offlineFallback) {
-          // Store request for later retry
-          await this.storeForOfflineRetry(endpoint, config);
+      const online = await this.isOnline();
+
+      if (!online) {
+        console.log('📱 Device is offline');
+
+        if (requestConfig.offlineFallback) {
+          // Store for offline retry
+          const requestId = await this.storeForOfflineRetry(
+            endpoint,
+            requestConfig
+          );
+          console.log(`💾 Request stored for offline retry: ${requestId}`);
+
           return {
             success: false,
             error:
-              'You are offline. Request will be retried when connection is restored.',
+              'Device is offline. Request will be retried when connection is restored.',
           };
         }
+
         return {
           success: false,
           error: 'No internet connection. Please check your network settings.',
         };
       }
 
-      // Create request configuration
-      const requestConfig = await this.createRequestConfig(endpoint, config);
-
-      // Make the request
-      const response = await this.retryRequest(
-        `${this.baseURL}${endpoint}`,
-        requestConfig
-      );
-
-      // Handle response
-      const result = await this.handleResponse<T>(response);
-
-      // Cache successful responses
-      if (config.cache && config.cacheKey && result.success) {
-        await this.setCachedResponse(config.cacheKey, result);
+      // Try cached response for GET requests
+      if (
+        requestConfig.method === 'GET' &&
+        requestConfig.cache &&
+        requestConfig.cacheKey
+      ) {
+        const cached = await this.getCachedResponse<T>(requestConfig.cacheKey);
+        if (cached) {
+          console.log(
+            '📦 HTTP Client - Returning cached response for:',
+            requestConfig.cacheKey
+          );
+          console.log('📦 HTTP Client - Cached data:', {
+            success: cached.success,
+            hasData: !!cached.data,
+            dataType: typeof cached.data,
+          });
+          return cached;
+        } else {
+          console.log(
+            '📦 HTTP Client - No cached response found for:',
+            requestConfig.cacheKey
+          );
+        }
       }
 
+      // Make the request with retry logic
+      const response = await this.retryRequest(url, requestConfig);
+
+      // Handle the response
+      const result = await this.handleResponse<T>(response);
+
+      // Cache successful GET responses
+      if (
+        requestConfig.method === 'GET' &&
+        result.success &&
+        requestConfig.cache &&
+        requestConfig.cacheKey
+      ) {
+        console.log(
+          '📦 HTTP Client - Caching response for:',
+          requestConfig.cacheKey
+        );
+        console.log('📦 HTTP Client - Caching data:', {
+          success: result.success,
+          hasData: !!result.data,
+          dataType: typeof result.data,
+        });
+        await this.setCachedResponse(requestConfig.cacheKey, result);
+      }
+
+      console.log(`✅ Request successful: ${endpoint}`);
       return result;
     } catch (error) {
-      console.error('Request error:', error);
-
-      // Use improved error handling
+      console.error(`❌ Request failed: ${endpoint}`, error);
       return this.handleResponseError(error);
     }
   }
 
-  // GET request
+  // HTTP method shortcuts
   async get<T>(
     endpoint: string,
     config: Omit<RequestConfig, 'method'> = {}
@@ -391,33 +484,22 @@ class HttpClient {
     return this.request<T>(endpoint, { ...config, method: 'GET' });
   }
 
-  // POST request
   async post<T>(
     endpoint: string,
     data?: any,
     config: Omit<RequestConfig, 'method' | 'body'> = {}
   ): Promise<ApiResponse<T>> {
-    return this.request<T>(endpoint, {
-      ...config,
-      method: 'POST',
-      body: data,
-    });
+    return this.request<T>(endpoint, { ...config, method: 'POST', body: data });
   }
 
-  // PUT request
   async put<T>(
     endpoint: string,
     data?: any,
     config: Omit<RequestConfig, 'method' | 'body'> = {}
   ): Promise<ApiResponse<T>> {
-    return this.request<T>(endpoint, {
-      ...config,
-      method: 'PUT',
-      body: data,
-    });
+    return this.request<T>(endpoint, { ...config, method: 'PUT', body: data });
   }
 
-  // DELETE request
   async delete<T>(
     endpoint: string,
     config: Omit<RequestConfig, 'method'> = {}
@@ -425,7 +507,6 @@ class HttpClient {
     return this.request<T>(endpoint, { ...config, method: 'DELETE' });
   }
 
-  // PATCH request
   async patch<T>(
     endpoint: string,
     data?: any,
@@ -438,36 +519,41 @@ class HttpClient {
     });
   }
 
-  // File upload with offline support
+  // Enhanced file upload with progress tracking
   async uploadFile<T>(
     endpoint: string,
     file: { uri: string; type: string; name: string },
     additionalData?: Record<string, any>,
     config: Omit<RequestConfig, 'method' | 'body'> = {}
   ): Promise<ApiResponse<T>> {
-    const requestConfig = await this.createRequestConfig(endpoint, config);
-    const url = `${this.baseURL}${endpoint}`;
-
     try {
-      // Check if we're online
+      const requestConfig = await this.createRequestConfig(endpoint, config);
+      const url = `${this.baseURL}${endpoint}`;
+
+      console.log(`📤 Uploading file: ${file.name} to ${url}`);
+
+      // Check if online
       const online = await this.isOnline();
-
-      if (!online && requestConfig.offlineFallback) {
-        // Store file upload for offline retry
-        const requestId = await this.storeForOfflineRetry(endpoint, {
-          ...requestConfig,
-          method: 'POST',
-          body: { file, ...additionalData },
-        });
-
+      if (!online) {
+        if (requestConfig.offlineFallback) {
+          const requestId = await this.storeForOfflineRetry(endpoint, {
+            ...requestConfig,
+            body: { file, ...additionalData },
+          });
+          console.log(`💾 File upload stored for offline retry: ${requestId}`);
+          return {
+            success: false,
+            error:
+              'Device is offline. Upload will be retried when connection is restored.',
+          };
+        }
         return {
           success: false,
-          error:
-            "You're offline. Your file upload will be saved and synced when you're back online.",
-          data: { offlineRequestId: requestId } as any,
+          error: 'No internet connection. Please check your network settings.',
         };
       }
 
+      // Create form data
       const formData = new FormData();
       formData.append('file', {
         uri: file.uri,
@@ -475,76 +561,100 @@ class HttpClient {
         name: file.name,
       } as any);
 
+      // Add additional data
       if (additionalData) {
         Object.keys(additionalData).forEach(key => {
           formData.append(key, additionalData[key]);
         });
       }
 
-      const response = await fetch(url, {
+      // Make upload request
+      const response = await this.retryRequest(url, {
+        ...requestConfig,
         method: 'POST',
+        body: formData,
         headers: {
           ...requestConfig.headers,
           'Content-Type': 'multipart/form-data',
         },
-        body: formData,
       });
 
-      return await this.handleResponse<T>(response);
+      const result = await this.handleResponse<T>(response);
+      console.log(`✅ File upload successful: ${file.name}`);
+      return result;
     } catch (error) {
-      // If offline fallback is enabled, store for retry
-      if (requestConfig.offlineFallback) {
-        try {
-          const requestId = await this.storeForOfflineRetry(endpoint, {
-            ...requestConfig,
-            method: 'POST',
-            body: { file, ...additionalData },
-          });
-          return {
-            success: false,
-            error:
-              "Network error. Your file upload will be saved and synced when you're back online.",
-            data: { offlineRequestId: requestId } as any,
-          };
-        } catch (storageError) {
-          console.error('Error storing offline file upload:', storageError);
-        }
-      }
-
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'File upload failed',
-      };
+      console.error(`❌ File upload failed: ${file.name}`, error);
+      return this.handleResponseError(error);
     }
   }
 
-  // Clear cache
+  // Cache management
   async clearCache(): Promise<void> {
     try {
       const keys = await AsyncStorage.getAllKeys();
       const cacheKeys = keys.filter(key => key.startsWith('cache_'));
       await AsyncStorage.multiRemove(cacheKeys);
+      console.log('🗑️ Cache cleared');
     } catch (error) {
       console.error('Error clearing cache:', error);
     }
   }
 
-  // Get offline status
+  // Enhanced offline status
   async getOfflineStatus() {
+    const online = await this.isOnline();
+    const pendingRequests = await offlineStorage.getPendingRequests();
+
     return {
-      isOnline: await this.isOnline(),
-      pendingCount: await offlineStorage.getPendingCount(),
-      storageSize: await offlineStorage.getStorageSize(),
+      isOnline: online,
+      pendingRequests: pendingRequests.length,
+      lastChecked: this.isOnlineCache?.timestamp || null,
     };
   }
 
-  // Manually retry offline requests
+  // Enhanced offline request retry
   async retryOfflineRequests(): Promise<void> {
-    await offlineStorage.retryPendingRequests();
+    try {
+      const online = await this.isOnline();
+      if (!online) {
+        console.log('📱 Still offline, skipping retry');
+        return;
+      }
+
+      const pendingRequests = await offlineStorage.getPendingRequests();
+      console.log(`🔄 Retrying ${pendingRequests.length} offline requests`);
+
+      for (const request of pendingRequests) {
+        try {
+          const response = await this.request(request.endpoint, {
+            method: request.method as any,
+            body: request.data,
+            headers: request.headers,
+            offlineFallback: false, // Prevent infinite loop
+          });
+
+          if (response.success) {
+            await offlineStorage.removeRequest(request.id);
+            console.log(`✅ Offline request successful: ${request.endpoint}`);
+          } else {
+            console.log(
+              `❌ Offline request failed: ${request.endpoint}`,
+              response.error
+            );
+          }
+        } catch (error) {
+          console.error(
+            `❌ Error retrying offline request: ${request.endpoint}`,
+            error
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Error retrying offline requests:', error);
+    }
   }
 }
 
-// Create singleton instance
+// Export singleton instance
 const httpClient = new HttpClient();
-
 export default httpClient;

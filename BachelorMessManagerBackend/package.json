@@ -34,6 +34,7 @@
     "db:reset": "node scripts/reset.js",
     "db:backup": "node scripts/backup.js",
     "db:restore": "node scripts/restore.js",
+    "stats:init": "node scripts/init-statistics.js",
     "logs:view": "tail -f logs/app.log",
     "logs:clear": "rm -rf logs/*.log",
     "logs:rotate": "node scripts/log-rotate.js",

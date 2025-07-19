@@ -1,235 +1,274 @@
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Dimensions,
-  Pressable,
-  RefreshControl,
   ScrollView,
   StyleSheet,
   View,
+  Text,
+  ActivityIndicator,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import {
-  BarChart,
-  LineChart,
-  PieChart,
-  ProgressChart,
-  StatsGrid,
-} from '../ModernCharts';
-import { ThemedText } from '../ThemedText';
-import { useDashboard } from '../../hooks/useDashboard';
+  dashboardService,
+  DashboardStats,
+  Activity as ApiActivity,
+  AnalyticsData,
+} from '@/services';
+import { StatsGrid } from '../ModernCharts';
+import { ChartsSection } from './ChartsSection';
+import { DashboardHeader } from './DashboardHeader';
+import { QuickActions } from './QuickActions';
+import { RecentActivity } from './RecentActivity';
+import errorHandler from '@/services/errorHandler';
 
-const { width } = Dimensions.get('window');
+const { width: screenWidth } = Dimensions.get('window');
 
-interface ApiDashboardProps {
-  onRefresh?: () => void;
-  refreshing?: boolean;
-}
+const DESIGN_SYSTEM = {
+  colors: {
+    light: '#f8fafc',
+    error: '#ef4444',
+    success: '#10b981',
+  },
+  spacing: {
+    lg: 20,
+    xl: 24,
+  },
+};
 
-interface QuickAction {
-  id: string;
-  title: string;
-  subtitle: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  gradient: [string, string];
-  onPress: () => void;
-}
-
-interface ActivityItem {
-  id: string;
-  type: 'meal' | 'bazar' | 'payment' | 'notification';
-  title: string;
-  subtitle: string;
-  time: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  color: string;
-}
-
-export const ApiDashboard: React.FC<ApiDashboardProps> = ({
-  onRefresh,
-  refreshing = false,
-}) => {
+export const ApiDashboard: React.FC = () => {
   const router = useRouter();
-  const [selectedTimeframe, setSelectedTimeframe] = useState<
-    'week' | 'month' | 'year'
-  >('week');
 
-  const {
-    stats,
-    activities,
-    analytics,
-    combinedData,
-    loading,
-    error,
-    getCombinedData,
-    refresh,
-    clearError,
-  } = useDashboard();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [dashboardData, setDashboardData] = useState<{
+    stats: DashboardStats | null;
+    activities: ApiActivity[];
+    analytics: AnalyticsData | null;
+    charts?: any;
+  } | null>(null);
 
-  // Load data on component mount
+  const isTablet = screenWidth >= 768;
+  const isMobile = screenWidth < 768;
+  const containerPadding = isTablet ? 24 : 16;
+  const cardSpacing = isTablet ? 20 : 12;
+
   useEffect(() => {
-    getCombinedData({ timeframe: selectedTimeframe });
-  }, [selectedTimeframe, getCombinedData]);
+    loadDashboardData();
+  }, []);
 
-  // Handle refresh
-  const handleRefresh = async () => {
-    await refresh();
-    onRefresh?.();
+  const loadDashboardData = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      console.log('Loading dashboard data from API...');
+      const response = await dashboardService.getCombinedData();
+
+      console.log('Dashboard response:', response);
+
+      if (response.success && response.data) {
+        setDashboardData(response.data);
+        console.log('✅ Dashboard data loaded successfully');
+      } else {
+        const errorMessage = response.error || 'Failed to load dashboard data';
+        setError(errorMessage);
+        console.error('❌ Failed to load dashboard data:', errorMessage);
+
+        // Don't show alert for every error, let the UI handle it
+        console.log('🚨 Error Handler:', {
+          context: 'Dashboard Data',
+          message: errorMessage,
+          severity: 'MEDIUM',
+          timestamp: new Date().toISOString(),
+          type: 'UNKNOWN',
+        });
+      }
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : 'Unknown error occurred';
+      setError(errorMessage);
+      console.error('❌ Error loading dashboard data:', err);
+
+      // Log the error for debugging
+      console.log('🚨 Error Handler:', {
+        context: 'Dashboard Data',
+        message: errorMessage,
+        severity: 'MEDIUM',
+        timestamp: new Date().toISOString(),
+        type: 'UNKNOWN',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Handle timeframe change
-  const handleTimeframeChange = (timeframe: 'week' | 'month' | 'year') => {
-    setSelectedTimeframe(timeframe);
+  const refreshData = async () => {
+    await loadDashboardData();
   };
 
-  // Format stats for display
-  const formatStats = () => {
-    if (!stats) return [];
+  // Safe number conversion - always returns 0 if invalid
+  const safeNumber = (value: any): number => {
+    if (value === null || value === undefined || value === '') return 0;
+    const num = Number(value);
+    return isNaN(num) ? 0 : num;
+  };
 
+  // Safe string conversion - always returns '0' if invalid
+  const safeString = (value: any): string => {
+    if (value === null || value === undefined || value === '') return '0';
+    return String(value);
+  };
+
+  // Get stats from API data
+  const getStats = () => {
+    if (!dashboardData?.stats) {
+      return [];
+    }
+
+    const stats = dashboardData.stats;
     return [
       {
         title: 'Total Members',
-        value: stats.totalMembers?.toString() || '0',
+        value: safeString(stats.totalMembers || 0),
         icon: 'people',
-        gradient: ['#667eea', '#764ba2'] as const,
+        gradient: ['#10b981', '#059669'] as [string, string],
+        details: {
+          change: '0',
+          period: 'this month',
+          trend: 'up' as const,
+        },
       },
       {
-        title: 'Monthly Expense',
-        value: `৳${(stats.monthlyExpense || 0).toLocaleString()}`,
-        icon: 'cash',
-        gradient: ['#f093fb', '#f5576c'] as const,
+        title: 'Monthly Expenses',
+        value: `৳${safeNumber(stats.monthlyExpense || 0).toLocaleString()}`,
+        icon: 'card',
+        gradient: ['#f59e0b', '#d97706'] as [string, string],
+        details: {
+          change: '0%',
+          period: 'vs last month',
+          trend: 'up' as const,
+        },
       },
       {
-        title: 'Avg. Meals',
-        value: stats.averageMeals?.toString() || '0',
+        title: 'Total Meals',
+        value: safeString(stats.totalMeals || 0),
         icon: 'restaurant',
-        gradient: ['#43e97b', '#38f9d7'] as const,
+        gradient: ['#8b5cf6', '#7c3aed'] as [string, string],
+        details: {
+          change: '0%',
+          period: 'vs last month',
+          trend: 'up' as const,
+        },
       },
       {
-        title: 'Balance',
-        value: `৳${(stats.balance || 0).toLocaleString()}`,
-        icon: 'wallet',
-        gradient: ['#fa709a', '#fee140'] as const,
+        title: 'Average Meals',
+        value: safeString(stats.averageMeals || 0),
+        icon: 'trending-up',
+        gradient: ['#667eea', '#764ba2'] as [string, string],
+        details: {
+          change: '0',
+          period: 'per day',
+          trend: 'up' as const,
+        },
       },
     ];
   };
 
-  // Format activities for display
-  const formatActivities = (): ActivityItem[] => {
-    if (!activities || activities.length === 0) return [];
-
-    return activities.slice(0, 4).map(activity => ({
-      id: activity.id,
-      type: activity.type as ActivityItem['type'],
-      title: activity.title,
-      subtitle: activity.description,
-      time: activity.time,
-      icon: getActivityIcon(activity.type),
-      color: getActivityColor(activity.type),
-    }));
+  const getActivities = () => {
+    return dashboardData?.activities || [];
   };
 
-  // Get activity icon
-  const getActivityIcon = (type: string): keyof typeof Ionicons.glyphMap => {
-    switch (type) {
-      case 'meal':
-        return 'fast-food';
-      case 'bazar':
-        return 'cart';
-      case 'payment':
-        return 'card';
-      case 'notification':
-        return 'notifications';
+  const getChartsData = () => {
+    if (!dashboardData?.charts) {
+      return {
+        monthlyRevenue: [],
+        currentMonthRevenue: {
+          revenue: 0,
+          expenses: 0,
+        },
+      };
+    }
+
+    return {
+      monthlyRevenue: dashboardData.charts.monthlyRevenue || [],
+      currentMonthRevenue: {
+        revenue: safeNumber(dashboardData.stats?.balance || 0),
+        expenses: safeNumber(dashboardData.stats?.monthlyExpense || 0),
+      },
+    };
+  };
+
+  const handleQuickAction = (action: string) => {
+    switch (action) {
+      case 'add-meal':
+        router.push('/meals');
+        break;
+      case 'add-bazar':
+        router.push('/admin');
+        break;
+      case 'view-expenses':
+        router.push({
+          pathname: '/expense-details',
+          params: {
+            title: 'Monthly Expenses',
+            value: safeString(dashboardData?.stats?.monthlyExpense || 0),
+            type: 'monthly',
+            color: '#f59e0b',
+          },
+        });
+        break;
+      case 'view-members':
+        router.push('/admin');
+        break;
       default:
-        return 'information-circle';
+        Alert.alert('Coming Soon', 'This feature will be available soon!');
     }
   };
 
-  // Get activity color
-  const getActivityColor = (type: string): string => {
-    switch (type) {
-      case 'meal':
-        return '#10b981';
-      case 'bazar':
-        return '#6366f1';
-      case 'payment':
-        return '#f59e0b';
-      case 'notification':
-        return '#8b5cf6';
-      default:
-        return '#6b7280';
-    }
-  };
+  const stats = getStats();
+  const activities = getActivities();
+  const chartsData = getChartsData();
 
-  const quickActions: QuickAction[] = [
-    {
-      id: 'add-meal',
-      title: 'Add Meal',
-      subtitle: "Record today's meal",
-      icon: 'fast-food',
-      gradient: ['#667eea', '#764ba2'],
-      onPress: () => router.push('/(tabs)/meals'),
-    },
-    {
-      id: 'add-bazar',
-      title: 'Add Bazar',
-      subtitle: 'Upload bazar list',
-      icon: 'cart',
-      gradient: ['#f093fb', '#f5576c'],
-      onPress: () => router.push('/(tabs)/explore'),
-    },
-    {
-      id: 'view-reports',
-      title: 'Reports',
-      subtitle: 'View analytics',
-      icon: 'analytics',
-      gradient: ['#43e97b', '#38f9d7'],
-      onPress: () => Alert.alert('Reports', 'Reports feature coming soon!'),
-    },
-    {
-      id: 'settings',
-      title: 'Settings',
-      subtitle: 'Manage preferences',
-      icon: 'settings',
-      gradient: ['#fa709a', '#fee140'],
-      onPress: () => router.push('/settings'),
-    },
-  ];
+  // Show loading state
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size='large' color='#667eea' />
+        <Text style={styles.loadingText}>Loading dashboard...</Text>
+      </View>
+    );
+  }
 
-  // Get chart data from API
-  const getWeeklyMealsData = () => {
-    if (!combinedData?.charts?.weeklyMeals) {
-      return [];
-    }
-    return combinedData.charts.weeklyMeals;
-  };
-
-  const getMonthlyRevenueData = () => {
-    if (!combinedData?.charts?.monthlyRevenue) {
-      return [];
-    }
-    return combinedData.charts.monthlyRevenue;
-  };
-
-  const getExpenseBreakdownData = () => {
-    if (!combinedData?.charts?.expenseBreakdown) {
-      return [];
-    }
-    return combinedData.charts.expenseBreakdown;
-  };
-
-  // Show error if any
+  // Show error state
   if (error) {
     return (
       <View style={styles.errorContainer}>
-        <ThemedText style={styles.errorText}>
-          Error loading dashboard: {error}
-        </ThemedText>
-        <Pressable style={styles.retryButton} onPress={handleRefresh}>
-          <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
-        </Pressable>
+        <Text style={styles.errorTitle}>Connection Issue</Text>
+        <Text style={styles.errorText}>
+          {error.includes('Network') || error.includes('connection')
+            ? 'Unable to connect to the server. Please check your internet connection and try again.'
+            : error.includes('Server') || error.includes('unavailable')
+            ? 'The server is temporarily unavailable. Please try again in a few moments.'
+            : error.includes('timeout')
+            ? 'Request timed out. Please check your connection and try again.'
+            : error}
+        </Text>
+        <Text style={styles.retryText} onPress={refreshData}>
+          Tap to retry
+        </Text>
+      </View>
+    );
+  }
+
+  // Show no data state
+  if (!dashboardData) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>No dashboard data available</Text>
+        <Text style={styles.retryText} onPress={refreshData}>
+          Tap to retry
+        </Text>
       </View>
     );
   }
@@ -237,206 +276,48 @@ export const ApiDashboard: React.FC<ApiDashboardProps> = ({
   return (
     <ScrollView
       style={styles.container}
+      contentContainerStyle={[
+        styles.contentContainer,
+        { padding: containerPadding },
+      ]}
       showsVerticalScrollIndicator={false}
       refreshControl={
-        <RefreshControl
-          refreshing={refreshing || loading}
-          onRefresh={handleRefresh}
-        />
+        <View style={styles.refreshControl}>
+          <Text style={styles.refreshText} onPress={refreshData}>
+            Pull to refresh
+          </Text>
+        </View>
       }
     >
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <ThemedText style={styles.greeting}>Good morning! 👋</ThemedText>
-          <ThemedText style={styles.subtitle}>
-            Here&apos;s what&apos;s happening in your mess
-          </ThemedText>
-        </View>
-        <Pressable
-          style={styles.profileButton}
-          onPress={() => router.push('/profile')}
-        >
-          <Ionicons name='person-circle' size={32} color='#667eea' />
-        </Pressable>
+      {/* Header Section */}
+      <DashboardHeader
+        title='Admin Dashboard'
+        subtitle='Manage your mess operations'
+        icon='analytics'
+      />
+
+      {/* Data Source Indicator */}
+      <View style={styles.dataSourceIndicator}>
+        <Text style={styles.dataSourceText}>📡 Live Data</Text>
       </View>
 
       {/* Stats Grid */}
-      <View style={styles.section}>
-        <StatsGrid stats={formatStats()} />
-      </View>
-
-      {/* Quick Actions */}
-      <View style={styles.section}>
-        <ThemedText style={styles.sectionTitle}>Quick Actions</ThemedText>
-        <View style={styles.quickActionsGrid}>
-          {quickActions.map(action => (
-            <Pressable
-              key={action.id}
-              style={styles.quickActionCard}
-              onPress={action.onPress}
-            >
-              <LinearGradient
-                colors={action.gradient}
-                style={styles.quickActionGradient}
-              >
-                <Ionicons name={action.icon} size={24} color='#fff' />
-              </LinearGradient>
-              <View style={styles.quickActionContent}>
-                <ThemedText style={styles.quickActionTitle}>
-                  {action.title}
-                </ThemedText>
-                <ThemedText style={styles.quickActionSubtitle}>
-                  {action.subtitle}
-                </ThemedText>
-              </View>
-            </Pressable>
-          ))}
-        </View>
+      <View style={[styles.statsContainer, { marginBottom: cardSpacing }]}>
+        <StatsGrid stats={stats} />
       </View>
 
       {/* Charts Section */}
-      <View style={styles.section}>
-        <View style={styles.chartHeader}>
-          <ThemedText style={styles.sectionTitle}>Analytics</ThemedText>
-          <View style={styles.timeframeSelector}>
-            {(['week', 'month', 'year'] as const).map(timeframe => (
-              <Pressable
-                key={timeframe}
-                style={[
-                  styles.timeframeButton,
-                  selectedTimeframe === timeframe &&
-                    styles.timeframeButtonActive,
-                ]}
-                onPress={() => handleTimeframeChange(timeframe)}
-              >
-                <ThemedText
-                  style={[
-                    styles.timeframeText,
-                    selectedTimeframe === timeframe &&
-                      styles.timeframeTextActive,
-                  ]}
-                >
-                  {timeframe.charAt(0).toUpperCase() + timeframe.slice(1)}
-                </ThemedText>
-              </Pressable>
-            ))}
-          </View>
-        </View>
+      <ChartsSection
+        monthlyRevenue={chartsData.monthlyRevenue}
+        currentMonthRevenue={chartsData.currentMonthRevenue}
+        isTablet={isTablet}
+      />
 
-        {/* Weekly Meals Chart */}
-        <View style={styles.chartContainer}>
-          <BarChart
-            data={getWeeklyMealsData()}
-            title='Weekly Meals'
-            height={200}
-            showForecast={true}
-            showTrend={true}
-          />
-        </View>
-
-        {/* Revenue Chart */}
-        <View style={styles.chartContainer}>
-          <LineChart
-            data={getMonthlyRevenueData()}
-            title='Monthly Revenue (৳)'
-            color='#667eea'
-            showForecast={true}
-          />
-        </View>
-
-        {/* Expense Breakdown */}
-        <View style={styles.chartContainer}>
-          <PieChart
-            data={getExpenseBreakdownData()}
-            title='Expense Breakdown'
-            showForecast={true}
-          />
-        </View>
-      </View>
+      {/* Quick Actions */}
+      <QuickActions onActionPress={handleQuickAction} />
 
       {/* Recent Activity */}
-      <View style={styles.section}>
-        <View style={styles.activityHeader}>
-          <ThemedText style={styles.sectionTitle}>Recent Activity</ThemedText>
-          <Pressable onPress={() => router.push('/notifications')}>
-            <ThemedText style={styles.viewAllText}>View All</ThemedText>
-          </Pressable>
-        </View>
-        <View style={styles.activityList}>
-          {formatActivities().map(activity => (
-            <Pressable
-              key={activity.id}
-              style={styles.activityItem}
-              onPress={() => {
-                router.push({
-                  pathname: '/activity-details',
-                  params: {
-                    id: activity.id,
-                    type: activity.type,
-                    title: activity.title,
-                    description: activity.subtitle,
-                    time: activity.time,
-                    user: 'User',
-                    amount: '0',
-                    priority: 'medium',
-                    status: 'completed',
-                  },
-                });
-              }}
-            >
-              <View
-                style={[
-                  styles.activityIcon,
-                  { backgroundColor: activity.color + '20' },
-                ]}
-              >
-                <Ionicons
-                  name={activity.icon}
-                  size={20}
-                  color={activity.color}
-                />
-              </View>
-              <View style={styles.activityContent}>
-                <ThemedText style={styles.activityTitle}>
-                  {activity.title}
-                </ThemedText>
-                <ThemedText style={styles.activitySubtitle}>
-                  {activity.subtitle}
-                </ThemedText>
-                <ThemedText style={styles.activityTime}>
-                  {activity.time}
-                </ThemedText>
-              </View>
-              <Ionicons name='chevron-forward' size={16} color='#9ca3af' />
-            </Pressable>
-          ))}
-        </View>
-      </View>
-
-      {/* Progress Section */}
-      <View style={styles.section}>
-        <ThemedText style={styles.sectionTitle}>Monthly Goals</ThemedText>
-        <View style={styles.progressContainer}>
-          <ProgressChart
-            title='Meal Target'
-            current={analytics?.monthlyProgress?.current || 0}
-            target={analytics?.monthlyProgress?.target || 100}
-            color='#10b981'
-            gradient={['#34d399', '#10b981']}
-          />
-          <ProgressChart
-            title='Revenue Target'
-            current={stats?.monthlyExpense || 0}
-            target={stats?.monthlyBudget || 40000}
-            color='#6366f1'
-            gradient={['#818cf8', '#6366f1']}
-          />
-        </View>
-      </View>
-
-      {/* Bottom Spacing */}
-      <View style={styles.bottomSpacing} />
+      <RecentActivity activities={activities} maxItems={3} />
     </ScrollView>
   );
 };
@@ -444,205 +325,69 @@ export const ApiDashboard: React.FC<ApiDashboardProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: DESIGN_SYSTEM.colors.light,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
+  contentContainer: {
+    paddingBottom: 100,
   },
-  greeting: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1f2937',
+  statsContainer: {
+    marginBottom: DESIGN_SYSTEM.spacing.xl,
   },
-  subtitle: {
-    fontSize: 16,
-    color: '#6b7280',
-    marginTop: 4,
-  },
-  profileButton: {
-    padding: 8,
-  },
-  section: {
-    marginBottom: 24,
-    paddingHorizontal: 20,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 16,
-  },
-  quickActionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  quickActionCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-    width: (width - 52) / 2,
-  },
-  quickActionGradient: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  quickActionContent: {
+  loadingContainer: {
     flex: 1,
-  },
-  quickActionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1f2937',
-    marginBottom: 2,
-  },
-  quickActionSubtitle: {
-    fontSize: 12,
-    color: '#6b7280',
-  },
-  chartHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  timeframeSelector: {
-    flexDirection: 'row',
-    backgroundColor: '#f3f4f6',
-    borderRadius: 8,
-    padding: 4,
-  },
-  timeframeButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-  timeframeButtonActive: {
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  timeframeText: {
-    fontSize: 12,
-    color: '#6b7280',
-    fontWeight: '500',
-  },
-  timeframeTextActive: {
-    color: '#1f2937',
-    fontWeight: '600',
-  },
-  chartContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  activityHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  viewAllText: {
-    fontSize: 14,
-    color: '#667eea',
-    fontWeight: '600',
-  },
-  activityList: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  activityItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  activityIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    alignItems: 'center',
+    backgroundColor: DESIGN_SYSTEM.colors.light,
   },
-  activityContent: {
-    flex: 1,
-  },
-  activityTitle: {
+  loadingText: {
+    marginTop: 16,
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1f2937',
-    marginBottom: 2,
-  },
-  activitySubtitle: {
-    fontSize: 14,
     color: '#6b7280',
-    marginBottom: 4,
-  },
-  activityTime: {
-    fontSize: 12,
-    color: '#9ca3af',
-  },
-  progressContainer: {
-    gap: 16,
-  },
-  bottomSpacing: {
-    height: 100,
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: DESIGN_SYSTEM.colors.light,
     padding: 20,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: DESIGN_SYSTEM.colors.error,
+    textAlign: 'center',
+    marginBottom: 8,
   },
   errorText: {
     fontSize: 16,
-    color: '#ef4444',
+    color: DESIGN_SYSTEM.colors.error,
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
-  retryButton: {
-    backgroundColor: '#667eea',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
+  retryText: {
+    fontSize: 14,
+    color: DESIGN_SYSTEM.colors.success,
+    textDecorationLine: 'underline',
   },
-  retryButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+  refreshControl: {
+    padding: 16,
+    alignItems: 'center',
+  },
+  refreshText: {
+    fontSize: 14,
+    color: '#6b7280',
+  },
+  dataSourceIndicator: {
+    backgroundColor: '#f3f4f6',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    alignSelf: 'flex-start',
+    marginBottom: 16,
+  },
+  dataSourceText: {
+    fontSize: 12,
+    color: '#6b7280',
+    fontWeight: '500',
   },
 });
-
-export default ApiDashboard;

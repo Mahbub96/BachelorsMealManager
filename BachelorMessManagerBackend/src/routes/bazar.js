@@ -21,6 +21,11 @@ router.post(
 // @access  Private
 router.get('/', AuthMiddleware.protect(), bazarController.getUserBazar);
 
+// @desc    Get user bazar entries (alternative endpoint)
+// @route   GET /api/bazar/user
+// @access  Private
+router.get('/user', AuthMiddleware.protect(), bazarController.getUserBazar);
+
 // @desc    Get all bazar entries (admin only)
 // @route   GET /api/bazar/all
 // @access  Private/Admin

@@ -255,86 +255,56 @@ const generateRealisticData = () => {
     date.setDate(date.getDate() - i);
     const dateStr = date.toISOString().split('T')[0];
 
-    // Realistic meal patterns (weekends have more meals, weekdays vary)
+    // Generate realistic meal patterns
     const dayOfWeek = date.getDay();
-    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-
-    const breakfast = Math.random() > 0.3; // 70% chance
-    const lunch = Math.random() > 0.1; // 90% chance
-    const dinner = Math.random() > 0.2; // 80% chance
-
-    const submittedBy =
-      members[Math.floor(Math.random() * members.length)].name;
-    const cost = mealCosts[i % mealCosts.length];
+    const hasBreakfast = dayOfWeek !== 0; // No breakfast on Sunday
+    const hasLunch = true; // Always has lunch
+    const hasDinner = dayOfWeek !== 6; // No dinner on Saturday
 
     mealEntries.push({
       id: `meal-${i}`,
       date: dateStr,
-      breakfast,
-      lunch,
-      dinner,
-      submittedBy,
-      submittedAt: `${dateStr} ${Math.floor(Math.random() * 24)}:${Math.floor(
-        Math.random() * 60
-      )}:00`,
-      cost,
+      breakfast: hasBreakfast,
+      lunch: hasLunch,
+      dinner: hasDinner,
+      submittedBy: members[Math.floor(Math.random() * members.length)].name,
+      submittedAt: date.toISOString(),
+      cost: mealCosts[i % mealCosts.length],
     });
   }
 
   // Generate bazar entries
+  const bazarEntries: BazarEntry[] = [];
   const bazarItems = [
-    'Rice',
-    'Dal',
-    'Oil',
-    'Onion',
-    'Potato',
-    'Tomato',
-    'Egg',
-    'Chicken',
-    'Fish',
-    'Vegetables',
-    'Spices',
-    'Salt',
-    'Sugar',
-    'Tea',
-    'Milk',
-    'Bread',
-    'Banana',
-    'Apple',
-    'Orange',
-    'Lemon',
+    ['Rice', 'Vegetables', 'Fish', 'Oil'],
+    ['Chicken', 'Potatoes', 'Onions', 'Spices'],
+    ['Beef', 'Tomatoes', 'Eggs', 'Milk'],
+    ['Fish', 'Carrots', 'Bread', 'Tea'],
+    ['Mutton', 'Cucumber', 'Butter', 'Sugar'],
   ];
 
-  const bazarEntries: BazarEntry[] = [];
-  for (let i = 0; i < 8; i++) {
+  for (let i = 14; i >= 0; i--) {
     const date = new Date();
-    date.setDate(date.getDate() - i * 3);
+    date.setDate(date.getDate() - i * 2); // Every 2 days
     const dateStr = date.toISOString().split('T')[0];
 
-    const itemCount = Math.floor(Math.random() * 8) + 5; // 5-12 items
-    const items = [];
-    for (let j = 0; j < itemCount; j++) {
-      items.push(bazarItems[Math.floor(Math.random() * bazarItems.length)]);
-    }
-
-    const totalAmount = Math.floor(Math.random() * 2000) + 1500; // 1500-3500 BDT
-    const submittedBy =
-      members[Math.floor(Math.random() * members.length)].name;
-    const status = i < 3 ? 'pending' : 'approved';
+    const items = bazarItems[i % bazarItems.length];
+    const totalAmount = items.length * 150 + Math.floor(Math.random() * 500);
 
     bazarEntries.push({
       id: `bazar-${i}`,
       date: dateStr,
       items,
       totalAmount,
-      submittedBy,
-      status,
-      approvedBy: status === 'approved' ? 'Admin User' : undefined,
-      approvedAt: status === 'approved' ? `${dateStr} 14:30:00` : undefined,
+      submittedBy: members[Math.floor(Math.random() * members.length)].name,
+      status: i < 5 ? 'approved' : 'pending',
+      approvedBy: i < 5 ? 'Admin User' : undefined,
+      approvedAt:
+        i < 5 ? new Date(date.getTime() + 86400000).toISOString() : undefined,
     });
   }
 
-  // Generate monthly revenue data (full year)
+  // Generate monthly revenue data
   const monthlyRevenue: MonthlyRevenue[] = [];
   const months = [
     'Jan',
@@ -352,33 +322,15 @@ const generateRealisticData = () => {
   ];
 
   for (let i = 0; i < 12; i++) {
-    // Realistic revenue pattern with seasonal variations
-    let baseRevenue = 25000;
-
-    // Seasonal adjustments
-    if (i >= 0 && i <= 2) {
-      // Jan-Mar: Winter months, higher expenses
-      baseRevenue = 28000 + i * 1500;
-    } else if (i >= 3 && i <= 5) {
-      // Apr-Jun: Spring, moderate
-      baseRevenue = 26000 + i * 1200;
-    } else if (i >= 6 && i <= 8) {
-      // Jul-Sep: Monsoon, some variation
-      baseRevenue = 24000 + i * 1800;
-    } else {
-      // Oct-Dec: Post-monsoon, growing trend
-      baseRevenue = 27000 + i * 2000;
-    }
-
-    const revenue = baseRevenue + Math.floor(Math.random() * 4000) - 2000; // ±2000 variation
-    const expenses = revenue * (0.8 + Math.random() * 0.1); // 80-90% of revenue
-    const profit = revenue - expenses;
-    const memberCount = 5 + Math.floor(Math.random() * 3); // 5-7 members
-    const averageMeals = 2.0 + Math.random() * 0.8; // 2.0-2.8 meals per day
+    const baseRevenue = 30000 + Math.floor(Math.random() * 10000);
+    const expenses = baseRevenue * 0.7 + Math.floor(Math.random() * 5000);
+    const profit = baseRevenue - expenses;
+    const memberCount = 6 + Math.floor(Math.random() * 2);
+    const averageMeals = 2.5 + Math.random() * 0.5;
 
     monthlyRevenue.push({
       month: months[i],
-      revenue,
+      revenue: baseRevenue,
       expenses,
       profit,
       memberCount,
@@ -391,68 +343,57 @@ const generateRealisticData = () => {
     {
       id: '1',
       type: 'meal',
-      title: 'Lunch added',
-      description: 'Admin User recorded lunch meal for today',
-      time: '2 hours ago',
+      title: 'Meal Entry Added',
+      description: 'Admin User submitted meals for today',
+      time: new Date().toISOString(),
       priority: 'medium',
       user: 'Admin User',
-      icon: 'restaurant',
+      icon: 'fast-food',
     },
     {
       id: '2',
       type: 'bazar',
-      title: 'Bazar uploaded',
-      description: 'Member Two uploaded bazar list for this week',
-      time: '4 hours ago',
-      priority: 'low' as const,
-      amount: 2500,
-      user: 'Member Two',
+      title: 'Bazar Entry Approved',
+      description: 'Bazar entry for ৳1,200 approved',
+      time: new Date(Date.now() - 86400000).toISOString(),
+      priority: 'low',
+      amount: 1200,
+      user: 'Member One',
       icon: 'cart',
+      status: 'approved',
     },
     {
       id: '3',
       type: 'payment',
-      title: 'Payment received',
-      description: 'Member One paid ৳500',
-      time: '1 day ago',
-      priority: 'low' as const,
+      title: 'Payment Received',
+      description: 'Monthly contribution received from Member Two',
+      time: new Date(Date.now() - 172800000).toISOString(),
+      priority: 'high',
       amount: 500,
-      user: 'Member One',
-      icon: 'card',
+      user: 'Member Two',
+      icon: 'wallet',
     },
     {
       id: '4',
       type: 'member',
-      title: 'New member joined',
-      description: 'Member Three joined the mess',
-      time: '2 days ago',
-      priority: 'low' as const,
-      amount: 0,
-      user: 'Member Three',
-      icon: 'person-add',
+      title: 'New Member Added',
+      description: 'Member Five joined the mess',
+      time: new Date(Date.now() - 259200000).toISOString(),
+      priority: 'medium',
+      user: 'Member Five',
+      icon: 'person',
     },
     {
       id: '5',
       type: 'approval',
-      title: 'Bazar approved',
-      description: 'Weekly bazar list approved',
-      time: '3 days ago',
-      priority: 'high',
-      amount: 3200,
-      user: 'Mahbub Alam',
-      icon: 'checkmark-circle',
-      status: 'approved',
-    },
-    {
-      id: '6',
-      type: 'meal',
-      title: 'Breakfast added',
-      description: 'Member Three recorded breakfast for yesterday',
-      time: '3 days ago',
-      priority: 'low' as const,
-      amount: 0,
+      title: 'Bazar Entry Pending',
+      description: 'Bazar entry for ৳800 awaiting approval',
+      time: new Date(Date.now() - 345600000).toISOString(),
+      priority: 'medium',
+      amount: 800,
       user: 'Member Three',
-      icon: 'sunny',
+      icon: 'time',
+      status: 'pending',
     },
   ];
 
@@ -469,6 +410,13 @@ export const MessDataProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [data, setData] = useState(generateRealisticData());
+
+  // Safe number conversion utility
+  const safeNumber = (value: any): number => {
+    if (value === null || value === undefined || value === '') return 0;
+    const num = Number(value);
+    return isNaN(num) ? 0 : num;
+  };
 
   // Computed values
   const activeMembers = data.members.filter(m => m.status === 'active');
@@ -519,24 +467,31 @@ export const MessDataProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   // Current month revenue
-  const currentMonthRevenue =
-    data.monthlyRevenue[data.monthlyRevenue.length - 1];
+  const currentMonthRevenue = data.monthlyRevenue[
+    data.monthlyRevenue.length - 1
+  ] || {
+    revenue: 0,
+    expenses: 0,
+    profit: 0,
+    memberCount: 0,
+    averageMeals: 0,
+  };
   const totalRevenue = data.monthlyRevenue.reduce(
-    (sum, month) => sum + month.revenue,
+    (sum: number, month: MonthlyRevenue) => sum + safeNumber(month.revenue),
     0
   );
   const totalExpenses = data.monthlyRevenue.reduce(
-    (sum, month) => sum + month.expenses,
+    (sum: number, month: MonthlyRevenue) => sum + safeNumber(month.expenses),
     0
   );
   const currentBalance = totalRevenue - totalExpenses;
 
   // Quick stats
   const quickStats = {
-    totalMembers: activeMembers.length,
-    monthlyExpense: currentMonthRevenue.expenses,
-    averageMeals: monthlyMealStats.averagePerDay,
-    balance: currentBalance,
+    totalMembers: safeNumber(activeMembers.length),
+    monthlyExpense: safeNumber(currentMonthRevenue.expenses),
+    averageMeals: safeNumber(monthlyMealStats.averagePerDay),
+    balance: safeNumber(currentBalance),
   };
 
   // Chart data

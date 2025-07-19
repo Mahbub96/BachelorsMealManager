@@ -1,9 +1,9 @@
 // API Configuration - Centralized settings for easy maintenance
 export const API_CONFIG = {
   // Base URL - Change this to switch between development and production
-  // For React Native development, we might need to use the computer's IP address
+  // For React Native development, we need to use the computer's IP address
   BASE_URL: __DEV__
-    ? 'http://192.168.0.130:3000/api' // Computer's IP address for React Native development
+    ? 'http://192.168.0.130:3000/api' // Use computer's IP for React Native development
     : 'https://your-production-domain.com/api',
 
   // API Version
@@ -40,58 +40,113 @@ export const ENV_CONFIG = {
   },
 };
 
-// API Endpoints - Centralized for easy maintenance
+export const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL || 'http://192.168.0.130:3000/api';
+
 export const API_ENDPOINTS = {
-  // Authentication
   AUTH: {
     LOGIN: '/auth/login',
     REGISTER: '/auth/register',
     LOGOUT: '/auth/logout',
     REFRESH: '/auth/refresh',
+    VERIFY: '/auth/verify',
   },
-
-  // Dashboard
+  USERS: {
+    PROFILE: '/users/profile',
+    STATS: (userId: string) => `/users/stats/${userId}`,
+    DASHBOARD: '/users/dashboard',
+  },
+  USER_STATS: {
+    DASHBOARD: '/user-stats/dashboard',
+    MEALS: '/user-stats/meals',
+    BAZAR: '/user-stats/bazar',
+    PAYMENTS: '/user-stats/payments',
+  },
+  MEALS: {
+    LIST: '/meals',
+    CREATE: '/meals',
+    UPDATE: (id: string) => `/meals/${id}`,
+    DELETE: (id: string) => `/meals/${id}`,
+    USER_STATS: '/meals/stats/user',
+    STATS: '/meals/stats/overview',
+    SUBMIT: '/meals',
+    USER: '/meals/user',
+    ALL: '/meals/all',
+    STATUS: (id: string) => `/meals/${id}/status`,
+    BY_ID: (id: string) => `/meals/${id}`,
+    BULK_APPROVE: '/meals/bulk-approve',
+  },
+  BAZAR: {
+    LIST: '/bazar',
+    CREATE: '/bazar',
+    UPDATE: (id: string) => `/bazar/${id}`,
+    DELETE: (id: string) => `/bazar/${id}`,
+    USER_STATS: '/bazar/stats/user',
+    SUBMIT: '/bazar',
+    USER: '/bazar/user',
+    ALL: '/bazar/all',
+    STATUS: (id: string) => `/bazar/${id}/status`,
+    STATS: '/bazar/stats/overview',
+  },
   DASHBOARD: {
-    HEALTH: '/health',
     STATS: '/dashboard/stats',
     ACTIVITIES: '/dashboard/activities',
     COMBINED: '/dashboard',
+    HEALTH: '/health',
+    STATISTICS: '/dashboard/statistics',
   },
-
-  // Meals
-  MEALS: {
-    SUBMIT: '/meals/submit',
-    USER: '/meals/user',
-    ALL: '/meals/all',
-    STATS: '/meals/stats',
-    STATUS: (id: string) => `/meals/${id}/status`,
-  },
-
-  // Bazar (Grocery)
-  BAZAR: {
-    SUBMIT: '/bazar/submit',
-    USER: '/bazar/user',
-    ALL: '/bazar/all',
-    STATS: '/bazar/stats',
-    STATUS: (id: string) => `/bazar/${id}/status`,
-  },
-
-  // Users
-  USERS: {
-    ALL: '/users/all',
-    BY_ID: (id: string) => `/users/${id}`,
-    CREATE: '/users/create',
-    UPDATE: (id: string) => `/users/${id}`,
-    DELETE: (id: string) => `/users/${id}`,
-    STATS: (id: string) => `/users/${id}/stats`,
-    PROFILE: '/users/profile',
-    UPDATE_PROFILE: '/users/profile',
-  },
-
-  // Analytics
   ANALYTICS: {
-    DATA: '/analytics',
+    OVERVIEW: '/analytics/overview',
+    MEALS: '/analytics/meals',
+    EXPENSES: '/analytics/expenses',
+    DATA: '/analytics/data',
   },
+  ACTIVITY: {
+    RECENT: '/activity/recent',
+    CURRENT_MONTH_MEALS: '/activity/meals/current-month',
+    STATS: '/activity/stats',
+    SEARCH: '/activity/search',
+    BY_ID: '/activity',
+  },
+  STATISTICS: {
+    COMPLETE: '/statistics/complete',
+    GLOBAL: '/statistics/global',
+    MEALS: '/statistics/meals',
+    BAZAR: '/statistics/bazar',
+    USERS: '/statistics/users',
+    ACTIVITY: '/statistics/activity',
+    MONTHLY: '/statistics/monthly',
+    REFRESH: '/statistics/refresh',
+  },
+};
+
+export const HTTP_CONFIG = {
+  TIMEOUT: 10000,
+  RETRY_ATTEMPTS: 3,
+  RETRY_DELAY: 1000,
+  CACHE_DURATION: 5 * 60 * 1000, // 5 minutes
+};
+
+export const ERROR_MESSAGES = {
+  NETWORK_ERROR:
+    'Network connection error. Please check your internet connection.',
+  TIMEOUT_ERROR: 'Request timeout. Please try again.',
+  SERVER_ERROR: 'Server error. Please try again later.',
+  AUTH_ERROR: 'Authentication failed. Please log in again.',
+  VALIDATION_ERROR: 'Invalid data provided.',
+  UNKNOWN_ERROR: 'An unexpected error occurred.',
+};
+
+export const SUCCESS_MESSAGES = {
+  LOGIN_SUCCESS: 'Login successful!',
+  LOGOUT_SUCCESS: 'Logout successful!',
+  PROFILE_UPDATED: 'Profile updated successfully!',
+  MEAL_CREATED: 'Meal added successfully!',
+  MEAL_UPDATED: 'Meal updated successfully!',
+  MEAL_DELETED: 'Meal deleted successfully!',
+  BAZAR_CREATED: 'Bazar entry added successfully!',
+  BAZAR_UPDATED: 'Bazar entry updated successfully!',
+  BAZAR_DELETED: 'Bazar entry deleted successfully!',
 };
 
 // HTTP Status Codes

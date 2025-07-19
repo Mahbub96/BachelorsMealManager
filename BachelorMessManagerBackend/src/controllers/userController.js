@@ -1,5 +1,6 @@
 const User = require('../models/User');
-const { config } = require('../config/config');
+const Meal = require('../models/Meal');
+const Bazar = require('../models/Bazar');
 const logger = require('../utils/logger');
 const {
   sendSuccessResponse,
@@ -7,201 +8,72 @@ const {
 } = require('../utils/responseHandler');
 
 class UserController {
-  // Get all users (admin only)
-  async getAllUsers(req, res, next) {
+  // Get user profile
+  async getUserProfile(req, res, next) {
     try {
-      const { status, role, search, limit = 20, page = 1 } = req.query;
+      const user = await User.findById(req.user.id).select('-password');
 
-      // Build query
-      const query = {};
-
-      if (status) {
-        query.status = status;
-      }
-
-      if (role) {
-        query.role = role;
-      }
-
-      if (search) {
-        query.$or = [
-          { name: { $regex: search, $options: 'i' } },
-          { email: { $regex: search, $options: 'i' } },
-        ];
-      }
-
-      // Calculate pagination
-      const skip = (parseInt(page) - 1) * parseInt(limit);
-
-      // Get users with pagination
-      const users = await User.find(query)
-        .select('-password')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(parseInt(limit));
-
-      // Get total count
-      const total = await User.countDocuments(query);
-
-      return sendSuccessResponse(res, 200, 'All users retrieved successfully', {
-        users,
-        pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
-          total,
-          pages: Math.ceil(total / parseInt(limit)),
-        },
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  // Get user by ID (admin only)
-  async getUserById(req, res, next) {
-    try {
-      const { userId } = req.params;
-
-      const user = await User.findById(userId).select('-password');
       if (!user) {
         return sendErrorResponse(res, 404, 'User not found');
       }
-
-      return sendSuccessResponse(res, 200, 'User retrieved successfully', user);
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  // Create user (admin only)
-  async createUser(req, res, next) {
-    try {
-      const { name, email, password, phone, role = 'member' } = req.body;
-
-      // Check if user already exists
-      const existingUser = await User.findByEmail(email);
-      if (existingUser) {
-        return sendErrorResponse(res, 400, 'User already exists');
-      }
-
-      // Create user
-      const user = await User.create({
-        name,
-        email,
-        password,
-        phone,
-        role,
-      });
-
-      logger.info(`New user created by admin ${req.user.email}: ${email}`);
-
-      return sendSuccessResponse(res, 201, 'User created successfully', {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        status: user.status,
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  // Update user (admin only)
-  async updateUser(req, res, next) {
-    try {
-      const { userId } = req.params;
-      const { name, email, phone, role, status } = req.body;
-
-      const user = await User.findById(userId);
-      if (!user) {
-        return sendErrorResponse(res, 404, 'User not found');
-      }
-
-      // Check if email is being changed and if it already exists
-      if (email && email !== user.email) {
-        const existingUser = await User.findByEmail(email);
-        if (existingUser) {
-          return sendErrorResponse(res, 400, 'Email already exists');
-        }
-      }
-
-      // Update user
-      const updateData = {};
-      if (name) updateData.name = name;
-      if (email) updateData.email = email;
-      if (phone !== undefined) updateData.phone = phone;
-      if (role) updateData.role = role;
-      if (status) updateData.status = status;
-
-      const updatedUser = await User.findByIdAndUpdate(userId, updateData, {
-        new: true,
-        runValidators: true,
-      }).select('-password');
-
-      logger.info(
-        `User updated by admin ${req.user.email}: ${updatedUser.email}`
-      );
 
       return sendSuccessResponse(
         res,
         200,
-        'User updated successfully',
+        'User profile retrieved successfully',
+        user
+      );
+    } catch (error) {
+      logger.error('Error in getUserProfile:', error);
+      next(error);
+    }
+  }
+
+  // Update user profile
+  async updateUserProfile(req, res, next) {
+    try {
+      const { name, email, phone, address } = req.body;
+
+      const user = await User.findById(req.user.id);
+
+      if (!user) {
+        return sendErrorResponse(res, 404, 'User not found');
+      }
+
+      // Update fields
+      if (name) user.name = name;
+      if (email) user.email = email;
+      if (phone) user.phone = phone;
+      if (address) user.address = address;
+
+      await user.save();
+
+      const updatedUser = await User.findById(req.user.id).select('-password');
+
+      return sendSuccessResponse(
+        res,
+        200,
+        'Profile updated successfully',
         updatedUser
       );
     } catch (error) {
+      logger.error('Error in updateUserProfile:', error);
       next(error);
     }
   }
 
-  // Delete user (admin only)
-  async deleteUser(req, res, next) {
-    try {
-      const { userId } = req.params;
-
-      const user = await User.findById(userId);
-      if (!user) {
-        return sendErrorResponse(res, 404, 'User not found');
-      }
-
-      // Prevent admin from deleting themselves
-      if (userId === req.user.id) {
-        return sendErrorResponse(res, 400, 'Cannot delete your own account');
-      }
-
-      await User.findByIdAndDelete(userId);
-
-      logger.info(`User deleted by admin ${req.user.email}: ${user.email}`);
-
-      return sendSuccessResponse(res, 200, 'User deleted successfully');
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  // Get user statistics (admin only)
+  // Get user statistics
   async getUserStats(req, res, next) {
     try {
       const { userId } = req.params;
-      const { startDate, endDate } = req.query;
+      const currentUser = req.user;
 
-      const user = await User.findById(userId);
-      if (!user) {
-        return sendErrorResponse(res, 404, 'User not found');
+      // Check if user is admin or requesting their own stats
+      if (currentUser.role !== 'admin' && currentUser.id !== userId) {
+        return sendErrorResponse(res, 403, 'Access denied');
       }
 
-      // Build date query
-      const dateQuery = {};
-      if (startDate && endDate) {
-        dateQuery.date = {
-          $gte: new Date(startDate),
-          $lte: new Date(endDate),
-        };
-      }
-
-      // Get user statistics
-      const stats = await User.getUserStats(userId, dateQuery);
+      const stats = await this.calculateUserStats(userId);
 
       return sendSuccessResponse(
         res,
@@ -210,294 +82,468 @@ class UserController {
         stats
       );
     } catch (error) {
+      logger.error('Error in getUserStats:', error);
       next(error);
     }
   }
 
-  // Get current user profile
-  async getCurrentUserProfile(req, res, next) {
+  // Get current user statistics
+  async getCurrentUserStats(req, res, next) {
     try {
-      const user = await User.findById(req.user.id).select('-password');
+      const stats = await this.calculateUserStats(req.user.id);
 
       return sendSuccessResponse(
         res,
         200,
-        'Profile retrieved successfully',
-        user.fullProfile
-      );
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  // Update current user profile
-  async updateCurrentUserProfile(req, res, next) {
-    try {
-      const { name, phone, currentPassword, newPassword, confirmPassword } =
-        req.body;
-      const updateData = {};
-
-      // Basic profile updates
-      if (name) updateData.name = name;
-      if (phone !== undefined) updateData.phone = phone;
-
-      // Handle password change
-      if (newPassword) {
-        if (!currentPassword) {
-          return sendErrorResponse(
-            res,
-            400,
-            'Current password is required to change password'
-          );
-        }
-
-        if (newPassword !== confirmPassword) {
-          return sendErrorResponse(
-            res,
-            400,
-            'Password confirmation does not match'
-          );
-        }
-
-        // Get user with password for verification
-        const user = await User.findById(req.user.id).select('+password');
-        if (!user) {
-          return sendErrorResponse(res, 404, 'User not found');
-        }
-
-        // Verify current password
-        const isPasswordValid = await user.matchPassword(currentPassword);
-        if (!isPasswordValid) {
-          return sendErrorResponse(res, 400, 'Current password is incorrect');
-        }
-
-        // Update password
-        updateData.password = newPassword;
-      }
-
-      const user = await User.findByIdAndUpdate(req.user.id, updateData, {
-        new: true,
-        runValidators: true,
-      }).select('-password');
-
-      if (!user) {
-        return sendErrorResponse(res, 404, 'User not found');
-      }
-
-      logger.info(`Profile updated by user: ${user.email}`);
-
-      return sendSuccessResponse(
-        res,
-        200,
-        'Profile updated successfully',
-        user.fullProfile
-      );
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  // Change user status (admin only)
-  async changeUserStatus(req, res, next) {
-    try {
-      const { userId } = req.params;
-      const { status } = req.body;
-
-      if (!['active', 'inactive'].includes(status)) {
-        return sendErrorResponse(res, 400, 'Invalid status value');
-      }
-
-      const user = await User.findById(userId);
-      if (!user) {
-        return sendErrorResponse(res, 404, 'User not found');
-      }
-
-      // Prevent admin from deactivating themselves
-      if (userId === req.user.id && status === 'inactive') {
-        return sendErrorResponse(
-          res,
-          400,
-          'Cannot deactivate your own account'
-        );
-      }
-
-      user.status = status;
-      await user.save();
-
-      logger.info(
-        `User status changed by admin ${req.user.email}: ${user.email} -> ${status}`
-      );
-
-      return sendSuccessResponse(res, 200, 'User status updated successfully', {
-        id: user._id,
-        email: user.email,
-        status: user.status,
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  // Change user role (admin only)
-  async changeUserRole(req, res, next) {
-    try {
-      const { userId } = req.params;
-      const { role } = req.body;
-
-      if (!['admin', 'member'].includes(role)) {
-        return sendErrorResponse(res, 400, 'Invalid role value');
-      }
-
-      const user = await User.findById(userId);
-      if (!user) {
-        return sendErrorResponse(res, 404, 'User not found');
-      }
-
-      // Prevent admin from changing their own role
-      if (userId === req.user.id) {
-        return sendErrorResponse(res, 400, 'Cannot change your own role');
-      }
-
-      user.role = role;
-      await user.save();
-
-      logger.info(
-        `User role changed by admin ${req.user.email}: ${user.email} -> ${role}`
-      );
-
-      return sendSuccessResponse(res, 200, 'User role updated successfully', {
-        id: user._id,
-        email: user.email,
-        role: user.role,
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  // Get user activity (admin only)
-  async getUserActivity(req, res, next) {
-    try {
-      const { userId } = req.params;
-      const { limit = 50 } = req.query;
-
-      const user = await User.findById(userId);
-      if (!user) {
-        return sendErrorResponse(res, 404, 'User not found');
-      }
-
-      // Get user activity (this would need to be implemented based on your activity tracking)
-      const activity = await User.getUserActivity(userId, parseInt(limit));
-
-      return sendSuccessResponse(
-        res,
-        200,
-        'User activity retrieved successfully',
-        activity
-      );
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  // Bulk update users (admin only)
-  async bulkUpdateUsers(req, res, next) {
-    try {
-      const { userIds, updates } = req.body;
-
-      if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
-        return sendErrorResponse(res, 400, 'User IDs array is required');
-      }
-
-      if (!updates || typeof updates !== 'object') {
-        return sendErrorResponse(res, 400, 'Updates object is required');
-      }
-
-      // Prevent admin from updating themselves
-      if (userIds.includes(req.user.id)) {
-        return sendErrorResponse(
-          res,
-          400,
-          'Cannot update your own account in bulk operation'
-        );
-      }
-
-      // Update multiple users
-      const result = await User.updateMany({ _id: { $in: userIds } }, updates);
-
-      logger.info(
-        `Bulk user update by admin ${req.user.email}: ${result.modifiedCount} users updated`
-      );
-
-      return sendSuccessResponse(res, 200, 'Bulk user update successful', {
-        updatedCount: result.modifiedCount,
-        totalRequested: userIds.length,
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  // Get system statistics (admin only)
-  async getSystemStats(req, res, next) {
-    try {
-      const stats = await User.getStats();
-
-      return sendSuccessResponse(
-        res,
-        200,
-        'System statistics retrieved successfully',
+        'User statistics retrieved successfully',
         stats
       );
     } catch (error) {
+      logger.error('Error in getCurrentUserStats:', error);
       next(error);
     }
   }
 
-  // Search users (admin only)
-  async searchUsers(req, res, next) {
+  // Get user dashboard data
+  async getUserDashboard(req, res, next) {
     try {
-      const { q, role, status, limit = 20 } = req.query;
+      const userId = req.user.id;
 
-      if (!q) {
-        return sendErrorResponse(res, 400, 'Search query is required');
-      }
-
-      // Build search query
-      const query = {
-        $or: [
-          { name: { $regex: q, $options: 'i' } },
-          { email: { $regex: q, $options: 'i' } },
-          { phone: { $regex: q, $options: 'i' } },
-        ],
-      };
-
-      if (role) {
-        query.role = role;
-      }
-
-      if (status) {
-        query.status = status;
-      }
-
-      const users = await User.find(query)
-        .select('-password')
-        .sort({ name: 1 })
-        .limit(parseInt(limit));
+      // Get comprehensive user dashboard data
+      const dashboardData = await this.getUserDashboardData(userId);
 
       return sendSuccessResponse(
         res,
         200,
-        'Users search completed successfully',
-        {
-          users,
-          query: q,
-          count: users.length,
-        }
+        'User dashboard data retrieved successfully',
+        dashboardData
       );
     } catch (error) {
+      logger.error('Error in getUserDashboard:', error);
       next(error);
     }
+  }
+
+  // Calculate user statistics
+  async calculateUserStats(userId) {
+    try {
+      // Get meal statistics
+      const mealStats = await this.getMealStats(userId);
+
+      // Get bazar statistics
+      const bazarStats = await this.getBazarStats(userId);
+
+      // Get payment statistics
+      const paymentStats = await this.getPaymentStats(userId);
+
+      // Get overview statistics
+      const overviewStats = await this.getOverviewStats(userId);
+
+      return {
+        meals: mealStats,
+        bazar: bazarStats,
+        payments: paymentStats,
+        overview: overviewStats,
+      };
+    } catch (error) {
+      logger.error('Error calculating user stats:', error);
+      throw error;
+    }
+  }
+
+  // Get meal statistics for user
+  async getMealStats(userId) {
+    try {
+      const totalMeals = await Meal.countDocuments({ userId });
+      const approvedMeals = await Meal.countDocuments({
+        userId,
+        status: 'approved',
+      });
+      const pendingMeals = await Meal.countDocuments({
+        userId,
+        status: 'pending',
+      });
+      const rejectedMeals = await Meal.countDocuments({
+        userId,
+        status: 'rejected',
+      });
+
+      // Calculate efficiency percentage
+      const efficiency =
+        totalMeals > 0 ? Math.round((approvedMeals / totalMeals) * 100) : 0;
+
+      // Calculate average meals per day
+      const user = await User.findById(userId);
+      const joinDate = user?.createdAt || new Date();
+      const daysSinceJoin = Math.ceil(
+        (new Date() - joinDate) / (1000 * 60 * 60 * 24)
+      );
+      const averagePerDay =
+        daysSinceJoin > 0 ? (totalMeals / daysSinceJoin).toFixed(1) : 0;
+
+      // Get days since last meal
+      const lastMeal = await Meal.findOne({ userId }).sort({ date: -1 });
+      const daysSinceLastMeal = lastMeal
+        ? Math.ceil(
+            (new Date() - new Date(lastMeal.date)) / (1000 * 60 * 60 * 24)
+          )
+        : 0;
+
+      return {
+        total: totalMeals,
+        approved: approvedMeals,
+        pending: pendingMeals,
+        rejected: rejectedMeals,
+        efficiency: efficiency,
+        averagePerDay: parseFloat(averagePerDay),
+        daysSinceLastMeal: daysSinceLastMeal,
+      };
+    } catch (error) {
+      logger.error('Error getting meal stats:', error);
+      return {
+        total: 0,
+        approved: 0,
+        pending: 0,
+        rejected: 0,
+        efficiency: 0,
+        averagePerDay: 0,
+        daysSinceLastMeal: 0,
+      };
+    }
+  }
+
+  // Get bazar statistics for user
+  async getBazarStats(userId) {
+    try {
+      const bazarEntries = await Bazar.find({ userId });
+
+      const totalAmount = bazarEntries.reduce(
+        (sum, entry) => sum + entry.totalAmount,
+        0
+      );
+      const pendingAmount = bazarEntries
+        .filter(entry => entry.status === 'pending')
+        .reduce((sum, entry) => sum + entry.totalAmount, 0);
+      const approvedAmount = bazarEntries
+        .filter(entry => entry.status === 'approved')
+        .reduce((sum, entry) => sum + entry.totalAmount, 0);
+
+      const totalEntries = bazarEntries.length;
+      const averageAmount =
+        totalEntries > 0 ? (totalAmount / totalEntries).toFixed(0) : 0;
+
+      return {
+        totalAmount: totalAmount,
+        pendingAmount: pendingAmount,
+        approvedAmount: approvedAmount,
+        totalEntries: totalEntries,
+        averageAmount: parseFloat(averageAmount),
+      };
+    } catch (error) {
+      logger.error('Error getting bazar stats:', error);
+      return {
+        totalAmount: 0,
+        pendingAmount: 0,
+        approvedAmount: 0,
+        totalEntries: 0,
+        averageAmount: 0,
+      };
+    }
+  }
+
+  // Get payment statistics for user
+  async getPaymentStats(userId) {
+    try {
+      // For now, we'll use mock data since we don't have a Payment model
+      // In a real implementation, you'd query the Payment collection
+      const monthlyContribution = 5000; // This would come from user settings or system config
+
+      // Get last bazar entry date as proxy for last payment
+      const lastBazarEntry = await Bazar.findOne({ userId }).sort({
+        createdAt: -1,
+      });
+      const lastPaymentDate = lastBazarEntry
+        ? lastBazarEntry.createdAt.toISOString().split('T')[0]
+        : null;
+
+      // Calculate payment status based on bazar entries
+      const bazarEntries = await Bazar.find({ userId });
+      const totalPaid = bazarEntries
+        .filter(entry => entry.status === 'approved')
+        .reduce((sum, entry) => sum + entry.totalAmount, 0);
+
+      let paymentStatus = 'pending';
+      if (totalPaid >= monthlyContribution) {
+        paymentStatus = 'paid';
+      } else if (new Date().getDate() > 15) {
+        paymentStatus = 'overdue';
+      }
+
+      return {
+        monthlyContribution: monthlyContribution,
+        lastPaymentDate: lastPaymentDate,
+        paymentStatus: paymentStatus,
+        totalPaid: totalPaid,
+      };
+    } catch (error) {
+      logger.error('Error getting payment stats:', error);
+      return {
+        monthlyContribution: 0,
+        lastPaymentDate: null,
+        paymentStatus: 'pending',
+        totalPaid: 0,
+      };
+    }
+  }
+
+  // Get overview statistics for user
+  async getOverviewStats(userId) {
+    try {
+      const totalMeals = await Meal.countDocuments({ userId });
+      const totalBazarEntries = await Bazar.countDocuments({ userId });
+      const totalActivities = totalMeals + totalBazarEntries;
+
+      // Get recent activity count (last 7 days)
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+      const recentMeals = await Meal.countDocuments({
+        userId,
+        createdAt: { $gte: sevenDaysAgo },
+      });
+      const recentBazar = await Bazar.countDocuments({
+        userId,
+        createdAt: { $gte: sevenDaysAgo },
+      });
+      const recentActivityCount = recentMeals + recentBazar;
+
+      // Calculate performance score based on efficiency and activity
+      const approvedMeals = await Meal.countDocuments({
+        userId,
+        status: 'approved',
+      });
+      const efficiency =
+        totalMeals > 0 ? (approvedMeals / totalMeals) * 100 : 0;
+      const activityScore = Math.min((totalActivities / 30) * 100, 100); // Normalize to 30 activities
+      const performanceScore = Math.round((efficiency + activityScore) / 2);
+
+      return {
+        totalActivities: totalActivities,
+        recentActivityCount: recentActivityCount,
+        performanceScore: performanceScore,
+      };
+    } catch (error) {
+      logger.error('Error getting overview stats:', error);
+      return {
+        totalActivities: 0,
+        recentActivityCount: 0,
+        performanceScore: 0,
+      };
+    }
+  }
+
+  // Get comprehensive user dashboard data
+  async getUserDashboardData(userId) {
+    try {
+      const stats = await this.calculateUserStats(userId);
+
+      // Get recent activities
+      const recentActivities = await this.getRecentActivities(userId);
+
+      // Get weekly meal data
+      const weeklyMealData = await this.getWeeklyMealData(userId);
+
+      // Get monthly bazar data
+      const monthlyBazarData = await this.getMonthlyBazarData(userId);
+
+      return {
+        stats: stats,
+        activities: recentActivities,
+        charts: {
+          weeklyMeals: weeklyMealData,
+          monthlyBazar: monthlyBazarData,
+        },
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      logger.error('Error getting user dashboard data:', error);
+      throw error;
+    }
+  }
+
+  // Get recent activities for user
+  async getRecentActivities(userId) {
+    try {
+      const activities = [];
+      const limit = 10;
+
+      // Get recent meals
+      const recentMeals = await Meal.find({ userId })
+        .sort({ createdAt: -1 })
+        .limit(limit / 2);
+
+      // Get recent bazar entries
+      const recentBazar = await Bazar.find({ userId })
+        .sort({ createdAt: -1 })
+        .limit(limit / 2);
+
+      // Format meal activities
+      recentMeals.forEach(meal => {
+        activities.push({
+          id: meal._id,
+          type: 'meal',
+          title:
+            `${meal.breakfast ? 'Breakfast' : ''}${meal.lunch ? ' Lunch' : ''}${meal.dinner ? ' Dinner' : ''}`.trim(),
+          description: `Meal submitted for ${new Date(meal.date).toLocaleDateString()}`,
+          time: this.getTimeAgo(meal.createdAt),
+          status: meal.status,
+          icon: '🍽️',
+        });
+      });
+
+      // Format bazar activities
+      recentBazar.forEach(bazar => {
+        activities.push({
+          id: bazar._id,
+          type: 'bazar',
+          title: 'Bazar Entry',
+          description: `Bazar entry for ৳${bazar.totalAmount}`,
+          time: this.getTimeAgo(bazar.createdAt),
+          status: bazar.status,
+          icon: '🛒',
+          amount: bazar.totalAmount,
+        });
+      });
+
+      // Sort by creation time
+      activities.sort((a, b) => new Date(b.time) - new Date(a.time));
+
+      return activities.slice(0, limit);
+    } catch (error) {
+      logger.error('Error getting recent activities:', error);
+      return [];
+    }
+  }
+
+  // Get weekly meal data for charts
+  async getWeeklyMealData(userId) {
+    try {
+      const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      const colors = [
+        '#f59e0b',
+        '#10b981',
+        '#6366f1',
+        '#f093fb',
+        '#43e97b',
+        '#667eea',
+        '#f97316',
+      ];
+      const gradients = [
+        ['#fbbf24', '#f59e0b'],
+        ['#34d399', '#10b981'],
+        ['#818cf8', '#6366f1'],
+        ['#f093fb', '#f5576c'],
+        ['#43e97b', '#38f9d7'],
+        ['#667eea', '#764ba2'],
+        ['#fb923c', '#f97316'],
+      ];
+
+      const weeklyData = [];
+      const startOfWeek = new Date();
+      startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay() + 1);
+
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(startOfWeek);
+        date.setDate(date.getDate() + i);
+
+        const meals = await Meal.find({
+          userId,
+          date: date.toISOString().split('T')[0],
+        });
+
+        const totalMeals = meals.reduce((sum, meal) => {
+          return (
+            sum +
+            (meal.breakfast ? 1 : 0) +
+            (meal.lunch ? 1 : 0) +
+            (meal.dinner ? 1 : 0)
+          );
+        }, 0);
+
+        weeklyData.push({
+          label: days[i],
+          value: totalMeals,
+          color: colors[i],
+          gradient: gradients[i],
+          trend:
+            i > 0
+              ? totalMeals > weeklyData[i - 1]?.value
+                ? 'up'
+                : 'down'
+              : 'up',
+        });
+      }
+
+      return weeklyData;
+    } catch (error) {
+      logger.error('Error getting weekly meal data:', error);
+      return [];
+    }
+  }
+
+  // Get monthly bazar data for charts
+  async getMonthlyBazarData(userId) {
+    try {
+      const monthlyData = [];
+      const currentMonth = new Date().getMonth();
+      const currentYear = new Date().getFullYear();
+
+      for (let i = 0; i < 4; i++) {
+        const month = new Date(currentYear, currentMonth - i, 1);
+        const monthName = month.toLocaleDateString('en-US', { month: 'short' });
+
+        const startOfMonth = new Date(currentYear, currentMonth - i, 1);
+        const endOfMonth = new Date(currentYear, currentMonth - i + 1, 0);
+
+        const bazarEntries = await Bazar.find({
+          userId,
+          createdAt: {
+            $gte: startOfMonth,
+            $lte: endOfMonth,
+          },
+        });
+
+        const totalAmount = bazarEntries.reduce(
+          (sum, entry) => sum + entry.totalAmount,
+          0
+        );
+
+        monthlyData.push({
+          date: monthName,
+          value: totalAmount,
+        });
+      }
+
+      return monthlyData.reverse();
+    } catch (error) {
+      logger.error('Error getting monthly bazar data:', error);
+      return [];
+    }
+  }
+
+  // Helper method to get time ago
+  getTimeAgo(date) {
+    const now = new Date();
+    const diffInSeconds = Math.floor((now - date) / 1000);
+
+    if (diffInSeconds < 60) return 'Just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400)
+      return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    if (diffInSeconds < 2592000)
+      return `${Math.floor(diffInSeconds / 86400)}d ago`;
+
+    return date.toLocaleDateString();
   }
 }
 

@@ -1,6 +1,10 @@
 import { ThemedText } from '@/components/ThemedText';
+import { ThemedView } from '@/components/ThemedView';
+import { BazarForm } from '@/components/BazarForm';
+import { BazarList } from '@/components/BazarList';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   Alert,
@@ -9,7 +13,10 @@ import {
   StyleSheet,
   TextInput,
   View,
+  Modal,
+  TouchableOpacity,
 } from 'react-native';
+import { useAuth } from '@/context/AuthContext';
 
 interface BazarItem {
   id: string;
@@ -21,7 +28,11 @@ interface BazarItem {
 }
 
 export default function BazarScreen() {
+  const router = useRouter();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
+  const [showAddBazarModal, setShowAddBazarModal] = useState(false);
+  const [filters, setFilters] = useState({});
 
   // Mock data - replace with real API data
   const bazarItems: BazarItem[] = [
@@ -92,7 +103,22 @@ export default function BazarScreen() {
   };
 
   const handleAddBazar = () => {
-    Alert.alert('Add Bazar', 'This would open a form to add new bazar items');
+    setShowAddBazarModal(true);
+  };
+
+  const handleBazarSubmitted = () => {
+    setShowAddBazarModal(false);
+    // Refresh the bazar list here
+  };
+
+  const handleBazarPress = (bazar: any) => {
+    // Navigate to bazar details or show more info
+    Alert.alert('Bazar Details', `View details for bazar entry ${bazar.id}`);
+  };
+
+  const handleRefresh = () => {
+    // Refresh the bazar list
+    console.log('Refreshing bazar list...');
   };
 
   const handleApprove = (id: string) => {
@@ -104,7 +130,7 @@ export default function BazarScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <View style={styles.container}>
       {/* Header */}
       <LinearGradient
         colors={['#4facfe', '#00f2fe']}
@@ -202,75 +228,42 @@ export default function BazarScreen() {
             Recent Bazar Items
           </ThemedText>
 
-          {filteredItems.map(item => (
-            <View key={item.id} style={styles.itemCard}>
-              <View style={styles.itemHeader}>
-                <View style={styles.itemInfo}>
-                  <ThemedText style={styles.itemName}>{item.name}</ThemedText>
-                  <ThemedText style={styles.itemDate}>{item.date}</ThemedText>
-                </View>
-                <View
-                  style={[
-                    styles.statusBadge,
-                    { backgroundColor: getStatusBgColor(item.status) },
-                  ]}
-                >
-                  <ThemedText
-                    style={[
-                      styles.statusText,
-                      { color: getStatusColor(item.status) },
-                    ]}
-                  >
-                    {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
-                  </ThemedText>
-                </View>
-              </View>
-
-              <View style={styles.itemDetails}>
-                <View style={styles.detailRow}>
-                  <ThemedText style={styles.detailLabel}>Amount:</ThemedText>
-                  <ThemedText style={styles.detailValue}>
-                    {item.amount}৳
-                  </ThemedText>
-                </View>
-                <View style={styles.detailRow}>
-                  <ThemedText style={styles.detailLabel}>
-                    Submitted by:
-                  </ThemedText>
-                  <ThemedText style={styles.detailValue}>
-                    {item.submittedBy}
-                  </ThemedText>
-                </View>
-              </View>
-
-              {/* Admin Actions */}
-              {item.status === 'pending' && (
-                <View style={styles.actionButtons}>
-                  <Pressable
-                    style={[styles.actionButton, styles.approveButton]}
-                    onPress={() => handleApprove(item.id)}
-                  >
-                    <Ionicons name='checkmark' size={16} color='#fff' />
-                    <ThemedText style={styles.actionButtonText}>
-                      Approve
-                    </ThemedText>
-                  </Pressable>
-                  <Pressable
-                    style={[styles.actionButton, styles.rejectButton]}
-                    onPress={() => handleReject(item.id)}
-                  >
-                    <Ionicons name='close' size={16} color='#fff' />
-                    <ThemedText style={styles.actionButtonText}>
-                      Reject
-                    </ThemedText>
-                  </Pressable>
-                </View>
-              )}
-            </View>
-          ))}
+          <BazarList
+            filters={filters}
+            showUserInfo={user?.role === 'admin'}
+            onBazarPress={handleBazarPress}
+            onRefresh={handleRefresh}
+            isAdmin={false}
+          />
         </View>
       </View>
-    </ScrollView>
+
+      {/* Add Bazar Modal */}
+      <Modal
+        visible={showAddBazarModal}
+        animationType='slide'
+        presentationStyle='pageSheet'
+        onRequestClose={() => setShowAddBazarModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setShowAddBazarModal(false)}
+            >
+              <Ionicons name='close' size={24} color='#6b7280' />
+            </TouchableOpacity>
+            <ThemedText style={styles.modalTitle}>Add New Bazar</ThemedText>
+            <View style={styles.placeholder} />
+          </View>
+          <BazarForm
+            onSuccess={handleBazarSubmitted}
+            onCancel={() => setShowAddBazarModal(false)}
+            showCancel={false}
+          />
+        </View>
+      </Modal>
+    </View>
   );
 }
 
@@ -311,6 +304,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   content: {
+    flex: 1,
     padding: 20,
   },
   searchContainer: {
@@ -392,6 +386,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   listContainer: {
+    flex: 1,
     marginBottom: 24,
   },
   sectionTitle: {
@@ -480,5 +475,28 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#fff',
     marginLeft: 4,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  closeButton: {
+    padding: 8,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  placeholder: {
+    width: 40,
   },
 });

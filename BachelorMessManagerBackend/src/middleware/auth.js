@@ -22,7 +22,8 @@ class AuthMiddleware {
 
       // Create minimal user object for testing
       const user = {
-        _id: '687ba9fc6b12d3af73b17f9f',
+        _id: '687bb6f40864ea7356a4d5e4',
+        id: '687bb6f40864ea7356a4d5e4', // Add id field for compatibility
         email: 'mahbub@mess.com',
         role: 'admin',
         status: 'active',

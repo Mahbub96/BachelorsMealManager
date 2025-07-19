@@ -1,9 +1,10 @@
-import { useAnalytics } from "@/hooks/useAnalytics";
-import { useRouter } from "expo-router";
-import React from "react";
-import { Animated, Pressable, StyleSheet, View } from "react-native";
-import { ThemedText } from "../ThemedText";
-import { DESIGN_SYSTEM } from "./DesignSystem";
+import { useAnalytics } from '@/hooks/useAnalytics';
+import { useRouter } from 'expo-router';
+import React from 'react';
+import { Animated, Pressable, StyleSheet, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { ThemedText } from '../ThemedText';
+import { DESIGN_SYSTEM } from './DesignSystem';
 
 interface StatsCardsProps {
   fadeAnim: Animated.Value;
@@ -23,33 +24,33 @@ export const StatsCards: React.FC<StatsCardsProps> = ({
 
   const stats = [
     {
-      title: "Total Members",
+      title: 'Total Members',
       value: data?.stats?.totalMembers || 0,
-      unit: "members",
+      unit: 'members',
       color: DESIGN_SYSTEM.colors.primary,
-      icon: "👥",
+      icon: 'people',
     },
     {
-      title: "Monthly Expense",
+      title: 'Monthly Expense',
       value: data?.stats?.monthlyExpense || 0,
-      unit: "BDT",
+      unit: 'BDT',
       color: DESIGN_SYSTEM.colors.secondary,
-      icon: "💰",
+      icon: 'wallet',
       formatter: formatCurrency,
     },
     {
-      title: "Average Meals",
+      title: 'Average Meals',
       value: data?.stats?.averageMeals || 0,
-      unit: "per day",
+      unit: 'per day',
       color: DESIGN_SYSTEM.colors.success,
-      icon: "🍽️",
+      icon: 'fast-food',
     },
     {
-      title: "Balance",
+      title: 'Balance',
       value: data?.stats?.balance || 0,
-      unit: "BDT",
+      unit: 'BDT',
       color: DESIGN_SYSTEM.colors.info,
-      icon: "💳",
+      icon: 'card',
       formatter: formatCurrency,
     },
   ];
@@ -57,19 +58,19 @@ export const StatsCards: React.FC<StatsCardsProps> = ({
   const handleStatPress = (stat: any) => {
     // Handle expense-related stats
     if (
-      stat.title.toLowerCase().includes("expense") ||
-      stat.title.toLowerCase().includes("balance") ||
-      stat.title.toLowerCase().includes("cost")
+      stat.title.toLowerCase().includes('expense') ||
+      stat.title.toLowerCase().includes('balance') ||
+      stat.title.toLowerCase().includes('cost')
     ) {
       // Navigate to expense details
       router.push({
-        pathname: "/expense-details",
+        pathname: '/expense-details',
         params: {
           title: stat.title,
           value: stat.value.toString(),
-          type: stat.title.toLowerCase().includes("expense")
-            ? "monthly"
-            : "balance",
+          type: stat.title.toLowerCase().includes('expense')
+            ? 'monthly'
+            : 'balance',
           color: stat.color,
           description: `Detailed breakdown of ${stat.title.toLowerCase()} including all related costs and expenses.`,
           notes: `This data is updated daily and reflects current market conditions for ${stat.title.toLowerCase()}.`,
@@ -109,7 +110,7 @@ export const StatsCards: React.FC<StatsCardsProps> = ({
       >
         <View style={styles.errorContainer}>
           <ThemedText style={styles.errorText}>
-            {error || "Failed to load stats"}
+            {error || 'Failed to load stats'}
           </ThemedText>
         </View>
       </Animated.View>
@@ -134,7 +135,11 @@ export const StatsCards: React.FC<StatsCardsProps> = ({
             onPress={() => handleStatPress(stat)}
           >
             <View style={styles.statHeader}>
-              <ThemedText style={styles.statIcon}>{stat.icon}</ThemedText>
+              <Ionicons
+                name={stat.icon as any}
+                size={24}
+                color={DESIGN_SYSTEM.colors.text.primary}
+              />
               <View
                 style={[
                   styles.statColorIndicator,
@@ -158,26 +163,26 @@ export const StatsCards: React.FC<StatsCardsProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: "row",
-    flexWrap: "wrap",
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: DESIGN_SYSTEM.spacing.md,
     marginBottom: DESIGN_SYSTEM.spacing.xxl,
   },
   statsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: DESIGN_SYSTEM.spacing.md,
   },
   statCard: {
     flex: 1,
     minWidth: 150,
     borderRadius: DESIGN_SYSTEM.borderRadius.lg,
-    overflow: "hidden",
+    overflow: 'hidden',
     ...DESIGN_SYSTEM.shadows.lg,
   },
   statHeader: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: DESIGN_SYSTEM.spacing.sm,
     padding: DESIGN_SYSTEM.spacing.lg,
     backgroundColor: DESIGN_SYSTEM.colors.background.secondary,
@@ -214,8 +219,8 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
     padding: DESIGN_SYSTEM.spacing.lg,
   },
   loadingText: {
@@ -224,8 +229,8 @@ const styles = StyleSheet.create({
   },
   errorContainer: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
     padding: DESIGN_SYSTEM.spacing.lg,
   },
   errorText: {

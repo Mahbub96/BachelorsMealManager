@@ -1,7 +1,7 @@
-import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
 import {
   Dimensions,
   Modal,
@@ -10,10 +10,10 @@ import {
   StyleSheet,
   TouchableOpacity,
   View,
-} from "react-native";
-import { ThemedText } from "./ThemedText";
+} from 'react-native';
+import { ThemedText } from './ThemedText';
 
-const { width: screenWidth } = Dimensions.get("window");
+const { width: screenWidth } = Dimensions.get('window');
 
 // Design System Constants
 const DESIGN_SYSTEM = {
@@ -40,11 +40,11 @@ const DESIGN_SYSTEM = {
   },
   shadows: {
     small: {
-      boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)",
+      boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
       elevation: 4,
     },
     medium: {
-      boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.15)",
+      boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.15)',
       elevation: 8,
     },
   },
@@ -56,7 +56,7 @@ interface ChartData {
   color: string;
   gradient: readonly [string, string];
   forecast?: number; // For forecasting
-  trend?: "up" | "down" | "stable"; // Trend indicator
+  trend?: 'up' | 'down' | 'stable'; // Trend indicator
   details?: {
     description?: string;
     breakdown?: { label: string; value: number }[];
@@ -90,7 +90,14 @@ interface PieChartProps {
 }
 
 interface SwappableLineChartProps {
-  monthlyRevenue: { month: string; revenue: number; details?: any }[];
+  monthlyRevenue: Array<{
+    month?: string;
+    revenue?: number;
+    date?: string;
+    value?: number;
+    forecast?: number;
+    details?: any;
+  }>;
   title: string;
   color?: string;
   showForecast?: boolean;
@@ -106,35 +113,35 @@ const DataModal: React.FC<{
   data: any;
 }> = ({ visible, onClose, title, data }) => {
   const formatValue = (value: number | undefined) => {
-    if (typeof value === "number" && !isNaN(value)) {
+    if (typeof value === 'number' && !isNaN(value)) {
       return `৳${value.toLocaleString()}`;
     }
-    return "-";
+    return '-';
   };
 
   const getTrendIcon = (trend?: string) => {
     switch (trend) {
-      case "up":
-        return "trending-up";
-      case "down":
-        return "trending-down";
-      case "stable":
-        return "remove";
+      case 'up':
+        return 'trending-up';
+      case 'down':
+        return 'trending-down';
+      case 'stable':
+        return 'remove';
       default:
-        return "information-circle";
+        return 'information-circle';
     }
   };
 
   const getTrendColor = (trend?: string) => {
     switch (trend) {
-      case "up":
-        return "#10b981";
-      case "down":
-        return "#ef4444";
-      case "stable":
-        return "#6b7280";
+      case 'up':
+        return '#10b981';
+      case 'down':
+        return '#ef4444';
+      case 'stable':
+        return '#6b7280';
       default:
-        return "#6b7280";
+        return '#6b7280';
     }
   };
 
@@ -142,14 +149,14 @@ const DataModal: React.FC<{
     <Modal
       visible={visible}
       transparent={true}
-      animationType="slide"
+      animationType='slide'
       onRequestClose={onClose}
     >
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           {/* Beautiful Header */}
           <LinearGradient
-            colors={["#667eea", "#764ba2"]}
+            colors={['#667eea', '#764ba2']}
             style={styles.modalHeaderGradient}
           >
             <View style={styles.modalHeaderContent}>
@@ -158,7 +165,7 @@ const DataModal: React.FC<{
                 onPress={onClose}
                 style={styles.closeButtonWhite}
               >
-                <Ionicons name="close" size={24} color="#fff" />
+                <Ionicons name='close' size={24} color='#fff' />
               </TouchableOpacity>
             </View>
           </LinearGradient>
@@ -170,7 +177,7 @@ const DataModal: React.FC<{
             {/* Main Value Card */}
             <View style={styles.valueCard}>
               <View style={styles.valueCardHeader}>
-                <Ionicons name="analytics" size={24} color="#667eea" />
+                <Ionicons name='analytics' size={24} color='#667eea' />
                 <ThemedText style={styles.valueCardLabel}>
                   Current Value
                 </ThemedText>
@@ -185,7 +192,7 @@ const DataModal: React.FC<{
               <View style={styles.trendCard}>
                 <View style={styles.trendCardHeader}>
                   <Ionicons
-                    name="trending-up"
+                    name='trending-up'
                     size={20}
                     color={getTrendColor(data.trend)}
                   />
@@ -200,11 +207,11 @@ const DataModal: React.FC<{
                       { color: getTrendColor(data.trend) },
                     ]}
                   >
-                    {data.trend === "up"
-                      ? "↗️ Increasing"
-                      : data.trend === "down"
-                      ? "↘️ Decreasing"
-                      : "→ Stable"}
+                    {data.trend === 'up'
+                      ? '↗️ Increasing'
+                      : data.trend === 'down'
+                      ? '↘️ Decreasing'
+                      : '→ Stable'}
                   </ThemedText>
                 </View>
               </View>
@@ -214,7 +221,7 @@ const DataModal: React.FC<{
             {data.forecast && (
               <View style={styles.forecastCard}>
                 <View style={styles.forecastCardHeader}>
-                  <Ionicons name="time" size={20} color="#f59e0b" />
+                  <Ionicons name='time' size={20} color='#f59e0b' />
                   <ThemedText style={styles.forecastCardLabel}>
                     Forecast
                   </ThemedText>
@@ -232,7 +239,7 @@ const DataModal: React.FC<{
             {data.details?.description && (
               <View style={styles.infoCard}>
                 <View style={styles.infoCardHeader}>
-                  <Ionicons name="document-text" size={20} color="#6b7280" />
+                  <Ionicons name='document-text' size={20} color='#6b7280' />
                   <ThemedText style={styles.infoCardLabel}>
                     Description
                   </ThemedText>
@@ -247,7 +254,7 @@ const DataModal: React.FC<{
             {data.details?.breakdown && data.details.breakdown.length > 0 && (
               <View style={styles.breakdownCard}>
                 <View style={styles.breakdownCardHeader}>
-                  <Ionicons name="list" size={20} color="#6b7280" />
+                  <Ionicons name='list' size={20} color='#6b7280' />
                   <ThemedText style={styles.breakdownCardLabel}>
                     Breakdown
                   </ThemedText>
@@ -269,7 +276,7 @@ const DataModal: React.FC<{
             {data.details?.notes && (
               <View style={styles.infoCard}>
                 <View style={styles.infoCardHeader}>
-                  <Ionicons name="chatbubble" size={20} color="#6b7280" />
+                  <Ionicons name='chatbubble' size={20} color='#6b7280' />
                   <ThemedText style={styles.infoCardLabel}>Notes</ThemedText>
                 </View>
                 <ThemedText style={styles.infoCardText}>
@@ -282,7 +289,7 @@ const DataModal: React.FC<{
             {data.date && (
               <View style={styles.dateCard}>
                 <View style={styles.dateCardHeader}>
-                  <Ionicons name="calendar" size={20} color="#6b7280" />
+                  <Ionicons name='calendar' size={20} color='#6b7280' />
                   <ThemedText style={styles.dateCardLabel}>Date</ThemedText>
                 </View>
                 <ThemedText style={styles.dateCardText}>{data.date}</ThemedText>
@@ -308,14 +315,14 @@ const PieModal: React.FC<{
     <Modal
       visible={visible}
       transparent={true}
-      animationType="slide"
+      animationType='slide'
       onRequestClose={onClose}
     >
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           {/* Beautiful Header */}
           <LinearGradient
-            colors={["#f093fb", "#f5576c"]}
+            colors={['#f093fb', '#f5576c']}
             style={styles.modalHeaderGradient}
           >
             <View style={styles.modalHeaderContent}>
@@ -324,7 +331,7 @@ const PieModal: React.FC<{
                 onPress={onClose}
                 style={styles.closeButtonWhite}
               >
-                <Ionicons name="close" size={24} color="#fff" />
+                <Ionicons name='close' size={24} color='#fff' />
               </TouchableOpacity>
             </View>
           </LinearGradient>
@@ -356,7 +363,7 @@ const PieModal: React.FC<{
             {/* Value Information */}
             <View style={styles.valueCard}>
               <View style={styles.valueCardHeader}>
-                <Ionicons name="cash" size={24} color="#667eea" />
+                <Ionicons name='cash' size={24} color='#667eea' />
                 <ThemedText style={styles.valueCardLabel}>Value</ThemedText>
               </View>
               <ThemedText style={styles.valueCardValue}>
@@ -367,7 +374,7 @@ const PieModal: React.FC<{
             {/* Total Contribution */}
             <View style={styles.totalCard}>
               <View style={styles.totalCardHeader}>
-                <Ionicons name="pie-chart" size={20} color="#6b7280" />
+                <Ionicons name='pie-chart' size={20} color='#6b7280' />
                 <ThemedText style={styles.totalCardLabel}>
                   Total Contribution
                 </ThemedText>
@@ -381,7 +388,7 @@ const PieModal: React.FC<{
             {data.forecast && (
               <View style={styles.forecastCard}>
                 <View style={styles.forecastCardHeader}>
-                  <Ionicons name="time" size={20} color="#f59e0b" />
+                  <Ionicons name='time' size={20} color='#f59e0b' />
                   <ThemedText style={styles.forecastCardLabel}>
                     Forecast
                   </ThemedText>
@@ -399,7 +406,7 @@ const PieModal: React.FC<{
             {data.details?.description && (
               <View style={styles.infoCard}>
                 <View style={styles.infoCardHeader}>
-                  <Ionicons name="document-text" size={20} color="#6b7280" />
+                  <Ionicons name='document-text' size={20} color='#6b7280' />
                   <ThemedText style={styles.infoCardLabel}>
                     Description
                   </ThemedText>
@@ -414,7 +421,7 @@ const PieModal: React.FC<{
             {data.details?.notes && (
               <View style={styles.infoCard}>
                 <View style={styles.infoCardHeader}>
-                  <Ionicons name="chatbubble" size={20} color="#6b7280" />
+                  <Ionicons name='chatbubble' size={20} color='#6b7280' />
                   <ThemedText style={styles.infoCardLabel}>Notes</ThemedText>
                 </View>
                 <ThemedText style={styles.infoCardText}>
@@ -439,14 +446,14 @@ const StatModal: React.FC<{
     <Modal
       visible={visible}
       transparent={true}
-      animationType="slide"
+      animationType='slide'
       onRequestClose={onClose}
     >
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           {/* Beautiful Header */}
           <LinearGradient
-            colors={data.gradient || ["#667eea", "#764ba2"]}
+            colors={data.gradient || ['#667eea', '#764ba2']}
             style={styles.modalHeaderGradient}
           >
             <View style={styles.modalHeaderContent}>
@@ -455,7 +462,7 @@ const StatModal: React.FC<{
                 onPress={onClose}
                 style={styles.closeButtonWhite}
               >
-                <Ionicons name="close" size={24} color="#fff" />
+                <Ionicons name='close' size={24} color='#fff' />
               </TouchableOpacity>
             </View>
           </LinearGradient>
@@ -467,10 +474,10 @@ const StatModal: React.FC<{
             {/* Stat Header Card */}
             <View style={styles.statHeaderCard}>
               <LinearGradient
-                colors={data.gradient || ["#667eea", "#764ba2"]}
+                colors={data.gradient || ['#667eea', '#764ba2']}
                 style={styles.statHeaderGradient}
               >
-                <Ionicons name={data.icon as any} size={32} color="#fff" />
+                <Ionicons name={data.icon as any} size={32} color='#fff' />
                 <ThemedText style={styles.statHeaderValue}>
                   {data.value}
                 </ThemedText>
@@ -483,20 +490,20 @@ const StatModal: React.FC<{
             {/* Quick Actions */}
             <View style={styles.actionsCard}>
               <View style={styles.actionsCardHeader}>
-                <Ionicons name="flash" size={20} color="#6b7280" />
+                <Ionicons name='flash' size={20} color='#6b7280' />
                 <ThemedText style={styles.actionsCardLabel}>
                   Quick Actions
                 </ThemedText>
               </View>
               <View style={styles.actionButtons}>
                 <TouchableOpacity style={styles.actionButton}>
-                  <Ionicons name="eye" size={16} color="#667eea" />
+                  <Ionicons name='eye' size={16} color='#667eea' />
                   <ThemedText style={styles.actionButtonText}>
                     View Details
                   </ThemedText>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.actionButton}>
-                  <Ionicons name="create" size={16} color="#667eea" />
+                  <Ionicons name='create' size={16} color='#667eea' />
                   <ThemedText style={styles.actionButtonText}>Edit</ThemedText>
                 </TouchableOpacity>
               </View>
@@ -506,7 +513,7 @@ const StatModal: React.FC<{
             {data.details?.description && (
               <View style={styles.infoCard}>
                 <View style={styles.infoCardHeader}>
-                  <Ionicons name="document-text" size={20} color="#6b7280" />
+                  <Ionicons name='document-text' size={20} color='#6b7280' />
                   <ThemedText style={styles.infoCardLabel}>
                     Description
                   </ThemedText>
@@ -521,7 +528,7 @@ const StatModal: React.FC<{
             {data.details?.notes && (
               <View style={styles.infoCard}>
                 <View style={styles.infoCardHeader}>
-                  <Ionicons name="chatbubble" size={20} color="#6b7280" />
+                  <Ionicons name='chatbubble' size={20} color='#6b7280' />
                   <ThemedText style={styles.infoCardLabel}>Notes</ThemedText>
                 </View>
                 <ThemedText style={styles.infoCardText}>
@@ -543,35 +550,35 @@ const TrendModal: React.FC<{
   data: any;
 }> = ({ visible, onClose, title, data }) => {
   const formatValue = (value: number | undefined) => {
-    if (typeof value === "number" && !isNaN(value)) {
+    if (typeof value === 'number' && !isNaN(value)) {
       return `৳${value.toLocaleString()}`;
     }
-    return "-";
+    return '-';
   };
 
   const getTrendIcon = (trend?: string) => {
     switch (trend) {
-      case "up":
-        return "trending-up";
-      case "down":
-        return "trending-down";
-      case "stable":
-        return "remove";
+      case 'up':
+        return 'trending-up';
+      case 'down':
+        return 'trending-down';
+      case 'stable':
+        return 'remove';
       default:
-        return "information-circle";
+        return 'information-circle';
     }
   };
 
   const getTrendColor = (trend?: string) => {
     switch (trend) {
-      case "up":
-        return "#10b981";
-      case "down":
-        return "#ef4444";
-      case "stable":
-        return "#6b7280";
+      case 'up':
+        return '#10b981';
+      case 'down':
+        return '#ef4444';
+      case 'stable':
+        return '#6b7280';
       default:
-        return "#6b7280";
+        return '#6b7280';
     }
   };
 
@@ -579,14 +586,14 @@ const TrendModal: React.FC<{
     <Modal
       visible={visible}
       transparent={true}
-      animationType="slide"
+      animationType='slide'
       onRequestClose={onClose}
     >
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           {/* Beautiful Header */}
           <LinearGradient
-            colors={["#43e97b", "#38f9d7"]}
+            colors={['#43e97b', '#38f9d7']}
             style={styles.modalHeaderGradient}
           >
             <View style={styles.modalHeaderContent}>
@@ -595,7 +602,7 @@ const TrendModal: React.FC<{
                 onPress={onClose}
                 style={styles.closeButtonWhite}
               >
-                <Ionicons name="close" size={24} color="#fff" />
+                <Ionicons name='close' size={24} color='#fff' />
               </TouchableOpacity>
             </View>
           </LinearGradient>
@@ -607,7 +614,7 @@ const TrendModal: React.FC<{
             {/* Period Information */}
             <View style={styles.periodCard}>
               <View style={styles.periodCardHeader}>
-                <Ionicons name="calendar" size={24} color="#667eea" />
+                <Ionicons name='calendar' size={24} color='#667eea' />
                 <ThemedText style={styles.periodCardLabel}>Period</ThemedText>
               </View>
               <ThemedText style={styles.periodCardValue}>
@@ -618,7 +625,7 @@ const TrendModal: React.FC<{
             {/* Current Value */}
             <View style={styles.valueCard}>
               <View style={styles.valueCardHeader}>
-                <Ionicons name="analytics" size={24} color="#667eea" />
+                <Ionicons name='analytics' size={24} color='#667eea' />
                 <ThemedText style={styles.valueCardLabel}>
                   Current Value
                 </ThemedText>
@@ -632,7 +639,7 @@ const TrendModal: React.FC<{
             <View style={styles.trendCard}>
               <View style={styles.trendCardHeader}>
                 <Ionicons
-                  name="trending-up"
+                  name='trending-up'
                   size={20}
                   color={getTrendColor(data.trend)}
                 />
@@ -647,11 +654,11 @@ const TrendModal: React.FC<{
                     { color: getTrendColor(data.trend) },
                   ]}
                 >
-                  {data.trend === "up"
-                    ? "↗️ Increasing"
-                    : data.trend === "down"
-                    ? "↘️ Decreasing"
-                    : "→ Stable"}
+                  {data.trend === 'up'
+                    ? '↗️ Increasing'
+                    : data.trend === 'down'
+                    ? '↘️ Decreasing'
+                    : '→ Stable'}
                 </ThemedText>
               </View>
             </View>
@@ -660,7 +667,7 @@ const TrendModal: React.FC<{
             {data.forecast && (
               <View style={styles.forecastCard}>
                 <View style={styles.forecastCardHeader}>
-                  <Ionicons name="time" size={20} color="#f59e0b" />
+                  <Ionicons name='time' size={20} color='#f59e0b' />
                   <ThemedText style={styles.forecastCardLabel}>
                     Forecast
                   </ThemedText>
@@ -677,18 +684,18 @@ const TrendModal: React.FC<{
             {/* Historical Comparison */}
             <View style={styles.historicalCard}>
               <View style={styles.historicalCardHeader}>
-                <Ionicons name="time" size={20} color="#6b7280" />
+                <Ionicons name='time' size={20} color='#6b7280' />
                 <ThemedText style={styles.historicalCardLabel}>
                   Historical Context
                 </ThemedText>
               </View>
               <ThemedText style={styles.historicalCardText}>
                 This data point represents the revenue for {data.date}.
-                {data.trend === "up"
-                  ? " Showing positive growth trend."
-                  : data.trend === "down"
-                  ? " Showing declining trend."
-                  : " Showing stable performance."}
+                {data.trend === 'up'
+                  ? ' Showing positive growth trend.'
+                  : data.trend === 'down'
+                  ? ' Showing declining trend.'
+                  : ' Showing stable performance.'}
               </ThemedText>
             </View>
 
@@ -696,7 +703,7 @@ const TrendModal: React.FC<{
             {data.details?.notes && (
               <View style={styles.infoCard}>
                 <View style={styles.infoCardHeader}>
-                  <Ionicons name="chatbubble" size={20} color="#6b7280" />
+                  <Ionicons name='chatbubble' size={20} color='#6b7280' />
                   <ThemedText style={styles.infoCardLabel}>Notes</ThemedText>
                 </View>
                 <ThemedText style={styles.infoCardText}>
@@ -724,7 +731,7 @@ export const BarChart: React.FC<BarChartProps> = ({
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   const maxValue = Math.max(
-    ...data.map((item) => Math.max(item.value, item.forecast || 0))
+    ...data.map(item => Math.max(item.value || 0, item.forecast || 0))
   );
 
   // Responsive bar width calculation with better overflow handling
@@ -742,15 +749,15 @@ export const BarChart: React.FC<BarChartProps> = ({
 
     // Navigate to detail page with data
     router.push({
-      pathname: "/bar-details",
+      pathname: '/bar-details',
       params: {
         label: item.label,
         value: item.value.toString(),
-        forecast: item.forecast?.toString() || "0",
-        trend: item.trend || "stable",
+        forecast: item.forecast?.toString() || '0',
+        trend: item.trend || 'stable',
         color: item.color,
-        description: item.details?.description || "",
-        notes: item.details?.notes || "",
+        description: item.details?.description || '',
+        notes: item.details?.notes || '',
       },
     });
 
@@ -759,12 +766,12 @@ export const BarChart: React.FC<BarChartProps> = ({
 
   const getTrendIcon = (trend?: string) => {
     switch (trend) {
-      case "up":
-        return "trending-up";
-      case "down":
-        return "trending-down";
-      case "stable":
-        return "remove";
+      case 'up':
+        return 'trending-up';
+      case 'down':
+        return 'trending-down';
+      case 'stable':
+        return 'remove';
       default:
         return null;
     }
@@ -772,14 +779,14 @@ export const BarChart: React.FC<BarChartProps> = ({
 
   const getTrendColor = (trend?: string) => {
     switch (trend) {
-      case "up":
-        return "#10b981";
-      case "down":
-        return "#ef4444";
-      case "stable":
-        return "#6b7280";
+      case 'up':
+        return '#10b981';
+      case 'down':
+        return '#ef4444';
+      case 'stable':
+        return '#6b7280';
       default:
-        return "#6b7280";
+        return '#6b7280';
     }
   };
 
@@ -796,9 +803,9 @@ export const BarChart: React.FC<BarChartProps> = ({
         style={[
           styles.barChartContainer,
           {
-            width: "100%",
+            width: '100%',
             height: barAreaHeight,
-            alignItems: "flex-end",
+            alignItems: 'flex-end',
           },
         ]}
       >
@@ -811,7 +818,7 @@ export const BarChart: React.FC<BarChartProps> = ({
                 width: barWidth,
                 marginHorizontal: barSpacing / 2,
                 height: barAreaHeight,
-                justifyContent: "flex-end",
+                justifyContent: 'flex-end',
                 opacity:
                   selectedIndex === null || selectedIndex === index ? 1 : 0.7,
               },
@@ -825,7 +832,7 @@ export const BarChart: React.FC<BarChartProps> = ({
                   styles.forecastBar,
                   {
                     height: (item.forecast / maxValue) * barAreaHeight,
-                    backgroundColor: "#f59e0b",
+                    backgroundColor: '#f59e0b',
                     opacity: 0.4,
                   },
                 ]}
@@ -869,7 +876,7 @@ export const BarChart: React.FC<BarChartProps> = ({
               {
                 width: barWidth + barSpacing,
                 marginHorizontal: barSpacing / 2,
-                alignItems: "center",
+                alignItems: 'center',
               },
             ]}
           >
@@ -884,15 +891,17 @@ export const BarChart: React.FC<BarChartProps> = ({
               style={[
                 styles.barValue,
                 {
-                  color: selectedIndex === index ? item.color : "#1f2937",
-                  fontWeight: selectedIndex === index ? "bold" : "600",
+                  color: selectedIndex === index ? item.color : '#1f2937',
+                  fontWeight: selectedIndex === index ? 'bold' : '600',
                   fontSize: 11,
                 },
               ]}
               numberOfLines={1}
               adjustsFontSizeToFit={true}
             >
-              {item.value.toLocaleString()}
+              {typeof item.value === 'number' && !isNaN(item.value)
+                ? item.value.toLocaleString()
+                : '0'}
             </ThemedText>
           </View>
         ))}
@@ -905,7 +914,7 @@ export const BarChart: React.FC<BarChartProps> = ({
 export const LineChart: React.FC<LineChartProps> = ({
   data,
   title,
-  color = "#667eea",
+  color = '#667eea',
   showForecast = true,
   showTrend = true,
   onPointPress,
@@ -914,24 +923,24 @@ export const LineChart: React.FC<LineChartProps> = ({
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedData, setSelectedData] = useState<any>(null);
 
-  const allValues = data.flatMap((item) => [item.value, item.forecast || 0]);
-  const maxValue = Math.max(...allValues);
-  const minValue = Math.min(...allValues);
-  const range = maxValue - minValue;
+  const allValues = data.flatMap(item => [item.value || 0, item.forecast || 0]);
+  const maxValue = allValues.length > 0 ? Math.max(...allValues) : 0;
+  const minValue = allValues.length > 0 ? Math.min(...allValues) : 0;
+  const range = maxValue - minValue || 1; // Prevent division by zero
 
   // Calculate trend
   const calculateTrend = (values: number[]) => {
-    if (values.length < 2) return "stable";
+    if (values.length < 2) return 'stable';
     const firstHalf = values.slice(0, Math.ceil(values.length / 2));
     const secondHalf = values.slice(Math.ceil(values.length / 2));
     const firstAvg = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
     const secondAvg = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
-    if (secondAvg > firstAvg * 1.1) return "up";
-    if (secondAvg < firstAvg * 0.9) return "down";
-    return "stable";
+    if (secondAvg > firstAvg * 1.1) return 'up';
+    if (secondAvg < firstAvg * 0.9) return 'down';
+    return 'stable';
   };
 
-  const trend = calculateTrend(data.map((item) => item.value));
+  const trend = calculateTrend(data.map(item => item.value || 0));
 
   const handlePointPress = (item: any, index: number) => {
     setSelectedIndex(selectedIndex === index ? null : index);
@@ -955,27 +964,27 @@ export const LineChart: React.FC<LineChartProps> = ({
           <View style={styles.trendIndicator}>
             <Ionicons
               name={
-                trend === "up"
-                  ? "trending-up"
-                  : trend === "down"
-                  ? "trending-down"
-                  : "remove"
+                trend === 'up'
+                  ? 'trending-up'
+                  : trend === 'down'
+                  ? 'trending-down'
+                  : 'remove'
               }
               size={16}
               color={
-                trend === "up"
-                  ? "#10b981"
-                  : trend === "down"
-                  ? "#ef4444"
-                  : "#6b7280"
+                trend === 'up'
+                  ? '#10b981'
+                  : trend === 'down'
+                  ? '#ef4444'
+                  : '#6b7280'
               }
             />
             <ThemedText style={styles.trendText} numberOfLines={1}>
-              {trend === "up"
-                ? "Increasing"
-                : trend === "down"
-                ? "Decreasing"
-                : "Stable"}
+              {trend === 'up'
+                ? 'Increasing'
+                : trend === 'down'
+                ? 'Decreasing'
+                : 'Stable'}
             </ThemedText>
           </View>
         )}
@@ -986,7 +995,7 @@ export const LineChart: React.FC<LineChartProps> = ({
           style={[styles.lineChart, { width: chartWidth, height: chartHeight }]}
         >
           {/* Background grid lines */}
-          {[0, 1, 2, 3, 4].map((i) => (
+          {[0, 1, 2, 3, 4].map(i => (
             <View
               key={`grid-${i}`}
               style={[
@@ -1000,7 +1009,7 @@ export const LineChart: React.FC<LineChartProps> = ({
 
           {/* Gradient background area */}
           <LinearGradient
-            colors={[`${color}20`, `${color}05`, "transparent"]}
+            colors={[`${color}20`, `${color}05`, 'transparent']}
             style={[
               styles.gradientArea,
               {
@@ -1044,11 +1053,11 @@ export const LineChart: React.FC<LineChartProps> = ({
                     width: lineLength,
                     height: 4,
                     backgroundColor: color,
-                    position: "absolute",
+                    position: 'absolute',
                     left: prevX,
                     top: prevY - 2,
                     transform: [{ rotate: `${angle}rad` }],
-                    transformOrigin: "0 0",
+                    transformOrigin: '0 0',
                     shadowColor: color,
                     shadowOffset: { width: 0, height: 2 },
                     shadowOpacity: 0.3,
@@ -1098,7 +1107,7 @@ export const LineChart: React.FC<LineChartProps> = ({
                   style={[
                     styles.point,
                     {
-                      backgroundColor: isSelected ? color : "#fff",
+                      backgroundColor: isSelected ? color : '#fff',
                       borderColor: color,
                       borderWidth: isSelected ? 4 : 3,
                       width: isSelected ? 20 : 16,
@@ -1127,13 +1136,16 @@ export const LineChart: React.FC<LineChartProps> = ({
                     style={[
                       styles.pointValue,
                       {
-                        color: isSelected ? color : "#6b7280",
+                        color: isSelected ? color : '#6b7280',
                         fontSize: isSelected ? 12 : 11,
-                        fontWeight: isSelected ? "bold" : "600",
+                        fontWeight: isSelected ? 'bold' : '600',
                       },
                     ]}
                   >
-                    ৳{item.value.toLocaleString()}
+                    ৳
+                    {typeof item.value === 'number' && !isNaN(item.value)
+                      ? item.value.toLocaleString()
+                      : '0'}
                   </ThemedText>
                 </View>
               </Pressable>
@@ -1141,7 +1153,7 @@ export const LineChart: React.FC<LineChartProps> = ({
           })}
 
           {/* Forecast line (if available) */}
-          {showForecast && data.some((item) => item.forecast) && (
+          {showForecast && data.some(item => item.forecast) && (
             <>
               {/* Forecast connecting lines */}
               {data.map((item, index) => {
@@ -1178,14 +1190,14 @@ export const LineChart: React.FC<LineChartProps> = ({
                       {
                         width: lineLength,
                         height: 2,
-                        backgroundColor: "#f59e0b",
-                        position: "absolute",
+                        backgroundColor: '#f59e0b',
+                        position: 'absolute',
                         left: prevX,
                         top: prevY - 1,
                         transform: [{ rotate: `${angle}rad` }],
-                        transformOrigin: "0 0",
+                        transformOrigin: '0 0',
                         opacity: 0.6,
-                        borderStyle: "dashed",
+                        borderStyle: 'dashed',
                       },
                     ]}
                   />
@@ -1212,7 +1224,7 @@ export const LineChart: React.FC<LineChartProps> = ({
                       {
                         left: x - 4,
                         top: y - 4,
-                        backgroundColor: "#f59e0b",
+                        backgroundColor: '#f59e0b',
                         opacity: 0.6,
                       },
                     ]}
@@ -1245,7 +1257,10 @@ export const LineChart: React.FC<LineChartProps> = ({
           minValue,
         ].map((value, index) => (
           <ThemedText key={index} style={styles.yAxisLabel}>
-            ৳{Math.round(value).toLocaleString()}
+            ৳
+            {typeof value === 'number' && !isNaN(value)
+              ? Math.round(value).toLocaleString()
+              : '0'}
           </ThemedText>
         ))}
       </View>
@@ -1254,7 +1269,7 @@ export const LineChart: React.FC<LineChartProps> = ({
       <TrendModal
         visible={detailModalVisible}
         onClose={() => setDetailModalVisible(false)}
-        title={selectedData?.date || "Line Point Details"}
+        title={selectedData?.date || 'Line Point Details'}
         data={selectedData || {}}
       />
     </View>
@@ -1270,22 +1285,22 @@ export const PieChart: React.FC<PieChartProps> = ({
 }) => {
   const router = useRouter();
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const total = data.reduce((sum, item) => sum + item.value, 0);
+  const total = data.reduce((sum, item) => sum + (item.value || 0), 0);
 
   const handleSlicePress = (item: ChartData, index: number) => {
     setSelectedIndex(selectedIndex === index ? null : index);
 
     // Navigate to pie detail page with data
     router.push({
-      pathname: "/pie-details",
+      pathname: '/pie-details',
       params: {
         label: item.label,
         value: item.value.toString(),
-        forecast: item.forecast?.toString() || "0",
+        forecast: item.forecast?.toString() || '0',
         color: item.color,
         total: total.toString(),
-        description: item.details?.description || "",
-        notes: item.details?.notes || "",
+        description: item.details?.description || '',
+        notes: item.details?.notes || '',
       },
     });
 
@@ -1300,7 +1315,8 @@ export const PieChart: React.FC<PieChartProps> = ({
       <View style={styles.pieChartContainer}>
         <View style={styles.pieChart}>
           {data.map((item, index) => {
-            const percentage = (item.value / total) * 100;
+            const percentage =
+              total > 0 ? ((item.value || 0) / total) * 100 : 0;
             const angle = (percentage / 100) * 360;
             const isSelected = selectedIndex === index;
 
@@ -1371,7 +1387,7 @@ export const PieChart: React.FC<PieChartProps> = ({
 export const SwappableLineChart: React.FC<SwappableLineChartProps> = ({
   monthlyRevenue,
   title,
-  color = "#667eea",
+  color = '#667eea',
   showForecast = true,
   showTrend = true,
   onPointPress,
@@ -1381,46 +1397,88 @@ export const SwappableLineChart: React.FC<SwappableLineChartProps> = ({
   const [selectedData, setSelectedData] = useState<any>(null);
 
   // Prepare data: one point per month with enhanced details
-  const chartData = monthlyRevenue.map((m) => ({
-    date: m.month,
-    value: m.revenue,
-    forecast: Math.round(m.revenue * 1.05), // 5% growth forecast
-    budget: Math.round(m.revenue * 1.1), // 10% budget target
-    ...(m.details ? { details: m.details } : {}),
-  }));
+  // Handle different data structures from API
+  const chartData = (monthlyRevenue || [])
+    .map(m => {
+      // Handle API response structure: { date: string, value: number, forecast?: number }
+      if (m && m.date && typeof m.value === 'number' && !isNaN(m.value)) {
+        return {
+          date: m.date,
+          value: m.value,
+          forecast: m.forecast || Math.round(m.value * 1.05), // 5% growth forecast
+          budget: Math.round(m.value * 1.1), // 10% budget target
+          ...(m.details ? { details: m.details } : {}),
+        };
+      }
+      // Handle legacy structure: { month: string, revenue: number }
+      else if (
+        m &&
+        m.month &&
+        typeof m.revenue === 'number' &&
+        !isNaN(m.revenue)
+      ) {
+        return {
+          date: m.month,
+          value: m.revenue,
+          forecast: Math.round(m.revenue * 1.05), // 5% growth forecast
+          budget: Math.round(m.revenue * 1.1), // 10% budget target
+          ...(m.details ? { details: m.details } : {}),
+        };
+      }
+      // Fallback for any other structure
+      else {
+        const safeValue =
+          m && (m.value || m.revenue) ? Number(m.value || m.revenue) : 0;
+        return {
+          date: m && (m.date || m.month) ? m.date || m.month : 'Unknown',
+          value: !isNaN(safeValue) ? safeValue : 0,
+          forecast: Math.round((!isNaN(safeValue) ? safeValue : 0) * 1.05),
+          budget: Math.round((!isNaN(safeValue) ? safeValue : 0) * 1.1),
+          ...(m && m.details ? { details: m.details } : {}),
+        };
+      }
+    })
+    .filter(item => item.value !== undefined && item.value !== null); // Filter out invalid items
 
   // Responsive chart width with better overflow handling
   const chartWidth = Math.max(Math.min(screenWidth - 48, 500), 280);
   const chartHeight = 180;
   const padding = 20;
 
-  const allValues = chartData.flatMap((item) => [
-    item.value,
+  const allValues = chartData.flatMap(item => [
+    item.value || 0,
     item.forecast || 0,
     item.budget || 0,
   ]);
-  const maxValue = Math.max(...allValues);
-  const minValue = Math.min(...allValues);
-  const range = maxValue - minValue;
+  const maxValue = allValues.length > 0 ? Math.max(...allValues) : 0;
+  const minValue = allValues.length > 0 ? Math.min(...allValues) : 0;
+  const range = maxValue - minValue || 1; // Prevent division by zero
 
   // Calculate trend with enhanced analysis
   const calculateTrend = (values: number[]) => {
-    if (values.length < 2) return "stable";
-    const firstHalf = values.slice(0, Math.ceil(values.length / 2));
-    const secondHalf = values.slice(Math.ceil(values.length / 2));
+    if (values.length < 2) return 'stable';
+    const validValues = values.filter(v => typeof v === 'number' && !isNaN(v));
+    if (validValues.length < 2) return 'stable';
+
+    const firstHalf = validValues.slice(0, Math.ceil(validValues.length / 2));
+    const secondHalf = validValues.slice(Math.ceil(validValues.length / 2));
     const firstAvg = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
     const secondAvg = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
-    if (secondAvg > firstAvg * 1.1) return "up";
-    if (secondAvg < firstAvg * 0.9) return "down";
-    return "stable";
+    if (secondAvg > firstAvg * 1.1) return 'up';
+    if (secondAvg < firstAvg * 0.9) return 'down';
+    return 'stable';
   };
-  const trend = calculateTrend(chartData.map((item) => item.value));
+  const trend = calculateTrend(chartData.map(item => item.value || 0));
 
-  // Calculate performance metrics
-  const totalRevenue = chartData.reduce((sum, item) => sum + item.value, 0);
-  const averageRevenue = totalRevenue / chartData.length;
+  // Calculate performance metrics with safe handling
+  const totalRevenue = chartData.reduce(
+    (sum, item) => sum + (item.value || 0),
+    0
+  );
+  const averageRevenue =
+    chartData.length > 0 ? totalRevenue / chartData.length : 0;
   const growthRate =
-    chartData.length > 1
+    chartData.length > 1 && chartData[0].value > 0
       ? ((chartData[chartData.length - 1].value - chartData[0].value) /
           chartData[0].value) *
         100
@@ -1433,8 +1491,24 @@ export const SwappableLineChart: React.FC<SwappableLineChartProps> = ({
     onPointPress?.(item, index);
   };
 
+  // Don't render if no valid data
+  if (!chartData || chartData.length === 0) {
+    return (
+      <View style={[styles.chartContainer, { width: '100%' }]}>
+        <View style={styles.chartHeader}>
+          <ThemedText style={styles.chartTitle} numberOfLines={1}>
+            {title}
+          </ThemedText>
+        </View>
+        <View style={styles.performanceSummary}>
+          <ThemedText style={styles.summaryValue}>No data available</ThemedText>
+        </View>
+      </View>
+    );
+  }
+
   return (
-    <View style={[styles.chartContainer, { width: "100%" }]}>
+    <View style={[styles.chartContainer, { width: '100%' }]}>
       <View style={styles.chartHeader}>
         <ThemedText style={styles.chartTitle} numberOfLines={1}>
           {title}
@@ -1443,27 +1517,27 @@ export const SwappableLineChart: React.FC<SwappableLineChartProps> = ({
           <View style={styles.trendIndicator}>
             <Ionicons
               name={
-                trend === "up"
-                  ? "trending-up"
-                  : trend === "down"
-                  ? "trending-down"
-                  : "remove"
+                trend === 'up'
+                  ? 'trending-up'
+                  : trend === 'down'
+                  ? 'trending-down'
+                  : 'remove'
               }
               size={16}
               color={
-                trend === "up"
-                  ? "#10b981"
-                  : trend === "down"
-                  ? "#ef4444"
-                  : "#6b7280"
+                trend === 'up'
+                  ? '#10b981'
+                  : trend === 'down'
+                  ? '#ef4444'
+                  : '#6b7280'
               }
             />
             <ThemedText style={styles.trendText} numberOfLines={1}>
-              {trend === "up"
-                ? "Increasing"
-                : trend === "down"
-                ? "Decreasing"
-                : "Stable"}
+              {trend === 'up'
+                ? 'Increasing'
+                : trend === 'down'
+                ? 'Decreasing'
+                : 'Stable'}
             </ThemedText>
           </View>
         )}
@@ -1474,13 +1548,19 @@ export const SwappableLineChart: React.FC<SwappableLineChartProps> = ({
         <View style={styles.summaryItem}>
           <ThemedText style={styles.summaryLabel}>Total Revenue</ThemedText>
           <ThemedText style={styles.summaryValue}>
-            ৳{totalRevenue.toLocaleString()}
+            ৳
+            {typeof totalRevenue === 'number' && !isNaN(totalRevenue)
+              ? totalRevenue.toLocaleString()
+              : '0'}
           </ThemedText>
         </View>
         <View style={styles.summaryItem}>
           <ThemedText style={styles.summaryLabel}>Avg/Month</ThemedText>
           <ThemedText style={styles.summaryValue}>
-            ৳{Math.round(averageRevenue).toLocaleString()}
+            ৳
+            {typeof averageRevenue === 'number' && !isNaN(averageRevenue)
+              ? Math.round(averageRevenue).toLocaleString()
+              : '0'}
           </ThemedText>
         </View>
         <View style={styles.summaryItem}>
@@ -1488,21 +1568,24 @@ export const SwappableLineChart: React.FC<SwappableLineChartProps> = ({
           <ThemedText
             style={[
               styles.summaryValue,
-              { color: growthRate >= 0 ? "#10b981" : "#ef4444" },
+              { color: growthRate >= 0 ? '#10b981' : '#ef4444' },
             ]}
           >
-            {growthRate >= 0 ? "+" : ""}
-            {Math.round(growthRate)}%
+            {growthRate >= 0 ? '+' : ''}
+            {typeof growthRate === 'number' && !isNaN(growthRate)
+              ? Math.round(growthRate)
+              : 0}
+            %
           </ThemedText>
         </View>
       </View>
 
-      <View style={{ width: "100%", alignItems: "center" }}>
+      <View style={{ width: '100%', alignItems: 'center' }}>
         <View
           style={[styles.lineChart, { width: chartWidth, height: chartHeight }]}
         >
           {/* Grid lines */}
-          {[0, 1, 2, 3, 4].map((i) => (
+          {[0, 1, 2, 3, 4].map(i => (
             <View
               key={`grid-${i}`}
               style={[
@@ -1549,14 +1632,14 @@ export const SwappableLineChart: React.FC<SwappableLineChartProps> = ({
                       {
                         width: lineLength,
                         height: 2,
-                        backgroundColor: "#f59e0b",
-                        position: "absolute",
+                        backgroundColor: '#f59e0b',
+                        position: 'absolute',
                         left: prevX,
                         top: prevY - 1,
                         transform: [{ rotate: `${angle}rad` }],
-                        transformOrigin: "0 0",
+                        transformOrigin: '0 0',
                         opacity: 0.6,
-                        borderStyle: "dashed",
+                        borderStyle: 'dashed',
                       },
                     ]}
                   />
@@ -1595,11 +1678,11 @@ export const SwappableLineChart: React.FC<SwappableLineChartProps> = ({
                     width: lineLength,
                     height: 4,
                     backgroundColor: color,
-                    position: "absolute",
+                    position: 'absolute',
                     left: prevX,
                     top: prevY - 2,
                     transform: [{ rotate: `${angle}rad` }],
-                    transformOrigin: "0 0",
+                    transformOrigin: '0 0',
                     shadowColor: color,
                     shadowOffset: { width: 0, height: 2 },
                     shadowOpacity: 0.3,
@@ -1645,7 +1728,7 @@ export const SwappableLineChart: React.FC<SwappableLineChartProps> = ({
                   style={[
                     styles.point,
                     {
-                      backgroundColor: isSelected ? color : "#fff",
+                      backgroundColor: isSelected ? color : '#fff',
                       borderColor: color,
                       borderWidth: isSelected ? 4 : 3,
                       width: isSelected ? 20 : 16,
@@ -1669,7 +1752,10 @@ export const SwappableLineChart: React.FC<SwappableLineChartProps> = ({
                   ]}
                 >
                   <ThemedText style={styles.pointLabelText}>
-                    ৳{item.value.toLocaleString()}
+                    ৳
+                    {typeof item.value === 'number' && !isNaN(item.value)
+                      ? item.value.toLocaleString()
+                      : '0'}
                   </ThemedText>
                 </View>
               </Pressable>
@@ -1694,7 +1780,11 @@ export const SwappableLineChart: React.FC<SwappableLineChartProps> = ({
               numberOfLines={1}
               adjustsFontSizeToFit={true}
             >
-              ৳{Math.round(item.value / 1000)}k
+              ৳
+              {typeof item.value === 'number' && !isNaN(item.value)
+                ? Math.round(item.value / 1000)
+                : 0}
+              k
             </ThemedText>
           </View>
         ))}
@@ -1710,7 +1800,10 @@ export const SwappableLineChart: React.FC<SwappableLineChartProps> = ({
           minValue,
         ].map((value, index) => (
           <ThemedText key={index} style={styles.yAxisLabel}>
-            ৳{Math.round(value).toLocaleString()}
+            ৳
+            {typeof value === 'number' && !isNaN(value)
+              ? Math.round(value).toLocaleString()
+              : '0'}
           </ThemedText>
         ))}
       </View>
@@ -1719,7 +1812,7 @@ export const SwappableLineChart: React.FC<SwappableLineChartProps> = ({
       <TrendModal
         visible={detailModalVisible}
         onClose={() => setDetailModalVisible(false)}
-        title={selectedData?.date || "Revenue Details"}
+        title={selectedData?.date || 'Revenue Details'}
         data={selectedData || {}}
       />
     </View>
@@ -1737,8 +1830,8 @@ export const StatsGrid: React.FC<{
 }> = ({ stats }) => {
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedData, setSelectedData] = useState<any>(null);
-  const isTablet = Dimensions.get("window").width >= 768;
-  const isMobile = Dimensions.get("window").width < 768;
+  const isTablet = Dimensions.get('window').width >= 768;
+  const isMobile = Dimensions.get('window').width < 768;
 
   const handleStatPress = (stat: any) => {
     setSelectedData(stat);
@@ -1765,7 +1858,7 @@ export const StatsGrid: React.FC<{
             <Ionicons
               name={stat.icon as any}
               size={isMobile ? 20 : 24}
-              color="#fff"
+              color='#fff'
             />
             <ThemedText
               style={[styles.statValue, isMobile && styles.statValueMobile]}
@@ -1784,7 +1877,7 @@ export const StatsGrid: React.FC<{
       <StatModal
         visible={detailModalVisible}
         onClose={() => setDetailModalVisible(false)}
-        title={selectedData?.title || "Stat Details"}
+        title={selectedData?.title || 'Stat Details'}
         data={selectedData || {}}
       />
     </View>
@@ -1801,10 +1894,10 @@ export const ProgressChart: React.FC<{
   title,
   current,
   target,
-  color = "#667eea",
-  gradient = ["#667eea", "#764ba2"],
+  color = '#667eea',
+  gradient = ['#667eea', '#764ba2'],
 }) => {
-  const percentage = Math.min((current / target) * 100, 100);
+  const percentage = target > 0 ? Math.min((current / target) * 100, 100) : 0;
 
   return (
     <View style={styles.progressContainer}>
@@ -1813,17 +1906,30 @@ export const ProgressChart: React.FC<{
           {title}
         </ThemedText>
         <ThemedText style={styles.progressValue} numberOfLines={1}>
-          {current}/{target}
+          {typeof current === 'number' && !isNaN(current) ? current : 0}/
+          {typeof target === 'number' && !isNaN(target) ? target : 0}
         </ThemedText>
       </View>
       <View style={styles.progressBar}>
         <LinearGradient
           colors={gradient}
-          style={[styles.progressFill, { width: `${percentage}%` }]}
+          style={[
+            styles.progressFill,
+            {
+              width: `${
+                typeof percentage === 'number' && !isNaN(percentage)
+                  ? percentage
+                  : 0
+              }%`,
+            },
+          ]}
         />
       </View>
       <ThemedText style={styles.progressPercentage}>
-        {percentage.toFixed(1)}%
+        {typeof percentage === 'number' && !isNaN(percentage)
+          ? percentage.toFixed(1)
+          : '0.0'}
+        %
       </ThemedText>
     </View>
   );
@@ -1831,46 +1937,46 @@ export const ProgressChart: React.FC<{
 
 const styles = StyleSheet.create({
   chartContainer: {
-    backgroundColor: "#fff",
+    backgroundColor: '#fff',
     borderRadius: DESIGN_SYSTEM.borderRadius.lg,
     padding: DESIGN_SYSTEM.spacing.lg,
     marginBottom: DESIGN_SYSTEM.spacing.lg,
     minHeight: DESIGN_SYSTEM.cardHeight.large,
-    width: "100%",
+    width: '100%',
     ...DESIGN_SYSTEM.shadows.small,
     elevation: 4,
     borderWidth: 1,
-    borderColor: "#f3f4f6",
+    borderColor: '#f3f4f6',
   },
   chartTitle: {
     fontSize: 20,
-    fontWeight: "bold",
-    color: "#1f2937",
+    fontWeight: 'bold',
+    color: '#1f2937',
     marginBottom: DESIGN_SYSTEM.spacing.md,
     flex: 1,
   },
   chartHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: DESIGN_SYSTEM.spacing.lg,
-    flexWrap: "wrap",
+    flexWrap: 'wrap',
     gap: DESIGN_SYSTEM.spacing.sm,
   },
   barChartContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
     height: 180,
-    width: "100%",
+    width: '100%',
     paddingHorizontal: 12,
   },
   barItem: {
-    alignItems: "center",
+    alignItems: 'center',
     flex: 1,
   },
   barContainer: {
-    justifyContent: "flex-end",
+    justifyContent: 'flex-end',
     height: 100,
     marginBottom: 8,
   },
@@ -1881,27 +1987,27 @@ const styles = StyleSheet.create({
   },
   barLabel: {
     fontSize: 11,
-    color: "#6b7280",
-    fontWeight: "bold",
-    textAlign: "center",
+    color: '#6b7280',
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
   barValue: {
     fontSize: 13,
-    fontWeight: "bold",
-    color: "#1f2937",
+    fontWeight: 'bold',
+    color: '#1f2937',
     marginTop: 4,
   },
   lineChartContainer: {
     height: 180,
-    overflow: "hidden",
+    overflow: 'hidden',
     marginTop: DESIGN_SYSTEM.spacing.sm,
   },
   lineChart: {
     flex: 1,
-    position: "relative",
+    position: 'relative',
   },
   linePoint: {
-    position: "absolute",
+    position: 'absolute',
     width: 12,
     height: 12,
   },
@@ -1911,51 +2017,51 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   line: {
-    position: "absolute",
+    position: 'absolute',
     width: 3,
     height: 60,
     top: 6,
     left: 4.5,
   },
   lineLabels: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginTop: 8,
   },
   lineLabel: {
     fontSize: 11,
-    color: "#6b7280",
+    color: '#6b7280',
   },
   pieChartContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    width: "100%",
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
     minHeight: 140,
     gap: DESIGN_SYSTEM.spacing.md,
   },
   pieChart: {
     width: 140,
     height: 140,
-    position: "relative",
+    position: 'relative',
     marginRight: 20,
     flexShrink: 0,
   },
   pieSlice: {
-    position: "absolute",
-    width: "100%",
-    height: "100%",
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
   },
   slice: {
-    width: "50%",
-    height: "50%",
+    width: '50%',
+    height: '50%',
     borderRadius: 70,
   },
   pieLegend: {
     flex: 1,
   },
   legendItem: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 8,
     gap: DESIGN_SYSTEM.spacing.xs,
   },
@@ -1968,14 +2074,14 @@ const styles = StyleSheet.create({
   },
   legendText: {
     fontSize: 13,
-    color: "#374151",
+    color: '#374151',
     flex: 1,
     marginRight: 4,
   },
   legendValue: {
     fontSize: 13,
-    fontWeight: "bold",
-    color: "#1f2937",
+    fontWeight: 'bold',
+    color: '#1f2937',
     flexShrink: 0,
   },
   statsGrid: {
@@ -1983,29 +2089,29 @@ const styles = StyleSheet.create({
   },
   statCard: {
     borderRadius: DESIGN_SYSTEM.borderRadius.lg,
-    overflow: "hidden",
+    overflow: 'hidden',
     ...DESIGN_SYSTEM.shadows.medium,
   },
   statGradient: {
     padding: DESIGN_SYSTEM.spacing.lg,
-    alignItems: "center",
-    justifyContent: "center",
-    height: "100%",
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100%',
   },
   statValue: {
     fontSize: 18,
-    fontWeight: "bold",
-    color: "#fff",
+    fontWeight: 'bold',
+    color: '#fff',
     marginTop: DESIGN_SYSTEM.spacing.sm,
     marginBottom: DESIGN_SYSTEM.spacing.xs,
   },
   statTitle: {
     fontSize: 11,
-    color: "rgba(255, 255, 255, 0.9)",
-    textAlign: "center",
+    color: 'rgba(255, 255, 255, 0.9)',
+    textAlign: 'center',
   },
   progressContainer: {
-    backgroundColor: "#fff",
+    backgroundColor: '#fff',
     borderRadius: DESIGN_SYSTEM.borderRadius.lg,
     padding: DESIGN_SYSTEM.spacing.lg,
     marginBottom: DESIGN_SYSTEM.spacing.lg,
@@ -2013,45 +2119,45 @@ const styles = StyleSheet.create({
     ...DESIGN_SYSTEM.shadows.small,
     elevation: 4,
     borderWidth: 1,
-    borderColor: "#f3f4f6",
+    borderColor: '#f3f4f6',
   },
   progressHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: DESIGN_SYSTEM.spacing.md,
     gap: DESIGN_SYSTEM.spacing.sm,
   },
   progressTitle: {
     fontSize: 14,
-    fontWeight: "bold",
-    color: "#1f2937",
+    fontWeight: 'bold',
+    color: '#1f2937',
     flex: 1,
   },
   progressValue: {
     fontSize: 12,
-    color: "#6b7280",
+    color: '#6b7280',
     flexShrink: 0,
   },
   progressBar: {
     height: 8,
-    backgroundColor: "#f3f4f6",
+    backgroundColor: '#f3f4f6',
     borderRadius: 4,
-    overflow: "hidden",
+    overflow: 'hidden',
     marginBottom: DESIGN_SYSTEM.spacing.sm,
   },
   progressFill: {
-    height: "100%",
+    height: '100%',
     borderRadius: 4,
   },
   progressPercentage: {
     fontSize: 11,
-    color: "#6b7280",
-    textAlign: "right",
+    color: '#6b7280',
+    textAlign: 'right',
   },
   forecastLegend: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: DESIGN_SYSTEM.spacing.xs,
   },
   legendDot: {
@@ -2062,27 +2168,27 @@ const styles = StyleSheet.create({
   },
   legendTextSmall: {
     fontSize: 12,
-    color: "#6b7280",
-    fontWeight: "500",
+    color: '#6b7280',
+    fontWeight: '500',
   },
   trendIndicator: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: DESIGN_SYSTEM.spacing.xs,
   },
   trendText: {
     fontSize: 11,
-    color: "#6b7280",
+    color: '#6b7280',
   },
   forecastLine: {
-    position: "absolute",
+    position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
   },
   selectionDetails: {
-    backgroundColor: "#fff",
+    backgroundColor: '#fff',
     borderRadius: DESIGN_SYSTEM.borderRadius.lg,
     padding: DESIGN_SYSTEM.spacing.md,
     marginTop: DESIGN_SYSTEM.spacing.md,
@@ -2090,17 +2196,17 @@ const styles = StyleSheet.create({
   },
   selectionTitle: {
     fontSize: 14,
-    fontWeight: "bold",
-    color: "#1f2937",
+    fontWeight: 'bold',
+    color: '#1f2937',
     marginBottom: DESIGN_SYSTEM.spacing.sm,
   },
   selectionValue: {
     fontSize: 12,
-    color: "#6b7280",
+    color: '#6b7280',
   },
   selectionForecast: {
     fontSize: 11,
-    color: "#6b7280",
+    color: '#6b7280',
   },
   forecastBar: {
     borderRadius: 10,
@@ -2109,13 +2215,13 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   trendContainer: {
-    position: "absolute",
+    position: 'absolute',
     top: -10,
     right: -10,
-    backgroundColor: "#fff",
+    backgroundColor: '#fff',
     borderRadius: 10,
     padding: 4,
-    shadowColor: "#000",
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -2123,103 +2229,103 @@ const styles = StyleSheet.create({
   },
   legendForecast: {
     fontSize: 10,
-    color: "#f59e0b",
-    fontStyle: "italic",
+    color: '#f59e0b',
+    fontStyle: 'italic',
   },
   labelsContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginTop: DESIGN_SYSTEM.spacing.lg,
-    width: "100%",
+    width: '100%',
     paddingHorizontal: 4,
   },
   labelItem: {
-    alignItems: "center",
+    alignItems: 'center',
     flex: 1,
   },
   labelText: {
     fontSize: 12,
-    color: "#6b7280",
-    textAlign: "center",
-    fontWeight: "600",
+    color: '#6b7280',
+    textAlign: 'center',
+    fontWeight: '600',
     marginBottom: 4,
   },
   mainBar: {
     borderRadius: 12,
     minHeight: 6,
-    shadowColor: "#000",
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 6,
     elevation: 3,
   },
   connectingLine: {
-    position: "absolute",
-    backgroundColor: "#f093fb", // Default color for connecting lines
+    position: 'absolute',
+    backgroundColor: '#f093fb', // Default color for connecting lines
     borderRadius: 1.5, // Half of the line thickness
   },
   pointValue: {
-    position: "absolute",
+    position: 'absolute',
     top: -20, // Adjust position above the point
     fontSize: 10,
-    fontWeight: "bold",
-    textAlign: "center",
+    fontWeight: 'bold',
+    textAlign: 'center',
     width: 30, // Adjust width to center text
   },
   pointGlow: {
-    position: "absolute",
+    position: 'absolute',
     width: 20,
     height: 20,
     borderRadius: 10,
     opacity: 0.1,
     borderWidth: 1,
-    borderColor: "transparent",
+    borderColor: 'transparent',
   },
   pointValueContainer: {
-    position: "absolute",
+    position: 'absolute',
     top: -25, // Adjust position above the point
     left: -15, // Adjust left position to center text
     width: 60, // Adjust width to center text
-    alignItems: "center",
+    alignItems: 'center',
   },
   gridLine: {
-    position: "absolute",
-    width: "100%",
+    position: 'absolute',
+    width: '100%',
     height: 1,
-    backgroundColor: "#e5e7eb",
+    backgroundColor: '#e5e7eb',
   },
   gradientArea: {
-    position: "absolute",
+    position: 'absolute',
     borderRadius: 10,
   },
   yAxisLabels: {
-    position: "absolute",
+    position: 'absolute',
     top: 20,
     right: 20,
-    flexDirection: "column",
-    justifyContent: "space-between",
+    flexDirection: 'column',
+    justifyContent: 'space-between',
     height: 120,
     width: 30,
   },
   yAxisLabel: {
     fontSize: 10,
-    color: "#6b7280",
-    textAlign: "right",
+    color: '#6b7280',
+    textAlign: 'right',
   },
   forecastPoint: {
-    position: "absolute",
+    position: 'absolute',
     width: 8,
     height: 8,
     borderRadius: 4,
   },
   monthSelector: {
-    flexDirection: "row",
-    justifyContent: "center",
+    flexDirection: 'row',
+    justifyContent: 'center',
     marginBottom: DESIGN_SYSTEM.spacing.md,
     paddingHorizontal: DESIGN_SYSTEM.spacing.sm,
   },
   monthSelectorContent: {
-    alignItems: "center",
+    alignItems: 'center',
     paddingVertical: DESIGN_SYSTEM.spacing.xs,
   },
   monthButton: {
@@ -2227,7 +2333,7 @@ const styles = StyleSheet.create({
     paddingVertical: DESIGN_SYSTEM.spacing.xs,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: '#e5e7eb',
     marginHorizontal: DESIGN_SYSTEM.spacing.xs,
   },
   monthButtonText: {
@@ -2235,32 +2341,32 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContent: {
-    backgroundColor: "#fff",
+    backgroundColor: '#fff',
     borderRadius: DESIGN_SYSTEM.borderRadius.lg,
-    width: "90%",
-    maxHeight: "80%",
+    width: '90%',
+    maxHeight: '80%',
     ...DESIGN_SYSTEM.shadows.medium,
     elevation: 10,
   },
   modalHeaderGradient: {
     padding: DESIGN_SYSTEM.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255, 255, 255, 0.2)",
+    borderBottomColor: 'rgba(255, 255, 255, 0.2)',
   },
   modalHeaderContent: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   modalTitleWhite: {
     fontSize: 20,
-    fontWeight: "bold",
-    color: "#fff",
+    fontWeight: 'bold',
+    color: '#fff',
   },
   closeButtonWhite: {
     padding: DESIGN_SYSTEM.spacing.xs,
@@ -2273,50 +2379,50 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     fontSize: 14,
-    color: "#6b7280",
+    color: '#6b7280',
     marginBottom: DESIGN_SYSTEM.spacing.xs,
   },
   detailValue: {
     fontSize: 18,
-    fontWeight: "bold",
-    color: "#1f2937",
+    fontWeight: 'bold',
+    color: '#1f2937',
   },
   forecastNote: {
     fontSize: 11,
-    color: "#6b7280",
+    color: '#6b7280',
     marginTop: DESIGN_SYSTEM.spacing.xs,
   },
   detailDescription: {
     fontSize: 13,
-    color: "#4b5563",
+    color: '#4b5563',
     lineHeight: 20,
   },
   breakdownItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: DESIGN_SYSTEM.spacing.xs,
   },
   breakdownLabel: {
     fontSize: 13,
-    color: "#6b7280",
+    color: '#6b7280',
   },
   breakdownValue: {
     fontSize: 13,
-    fontWeight: "bold",
-    color: "#1f2937",
+    fontWeight: 'bold',
+    color: '#1f2937',
   },
   detailNotes: {
     fontSize: 13,
-    color: "#6b7280",
+    color: '#6b7280',
     lineHeight: 20,
   },
   detailDate: {
     fontSize: 13,
-    color: "#6b7280",
+    color: '#6b7280',
   },
   pieModalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: DESIGN_SYSTEM.spacing.md,
     gap: DESIGN_SYSTEM.spacing.sm,
   },
@@ -2330,57 +2436,57 @@ const styles = StyleSheet.create({
   },
   pieCategoryTitle: {
     fontSize: 16,
-    fontWeight: "bold",
-    color: "#1f2937",
+    fontWeight: 'bold',
+    color: '#1f2937',
   },
   piePercentage: {
     fontSize: 12,
-    color: "#6b7280",
+    color: '#6b7280',
     marginTop: 4,
   },
   statModalHeader: {
     borderRadius: DESIGN_SYSTEM.borderRadius.md,
-    overflow: "hidden",
+    overflow: 'hidden',
     marginBottom: DESIGN_SYSTEM.spacing.md,
     ...DESIGN_SYSTEM.shadows.small,
   },
   statModalGradient: {
     padding: DESIGN_SYSTEM.spacing.md,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     height: 100,
   },
   statModalValue: {
     fontSize: 24,
-    fontWeight: "bold",
-    color: "#fff",
+    fontWeight: 'bold',
+    color: '#fff',
     marginTop: DESIGN_SYSTEM.spacing.xs,
   },
   statModalTitle: {
     fontSize: 13,
-    color: "rgba(255, 255, 255, 0.9)",
+    color: 'rgba(255, 255, 255, 0.9)',
   },
   actionButtons: {
-    flexDirection: "row",
-    justifyContent: "space-around",
+    flexDirection: 'row',
+    justifyContent: 'space-around',
     marginTop: DESIGN_SYSTEM.spacing.sm,
   },
   actionButton: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: DESIGN_SYSTEM.spacing.xs,
     paddingVertical: DESIGN_SYSTEM.spacing.xs,
     paddingHorizontal: DESIGN_SYSTEM.spacing.sm,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: '#e5e7eb',
   },
   actionButtonText: {
     fontSize: 13,
-    color: "#667eea",
+    color: '#667eea',
   },
   valueCard: {
-    backgroundColor: "#f9fafb",
+    backgroundColor: '#f9fafb',
     borderRadius: DESIGN_SYSTEM.borderRadius.md,
     padding: DESIGN_SYSTEM.spacing.md,
     marginBottom: DESIGN_SYSTEM.spacing.md,
@@ -2388,22 +2494,22 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   valueCardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: DESIGN_SYSTEM.spacing.xs,
   },
   valueCardLabel: {
     fontSize: 12,
-    color: "#6b7280",
+    color: '#6b7280',
     marginLeft: DESIGN_SYSTEM.spacing.xs,
   },
   valueCardValue: {
     fontSize: 20,
-    fontWeight: "bold",
-    color: "#1f2937",
+    fontWeight: 'bold',
+    color: '#1f2937',
   },
   trendCard: {
-    backgroundColor: "#f9fafb",
+    backgroundColor: '#f9fafb',
     borderRadius: DESIGN_SYSTEM.borderRadius.md,
     padding: DESIGN_SYSTEM.spacing.md,
     marginBottom: DESIGN_SYSTEM.spacing.md,
@@ -2411,20 +2517,20 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   trendCardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: DESIGN_SYSTEM.spacing.xs,
   },
   trendCardLabel: {
     fontSize: 12,
-    color: "#6b7280",
+    color: '#6b7280',
     marginLeft: DESIGN_SYSTEM.spacing.xs,
   },
   trendContent: {
-    alignItems: "center",
+    alignItems: 'center',
   },
   forecastCard: {
-    backgroundColor: "#f9fafb",
+    backgroundColor: '#f9fafb',
     borderRadius: DESIGN_SYSTEM.borderRadius.md,
     padding: DESIGN_SYSTEM.spacing.md,
     marginBottom: DESIGN_SYSTEM.spacing.md,
@@ -2432,23 +2538,23 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   forecastCardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: DESIGN_SYSTEM.spacing.xs,
   },
   forecastCardLabel: {
     fontSize: 12,
-    color: "#6b7280",
+    color: '#6b7280',
     marginLeft: DESIGN_SYSTEM.spacing.xs,
   },
   forecastValue: {
     fontSize: 20,
-    fontWeight: "bold",
-    color: "#1f2937",
+    fontWeight: 'bold',
+    color: '#1f2937',
     marginBottom: DESIGN_SYSTEM.spacing.xs,
   },
   infoCard: {
-    backgroundColor: "#f9fafb",
+    backgroundColor: '#f9fafb',
     borderRadius: DESIGN_SYSTEM.borderRadius.md,
     padding: DESIGN_SYSTEM.spacing.md,
     marginBottom: DESIGN_SYSTEM.spacing.md,
@@ -2456,22 +2562,22 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   infoCardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: DESIGN_SYSTEM.spacing.xs,
   },
   infoCardLabel: {
     fontSize: 12,
-    color: "#6b7280",
+    color: '#6b7280',
     marginLeft: DESIGN_SYSTEM.spacing.xs,
   },
   infoCardText: {
     fontSize: 13,
-    color: "#4b5563",
+    color: '#4b5563',
     lineHeight: 20,
   },
   breakdownCard: {
-    backgroundColor: "#f9fafb",
+    backgroundColor: '#f9fafb',
     borderRadius: DESIGN_SYSTEM.borderRadius.md,
     padding: DESIGN_SYSTEM.spacing.md,
     marginBottom: DESIGN_SYSTEM.spacing.md,
@@ -2479,17 +2585,17 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   breakdownCardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: DESIGN_SYSTEM.spacing.xs,
   },
   breakdownCardLabel: {
     fontSize: 12,
-    color: "#6b7280",
+    color: '#6b7280',
     marginLeft: DESIGN_SYSTEM.spacing.xs,
   },
   dateCard: {
-    backgroundColor: "#f9fafb",
+    backgroundColor: '#f9fafb',
     borderRadius: DESIGN_SYSTEM.borderRadius.md,
     padding: DESIGN_SYSTEM.spacing.md,
     marginBottom: DESIGN_SYSTEM.spacing.md,
@@ -2497,22 +2603,22 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   dateCardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: DESIGN_SYSTEM.spacing.xs,
   },
   dateCardLabel: {
     fontSize: 12,
-    color: "#6b7280",
+    color: '#6b7280',
     marginLeft: DESIGN_SYSTEM.spacing.xs,
   },
   dateCardText: {
     fontSize: 13,
-    fontWeight: "bold",
-    color: "#1f2937",
+    fontWeight: 'bold',
+    color: '#1f2937',
   },
   historicalCard: {
-    backgroundColor: "#f9fafb",
+    backgroundColor: '#f9fafb',
     borderRadius: DESIGN_SYSTEM.borderRadius.md,
     padding: DESIGN_SYSTEM.spacing.md,
     marginBottom: DESIGN_SYSTEM.spacing.md,
@@ -2520,44 +2626,44 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   historicalCardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: DESIGN_SYSTEM.spacing.xs,
   },
   historicalCardLabel: {
     fontSize: 12,
-    color: "#6b7280",
+    color: '#6b7280',
     marginLeft: DESIGN_SYSTEM.spacing.xs,
   },
   historicalCardText: {
     fontSize: 13,
-    color: "#4b5563",
+    color: '#4b5563',
     lineHeight: 20,
   },
   statHeaderCard: {
     borderRadius: DESIGN_SYSTEM.borderRadius.md,
-    overflow: "hidden",
+    overflow: 'hidden',
     marginBottom: DESIGN_SYSTEM.spacing.md,
     ...DESIGN_SYSTEM.shadows.small,
   },
   statHeaderGradient: {
     padding: DESIGN_SYSTEM.spacing.md,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     height: 100,
   },
   statHeaderValue: {
     fontSize: 24,
-    fontWeight: "bold",
-    color: "#fff",
+    fontWeight: 'bold',
+    color: '#fff',
     marginTop: DESIGN_SYSTEM.spacing.xs,
   },
   statHeaderTitle: {
     fontSize: 13,
-    color: "rgba(255, 255, 255, 0.9)",
+    color: 'rgba(255, 255, 255, 0.9)',
   },
   actionsCard: {
-    backgroundColor: "#f9fafb",
+    backgroundColor: '#f9fafb',
     borderRadius: DESIGN_SYSTEM.borderRadius.md,
     padding: DESIGN_SYSTEM.spacing.md,
     marginBottom: DESIGN_SYSTEM.spacing.md,
@@ -2565,17 +2671,17 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   actionsCardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: DESIGN_SYSTEM.spacing.xs,
   },
   actionsCardLabel: {
     fontSize: 12,
-    color: "#6b7280",
+    color: '#6b7280',
     marginLeft: DESIGN_SYSTEM.spacing.xs,
   },
   totalCard: {
-    backgroundColor: "#f9fafb",
+    backgroundColor: '#f9fafb',
     borderRadius: DESIGN_SYSTEM.borderRadius.md,
     padding: DESIGN_SYSTEM.spacing.md,
     marginBottom: DESIGN_SYSTEM.spacing.md,
@@ -2583,22 +2689,22 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   totalCardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: DESIGN_SYSTEM.spacing.xs,
   },
   totalCardLabel: {
     fontSize: 12,
-    color: "#6b7280",
+    color: '#6b7280',
     marginLeft: DESIGN_SYSTEM.spacing.xs,
   },
   totalCardValue: {
     fontSize: 20,
-    fontWeight: "bold",
-    color: "#1f2937",
+    fontWeight: 'bold',
+    color: '#1f2937',
   },
   categoryCard: {
-    backgroundColor: "#f9fafb",
+    backgroundColor: '#f9fafb',
     borderRadius: DESIGN_SYSTEM.borderRadius.md,
     padding: DESIGN_SYSTEM.spacing.md,
     marginBottom: DESIGN_SYSTEM.spacing.md,
@@ -2606,8 +2712,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   categoryHeader: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: DESIGN_SYSTEM.spacing.sm,
   },
   categoryColorIndicator: {
@@ -2620,16 +2726,16 @@ const styles = StyleSheet.create({
   },
   categoryTitle: {
     fontSize: 16,
-    fontWeight: "bold",
-    color: "#1f2937",
+    fontWeight: 'bold',
+    color: '#1f2937',
   },
   categoryPercentage: {
     fontSize: 12,
-    color: "#6b7280",
+    color: '#6b7280',
     marginTop: 4,
   },
   periodCard: {
-    backgroundColor: "#f9fafb",
+    backgroundColor: '#f9fafb',
     borderRadius: DESIGN_SYSTEM.borderRadius.md,
     padding: DESIGN_SYSTEM.spacing.md,
     marginBottom: DESIGN_SYSTEM.spacing.md,
@@ -2637,102 +2743,102 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   periodCardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: DESIGN_SYSTEM.spacing.xs,
   },
   periodCardLabel: {
     fontSize: 12,
-    color: "#6b7280",
+    color: '#6b7280',
     marginLeft: DESIGN_SYSTEM.spacing.xs,
   },
   periodCardValue: {
     fontSize: 13,
-    fontWeight: "bold",
-    color: "#1f2937",
+    fontWeight: 'bold',
+    color: '#1f2937',
   },
   performanceSummary: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: DESIGN_SYSTEM.spacing.lg,
   },
   summaryItem: {
     flex: 1,
-    alignItems: "center",
+    alignItems: 'center',
   },
   summaryLabel: {
     fontSize: 14,
-    color: "#6b7280",
+    color: '#6b7280',
     marginBottom: DESIGN_SYSTEM.spacing.xs,
   },
   summaryValue: {
     fontSize: 18,
-    fontWeight: "bold",
-    color: "#1f2937",
+    fontWeight: 'bold',
+    color: '#1f2937',
   },
   pointLabel: {
-    position: "absolute",
+    position: 'absolute',
     top: -25, // Adjust position above the point
     left: -15, // Adjust left position to center text
     width: 60, // Adjust width to center text
-    alignItems: "center",
+    alignItems: 'center',
   },
   pointLabelText: {
     fontSize: 10,
-    fontWeight: "bold",
-    color: "#6b7280",
+    fontWeight: 'bold',
+    color: '#6b7280',
   },
   lineValue: {
     fontSize: 12,
-    color: "#6b7280",
+    color: '#6b7280',
     marginTop: 4,
   },
   statsGridMobile: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
     gap: DESIGN_SYSTEM.spacing.md,
   },
   statCardMobile: {
-    width: "48%",
+    width: '48%',
     borderRadius: DESIGN_SYSTEM.borderRadius.lg,
-    overflow: "hidden",
+    overflow: 'hidden',
     height: DESIGN_SYSTEM.cardHeight.medium,
     ...DESIGN_SYSTEM.shadows.medium,
   },
   statValueMobile: {
     fontSize: 18,
-    fontWeight: "bold",
-    color: "#fff",
+    fontWeight: 'bold',
+    color: '#fff',
     marginTop: DESIGN_SYSTEM.spacing.sm,
     marginBottom: DESIGN_SYSTEM.spacing.xs,
   },
   statTitleMobile: {
     fontSize: 11,
-    color: "rgba(255, 255, 255, 0.9)",
-    textAlign: "center",
+    color: 'rgba(255, 255, 255, 0.9)',
+    textAlign: 'center',
   },
   statsGridTablet: {
-    flexDirection: "row",
+    flexDirection: 'row',
     gap: DESIGN_SYSTEM.spacing.md,
   },
   statCardTablet: {
     flex: 1,
     borderRadius: DESIGN_SYSTEM.borderRadius.lg,
-    overflow: "hidden",
+    overflow: 'hidden',
     height: DESIGN_SYSTEM.cardHeight.medium,
     ...DESIGN_SYSTEM.shadows.medium,
   },
   statValueTablet: {
     fontSize: 18,
-    fontWeight: "bold",
-    color: "#fff",
+    fontWeight: 'bold',
+    color: '#fff',
     marginTop: DESIGN_SYSTEM.spacing.sm,
     marginBottom: DESIGN_SYSTEM.spacing.xs,
   },
   statTitleTablet: {
     fontSize: 11,
-    color: "rgba(255, 255, 255, 0.9)",
-    textAlign: "center",
+    color: 'rgba(255, 255, 255, 0.9)',
+    textAlign: 'center',
   },
 });

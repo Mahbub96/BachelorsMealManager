@@ -2,7 +2,11 @@ const Meal = require('../models/Meal');
 const User = require('../models/User');
 const { config } = require('../config/config');
 const logger = require('../utils/logger');
-const { sendSuccessResponse, sendErrorResponse } = require('../utils/responseHandler');
+const StatisticsService = require('../services/statisticsService');
+const {
+  sendSuccessResponse,
+  sendErrorResponse,
+} = require('../utils/responseHandler');
 
 class MealController {
   // Submit daily meals
@@ -11,34 +15,95 @@ class MealController {
       const { breakfast, lunch, dinner, date, notes } = req.body;
       const userId = req.user.id;
 
+      console.log('🍽️ Meal submission request:', {
+        body: req.body,
+        user: req.user,
+        userId: userId,
+        userType: typeof userId,
+      });
+
+      // Enhanced validation
+      if (!date) {
+        return sendErrorResponse(res, 400, 'Date is required');
+      }
+
+      // Validate date format and ensure it's not in the future
+      const mealDate = new Date(date);
+      const today = new Date();
+      today.setHours(23, 59, 59, 999); // End of today
+
+      if (isNaN(mealDate.getTime())) {
+        return sendErrorResponse(res, 400, 'Invalid date format');
+      }
+
+      if (mealDate > today) {
+        return sendErrorResponse(
+          res,
+          400,
+          'Cannot submit meals for future dates'
+        );
+      }
+
+      // Check if at least one meal is selected
+      if (!breakfast && !lunch && !dinner) {
+        return sendErrorResponse(res, 400, 'Please select at least one meal');
+      }
+
       // Check if meal entry already exists for this date
       const existingMeal = await Meal.findOne({
         userId,
-        date: new Date(date)
+        date: {
+          $gte: new Date(mealDate.setHours(0, 0, 0, 0)),
+          $lt: new Date(mealDate.setHours(23, 59, 59, 999)),
+        },
       });
 
       if (existingMeal) {
-        return sendErrorResponse(res, 400, 'Meal entry already exists for this date');
+        return sendErrorResponse(
+          res,
+          400,
+          'Meal entry already exists for this date'
+        );
       }
 
-      // Create meal entry
+      // Create meal entry with enhanced data
       const meal = await Meal.create({
         userId,
         breakfast: breakfast || false,
         lunch: lunch || false,
         dinner: dinner || false,
-        date: new Date(date),
-        notes,
-        status: config.business.autoApproveMeals ? 'approved' : 'pending'
+        date: mealDate,
+        notes: notes?.trim() || '',
+        status: config.business?.autoApproveMeals ? 'approved' : 'pending',
       });
 
       // Populate user information
       await meal.populate('userId', 'name email');
 
-      logger.info(`Meal submitted by user ${req.user.email} for date ${date}`);
+      // Log the action
+      logger.info(`Meal submitted by user ${req.user.email} for date ${date}`, {
+        userId: req.user.id,
+        mealId: meal._id,
+        meals: { breakfast, lunch, dinner },
+        status: meal.status,
+      });
 
-      return sendSuccessResponse(res, 201, 'Meals submitted successfully', meal);
+      // Update statistics after meal submission
+      await StatisticsService.updateAfterOperation('meal_submitted', {
+        mealId: meal._id,
+        userId: req.user.id,
+        meals: { breakfast, lunch, dinner },
+        status: meal.status,
+      });
+
+      return sendSuccessResponse(
+        res,
+        201,
+        'Meals submitted successfully',
+        meal
+      );
     } catch (error) {
+      logger.error('Error submitting meal:', error);
       next(error);
     }
   }
@@ -51,11 +116,11 @@ class MealController {
 
       // Build query
       const query = { userId };
-      
+
       if (startDate && endDate) {
         query.date = {
           $gte: new Date(startDate),
-          $lte: new Date(endDate)
+          $lte: new Date(endDate),
         };
       }
 
@@ -65,7 +130,7 @@ class MealController {
 
       // Calculate pagination
       const skip = (parseInt(page) - 1) * parseInt(limit);
-      
+
       // Get meals with pagination
       const meals = await Meal.find(query)
         .populate('userId', 'name email')
@@ -77,15 +142,20 @@ class MealController {
       // Get total count
       const total = await Meal.countDocuments(query);
 
-      return sendSuccessResponse(res, 200, 'User meals retrieved successfully', {
-        meals,
-        pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
-          total,
-          pages: Math.ceil(total / parseInt(limit))
+      return sendSuccessResponse(
+        res,
+        200,
+        'User meals retrieved successfully',
+        {
+          meals,
+          pagination: {
+            page: parseInt(page),
+            limit: parseInt(limit),
+            total,
+            pages: Math.ceil(total / parseInt(limit)),
+          },
         }
-      });
+      );
     } catch (error) {
       next(error);
     }
@@ -94,11 +164,18 @@ class MealController {
   // Get all meals (admin only)
   async getAllMeals(req, res, next) {
     try {
-      const { status, startDate, endDate, userId, limit = 20, page = 1 } = req.query;
+      const {
+        status,
+        startDate,
+        endDate,
+        userId,
+        limit = 20,
+        page = 1,
+      } = req.query;
 
       // Build query
       const query = {};
-      
+
       if (status) {
         query.status = status;
       }
@@ -106,7 +183,7 @@ class MealController {
       if (startDate && endDate) {
         query.date = {
           $gte: new Date(startDate),
-          $lte: new Date(endDate)
+          $lte: new Date(endDate),
         };
       }
 
@@ -116,7 +193,7 @@ class MealController {
 
       // Calculate pagination
       const skip = (parseInt(page) - 1) * parseInt(limit);
-      
+
       // Get meals with pagination
       const meals = await Meal.find(query)
         .populate('userId', 'name email')
@@ -134,8 +211,8 @@ class MealController {
           page: parseInt(page),
           limit: parseInt(limit),
           total,
-          pages: Math.ceil(total / parseInt(limit))
-        }
+          pages: Math.ceil(total / parseInt(limit)),
+        },
       });
     } catch (error) {
       next(error);
@@ -166,9 +243,24 @@ class MealController {
       await meal.populate('userId', 'name email');
       await meal.populate('approvedBy', 'name');
 
-      logger.info(`Meal status updated by admin ${req.user.email} to ${status}`);
+      logger.info(
+        `Meal status updated by admin ${req.user.email} to ${status}`
+      );
 
-      return sendSuccessResponse(res, 200, 'Meal status updated successfully', meal);
+      // Update statistics after meal status update
+      await StatisticsService.updateAfterOperation('meal_status_updated', {
+        mealId: meal._id,
+        adminId: req.user.id,
+        oldStatus: meal.status,
+        newStatus: status,
+      });
+
+      return sendSuccessResponse(
+        res,
+        200,
+        'Meal status updated successfully',
+        meal
+      );
     } catch (error) {
       next(error);
     }
@@ -177,26 +269,17 @@ class MealController {
   // Get meal statistics
   async getMealStats(req, res, next) {
     try {
-      const { startDate, endDate, userId } = req.query;
+      const { forceUpdate = false } = req.query;
 
-      // Build query
-      const query = {};
-      
-      if (startDate && endDate) {
-        query.date = {
-          $gte: new Date(startDate),
-          $lte: new Date(endDate)
-        };
-      }
+      // Get statistics from the statistics service
+      const stats = await StatisticsService.getMealStats();
 
-      if (userId) {
-        query.userId = userId;
-      }
-
-      // Get statistics
-      const stats = await Meal.getStats(query);
-
-      return sendSuccessResponse(res, 200, 'Meal statistics retrieved successfully', stats);
+      return sendSuccessResponse(
+        res,
+        200,
+        'Meal statistics retrieved successfully',
+        stats.data
+      );
     } catch (error) {
       next(error);
     }
@@ -208,21 +291,33 @@ class MealController {
       const userId = req.user.id;
       const { startDate, endDate } = req.query;
 
+      console.log('🍽️ getUserMealStats called with userId:', userId);
+
       // Build query
-      const query = { userId };
-      
+      const query = { userId: userId };
+
       if (startDate && endDate) {
         query.date = {
           $gte: new Date(startDate),
-          $lte: new Date(endDate)
+          $lte: new Date(endDate),
         };
       }
 
-      // Get user statistics
-      const stats = await Meal.getUserStats(userId, query);
+      console.log('🔍 Query:', query);
 
-      return sendSuccessResponse(res, 200, 'User meal statistics retrieved successfully', stats);
+      // Get user statistics using the existing getStats method
+      const stats = await Meal.getStats(query);
+
+      console.log('📊 Stats result:', stats);
+
+      return sendSuccessResponse(
+        res,
+        200,
+        'User meal statistics retrieved successfully',
+        stats
+      );
     } catch (error) {
+      console.error('❌ Error in getUserMealStats:', error);
       next(error);
     }
   }
@@ -272,7 +367,11 @@ class MealController {
 
       // Only allow updates if meal is pending
       if (meal.status !== 'pending' && req.user.role !== 'admin') {
-        return sendErrorResponse(res, 400, 'Cannot update approved or rejected meals');
+        return sendErrorResponse(
+          res,
+          400,
+          'Cannot update approved or rejected meals'
+        );
       }
 
       // Update meal
@@ -282,15 +381,19 @@ class MealController {
       if (dinner !== undefined) updateData.dinner = dinner;
       if (notes !== undefined) updateData.notes = notes;
 
-      const updatedMeal = await Meal.findByIdAndUpdate(
-        mealId,
-        updateData,
-        { new: true, runValidators: true }
-      ).populate('userId', 'name email');
+      const updatedMeal = await Meal.findByIdAndUpdate(mealId, updateData, {
+        new: true,
+        runValidators: true,
+      }).populate('userId', 'name email');
 
       logger.info(`Meal updated by user ${req.user.email}`);
 
-      return sendSuccessResponse(res, 200, 'Meal updated successfully', updatedMeal);
+      return sendSuccessResponse(
+        res,
+        200,
+        'Meal updated successfully',
+        updatedMeal
+      );
     } catch (error) {
       next(error);
     }
@@ -332,20 +435,27 @@ class MealController {
           status,
           notes: notes || 'Bulk updated',
           approvedBy: adminId,
-          approvedAt: new Date()
+          approvedAt: new Date(),
         }
       );
 
-      logger.info(`Bulk meal status update by admin ${req.user.email}: ${result.modifiedCount} meals updated`);
+      logger.info(
+        `Bulk meal status update by admin ${req.user.email}: ${result.modifiedCount} meals updated`
+      );
 
-      return sendSuccessResponse(res, 200, 'Bulk meal status update successful', {
-        updatedCount: result.modifiedCount,
-        totalRequested: mealIds.length
-      });
+      return sendSuccessResponse(
+        res,
+        200,
+        'Bulk meal status update successful',
+        {
+          updatedCount: result.modifiedCount,
+          totalRequested: mealIds.length,
+        }
+      );
     } catch (error) {
       next(error);
     }
   }
 }
 
-module.exports = new MealController(); 
+module.exports = new MealController();
