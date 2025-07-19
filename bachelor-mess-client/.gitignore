@@ -12,6 +12,9 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
 
 # ===========================================
 # Expo
@@ -21,6 +24,7 @@ lerna-debug.log*
 dist/
 web-build/
 expo-env.d.ts
+expo-env.d.ts.bak
 
 # ===========================================
 # React Native
@@ -28,6 +32,7 @@ expo-env.d.ts
 # Metro
 .metro-health-check*
 .metro/
+metro.config.js.bak
 
 # ===========================================
 # Native (iOS/Android)
@@ -41,6 +46,7 @@ ios/DerivedData/
 ios/build/
 ios/Pods/
 ios/Podfile.lock
+ios/Podfile.lock.bak
 
 # Android
 android/app/build/
@@ -57,6 +63,10 @@ android/app/src/main/java/com/bachelormess/client/BuildConfig.java
 android/app/src/main/java/com/bachelormess/client/ReactNativeHost.java
 android/app/src/main/java/com/bachelormess/client/MainApplication.java
 android/app/src/main/java/com/bachelormess/client/MainActivity.java
+android/app/src/main/java/com/bachelormess/client/MainActivity.java.bak
+android/app/src/main/java/com/bachelormess/client/MainApplication.java.bak
+android/app/src/main/java/com/bachelormess/client/MainActivity.kt.bak
+android/app/src/main/java/com/bachelormess/client/MainApplication.kt.bak
 
 # ===========================================
 # Build & Distribution
@@ -65,6 +75,9 @@ build/
 dist/
 *.tgz
 *.tar.gz
+*.apk
+*.aab
+*.ipa
 
 # ===========================================
 # Environment & Configuration
@@ -76,6 +89,8 @@ dist/
 .env.production
 .env.staging
 .env.*.local
+.env.bak
+.env.example.bak
 
 # ===========================================
 # Security & Certificates
@@ -88,6 +103,10 @@ dist/
 *.keystore
 *.orig
 *.orig.*
+*.pfx
+*.p8
+*.cer
+*.crt
 
 # ===========================================
 # IDE & Editor
@@ -104,6 +123,8 @@ dist/
 .Trashes
 ehthumbs.db
 Thumbs.db
+*.sublime-project
+*.sublime-workspace
 
 # ===========================================
 # Logs & Debug
@@ -113,12 +134,19 @@ logs/
 *.log.*
 debug.log
 error.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+metro.log
+react-native.log
 
 # ===========================================
 # TypeScript
 # ===========================================
 *.tsbuildinfo
 .tsbuildinfo
+*.tsbuildinfo.bak
 
 # ===========================================
 # Testing
@@ -127,6 +155,9 @@ coverage/
 .nyc_output/
 .jest/
 *.lcov
+test-results/
+playwright-report/
+playwright/.cache/
 
 # ===========================================
 # Temporary Files
@@ -137,6 +168,7 @@ coverage/
 .temp/
 *.cache
 .cache/
+.temp-cache/
 
 # ===========================================
 # OS Generated Files
@@ -190,19 +222,24 @@ $RECYCLE.BIN/
 *.bak
 *.backup
 *.old
+*.save
 
 # Generated files
 app-example
 *.generated.*
+*.generated
+.generated/
 
 # ===========================================
 # Development Tools
 # ===========================================
 # ESLint
 .eslintcache
+.eslintcache.bak
 
 # Prettier
 .prettierignore
+.prettierrc.bak
 
 # ===========================================
 # Package Managers
@@ -210,14 +247,17 @@ app-example
 # npm
 .npm
 .npmrc
+.npmrc.bak
 
 # yarn
 .yarn-integrity
 .yarnrc
 .yarn/
+.yarnrc.bak
 
 # pnpm
 .pnpm-store/
+.pnpm-debug.log*
 
 # ===========================================
 # Mobile Development
@@ -225,6 +265,7 @@ app-example
 # React Native
 *.hprof
 *.hprof.*
+react-native.config.js.bak
 
 # ===========================================
 # Cloud & Deployment
@@ -235,12 +276,18 @@ app-example
 # Netlify
 .netlify
 
+# Firebase
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+
 # ===========================================
 # Documentation
 # ===========================================
 # Generated docs
 docs/build/
 docs/_build/
+docs/_site/
 
 # ===========================================
 # Database
@@ -248,6 +295,7 @@ docs/_build/
 *.db
 *.sqlite
 *.sqlite3
+*.db-journal
 
 # ===========================================
 # Backup & Archive
@@ -258,6 +306,7 @@ docs/_build/
 *.tar
 *.gz
 *.bz2
+*.xz
 
 # ===========================================
 # Sensitive Data
@@ -266,6 +315,9 @@ docs/_build/
 api-keys.json
 secrets.json
 config.json
+firebase-config.json
+google-services.json
+GoogleService-Info.plist
 
 # ===========================================
 # Performance & Monitoring
@@ -273,6 +325,59 @@ config.json
 # Profiling
 *.cpuprofile
 *.heapprofile
+*.heapsnapshot
+
+# ===========================================
+# EAS Build
+# ===========================================
+.easignore
+eas.json.bak
+
+# ===========================================
+# Expo Development
+# ===========================================
+.expo/
+.expo-shared/
+.expo-cache/
+expo-env.d.ts
+expo-env.d.ts.bak
+
+# ===========================================
+# React Native CLI
+# ===========================================
+react-native.config.js.bak
+metro.config.js.bak
+
+# ===========================================
+# TypeScript & JavaScript
+# ===========================================
+*.tsbuildinfo
+*.tsbuildinfo.bak
+*.js.map
+*.ts.map
+
+# ===========================================
+# Development Scripts
+# ===========================================
+# Keep only essential scripts
+# Remove setup scripts that are not needed for development
+install_android_sdk.sh
+setup_mac_m4.sh
+setup_*.sh
+install_*.sh
+
+# ===========================================
+# Documentation (Keep only essential)
+# ===========================================
+# Remove excessive documentation files
+API_DOCUMENTATION.md
+API_INTEGRATION_GUIDE.md
+API_REQUIREMENT_DOC.md
+API_INTEGRATION.md
+JSON_DATA_STRUCTURE.md
+OFFLINE_FUNCTIONALITY_GUIDE.md
+SETUP_GUIDE.md
+Bachelors_Mess_Manager_For_Copilot_Agent.txt
 
 # ===========================================
 # End of .gitignore
