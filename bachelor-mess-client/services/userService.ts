@@ -7,7 +7,7 @@ export interface User {
   name: string;
   email: string;
   phone?: string;
-  role: 'admin' | 'member';
+  role: 'admin' | 'member' | 'super_admin';
   status: 'active' | 'inactive';
   joinDate: string;
   createdAt: string;
@@ -18,20 +18,20 @@ export interface CreateUserData {
   email: string;
   password: string;
   phone?: string;
-  role?: 'admin' | 'member';
+  role?: 'admin' | 'member' | 'super_admin';
 }
 
 export interface UpdateUserData {
   name?: string;
   email?: string;
   phone?: string;
-  role?: 'admin' | 'member';
+  role?: 'admin' | 'member' | 'super_admin';
   status?: 'active' | 'inactive';
 }
 
 export interface UserFilters {
   status?: 'active' | 'inactive';
-  role?: 'admin' | 'member';
+  role?: 'admin' | 'member' | 'super_admin';
   search?: string;
   limit?: number;
   page?: number;

@@ -93,9 +93,12 @@ export const useMeals = (): UseMealsReturn => {
         const response = await mealService.getUserMeals(filters);
 
         if (response.success && response.data) {
-          setMeals(response.data);
+          const mealsData = response.data.meals || response.data;
+          setMeals(Array.isArray(mealsData) ? mealsData : []);
           // Update recent meals with the first 10 entries
-          setRecentMeals(response.data.slice(0, 10));
+          setRecentMeals(
+            Array.isArray(mealsData) ? mealsData.slice(0, 10) : []
+          );
         } else {
           setError(response.error || 'Failed to fetch meals');
         }
@@ -119,8 +122,11 @@ export const useMeals = (): UseMealsReturn => {
         const response = await mealService.getAllMeals(filters);
 
         if (response.success && response.data) {
-          setMeals(response.data);
-          setRecentMeals(response.data.slice(0, 10));
+          const mealsData = response.data.meals || response.data;
+          setMeals(Array.isArray(mealsData) ? mealsData : []);
+          setRecentMeals(
+            Array.isArray(mealsData) ? mealsData.slice(0, 10) : []
+          );
         } else {
           setError(response.error || 'Failed to fetch all meals');
         }

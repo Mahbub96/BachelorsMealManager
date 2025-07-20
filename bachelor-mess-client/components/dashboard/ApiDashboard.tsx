@@ -232,10 +232,6 @@ export const ApiDashboard: React.FC = () => {
     }
   };
 
-  const stats = getStats();
-  const activities = getActivities();
-  const chartsData = getChartsData();
-
   // Show loading state
   if (loading) {
     return (
@@ -279,6 +275,10 @@ export const ApiDashboard: React.FC = () => {
     );
   }
 
+  const stats = getStats();
+  const activities = getActivities();
+  const chartsData = getChartsData();
+
   return (
     <ScrollView
       style={styles.container}
@@ -300,6 +300,7 @@ export const ApiDashboard: React.FC = () => {
         title='Admin Dashboard'
         subtitle='Manage your mess operations'
         icon='analytics'
+        colors={['#667eea', '#764ba2']}
       />
 
       {/* Data Source Indicator */}
@@ -309,21 +310,63 @@ export const ApiDashboard: React.FC = () => {
 
       {/* Stats Grid */}
       <View style={[styles.statsContainer, { marginBottom: cardSpacing }]}>
-        <StatsGrid stats={stats} />
+        <StatsGrid stats={stats || []} />
       </View>
 
       {/* Charts Section */}
       <ChartsSection
-        monthlyRevenue={chartsData.monthlyRevenue}
-        currentMonthRevenue={chartsData.currentMonthRevenue}
+        monthlyRevenue={chartsData?.monthlyRevenue || []}
+        currentMonthRevenue={chartsData?.currentMonthRevenue || {}}
         isTablet={isTablet}
       />
 
       {/* Quick Actions */}
-      <QuickActions onActionPress={handleQuickAction} />
+      <QuickActions
+        actions={[
+          {
+            id: 'add-meal',
+            title: 'Add Meal',
+            subtitle: "Record today's meals",
+            icon: 'restaurant',
+            color: '#10b981',
+            onPress: () => handleQuickAction('add-meal'),
+          },
+          {
+            id: 'add-bazar',
+            title: 'Add Bazar',
+            subtitle: 'Upload shopping list',
+            icon: 'cart',
+            color: '#f59e0b',
+            onPress: () => handleQuickAction('add-bazar'),
+          },
+          {
+            id: 'view-expenses',
+            title: 'View Expenses',
+            subtitle: 'Check spending details',
+            icon: 'card',
+            color: '#ef4444',
+            onPress: () => handleQuickAction('view-expenses'),
+          },
+          {
+            id: 'view-revenue',
+            title: 'View Revenue',
+            subtitle: 'See income breakdown',
+            icon: 'trending-up',
+            color: '#667eea',
+            onPress: () => handleQuickAction('view-revenue'),
+          },
+        ]}
+      />
 
       {/* Recent Activity */}
-      <RecentActivity activities={activities} maxItems={3} />
+      <RecentActivity
+        activities={(activities || []).map(activity => ({
+          ...activity,
+          colors: ['#667eea', '#764ba2'] as [string, string],
+          amount: activity.amount?.toString(),
+        }))}
+        maxItems={3}
+      />
     </ScrollView>
   );
 };

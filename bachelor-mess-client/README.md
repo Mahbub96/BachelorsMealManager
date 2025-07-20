@@ -1,190 +1,163 @@
-# Bachelor Mess Manager 🏠
+# Bachelor Mess Client
 
-A modern, beautiful React Native app for managing bachelor mess expenses, meals, and member activities. Built with Expo and featuring a contemporary design with gradient backgrounds, modern UI components, and intuitive user experience.
+A React Native mobile application for managing mess operations, built with Expo.
 
-## ✨ Features
+## Features
 
-### 🎨 Modern Design
+- **User Authentication**: Secure login and registration system
+- **Meal Management**: Track daily meals (breakfast, lunch, dinner)
+- **Bazar Management**: Upload and manage shopping lists
+- **Dashboard**: Real-time statistics and analytics
+- **Notifications**: Push notifications for important updates
+- **Offline Support**: Works without internet connection
+- **Role-based Access**: Admin and member roles with different permissions
 
-- **Gradient Headers**: Beautiful gradient backgrounds throughout the app
-- **Modern Cards**: Sleek card designs with shadows and rounded corners
-- **Responsive Layout**: Optimized for different screen sizes
-- **Intuitive Navigation**: Clean tab navigation with modern icons
-
-### 📊 Dashboard
-
-- **Quick Stats**: Real-time overview of mess activities
-- **Activity Feed**: Recent meal and bazar submissions
-- **Weekly Charts**: Visual representation of meal consumption
-- **Monthly Summary**: Comprehensive financial overview
-
-### 🍽️ Meal Management
-
-- **Daily Meal Tracking**: Submit breakfast, lunch, and dinner
-- **Interactive Toggles**: Easy meal selection with switches
-- **Meal History**: View past meal submissions
-- **Statistics**: Track meal patterns and averages
-
-### 🛒 Bazar Management
-
-- **Expense Tracking**: Monitor bazar expenses
-- **Status Management**: Approve/reject bazar submissions (Admin)
-- **Search Functionality**: Find specific bazar items
-- **Real-time Stats**: Overview of approved, pending, and total expenses
-
-### 👥 Member Management (Admin)
-
-- **Member Overview**: View all mess members
-- **Role Management**: Admin and member permissions
-- **Activity Monitoring**: Track member participation
-
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
-- Node.js (v16 or higher)
+- Node.js (v18 or higher)
 - npm or yarn
 - Expo CLI
-- iOS Simulator or Android Emulator (optional)
+- Android Studio (for Android development)
+- Xcode (for iOS development, macOS only)
 
 ### Installation
 
-1. **Clone the repository**
+1. Clone the repository:
 
-   ```bash
-   git clone <repository-url>
-   cd bachelor-mess-client
-   ```
-
-2. **Install dependencies**
-
-   ```bash
-   npm install
-   ```
-
-3. **Start the development server**
-
-   ```bash
-   npx expo start
-   ```
-
-4. **Run on your device**
-   - Scan the QR code with Expo Go app (iOS/Android)
-   - Press `i` for iOS Simulator
-   - Press `a` for Android Emulator
-   - Press `w` for web browser
-
-## 📱 App Structure
-
-```
-app/
-├── (tabs)/           # Tab navigation screens
-│   ├── index.tsx     # Home dashboard
-│   ├── explore.tsx   # Bazar management
-│   ├── meals.tsx     # Meal tracking
-│   ├── admin.tsx     # Admin panel
-│   └── _layout.tsx   # Tab layout
-├── HomePage.tsx      # Main dashboard
-├── LoginScreen.tsx   # Authentication
-└── _layout.tsx       # Root layout
+```bash
+git clone <repository-url>
+cd bachelor-mess-client
 ```
 
-## 🎯 Key Components
+2. Install dependencies:
 
-### Modern UI Elements
-
-- **LinearGradient**: Beautiful gradient backgrounds
-- **Ionicons**: Modern icon set
-- **Shadow Effects**: Depth and elevation
-- **Rounded Corners**: Contemporary design
-- **Color Schemes**: Consistent color palette
-
-### State Management
-
-- **React Hooks**: Modern state management
-- **Context API**: Global state for authentication
-- **Local Storage**: Persistent user preferences
-
-## 🛠️ Technology Stack
-
-- **React Native**: Cross-platform mobile development
-- **Expo**: Development platform and tools
-- **TypeScript**: Type-safe JavaScript
-- **Expo Router**: File-based routing
-- **Linear Gradient**: Beautiful gradient effects
-- **Ionicons**: Modern icon library
-
-## 📊 Data Structure
-
-### Meal Entry
-
-```typescript
-interface MealEntry {
-  id: string;
-  date: string;
-  breakfast: boolean;
-  lunch: boolean;
-  dinner: boolean;
-  submittedAt: string;
-}
+```bash
+npm install
 ```
 
-### Bazar Item
+3. Start the development server:
 
-```typescript
-interface BazarItem {
-  id: string;
-  name: string;
-  amount: number;
-  date: string;
-  status: "pending" | "approved" | "rejected";
-  submittedBy: string;
-}
+```bash
+npm start
 ```
 
-## 🎨 Design System
+4. Run on device/simulator:
 
-### Color Palette
+```bash
+# For iOS
+npm run ios
 
-- **Primary**: `#667eea` (Indigo)
-- **Secondary**: `#f093fb` (Pink)
-- **Success**: `#10b981` (Green)
-- **Warning**: `#f59e0b` (Yellow)
-- **Error**: `#ef4444` (Red)
-- **Background**: `#f8fafc` (Light Gray)
+# For Android
+npm run android
 
-### Typography
+# For web
+npm run web
+```
 
-- **Headers**: Bold, 28px
-- **Section Titles**: Bold, 20px
-- **Body Text**: Regular, 16px
-- **Captions**: Regular, 12px
+## Notifications
 
-## 🔧 Development
+### Expo Go Limitations
 
-### Available Scripts
+⚠️ **Important**: Push notifications are not supported in Expo Go with SDK 53. You'll see warnings like:
 
-- `npm start`: Start Expo development server
-- `npm run android`: Run on Android
-- `npm run ios`: Run on iOS
-- `npm run web`: Run on web browser
-- `npm run lint`: Run ESLint
+```
+ERROR expo-notifications: Android Push notifications (remote notifications) functionality provided by expo-notifications was removed from Expo Go with the release of SDK 53.
+```
 
-### Code Style
+### Solutions
 
-- TypeScript for type safety
-- ESLint for code quality
-- Prettier for code formatting
-- Consistent naming conventions
+#### Option 1: Use Development Build (Recommended)
 
-## 📱 Platform Support
+For full notification support, create a development build:
 
-- ✅ iOS (iPhone/iPad)
-- ✅ Android (Phone/Tablet)
-- ✅ Web Browser
-- ✅ Expo Go App
+1. Install EAS CLI:
 
-## 🤝 Contributing
+```bash
+npm install -g @expo/eas-cli
+```
+
+2. Login to your Expo account:
+
+```bash
+eas login
+```
+
+3. Build a development client:
+
+```bash
+eas build --profile development --platform android
+# or
+eas build --profile development --platform ios
+```
+
+4. Install the development build on your device
+
+#### Option 2: Continue with Expo Go
+
+The app will work in Expo Go, but notifications will be disabled. You'll see informative logs instead of errors.
+
+### Notification Features
+
+- **Meal Reminders**: Get notified about meal submissions
+- **Bazar Updates**: Receive notifications for new bazar entries
+- **Payment Reminders**: Stay updated on payment status
+- **System Notifications**: Important system updates
+
+## Configuration
+
+### Environment Variables
+
+Create a `.env` file in the root directory:
+
+```env
+EXPO_PUBLIC_API_URL=http://192.168.0.130:3000
+EXPO_PUBLIC_EAS_PROJECT_ID=your-project-id
+```
+
+### API Configuration
+
+The app connects to the Bachelor Mess Backend API. Make sure the backend server is running and accessible.
+
+## Development
+
+### Project Structure
+
+```
+bachelor-mess-client/
+├── app/                    # Expo Router pages
+├── components/            # Reusable components
+├── context/              # React Context providers
+├── hooks/                # Custom React hooks
+├── services/             # API services
+├── utils/                # Utility functions
+└── assets/              # Images, fonts, etc.
+```
+
+### Key Components
+
+- **ApiDashboard**: Main dashboard with real-time data
+- **MealManagement**: Meal tracking and submission
+- **BazarList**: Bazar entry management
+- **AuthContext**: Authentication state management
+- **NotificationService**: Push notification handling
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Notification Warnings in Expo Go**: This is expected. Use a development build for full notification support.
+
+2. **API Connection Issues**: Check that the backend server is running and the API URL is correct.
+
+3. **Build Errors**: Make sure all dependencies are installed and the Expo CLI is up to date.
+
+### Debug Mode
+
+Enable debug logging by setting `__DEV__` to true in development builds.
+
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
@@ -192,16 +165,6 @@ interface BazarItem {
 4. Test thoroughly
 5. Submit a pull request
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License.
-
-## 🙏 Acknowledgments
-
-- Expo team for the amazing development platform
-- React Native community for continuous improvements
-- Ionicons for the beautiful icon set
-
----
-
-**Built with ❤️ for bachelor mess management**

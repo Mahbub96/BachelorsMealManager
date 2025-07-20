@@ -83,6 +83,17 @@ export interface BazarService {
     type: string;
     name: string;
   }) => Promise<ApiResponse<{ url: string }>>;
+  // Admin methods
+  adminCreateBazar: (data: BazarSubmission) => Promise<ApiResponse<BazarEntry>>;
+  adminUpdateBazar: (
+    bazarId: string,
+    data: BazarSubmission
+  ) => Promise<ApiResponse<BazarEntry>>;
+  adminDeleteBazar: (bazarId: string) => Promise<ApiResponse<void>>;
+  adminBulkOperations: (
+    operation: string,
+    bazarIds: string[]
+  ) => Promise<ApiResponse<void>>;
 }
 
 // Bazar service implementation
@@ -481,6 +492,114 @@ class BazarServiceImpl implements BazarService {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Test failed',
+      };
+    }
+  }
+
+  // Admin methods implementation
+  async adminCreateBazar(
+    data: BazarSubmission
+  ): Promise<ApiResponse<BazarEntry>> {
+    try {
+      console.log('🔧 Admin creating bazar entry:', data);
+      const response = await httpClient.post<BazarEntry>(
+        API_ENDPOINTS.BAZAR.SUBMIT,
+        data,
+        { cache: false }
+      );
+
+      if (response.success) {
+        await this.clearBazarCache();
+      }
+
+      return response;
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to create bazar entry',
+      };
+    }
+  }
+
+  async adminUpdateBazar(
+    bazarId: string,
+    data: BazarSubmission
+  ): Promise<ApiResponse<BazarEntry>> {
+    try {
+      console.log('🔧 Admin updating bazar entry:', bazarId, data);
+      const response = await httpClient.put<BazarEntry>(
+        API_ENDPOINTS.BAZAR.UPDATE(bazarId),
+        data,
+        { cache: false }
+      );
+
+      if (response.success) {
+        await this.clearBazarCache();
+      }
+
+      return response;
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to update bazar entry',
+      };
+    }
+  }
+
+  async adminDeleteBazar(bazarId: string): Promise<ApiResponse<void>> {
+    try {
+      console.log('🔧 Admin deleting bazar entry:', bazarId);
+      const response = await httpClient.delete<void>(
+        API_ENDPOINTS.BAZAR.DELETE(bazarId),
+        { cache: false }
+      );
+
+      if (response.success) {
+        await this.clearBazarCache();
+      }
+
+      return response;
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to delete bazar entry',
+      };
+    }
+  }
+
+  async adminBulkOperations(
+    operation: string,
+    bazarIds: string[]
+  ): Promise<ApiResponse<void>> {
+    try {
+      console.log('🔧 Admin bulk operation:', operation, bazarIds);
+      const response = await httpClient.post<void>(
+        API_ENDPOINTS.BAZAR.BULK_APPROVE,
+        { operation, bazarIds },
+        { cache: false }
+      );
+
+      if (response.success) {
+        await this.clearBazarCache();
+      }
+
+      return response;
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to perform bulk operation',
       };
     }
   }

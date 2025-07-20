@@ -3,7 +3,7 @@ import { View, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
 import { BazarList } from './BazarList';
-import { MealList } from './MealList';
+import { MealList } from './meals/MealList';
 
 export const ErrorTest: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'bazar' | 'meals'>('bazar');
@@ -89,8 +89,14 @@ export const ErrorTest: React.FC = () => {
 
         {activeTab === 'meals' && (
           <MealList
-            filters={{ status: 'approved', limit: 5 }}
+            meals={[]}
+            selectedMeals={[]}
+            onMealPress={() => {}}
+            onMealSelect={() => {}}
             isAdmin={false}
+            refreshing={false}
+            loading={false}
+            error={null}
           />
         )}
       </View>

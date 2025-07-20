@@ -1,123 +1,129 @@
-import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
-import React from "react";
-import { StyleSheet, TouchableOpacity, View } from "react-native";
-import { ThemedText } from "../ThemedText";
+import React from 'react';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { ThemedText } from '../ThemedText';
 
-const DESIGN_SYSTEM = {
-  colors: {
-    primary: "#667eea",
-    secondary: "#764ba2",
-    dark: "#1f2937",
-    gray: {
-      100: "#f3f4f6",
-      500: "#6b7280",
-      600: "#4b5563",
-    },
-  },
-  spacing: {
-    xs: 6,
-    sm: 12,
-    md: 16,
-    lg: 20,
-    xl: 24,
-  },
-  borderRadius: {
-    lg: 20,
-  },
-  fontSize: {
-    lg: 18,
-    md: 16,
-    sm: 14,
-    xs: 12,
-  },
-  shadows: {
-    medium: {
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.12,
-      shadowRadius: 12,
-      elevation: 8,
-    },
-  },
-};
-
-interface Activity {
+export interface ActivityItem {
   id: string;
   title: string;
   description: string;
   time: string;
-  icon?: string;
-  amount?: number;
+  amount?: string;
+  icon: string;
+  colors: [string, string];
 }
 
 interface RecentActivityProps {
-  activities: Activity[];
+  activities: ActivityItem[];
+  title?: string;
+  subtitle?: string;
+  showViewAll?: boolean;
+  onViewAll?: () => void;
+  isSmallScreen?: boolean;
   maxItems?: number;
 }
 
 export const RecentActivity: React.FC<RecentActivityProps> = ({
   activities,
+  title = 'Recent Activity',
+  subtitle = 'Latest updates from your mess',
+  showViewAll = true,
+  onViewAll,
+  isSmallScreen = false,
   maxItems = 3,
 }) => {
-  const router = useRouter();
-
-  // Ensure activities is always an array and handle undefined/null
-  const safeActivities = Array.isArray(activities) ? activities : [];
+  const displayActivities = (activities || []).slice(0, maxItems);
 
   return (
-    <View style={styles.activitySection}>
+    <View style={styles.container}>
       <View style={styles.sectionHeader}>
-        <View>
-          <ThemedText style={styles.sectionTitle}>Recent Activity</ThemedText>
-          <ThemedText style={styles.sectionSubtitle}>
-            Latest updates from your mess
-          </ThemedText>
+        <View style={styles.headerLeft}>
+          {title && (
+            <ThemedText
+              style={[
+                styles.sectionTitle,
+                isSmallScreen && styles.sectionTitleSmall,
+              ]}
+            >
+              {title}
+            </ThemedText>
+          )}
+          {subtitle && (
+            <ThemedText
+              style={[
+                styles.sectionSubtitle,
+                isSmallScreen && styles.sectionSubtitleSmall,
+              ]}
+            >
+              {subtitle}
+            </ThemedText>
+          )}
         </View>
-        <TouchableOpacity
-          style={styles.viewAllButton}
-          onPress={() => router.push("/recent-activity")}
-        >
-          <ThemedText style={styles.viewAllText}>View All</ThemedText>
-          <Ionicons
-            name="arrow-forward"
-            size={16}
-            color={DESIGN_SYSTEM.colors.primary}
-          />
-        </TouchableOpacity>
+
+        {showViewAll && (
+          <TouchableOpacity style={styles.viewAllButton} onPress={onViewAll}>
+            <ThemedText style={styles.viewAllText}>View All</ThemedText>
+            <Ionicons name='arrow-forward' size={16} color='#667eea' />
+          </TouchableOpacity>
+        )}
       </View>
+
       <View style={styles.activityList}>
-        {safeActivities.slice(0, maxItems).map((activity, index) => (
-          <View key={index} style={styles.activityItem}>
+        {displayActivities.map((activity, index) => (
+          <View
+            key={activity.id}
+            style={[
+              styles.activityItem,
+              index === displayActivities.length - 1 && styles.lastActivityItem,
+            ]}
+          >
             <View style={styles.activityIcon}>
               <LinearGradient
-                colors={[
-                  DESIGN_SYSTEM.colors.primary,
-                  DESIGN_SYSTEM.colors.secondary,
-                ]}
+                colors={activity.colors}
                 style={styles.activityIconGradient}
               >
                 <Ionicons
-                  name={(activity.icon || "document") as any}
-                  size={16}
-                  color="#fff"
+                  name={activity.icon as any}
+                  size={isSmallScreen ? 14 : 16}
+                  color='#fff'
                 />
               </LinearGradient>
             </View>
+
             <View style={styles.activityContent}>
-              <ThemedText style={styles.activityTitle}>
+              <ThemedText
+                style={[
+                  styles.activityTitle,
+                  isSmallScreen && styles.activityTitleSmall,
+                ]}
+              >
                 {activity.title}
               </ThemedText>
-              <ThemedText style={styles.activityDescription}>
+              <ThemedText
+                style={[
+                  styles.activityDescription,
+                  isSmallScreen && styles.activityDescriptionSmall,
+                ]}
+              >
                 {activity.description}
               </ThemedText>
               <View style={styles.activityMeta}>
-                <ThemedText style={styles.activityTime}>
+                <ThemedText
+                  style={[
+                    styles.activityTime,
+                    isSmallScreen && styles.activityTimeSmall,
+                  ]}
+                >
                   {activity.time}
                 </ThemedText>
                 {activity.amount && (
-                  <ThemedText style={styles.activityAmount}>
+                  <ThemedText
+                    style={[
+                      styles.activityAmount,
+                      isSmallScreen && styles.activityAmountSmall,
+                    ]}
+                  >
                     ৳{activity.amount}
                   </ThemedText>
                 )}
@@ -131,89 +137,118 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
 };
 
 const styles = StyleSheet.create({
-  activitySection: {
-    marginBottom: DESIGN_SYSTEM.spacing.xl,
+  container: {
+    marginBottom: 24,
   },
   sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: DESIGN_SYSTEM.spacing.lg,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  headerLeft: {
+    flex: 1,
   },
   sectionTitle: {
-    fontSize: DESIGN_SYSTEM.fontSize.lg,
-    fontWeight: "bold",
-    color: DESIGN_SYSTEM.colors.dark,
-    marginBottom: DESIGN_SYSTEM.spacing.xs,
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginBottom: 4,
+  },
+  sectionTitleSmall: {
+    fontSize: 16,
   },
   sectionSubtitle: {
-    fontSize: DESIGN_SYSTEM.fontSize.sm,
-    color: DESIGN_SYSTEM.colors.gray[500],
+    fontSize: 14,
+    color: '#6b7280',
+  },
+  sectionSubtitleSmall: {
+    fontSize: 12,
   },
   viewAllButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: DESIGN_SYSTEM.spacing.xs,
-    paddingVertical: DESIGN_SYSTEM.spacing.xs,
-    paddingHorizontal: DESIGN_SYSTEM.spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
   },
   viewAllText: {
-    fontSize: DESIGN_SYSTEM.fontSize.sm,
-    color: DESIGN_SYSTEM.colors.primary,
-    fontWeight: "600",
+    fontSize: 14,
+    color: '#667eea',
+    fontWeight: '600',
   },
   activityList: {
-    backgroundColor: "#fff",
-    borderRadius: DESIGN_SYSTEM.borderRadius.lg,
-    padding: DESIGN_SYSTEM.spacing.lg,
-    ...DESIGN_SYSTEM.shadows.medium,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
     borderWidth: 1,
-    borderColor: DESIGN_SYSTEM.colors.gray[100],
+    borderColor: '#f3f4f6',
   },
   activityItem: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    paddingVertical: DESIGN_SYSTEM.spacing.md,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: DESIGN_SYSTEM.colors.gray[100],
+    borderBottomColor: '#f3f4f6',
+  },
+  lastActivityItem: {
+    borderBottomWidth: 0,
   },
   activityIcon: {
-    marginRight: DESIGN_SYSTEM.spacing.md,
+    marginRight: 12,
   },
   activityIconGradient: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   activityContent: {
     flex: 1,
   },
   activityTitle: {
-    fontSize: DESIGN_SYSTEM.fontSize.md,
-    fontWeight: "600",
-    color: DESIGN_SYSTEM.colors.dark,
-    marginBottom: DESIGN_SYSTEM.spacing.xs,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 4,
+  },
+  activityTitleSmall: {
+    fontSize: 14,
   },
   activityDescription: {
-    fontSize: DESIGN_SYSTEM.fontSize.sm,
-    color: DESIGN_SYSTEM.colors.gray[600],
-    marginBottom: DESIGN_SYSTEM.spacing.xs,
+    fontSize: 14,
+    color: '#6b7280',
+    marginBottom: 8,
     lineHeight: 18,
   },
+  activityDescriptionSmall: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
   activityMeta: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   activityTime: {
-    fontSize: DESIGN_SYSTEM.fontSize.xs,
-    color: DESIGN_SYSTEM.colors.gray[500],
+    fontSize: 12,
+    color: '#9ca3af',
+  },
+  activityTimeSmall: {
+    fontSize: 10,
   },
   activityAmount: {
-    fontSize: DESIGN_SYSTEM.fontSize.xs,
-    color: DESIGN_SYSTEM.colors.primary,
-    fontWeight: "600",
+    fontSize: 12,
+    color: '#667eea',
+    fontWeight: '600',
+  },
+  activityAmountSmall: {
+    fontSize: 10,
   },
 });

@@ -1,71 +1,62 @@
 import React from 'react';
-import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { ThemedView } from '../ThemedView';
 import { ThemedText } from '../ThemedText';
-import { useAuth } from '@/context/AuthContext';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface DashboardContainerProps {
+  title: string;
+  subtitle?: string;
   children: React.ReactNode;
-  loading?: boolean;
-  error?: string | null;
-  onRetry?: () => void;
+  onRefresh?: () => void;
+  refreshing?: boolean;
+  showHeader?: boolean;
+  gradient?: readonly [string, string];
+  icon?: string;
+  style?: any;
 }
 
 export const DashboardContainer: React.FC<DashboardContainerProps> = ({
+  title,
+  subtitle,
   children,
-  loading = false,
-  error = null,
-  onRetry,
+  onRefresh,
+  refreshing = false,
+  showHeader = true,
+  gradient = ['#667eea', '#764ba2'],
+  icon = 'grid',
+  style,
 }) => {
-  const { user, isLoading: authLoading } = useAuth();
+  return (
+    <ThemedView style={[styles.container, style]}>
+      {showHeader && (
+        <LinearGradient colors={gradient} style={styles.header}>
+          <View style={styles.headerContent}>
+            <View style={styles.titleContainer}>
+              <Ionicons name={icon as any} size={24} color='#fff' />
+              <ThemedText style={styles.title}>{title}</ThemedText>
+            </View>
+            {subtitle && (
+              <ThemedText style={styles.subtitle}>{subtitle}</ThemedText>
+            )}
+          </View>
+        </LinearGradient>
+      )}
 
-  // Show loading while auth is being checked
-  if (authLoading) {
-    return (
-      <ThemedView style={styles.loadingContainer}>
-        <ActivityIndicator size='large' color='#667eea' />
-        <ThemedText style={styles.loadingText}>Loading dashboard...</ThemedText>
-      </ThemedView>
-    );
-  }
-
-  // Show error if no user is authenticated
-  if (!user) {
-    return (
-      <ThemedView style={styles.errorContainer}>
-        <ThemedText style={styles.errorText}>
-          Please log in to view your dashboard
-        </ThemedText>
-      </ThemedView>
-    );
-  }
-
-  // Show loading state
-  if (loading) {
-    return (
-      <ThemedView style={styles.loadingContainer}>
-        <ActivityIndicator size='large' color='#667eea' />
-        <ThemedText style={styles.loadingText}>Loading your data...</ThemedText>
-      </ThemedView>
-    );
-  }
-
-  // Show error state
-  if (error) {
-    return (
-      <ThemedView style={styles.errorContainer}>
-        <ThemedText style={styles.errorText}>{error}</ThemedText>
-        {onRetry && (
-          <ThemedText style={styles.retryText} onPress={onRetry}>
-            Tap to retry
-          </ThemedText>
-        )}
-      </ThemedView>
-    );
-  }
-
-  // Render the dashboard content
-  return <ThemedView style={styles.container}>{children}</ThemedView>;
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          onRefresh ? (
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          ) : undefined
+        }
+      >
+        {children}
+      </ScrollView>
+    </ThemedView>
+  );
 };
 
 const styles = StyleSheet.create({
@@ -73,33 +64,34 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f8fafc',
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  header: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingTop: 60, // Account for status bar
+  },
+  headerContent: {
+    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8fafc',
+    justifyContent: 'space-between',
   },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#6b7280',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  titleContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8fafc',
-    padding: 20,
+    flex: 1,
   },
-  errorText: {
-    fontSize: 16,
-    color: '#ef4444',
-    textAlign: 'center',
-    marginBottom: 16,
+  title: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '600',
+    marginLeft: 8,
   },
-  retryText: {
+  subtitle: {
+    color: '#fff',
     fontSize: 14,
-    color: '#667eea',
-    textDecorationLine: 'underline',
+    opacity: 0.8,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 16,
   },
 });

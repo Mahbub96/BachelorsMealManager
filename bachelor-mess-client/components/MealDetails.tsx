@@ -146,12 +146,20 @@ export const MealDetails: React.FC<MealDetailsProps> = ({
                   mealTypes.map((mealType, index) => (
                     <View key={index} style={styles.mealTypeItem}>
                       <Ionicons
-                        name={mealService.getMealIcon(
-                          mealType.toLowerCase() as any
-                        )}
+                        name={
+                          mealService.getMealIcon(
+                            mealType.toLowerCase() as
+                              | 'breakfast'
+                              | 'lunch'
+                              | 'dinner'
+                          ) as any
+                        }
                         size={20}
                         color={mealService.getMealColor(
-                          mealType.toLowerCase() as any
+                          mealType.toLowerCase() as
+                            | 'breakfast'
+                            | 'lunch'
+                            | 'dinner'
                         )}
                       />
                       <ThemedText style={styles.mealTypeText}>
@@ -191,7 +199,10 @@ export const MealDetails: React.FC<MealDetailsProps> = ({
                 <View style={styles.approvalContainer}>
                   <Ionicons name='person' size={16} color='#6b7280' />
                   <ThemedText style={styles.approvalText}>
-                    Approved by: {meal.approvedBy}
+                    Approved by:{' '}
+                    {typeof meal.approvedBy === 'string'
+                      ? meal.approvedBy
+                      : meal.approvedBy?.name || 'Unknown'}
                   </ThemedText>
                 </View>
                 {meal.approvedAt && (

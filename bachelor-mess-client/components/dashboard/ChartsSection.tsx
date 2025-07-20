@@ -60,16 +60,18 @@ export const ChartsSection: React.FC<ChartsSectionProps> = ({
   const [selectedPeriod, setSelectedPeriod] = useState('current');
 
   // Generate meaningful chart data with safety checks
-  const revenueChartData = (monthlyRevenue || []).slice(-6).map(item => ({
-    date: item?.month || 'Unknown',
-    value: item?.revenue || 0,
-    forecast: Math.round((item?.revenue || 0) * 1.05),
-    details: {
-      expenses: item?.expenses || 0,
-      profit: item?.profit || 0,
-      memberCount: item?.memberCount || 0,
-    },
-  }));
+  const revenueChartData = ((monthlyRevenue || []).slice(-6) || []).map(
+    item => ({
+      date: item?.month || 'Unknown',
+      value: item?.revenue || 0,
+      forecast: Math.round((item?.revenue || 0) * 1.05),
+      details: {
+        expenses: item?.expenses || 0,
+        profit: item?.profit || 0,
+        memberCount: item?.memberCount || 0,
+      },
+    })
+  );
 
   // Create meaningful expense breakdown data with safety checks
   const safeExpenses = currentMonthRevenue?.expenses || 0;

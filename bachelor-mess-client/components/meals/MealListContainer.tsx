@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { MealListHeader } from './MealListHeader';
-import { MealList } from '../MealList';
+import { MealList } from './MealList';
 import { MealEntry } from '../../services/mealService';
 
 interface MealListContainerProps {
@@ -38,16 +38,18 @@ export const MealListContainer: React.FC<MealListContainerProps> = ({
       <MealListHeader title={title} onViewAll={onViewAll} />
       <View style={styles.listWrapper}>
         <MealList
-          filters={filters}
-          onMealPress={onMealPress}
-          onRefresh={onRefresh}
-          isAdmin={isAdmin}
-          meals={meals}
-          loading={loading}
-          error={error}
+          meals={meals || []}
+          selectedMeals={[]}
+          onMealPress={onMealPress || (() => {})}
+          onMealSelect={() => {}}
           onStatusUpdate={onStatusUpdate}
           onDelete={onDelete}
           onEdit={onEdit}
+          isAdmin={isAdmin}
+          refreshing={false}
+          onRefresh={onRefresh}
+          loading={loading}
+          error={error}
         />
       </View>
     </View>

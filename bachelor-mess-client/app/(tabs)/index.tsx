@@ -20,10 +20,20 @@ export default function HomeScreen() {
   );
 
   const renderDashboard = () => {
+    console.log('🔍 Dashboard Debug - User:', {
+      id: user?.id,
+      role: user?.role,
+      name: user?.name,
+      isAdmin: user?.role === 'admin',
+      isSuperAdmin: user?.role === 'super_admin',
+    });
+
     // Show user-specific dashboard for regular members, admin dashboard for admins
-    if (user?.role === 'admin') {
+    if (user?.role === 'admin' || user?.role === 'super_admin') {
+      console.log('📊 Rendering ApiDashboard for admin/super_admin');
       return <ApiDashboard />;
     } else {
+      console.log('📊 Rendering UserDashboard for member');
       return <UserDashboard />;
     }
   };

@@ -34,6 +34,19 @@ export default function BazarScreen() {
   const [showAddBazarModal, setShowAddBazarModal] = useState(false);
   const [filters, setFilters] = useState({});
 
+  // Add error boundary for unauthenticated users
+  if (!user) {
+    return (
+      <ThemedView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <ThemedText style={styles.errorText}>
+            Please log in to view bazar items
+          </ThemedText>
+        </View>
+      </ThemedView>
+    );
+  }
+
   console.log('🔄 Explore Screen - User info:', {
     userId: user?.id,
     userRole: user?.role,
@@ -95,129 +108,115 @@ export default function BazarScreen() {
     }
   };
 
-  const getStatusBgColor = (status: string) => {
-    switch (status) {
-      case 'approved':
-        return '#ecfdf5';
-      case 'pending':
-        return '#fffbeb';
-      case 'rejected':
-        return '#fef2f2';
-      default:
-        return '#f3f4f6';
-    }
-  };
-
   const handleAddBazar = () => {
     setShowAddBazarModal(true);
   };
 
-  const handleBazarSubmitted = () => {
-    setShowAddBazarModal(false);
-    // Refresh the bazar list here
-  };
-
   const handleBazarPress = (bazar: any) => {
-    // Navigate to bazar details or show more info
-    Alert.alert('Bazar Details', `View details for bazar entry ${bazar.id}`);
+    console.log('🎯 Bazar pressed:', bazar);
+    // Navigate to bazar details or show modal
+    Alert.alert('Bazar Details', `Viewing details for ${bazar.id}`);
   };
 
   const handleRefresh = () => {
-    // Refresh the bazar list
-    console.log('Refreshing bazar list...');
+    console.log('🔄 Refreshing bazar list...');
+    // The BazarList component will handle its own refresh
   };
 
-  const handleApprove = (id: string) => {
-    Alert.alert('Approve', `Approve bazar item ${id}`);
+  const handleCloseModal = () => {
+    setShowAddBazarModal(false);
   };
 
-  const handleReject = (id: string) => {
-    Alert.alert('Reject', `Reject bazar item ${id}`);
+  const handleBazarSubmit = async () => {
+    try {
+      console.log('📝 Bazar submitted successfully');
+      Alert.alert('Success', 'Bazar entry submitted successfully!');
+      setShowAddBazarModal(false);
+    } catch (error) {
+      console.error('❌ Bazar submission error:', error);
+      Alert.alert('Error', 'Failed to submit bazar entry');
+    }
   };
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <LinearGradient
-        colors={['#4facfe', '#00f2fe']}
-        style={styles.headerGradient}
+    <ThemedView style={styles.container}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
+        {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerContent}>
-            <ThemedText style={styles.headerTitle}>Bazar Management</ThemedText>
-            <ThemedText style={styles.headerSubtitle}>
-              Track and manage mess bazar expenses
+            <ThemedText style={styles.title}>Bazar Management</ThemedText>
+            <ThemedText style={styles.subtitle}>
+              Track shopping expenses and manage bazar entries
             </ThemedText>
           </View>
-          <View style={styles.headerIcon}>
-            <Ionicons name='cart' size={32} color='#fff' />
+          <View style={styles.headerStats}>
+            <View style={styles.statCard}>
+              <ThemedText style={styles.statValue}>
+                {filteredItems.length}
+              </ThemedText>
+              <ThemedText style={styles.statLabel}>Total Items</ThemedText>
+            </View>
+            <View style={styles.statCard}>
+              <ThemedText style={styles.statValue}>
+                ৳
+                {filteredItems
+                  .reduce((sum, item) => sum + item.amount, 0)
+                  .toLocaleString()}
+              </ThemedText>
+              <ThemedText style={styles.statLabel}>Total Amount</ThemedText>
+            </View>
           </View>
         </View>
-      </LinearGradient>
 
-      <View style={styles.content}>
         {/* Search Bar */}
         <View style={styles.searchContainer}>
           <View style={styles.searchBar}>
-            <Ionicons
-              name='search'
-              size={20}
-              color='#9ca3af'
-              style={styles.searchIcon}
-            />
+            <Ionicons name='search' size={20} color='#6b7280' />
             <TextInput
               style={styles.searchInput}
               placeholder='Search bazar items...'
+              placeholderTextColor='#9ca3af'
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholderTextColor='#9ca3af'
             />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity
+                onPress={() => setSearchQuery('')}
+                style={styles.clearButton}
+              >
+                <Ionicons name='close-circle' size={20} color='#6b7280' />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
-        {/* Quick Stats */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <LinearGradient
-              colors={['#667eea', '#764ba2']}
-              style={styles.statGradient}
-            >
-              <Ionicons name='checkmark-circle' size={24} color='#fff' />
-              <ThemedText style={styles.statValue}>
-                {bazarItems.filter(item => item.status === 'approved').length}
-              </ThemedText>
-              <ThemedText style={styles.statLabel}>Approved</ThemedText>
-            </LinearGradient>
-          </View>
-
-          <View style={styles.statCard}>
-            <LinearGradient
-              colors={['#f093fb', '#f5576c']}
-              style={styles.statGradient}
-            >
-              <Ionicons name='time' size={24} color='#fff' />
-              <ThemedText style={styles.statValue}>
-                {bazarItems.filter(item => item.status === 'pending').length}
-              </ThemedText>
-              <ThemedText style={styles.statLabel}>Pending</ThemedText>
-            </LinearGradient>
-          </View>
-
-          <View style={styles.statCard}>
-            <LinearGradient
-              colors={['#43e97b', '#38f9d7']}
-              style={styles.statGradient}
-            >
-              <Ionicons name='cash' size={24} color='#fff' />
-              <ThemedText style={styles.statValue}>
-                {bazarItems.reduce((sum, item) => sum + item.amount, 0)}৳
-              </ThemedText>
-              <ThemedText style={styles.statLabel}>Total</ThemedText>
-            </LinearGradient>
-          </View>
+        {/* Filter Chips */}
+        <View style={styles.filterContainer}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterScroll}
+          >
+            <TouchableOpacity style={styles.filterChip}>
+              <ThemedText style={styles.filterChipText}>All</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.filterChip}>
+              <ThemedText style={styles.filterChipText}>Pending</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.filterChip}>
+              <ThemedText style={styles.filterChipText}>Approved</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.filterChip}>
+              <ThemedText style={styles.filterChipText}>Rejected</ThemedText>
+            </TouchableOpacity>
+          </ScrollView>
         </View>
 
-        {/* Add Bazar Button */}
+        {/* Add Button */}
         <Pressable style={styles.addButton} onPress={handleAddBazar}>
           <LinearGradient
             colors={['#667eea', '#764ba2']}
@@ -234,42 +233,59 @@ export default function BazarScreen() {
             Recent Bazar Items
           </ThemedText>
 
-          <BazarList
-            filters={filters}
-            showUserInfo={user?.role === 'admin'}
-            onBazarPress={handleBazarPress}
-            onRefresh={handleRefresh}
-            isAdmin={user?.role === 'admin'}
-          />
+          {(() => {
+            try {
+              return (
+                <BazarList
+                  filters={filters}
+                  showUserInfo={
+                    user?.role === 'admin' || user?.role === 'super_admin'
+                  }
+                  onBazarPress={handleBazarPress}
+                  onRefresh={handleRefresh}
+                  isAdmin={
+                    user?.role === 'admin' || user?.role === 'super_admin'
+                  }
+                />
+              );
+            } catch (error) {
+              console.error('💥 BazarList render error:', error);
+              return (
+                <View style={styles.errorContainer}>
+                  <ThemedText style={styles.errorText}>
+                    Failed to load bazar items. Please try again.
+                  </ThemedText>
+                </View>
+              );
+            }
+          })()}
         </View>
-      </View>
+      </ScrollView>
 
       {/* Add Bazar Modal */}
       <Modal
         visible={showAddBazarModal}
         animationType='slide'
         presentationStyle='pageSheet'
-        onRequestClose={() => setShowAddBazarModal(false)}
+        onRequestClose={handleCloseModal}
       >
-        <View style={styles.modalContainer}>
+        <ThemedView style={styles.modalContainer}>
           <View style={styles.modalHeader}>
+            <ThemedText style={styles.modalTitle}>Add New Bazar</ThemedText>
             <TouchableOpacity
               style={styles.closeButton}
-              onPress={() => setShowAddBazarModal(false)}
+              onPress={handleCloseModal}
             >
               <Ionicons name='close' size={24} color='#6b7280' />
             </TouchableOpacity>
-            <ThemedText style={styles.modalTitle}>Add New Bazar</ThemedText>
-            <View style={styles.placeholder} />
           </View>
           <BazarForm
-            onSuccess={handleBazarSubmitted}
-            onCancel={() => setShowAddBazarModal(false)}
-            showCancel={false}
+            onSuccess={handleBazarSubmit}
+            onCancel={handleCloseModal}
           />
-        </View>
+        </ThemedView>
       </Modal>
-    </View>
+    </ThemedView>
   );
 }
 
@@ -278,40 +294,43 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f8fafc',
   },
-  headerGradient: {
-    paddingTop: 60,
-    paddingBottom: 30,
-    paddingHorizontal: 20,
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 20,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    marginBottom: 24,
   },
   headerContent: {
-    flex: 1,
+    marginBottom: 12,
   },
-  headerTitle: {
+  title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
+    color: '#1f2937',
   },
-  headerSubtitle: {
+  subtitle: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: '#6b7280',
   },
-  headerIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
+  headerStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 16,
+  },
+  statCard: {
     alignItems: 'center',
   },
-  content: {
-    flex: 1,
-    padding: 20,
+  statValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1f2937',
+  },
+  statLabel: {
+    fontSize: 14,
+    color: '#6b7280',
   },
   searchContainer: {
     marginBottom: 24,
@@ -329,44 +348,34 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  searchIcon: {
-    marginRight: 12,
-  },
   searchInput: {
     flex: 1,
     fontSize: 16,
     color: '#1f2937',
+    paddingRight: 10,
   },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  clearButton: {
+    padding: 8,
+  },
+  filterContainer: {
     marginBottom: 24,
   },
-  statCard: {
-    flex: 1,
-    marginHorizontal: 4,
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
+  filterScroll: {
+    paddingVertical: 8,
   },
-  statGradient: {
-    padding: 16,
-    alignItems: 'center',
+  filterChip: {
+    backgroundColor: '#e5e7eb',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
   },
-  statValue: {
-    fontSize: 20,
+  filterChipText: {
+    fontSize: 14,
     fontWeight: 'bold',
-    color: '#fff',
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: '#374151',
   },
   addButton: {
     marginBottom: 24,
@@ -504,5 +513,16 @@ const styles = StyleSheet.create({
   },
   placeholder: {
     width: 40,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#ef4444',
+    textAlign: 'center',
   },
 });

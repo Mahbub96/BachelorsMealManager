@@ -10,7 +10,7 @@ interface User {
   name: string;
   email: string;
   phone?: string;
-  role: 'admin' | 'member';
+  role: 'admin' | 'member' | 'super_admin';
   status: 'active' | 'inactive';
   joinDate: string;
   createdAt: string;

@@ -11,6 +11,24 @@ import { useAuth } from '@/context/AuthContext';
 export default function TabLayout() {
   const { user } = useAuth();
 
+  // Determine which tabs to show based on user role
+  const isAdmin = user?.role === 'admin';
+  const isSuperAdmin = user?.role === 'super_admin';
+
+  // Debug logging
+  console.log('🔍 TabLayout Debug:', {
+    userRole: user?.role,
+    isAdmin,
+    isSuperAdmin,
+    userId: user?.id,
+    userName: user?.name,
+  });
+
+  // Force re-render when user role changes
+  console.log('🔍 TabLayout - Rendering tabs for role:', user?.role);
+  console.log('🔍 TabLayout - Admin tab visible:', isAdmin);
+  console.log('🔍 TabLayout - Super Admin tab visible:', isSuperAdmin);
+
   return (
     <Tabs
       screenOptions={{
@@ -96,19 +114,38 @@ export default function TabLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name='admin'
-        options={{
-          title: 'Admin',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              name={focused ? 'settings' : 'settings-outline'}
-              size={24}
-              color={color}
-            />
-          ),
-        }}
-      />
+      {/* Admin tab - only visible to admin users */}
+      {isAdmin && (
+        <Tabs.Screen
+          name='admin'
+          options={{
+            title: 'Admin',
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons
+                name={focused ? 'settings' : 'settings-outline'}
+                size={24}
+                color={color}
+              />
+            ),
+          }}
+        />
+      )}
+      {/* Super Admin tab - temporarily disabled for debugging */}
+      {/* {user?.role === 'super_admin' && (
+        <Tabs.Screen
+          name='super-admin-redirect'
+          options={{
+            title: 'Super Admin',
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons
+                name={focused ? 'shield-checkmark' : 'shield-checkmark-outline'}
+                size={24}
+                color={color}
+              />
+            ),
+          }}
+        />
+      )} */}
     </Tabs>
   );
 }

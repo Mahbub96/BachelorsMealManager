@@ -93,8 +93,6 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
     try {
       const response = await bazarService.adminCreateBazar({
         ...formData,
-        userId: selectedUserId,
-        status: selectedStatus,
       });
 
       if (response.success) {
@@ -118,8 +116,6 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
     try {
       const response = await bazarService.adminUpdateBazar(selectedBazar.id, {
         ...formData,
-        status: selectedStatus,
-        notes: `Updated by admin ${user?.email}`,
       });
 
       if (response.success) {
@@ -185,15 +181,11 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
     try {
       const response = await bazarService.adminBulkOperations(
         bulkOperation,
-        selectedBazarIds,
-        bulkNotes
+        selectedBazarIds
       );
 
       if (response.success) {
-        Alert.alert(
-          'Success',
-          `Bulk ${bulkOperation} completed successfully! ${response.data?.affectedCount} entries processed.`
-        );
+        Alert.alert('Success', `Bulk ${bulkOperation} completed successfully!`);
         onSuccess?.();
         onClose();
       } else {

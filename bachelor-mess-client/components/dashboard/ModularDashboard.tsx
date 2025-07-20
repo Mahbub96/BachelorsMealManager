@@ -130,7 +130,7 @@ export const ModularDashboard: React.FC = () => {
       showsVerticalScrollIndicator={false}
     >
       {/* Header Section */}
-      <DashboardHeader />
+      <DashboardHeader title='Dashboard' subtitle='Overview' icon='grid' />
 
       {/* Stats Grid */}
       <View style={[styles.statsContainer, { marginBottom: cardSpacing }]}>

@@ -102,10 +102,20 @@ export const AuthAvatar: React.FC<AuthAvatarProps> = ({
 
   const getUserRole = () => {
     if (!user) return 'Guest';
-    return user.role === 'admin' ? 'Administrator' : 'Member';
+    switch (user.role) {
+      case 'super_admin':
+        return 'Super Administrator';
+      case 'admin':
+        return 'Administrator';
+      case 'member':
+        return 'Member';
+      default:
+        return 'User';
+    }
   };
 
-  const menuItems = [
+  // Base menu items for all users
+  const baseMenuItems = [
     {
       id: 'profile',
       title: 'Profile',
@@ -151,6 +161,62 @@ export const AuthAvatar: React.FC<AuthAvatarProps> = ({
       },
     },
   ];
+
+  // Admin-specific menu items
+  const adminMenuItems = [
+    {
+      id: 'admin-dashboard',
+      title: 'Admin Dashboard',
+      subtitle: 'Manage mess operations',
+      icon: 'shield-outline',
+      color: '#ef4444',
+      onPress: () => {
+        handleCloseModal();
+        router.push('/admin');
+      },
+    },
+  ];
+
+  // Super admin-specific menu items
+  const superAdminMenuItems = [
+    {
+      id: 'system-management',
+      title: 'System Management',
+      subtitle: 'Manage system settings and users',
+      icon: 'shield-checkmark-outline',
+      color: '#dc2626',
+      onPress: () => {
+        handleCloseModal();
+        router.push('/admin');
+      },
+    },
+    {
+      id: 'user-management',
+      title: 'User Management',
+      subtitle: 'Manage all users and roles',
+      icon: 'people-outline',
+      color: '#7c3aed',
+      onPress: () => {
+        handleCloseModal();
+        router.push('/admin');
+      },
+    },
+  ];
+
+  // Build menu items based on user role
+  const getMenuItems = () => {
+    let items = [...baseMenuItems];
+
+    if (user?.role === 'admin') {
+      items = [...items, ...adminMenuItems];
+    } else if (user?.role === 'super_admin') {
+      items = [...items, ...adminMenuItems, ...superAdminMenuItems];
+    }
+
+    return items;
+  };
+
+  const menuItems = getMenuItems();
 
   return (
     <>
@@ -198,118 +264,86 @@ export const AuthAvatar: React.FC<AuthAvatarProps> = ({
               ]}
             >
               <Pressable style={styles.modalContent} onPress={() => {}}>
-                {/* Header with user info */}
-                <View style={styles.header}>
-                  <View style={styles.userInfo}>
-                    <View style={styles.userAvatar}>
-                      <LinearGradient
-                        colors={['#667eea', '#764ba2']}
-                        style={styles.userAvatarGradient}
-                      >
-                        {user ? (
-                          <ThemedText style={styles.userAvatarText}>
-                            {getInitials(user.name)}
-                          </ThemedText>
-                        ) : (
-                          <Ionicons name='person' size={24} color='#fff' />
-                        )}
-                      </LinearGradient>
-                    </View>
-                    <View style={styles.userDetails}>
-                      <ThemedText style={styles.userName}>
-                        {getUserDisplayName()}
+                {/* User Info Header */}
+                <View style={styles.userInfoHeader}>
+                  <View style={styles.userAvatar}>
+                    <LinearGradient
+                      colors={['#667eea', '#764ba2']}
+                      style={styles.userAvatarGradient}
+                    >
+                      <ThemedText style={styles.userAvatarText}>
+                        {getInitials(getUserDisplayName())}
                       </ThemedText>
-                      <ThemedText style={styles.userEmail}>
-                        {user?.email || 'guest@mess.com'}
-                      </ThemedText>
-                      <View style={styles.roleContainer}>
-                        <Ionicons
-                          name={
-                            user?.role === 'admin'
-                              ? 'shield-checkmark'
-                              : 'person'
-                          }
-                          size={12}
-                          color='#667eea'
-                        />
-                        <ThemedText style={styles.userRole}>
-                          {getUserRole()}
-                        </ThemedText>
-                      </View>
-                    </View>
+                    </LinearGradient>
                   </View>
-                  <TouchableOpacity
-                    style={styles.closeButton}
-                    onPress={handleCloseModal}
-                  >
-                    <Ionicons name='close' size={20} color='#9ca3af' />
-                  </TouchableOpacity>
+                  <View style={styles.userInfo}>
+                    <ThemedText style={styles.userName}>
+                      {getUserDisplayName()}
+                    </ThemedText>
+                    <ThemedText style={styles.userRole}>
+                      {getUserRole()}
+                    </ThemedText>
+                  </View>
                 </View>
 
-                {/* Menu items */}
+                {/* Menu Items */}
                 <View style={styles.menuItems}>
                   {menuItems.map((item, index) => (
                     <TouchableOpacity
                       key={item.id}
                       style={styles.menuItem}
                       onPress={item.onPress}
-                      activeOpacity={0.7}
                     >
                       <View
                         style={[
                           styles.menuIcon,
-                          { backgroundColor: item.color + '15' },
+                          { backgroundColor: item.color },
                         ]}
                       >
                         <Ionicons
                           name={item.icon as any}
                           size={20}
-                          color={item.color}
+                          color='#fff'
                         />
                       </View>
-                      <View style={styles.menuText}>
-                        <ThemedText style={styles.menuItemTitle}>
+                      <View style={styles.menuContent}>
+                        <ThemedText style={styles.menuTitle}>
                           {item.title}
                         </ThemedText>
-                        <ThemedText style={styles.menuItemSubtitle}>
+                        <ThemedText style={styles.menuSubtitle}>
                           {item.subtitle}
                         </ThemedText>
                       </View>
                       <Ionicons
                         name='chevron-forward'
                         size={16}
-                        color='#d1d5db'
+                        color='#9ca3af'
                       />
                     </TouchableOpacity>
                   ))}
                 </View>
 
-                {/* Divider */}
-                <View style={styles.divider} />
-
-                {/* Logout button */}
+                {/* Logout Button */}
                 <TouchableOpacity
                   style={styles.logoutButton}
-                  onPress={() => {
-                    handleCloseModal();
-                    handleLogout();
-                  }}
-                  activeOpacity={0.7}
+                  onPress={handleLogout}
                 >
-                  <View style={styles.logoutIcon}>
-                    <Ionicons
-                      name='log-out-outline'
-                      size={20}
-                      color='#ef4444'
-                    />
+                  <View
+                    style={[styles.menuIcon, { backgroundColor: '#ef4444' }]}
+                  >
+                    <Ionicons name='log-out-outline' size={20} color='#fff' />
                   </View>
-                  <View style={styles.logoutText}>
-                    <ThemedText style={styles.logoutTitle}>Logout</ThemedText>
-                    <ThemedText style={styles.logoutSubtitle}>
+                  <View style={styles.menuContent}>
+                    <ThemedText
+                      style={[styles.menuTitle, { color: '#ef4444' }]}
+                    >
+                      Logout
+                    </ThemedText>
+                    <ThemedText style={styles.menuSubtitle}>
                       Sign out of your account
                     </ThemedText>
                   </View>
-                  <Ionicons name='chevron-forward' size={16} color='#fca5a5' />
+                  <Ionicons name='chevron-forward' size={16} color='#9ca3af' />
                 </TouchableOpacity>
               </Pressable>
             </Animated.View>
@@ -324,11 +358,6 @@ const styles = StyleSheet.create({
   avatar: {
     borderRadius: 24,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   avatarGradient: {
     flex: 1,
@@ -341,56 +370,37 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    justifyContent: 'flex-start',
-    alignItems: 'flex-end',
-    paddingTop: 80,
-    paddingRight: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
   },
   backdrop: {
     flex: 1,
   },
   modalContainer: {
-    maxWidth: 320,
-    minWidth: 280,
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 20,
+    paddingBottom: 40,
+    maxHeight: screenHeight * 0.7,
   },
   modalContent: {
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
-    padding: 0,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.05)',
+    paddingHorizontal: 20,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    padding: 20,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  userInfo: {
+  userInfoHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+    marginBottom: 20,
   },
   userAvatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 15,
     overflow: 'hidden',
-    marginRight: 16,
-    shadowColor: '#667eea',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
   },
   userAvatarGradient: {
     flex: 1,
@@ -399,120 +409,61 @@ const styles = StyleSheet.create({
   },
   userAvatarText: {
     color: '#fff',
+    fontSize: 18,
     fontWeight: 'bold',
-    fontSize: 20,
   },
-  userDetails: {
+  userInfo: {
     flex: 1,
   },
   userName: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  userEmail: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 8,
-  },
-  roleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f8fafc',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginBottom: 2,
   },
   userRole: {
-    fontSize: 12,
-    color: '#667eea',
-    fontWeight: '600',
-    marginLeft: 4,
-  },
-  closeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#f3f4f6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 8,
+    fontSize: 14,
+    color: '#6b7280',
   },
   menuItems: {
-    paddingHorizontal: 20,
-    paddingVertical: 8,
+    marginBottom: 20,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 4,
-    borderRadius: 12,
-    marginBottom: 4,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 8,
   },
   menuIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
-  menuText: {
+  menuContent: {
     flex: 1,
   },
-  menuItemTitle: {
+  menuTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: '#1f2937',
     marginBottom: 2,
   },
-  menuItemSubtitle: {
-    fontSize: 13,
+  menuSubtitle: {
+    fontSize: 12,
     color: '#6b7280',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#f3f4f6',
-    marginHorizontal: 20,
-    marginVertical: 8,
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    marginHorizontal: 16,
-    marginBottom: 16,
-    backgroundColor: '#fef2f2',
-    borderWidth: 1,
-    borderColor: '#fecaca',
-  },
-  logoutIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#fee2e2',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  logoutText: {
-    flex: 1,
-  },
-  logoutTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#dc2626',
-    marginBottom: 2,
-  },
-  logoutSubtitle: {
-    fontSize: 13,
-    color: '#ef4444',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#f3f4f6',
+    paddingTop: 20,
   },
 });

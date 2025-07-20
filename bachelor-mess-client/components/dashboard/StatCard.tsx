@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '../ThemedText';
@@ -7,76 +7,177 @@ import { ThemedText } from '../ThemedText';
 interface StatCardProps {
   title: string;
   value: string | number;
-  icon: keyof typeof Ionicons.glyphMap;
-  gradient: readonly [string, string];
-  subtitle?: string;
-  detail?: string;
+  icon: string;
+  gradient?: readonly [string, string];
   onPress?: () => void;
+  subtitle?: string;
+  trend?: 'up' | 'down' | 'stable';
+  trendValue?: string;
+  compact?: boolean;
 }
 
 export const StatCard: React.FC<StatCardProps> = ({
   title,
   value,
   icon,
-  gradient,
-  subtitle,
-  detail,
+  gradient = ['#667eea', '#764ba2'],
   onPress,
+  subtitle,
+  trend,
+  trendValue,
+  compact = false,
 }) => {
+  const Container = onPress ? TouchableOpacity : View;
+
+  const getTrendIcon = (trend?: string) => {
+    switch (trend) {
+      case 'up':
+        return 'trending-up';
+      case 'down':
+        return 'trending-down';
+      case 'stable':
+        return 'remove';
+      default:
+        return 'information-circle';
+    }
+  };
+
+  const getTrendColor = (trend?: string) => {
+    switch (trend) {
+      case 'up':
+        return '#10b981';
+      case 'down':
+        return '#ef4444';
+      case 'stable':
+        return '#6b7280';
+      default:
+        return '#6b7280';
+    }
+  };
+
   return (
-    <View style={styles.statCard}>
-      <LinearGradient colors={gradient} style={styles.statGradient}>
-        <Ionicons name={icon} size={24} color='#fff' />
-        <ThemedText style={styles.statValue}>{value}</ThemedText>
-        <ThemedText style={styles.statLabel}>{title}</ThemedText>
-        {subtitle && (
-          <ThemedText style={styles.statSubtitle}>{subtitle}</ThemedText>
-        )}
-        {detail && <ThemedText style={styles.statDetail}>{detail}</ThemedText>}
+    <Container
+      style={[styles.container, compact && styles.compactContainer]}
+      onPress={onPress}
+      activeOpacity={onPress ? 0.8 : 1}
+    >
+      <LinearGradient colors={gradient} style={styles.gradient}>
+        <View style={styles.content}>
+          <View style={styles.iconContainer}>
+            <Ionicons
+              name={icon as any}
+              size={compact ? 20 : 24}
+              color='#fff'
+            />
+          </View>
+          <View style={styles.textContainer}>
+            <ThemedText style={[styles.title, compact && styles.compactTitle]}>
+              {title}
+            </ThemedText>
+            <ThemedText style={[styles.value, compact && styles.compactValue]}>
+              {value}
+            </ThemedText>
+            {subtitle && (
+              <ThemedText
+                style={[styles.subtitle, compact && styles.compactSubtitle]}
+              >
+                {subtitle}
+              </ThemedText>
+            )}
+          </View>
+          {trend && (
+            <View style={styles.trendContainer}>
+              <Ionicons
+                name={getTrendIcon(trend) as any}
+                size={compact ? 12 : 16}
+                color={getTrendColor(trend)}
+              />
+              {trendValue && (
+                <ThemedText
+                  style={[
+                    styles.trendValue,
+                    compact && styles.compactTrendValue,
+                  ]}
+                >
+                  {trendValue}
+                </ThemedText>
+              )}
+            </View>
+          )}
+        </View>
       </LinearGradient>
-    </View>
+    </Container>
   );
 };
 
 const styles = StyleSheet.create({
-  statCard: {
-    flex: 1,
-    marginHorizontal: 4,
+  container: {
     borderRadius: 16,
+    marginBottom: 12,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  statGradient: {
+  compactContainer: {
+    marginBottom: 8,
+  },
+  gradient: {
     padding: 16,
-    alignItems: 'center',
-    minHeight: 100,
   },
-  statValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
+  content: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  textContainer: {
+    flex: 1,
+  },
+  title: {
     color: '#fff',
-    marginTop: 8,
+    fontSize: 14,
+    fontWeight: '500',
     marginBottom: 4,
   },
-  statLabel: {
+  compactTitle: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.9)',
-    textAlign: 'center',
   },
-  statSubtitle: {
-    fontSize: 10,
+  value: {
+    color: '#fff',
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  compactValue: {
+    fontSize: 18,
+  },
+  subtitle: {
     color: 'rgba(255, 255, 255, 0.8)',
-    textAlign: 'center',
+    fontSize: 12,
+  },
+  compactSubtitle: {
+    fontSize: 10,
+  },
+  trendContainer: {
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  trendValue: {
+    color: '#fff',
+    fontSize: 10,
     marginTop: 2,
   },
-  statDetail: {
-    fontSize: 10,
-    color: 'rgba(255, 255, 255, 0.8)',
-    textAlign: 'center',
-    marginTop: 2,
+  compactTrendValue: {
+    fontSize: 8,
   },
 });

@@ -387,7 +387,7 @@ class StatisticsServiceImpl implements StatisticsService {
       const response = await httpClient.post<void>(
         API_ENDPOINTS.STATISTICS.REFRESH,
         {},
-        { skipCache: true }
+        { cache: false }
       );
 
       if (!response.success) {

@@ -11,6 +11,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -23,6 +24,8 @@ import bazarService, {
 } from '../services/bazarService';
 import { useAuth } from '../context/AuthContext';
 import { useColorScheme } from '../hooks/useColorScheme';
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 interface BazarFormProps {
   onSuccess?: () => void;
@@ -49,6 +52,12 @@ export const BazarForm: React.FC<BazarFormProps> = ({
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Responsive design calculations
+  const isSmallScreen = screenWidth < 375;
+  const isTablet = screenWidth >= 768;
+  const containerPadding = isSmallScreen ? 12 : isTablet ? 24 : 16;
+  const inputHeight = isSmallScreen ? 44 : 48;
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -200,38 +209,42 @@ export const BazarForm: React.FC<BazarFormProps> = ({
   };
 
   const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.8,
-    });
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
 
-    if (!result.canceled && result.assets[0]) {
-      const asset = result.assets[0];
-      // setReceiptImage({ // This state was removed, so this line is removed
-      //   uri: asset.uri,
-      //   type: 'image/jpeg',
-      //   name: 'receipt.jpg',
-      // });
+      if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        setFormData(prev => ({
+          ...prev,
+          receiptImage: {
+            uri: asset.uri,
+            type: 'image/jpeg',
+            name: 'receipt.jpg',
+          },
+        }));
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image. Please try again.');
     }
   };
 
   const removeImage = () => {
-    // setReceiptImage(null); // This state was removed, so this line is removed
+    setFormData(prev => ({ ...prev, receiptImage: undefined }));
   };
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
     setShowDatePicker(false);
     if (selectedDate) {
-      const dateString = selectedDate.toISOString().split('T')[0];
       setFormData(prev => ({
         ...prev,
-        date: dateString,
+        date: selectedDate.toISOString().split('T')[0],
       }));
-      if (errors.date) {
-        setErrors(prev => ({ ...prev, date: '' }));
-      }
     }
   };
 
@@ -240,378 +253,421 @@ export const BazarForm: React.FC<BazarFormProps> = ({
   };
 
   const getItemIcon = (index: number) => {
-    const icons = ['fast-food', 'restaurant', 'pizza', 'wine', 'cafe'];
+    const icons = ['fast-food', 'restaurant', 'cafe', 'pizza', 'wine'];
     return icons[index % icons.length];
   };
 
   const getItemColor = (index: number) => {
-    // Only use colors for light theme
-    if (colorScheme === 'light') {
-      const colors = ['#f59e0b', '#10b981', '#6366f1', '#ef4444', '#8b5cf6'];
-      return colors[index % colors.length];
-    }
-    // For dark theme, use a neutral color
-    return '#6b7280';
+    const colors = ['#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ef4444'];
+    return colors[index % colors.length];
   };
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
     >
       <ScrollView
         style={styles.scrollView}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { padding: containerPadding },
+        ]}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps='handled'
       >
-        <ThemedView style={styles.formContainer}>
-          <View style={styles.header}>
-            <ThemedText style={styles.title}>Add Bazar Entry</ThemedText>
-            <ThemedText style={styles.subtitle}>
-              Record your grocery shopping expenses
-            </ThemedText>
-          </View>
-
-          {/* Date Selection */}
-          <View style={styles.section}>
-            <ThemedText style={styles.sectionTitle}>Date</ThemedText>
-            <TouchableOpacity
-              style={styles.dateContainer}
-              onPress={openDatePicker}
-              activeOpacity={0.7}
-            >
-              <Ionicons name='calendar' size={20} color='#6b7280' />
-              <ThemedText style={styles.dateText}>
-                {new Date(formData.date).toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                })}
-              </ThemedText>
-              <Ionicons name='chevron-down' size={16} color='#6b7280' />
-            </TouchableOpacity>
-            {errors.date && (
-              <ThemedText style={styles.errorText}>{errors.date}</ThemedText>
-            )}
-          </View>
-
-          {/* Items Section */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <ThemedText style={styles.sectionTitle}>Items</ThemedText>
-              <TouchableOpacity style={styles.addButton} onPress={addItem}>
-                <Ionicons name='add' size={20} color='#fff' />
-                <ThemedText style={styles.addButtonText}>Add Item</ThemedText>
-              </TouchableOpacity>
-            </View>
-
-            {formData.items.map((item, index) => (
-              <View key={index} style={styles.itemCard}>
-                <View style={styles.itemHeader}>
-                  <View style={styles.itemIcon}>
-                    <Ionicons
-                      name={getItemIcon(index) as any}
-                      size={20}
-                      color={getItemColor(index)}
-                    />
-                  </View>
-                  <ThemedText style={styles.itemTitle}>
-                    Item {index + 1}
-                  </ThemedText>
-                  {formData.items.length > 1 && (
-                    <TouchableOpacity
-                      style={styles.removeButton}
-                      onPress={() => removeItem(index)}
-                    >
-                      <Ionicons name='close' size={16} color='#ef4444' />
-                    </TouchableOpacity>
-                  )}
-                </View>
-
-                <View style={styles.itemInputs}>
-                  <View style={styles.inputGroup}>
-                    <ThemedText style={styles.inputLabel}>Name</ThemedText>
-                    <TextInput
-                      style={[
-                        styles.textInput,
-                        errors[`item${index}Name`] && styles.inputError,
-                      ]}
-                      placeholder='e.g., Rice, Vegetables'
-                      value={item.name}
-                      onChangeText={value => updateItem(index, 'name', value)}
-                    />
-                    {errors[`item${index}Name`] && (
-                      <ThemedText style={styles.errorText}>
-                        {errors[`item${index}Name`]}
-                      </ThemedText>
-                    )}
-                  </View>
-
-                  <View style={styles.inputRow}>
-                    <View style={[styles.inputGroup, styles.halfWidth]}>
-                      <ThemedText style={styles.inputLabel}>
-                        Quantity
-                      </ThemedText>
-                      <TextInput
-                        style={[
-                          styles.textInput,
-                          errors[`item${index}Quantity`] && styles.inputError,
-                        ]}
-                        placeholder='e.g., 5kg, 2 pieces'
-                        value={item.quantity}
-                        onChangeText={value =>
-                          updateItem(index, 'quantity', value)
-                        }
-                      />
-                      {errors[`item${index}Quantity`] && (
-                        <ThemedText style={styles.errorText}>
-                          {errors[`item${index}Quantity`]}
-                        </ThemedText>
-                      )}
-                    </View>
-
-                    <View style={[styles.inputGroup, styles.halfWidth]}>
-                      <ThemedText style={styles.inputLabel}>
-                        Price (৳)
-                      </ThemedText>
-                      <TextInput
-                        style={[
-                          styles.textInput,
-                          errors[`item${index}Price`] && styles.inputError,
-                        ]}
-                        placeholder='0'
-                        keyboardType='numeric'
-                        value={item.price.toString()}
-                        onChangeText={value =>
-                          updateItem(index, 'price', parseFloat(value) || 0)
-                        }
-                      />
-                      {errors[`item${index}Price`] && (
-                        <ThemedText style={styles.errorText}>
-                          {errors[`item${index}Price`]}
-                        </ThemedText>
-                      )}
-                    </View>
-                  </View>
-                </View>
-              </View>
-            ))}
-
-            {errors.items && (
-              <ThemedText style={styles.errorText}>{errors.items}</ThemedText>
-            )}
-          </View>
-
-          {/* Total Amount */}
-          <View style={styles.section}>
-            <ThemedText style={styles.sectionTitle}>Total Amount</ThemedText>
-            <View style={styles.totalContainer}>
-              <ThemedText style={styles.totalLabel}>৳</ThemedText>
-              <TextInput
-                style={[
-                  styles.totalInput,
-                  errors.totalAmount && styles.inputError,
-                ]}
-                placeholder='0'
-                keyboardType='numeric'
-                value={formData.totalAmount.toString()}
-                onChangeText={value =>
-                  setFormData(prev => ({
-                    ...prev,
-                    totalAmount: parseFloat(value) || 0,
-                  }))
-                }
+        {/* Header */}
+        <View style={styles.header}>
+          <LinearGradient
+            colors={['#667eea', '#764ba2']}
+            style={styles.headerGradient}
+          >
+            <View style={styles.headerContent}>
+              <Ionicons
+                name='cart'
+                size={isSmallScreen ? 24 : 28}
+                color='#fff'
               />
-            </View>
-            {errors.totalAmount && (
-              <ThemedText style={styles.errorText}>
-                {errors.totalAmount}
+              <ThemedText
+                style={[
+                  styles.headerTitle,
+                  isSmallScreen && styles.headerTitleSmall,
+                ]}
+              >
+                Add Bazar Entry
               </ThemedText>
-            )}
-          </View>
+            </View>
+          </LinearGradient>
+        </View>
 
-          {/* Description */}
-          <View style={styles.section}>
-            <ThemedText style={styles.sectionTitle}>
-              Description (Optional)
+        {/* Date Selection */}
+        <View
+          style={[styles.section, { marginBottom: isSmallScreen ? 16 : 20 }]}
+        >
+          <ThemedText
+            style={[
+              styles.sectionTitle,
+              isSmallScreen && styles.sectionTitleSmall,
+            ]}
+          >
+            Date
+          </ThemedText>
+          <TouchableOpacity
+            style={[
+              styles.dateButton,
+              { height: inputHeight },
+              errors.date && styles.inputError,
+            ]}
+            onPress={openDatePicker}
+          >
+            <Ionicons name='calendar' size={20} color='#667eea' />
+            <ThemedText style={styles.dateButtonText}>
+              {formData.date
+                ? new Date(formData.date).toLocaleDateString()
+                : 'Select Date'}
             </ThemedText>
-            <TextInput
-              style={styles.textArea}
-              placeholder='Add any additional notes about this bazar entry...'
-              value={formData.description}
-              onChangeText={value =>
-                setFormData(prev => ({ ...prev, description: value }))
-              }
-              multiline
-              numberOfLines={3}
-            />
-          </View>
+          </TouchableOpacity>
+          {errors.date && (
+            <ThemedText style={styles.errorText}>{errors.date}</ThemedText>
+          )}
+        </View>
 
-          {/* Receipt Upload */}
-          <View style={styles.section}>
-            <ThemedText style={styles.sectionTitle}>
-              Receipt (Optional)
+        {/* Items Section */}
+        <View
+          style={[styles.section, { marginBottom: isSmallScreen ? 16 : 20 }]}
+        >
+          <View style={styles.sectionHeader}>
+            <ThemedText
+              style={[
+                styles.sectionTitle,
+                isSmallScreen && styles.sectionTitleSmall,
+              ]}
+            >
+              Items
             </ThemedText>
-            {/* {receiptImage ? ( // This state was removed, so this block is removed
-              <View style={styles.imageContainer}>
-                <View style={styles.imagePreview}>
-                  <Ionicons name='image' size={40} color='#6b7280' />
-                  <ThemedText style={styles.imageText}>
-                    Receipt uploaded
-                  </ThemedText>
-                </View>
-                <TouchableOpacity
-                  style={styles.removeImageButton}
-                  onPress={removeImage}
-                >
-                  <Ionicons name='close' size={20} color='#ef4444' />
-                </TouchableOpacity>
-              </View>
-            ) : ( */}
-            <TouchableOpacity style={styles.uploadButton} onPress={pickImage}>
-              <Ionicons name='camera' size={24} color='#6b7280' />
-              <ThemedText style={styles.uploadText}>Upload Receipt</ThemedText>
+            <TouchableOpacity
+              style={[styles.addButton, isSmallScreen && styles.addButtonSmall]}
+              onPress={addItem}
+            >
+              <Ionicons
+                name='add'
+                size={isSmallScreen ? 16 : 20}
+                color='#fff'
+              />
+              <ThemedText
+                style={[
+                  styles.addButtonText,
+                  isSmallScreen && styles.addButtonTextSmall,
+                ]}
+              >
+                Add Item
+              </ThemedText>
             </TouchableOpacity>
-            {/* )} */}
           </View>
 
-          {/* Debug Section - Only show in development */}
-          {__DEV__ && (
-            <View style={styles.debugSection}>
-              <ThemedText style={styles.debugTitle}>Debug Info</ThemedText>
-              <View style={styles.debugContent}>
-                <ThemedText style={styles.debugText}>
-                  Items: {formData.items.length} | Total: $
-                  {formData.totalAmount}
+          {formData.items.map((item, index) => (
+            <View
+              key={index}
+              style={[styles.itemCard, isSmallScreen && styles.itemCardSmall]}
+            >
+              <View style={styles.itemHeader}>
+                <View style={styles.itemIcon}>
+                  <Ionicons
+                    name={getItemIcon(index) as any}
+                    size={isSmallScreen ? 16 : 20}
+                    color={getItemColor(index)}
+                  />
+                </View>
+                <ThemedText
+                  style={[
+                    styles.itemNumber,
+                    isSmallScreen && styles.itemNumberSmall,
+                  ]}
+                >
+                  Item {index + 1}
                 </ThemedText>
-                <ThemedText style={styles.debugText}>
-                  Date: {formData.date} | Valid:{' '}
-                  {Object.keys(errors).length === 0 ? 'Yes' : 'No'}
-                </ThemedText>
-                <ThemedText style={styles.debugText}>
-                  User: {user?.id ? 'Authenticated' : 'Not authenticated'}
-                </ThemedText>
-                {Object.keys(errors).length > 0 && (
-                  <ThemedText style={styles.debugError}>
-                    Errors: {Object.keys(errors).join(', ')}
-                  </ThemedText>
+                {formData.items.length > 1 && (
+                  <TouchableOpacity
+                    style={[
+                      styles.removeButton,
+                      isSmallScreen && styles.removeButtonSmall,
+                    ]}
+                    onPress={() => removeItem(index)}
+                  >
+                    <Ionicons
+                      name='close-circle'
+                      size={isSmallScreen ? 16 : 20}
+                      color='#ef4444'
+                    />
+                  </TouchableOpacity>
                 )}
               </View>
-            </View>
-          )}
 
-          {/* Action Buttons */}
-          <View style={styles.actions}>
-            {showCancel && (
-              <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
-                <ThemedText style={styles.cancelButtonText}>Cancel</ThemedText>
+              <View
+                style={[styles.inputRow, isSmallScreen && styles.inputRowSmall]}
+              >
+                <View style={[styles.inputContainer, { flex: 2 }]}>
+                  <ThemedText
+                    style={[
+                      styles.inputLabel,
+                      isSmallScreen && styles.inputLabelSmall,
+                    ]}
+                  >
+                    Name
+                  </ThemedText>
+                  <TextInput
+                    style={[
+                      styles.textInput,
+                      { height: inputHeight },
+                      errors.items && styles.inputError,
+                    ]}
+                    value={item.name}
+                    onChangeText={value => updateItem(index, 'name', value)}
+                    placeholder='Item name'
+                    placeholderTextColor='#9ca3af'
+                  />
+                </View>
+
+                <View style={[styles.inputContainer, { flex: 1 }]}>
+                  <ThemedText
+                    style={[
+                      styles.inputLabel,
+                      isSmallScreen && styles.inputLabelSmall,
+                    ]}
+                  >
+                    Quantity
+                  </ThemedText>
+                  <TextInput
+                    style={[
+                      styles.textInput,
+                      { height: inputHeight },
+                      errors.items && styles.inputError,
+                    ]}
+                    value={item.quantity}
+                    onChangeText={value => updateItem(index, 'quantity', value)}
+                    placeholder='e.g., 2kg'
+                    placeholderTextColor='#9ca3af'
+                  />
+                </View>
+              </View>
+
+              <View style={styles.inputContainer}>
+                <ThemedText
+                  style={[
+                    styles.inputLabel,
+                    isSmallScreen && styles.inputLabelSmall,
+                  ]}
+                >
+                  Price (৳)
+                </ThemedText>
+                <TextInput
+                  style={[
+                    styles.textInput,
+                    { height: inputHeight },
+                    errors.items && styles.inputError,
+                  ]}
+                  value={item.price.toString()}
+                  onChangeText={value =>
+                    updateItem(index, 'price', Number(value) || 0)
+                  }
+                  placeholder='0'
+                  placeholderTextColor='#9ca3af'
+                  keyboardType='numeric'
+                />
+              </View>
+            </View>
+          ))}
+
+          {errors.items && (
+            <ThemedText style={styles.errorText}>{errors.items}</ThemedText>
+          )}
+        </View>
+
+        {/* Total Amount */}
+        <View
+          style={[styles.section, { marginBottom: isSmallScreen ? 16 : 20 }]}
+        >
+          <ThemedText
+            style={[
+              styles.sectionTitle,
+              isSmallScreen && styles.sectionTitleSmall,
+            ]}
+          >
+            Total Amount
+          </ThemedText>
+          <TextInput
+            style={[
+              styles.textInput,
+              { height: inputHeight },
+              errors.totalAmount && styles.inputError,
+            ]}
+            value={formData.totalAmount.toString()}
+            onChangeText={value =>
+              setFormData(prev => ({
+                ...prev,
+                totalAmount: Number(value) || 0,
+              }))
+            }
+            placeholder='0'
+            placeholderTextColor='#9ca3af'
+            keyboardType='numeric'
+          />
+          {errors.totalAmount && (
+            <ThemedText style={styles.errorText}>
+              {errors.totalAmount}
+            </ThemedText>
+          )}
+        </View>
+
+        {/* Description */}
+        <View
+          style={[styles.section, { marginBottom: isSmallScreen ? 16 : 20 }]}
+        >
+          <ThemedText
+            style={[
+              styles.sectionTitle,
+              isSmallScreen && styles.sectionTitleSmall,
+            ]}
+          >
+            Description (Optional)
+          </ThemedText>
+          <TextInput
+            style={[styles.textArea, { height: isSmallScreen ? 80 : 100 }]}
+            value={formData.description}
+            onChangeText={value =>
+              setFormData(prev => ({ ...prev, description: value }))
+            }
+            placeholder='Add any additional notes...'
+            placeholderTextColor='#9ca3af'
+            multiline
+            textAlignVertical='top'
+          />
+        </View>
+
+        {/* Receipt Image */}
+        <View
+          style={[styles.section, { marginBottom: isSmallScreen ? 16 : 20 }]}
+        >
+          <ThemedText
+            style={[
+              styles.sectionTitle,
+              isSmallScreen && styles.sectionTitleSmall,
+            ]}
+          >
+            Receipt Image (Optional)
+          </ThemedText>
+          {formData.receiptImage ? (
+            <View style={styles.imageContainer}>
+              <View style={styles.imagePreview}>
+                <Ionicons name='image' size={40} color='#667eea' />
+                <ThemedText style={styles.imageText}>Image Selected</ThemedText>
+              </View>
+              <TouchableOpacity
+                style={[
+                  styles.removeImageButton,
+                  isSmallScreen && styles.removeImageButtonSmall,
+                ]}
+                onPress={removeImage}
+              >
+                <Ionicons
+                  name='trash'
+                  size={isSmallScreen ? 16 : 20}
+                  color='#ef4444'
+                />
+                <ThemedText
+                  style={[
+                    styles.removeImageText,
+                    isSmallScreen && styles.removeImageTextSmall,
+                  ]}
+                >
+                  Remove
+                </ThemedText>
               </TouchableOpacity>
-            )}
+            </View>
+          ) : (
             <TouchableOpacity
-              style={styles.submitButton}
-              onPress={handleSubmit}
+              style={[
+                styles.imageButton,
+                { height: inputHeight },
+                isSmallScreen && styles.imageButtonSmall,
+              ]}
+              onPress={pickImage}
+            >
+              <Ionicons
+                name='camera'
+                size={isSmallScreen ? 20 : 24}
+                color='#667eea'
+              />
+              <ThemedText
+                style={[
+                  styles.imageButtonText,
+                  isSmallScreen && styles.imageButtonTextSmall,
+                ]}
+              >
+                Add Receipt Image
+              </ThemedText>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Action Buttons */}
+        <View
+          style={[
+            styles.actionButtons,
+            isSmallScreen && styles.actionButtonsSmall,
+          ]}
+        >
+          {showCancel && (
+            <TouchableOpacity
+              style={[
+                styles.cancelButton,
+                isSmallScreen && styles.cancelButtonSmall,
+              ]}
+              onPress={onCancel}
               disabled={loading}
             >
-              {loading ? (
-                <ActivityIndicator color='#fff' size='small' />
-              ) : (
-                <LinearGradient
-                  colors={['#667eea', '#764ba2']}
-                  style={styles.submitGradient}
-                >
-                  <Ionicons name='checkmark' size={20} color='#fff' />
-                  <ThemedText style={styles.submitButtonText}>
-                    Submit Bazar
-                  </ThemedText>
-                </LinearGradient>
-              )}
+              <ThemedText
+                style={[
+                  styles.cancelButtonText,
+                  isSmallScreen && styles.cancelButtonTextSmall,
+                ]}
+              >
+                Cancel
+              </ThemedText>
             </TouchableOpacity>
-          </View>
-        </ThemedView>
-      </ScrollView>
+          )}
 
-      {/* Date Picker Modal */}
-      <Modal
-        visible={showDatePicker}
-        transparent={true}
-        animationType='slide'
-        onRequestClose={() => setShowDatePicker(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <ThemedText style={styles.modalTitle}>Select Date</ThemedText>
-              <TouchableOpacity
-                onPress={() => setShowDatePicker(false)}
-                style={styles.closeButton}
-              >
-                <Ionicons name='close' size={24} color='#6b7280' />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.datePickerContainer}>
-              <TouchableOpacity
-                style={styles.dateOption}
-                onPress={() => {
-                  const today = new Date();
-                  const dateString = today.toISOString().split('T')[0];
-                  setFormData(prev => ({ ...prev, date: dateString }));
-                  setShowDatePicker(false);
-                }}
-              >
-                <Ionicons name='today' size={20} color='#667eea' />
-                <ThemedText style={styles.dateOptionText}>Today</ThemedText>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.dateOption}
-                onPress={() => {
-                  const yesterday = new Date();
-                  yesterday.setDate(yesterday.getDate() - 1);
-                  const dateString = yesterday.toISOString().split('T')[0];
-                  setFormData(prev => ({ ...prev, date: dateString }));
-                  setShowDatePicker(false);
-                }}
-              >
-                <Ionicons name='time' size={20} color='#f59e0b' />
-                <ThemedText style={styles.dateOptionText}>Yesterday</ThemedText>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.dateOption}
-                onPress={() => {
-                  const twoDaysAgo = new Date();
-                  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-                  const dateString = twoDaysAgo.toISOString().split('T')[0];
-                  setFormData(prev => ({ ...prev, date: dateString }));
-                  setShowDatePicker(false);
-                }}
-              >
-                <Ionicons name='calendar' size={20} color='#10b981' />
-                <ThemedText style={styles.dateOptionText}>
-                  2 Days Ago
+          <TouchableOpacity
+            style={[
+              styles.submitButton,
+              isSmallScreen && styles.submitButtonSmall,
+            ]}
+            onPress={handleSubmit}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator size='small' color='#fff' />
+            ) : (
+              <>
+                <Ionicons
+                  name='checkmark'
+                  size={isSmallScreen ? 16 : 20}
+                  color='#fff'
+                />
+                <ThemedText
+                  style={[
+                    styles.submitButtonText,
+                    isSmallScreen && styles.submitButtonTextSmall,
+                  ]}
+                >
+                  Submit
                 </ThemedText>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.dateOption}
-                onPress={() => {
-                  const threeDaysAgo = new Date();
-                  threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-                  const dateString = threeDaysAgo.toISOString().split('T')[0];
-                  setFormData(prev => ({ ...prev, date: dateString }));
-                  setShowDatePicker(false);
-                }}
-              >
-                <Ionicons name='calendar-outline' size={20} color='#6366f1' />
-                <ThemedText style={styles.dateOptionText}>
-                  3 Days Ago
-                </ThemedText>
-              </TouchableOpacity>
-            </View>
-          </View>
+              </>
+            )}
+          </TouchableOpacity>
         </View>
-      </Modal>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 };
@@ -619,60 +675,63 @@ export const BazarForm: React.FC<BazarFormProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#f8fafc',
   },
   scrollView: {
     flex: 1,
   },
-  formContainer: {
-    padding: 20,
+  scrollContent: {
+    paddingBottom: 100,
   },
   header: {
-    marginBottom: 24,
+    marginBottom: 20,
   },
-  title: {
-    fontSize: 24,
+  headerGradient: {
+    padding: 20,
+    borderRadius: 16,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    color: '#fff',
+    fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 8,
+    marginLeft: 12,
   },
-  subtitle: {
-    fontSize: 16,
-    color: '#6b7280',
+  headerTitleSmall: {
+    fontSize: 18,
   },
   section: {
-    marginBottom: 24,
+    marginBottom: 20,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
     marginBottom: 12,
   },
-  dateContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f9fafb',
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  dateText: {
-    flex: 1,
-    marginLeft: 12,
+  sectionTitle: {
     fontSize: 16,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 8,
+  },
+  sectionTitleSmall: {
+    fontSize: 14,
   },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#10b981',
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderRadius: 8,
+  },
+  addButtonSmall: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
   },
   addButtonText: {
     color: '#fff',
@@ -680,13 +739,34 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 4,
   },
+  addButtonTextSmall: {
+    fontSize: 12,
+  },
+  dateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+  },
+  dateButtonText: {
+    marginLeft: 8,
+    fontSize: 16,
+    color: '#374151',
+  },
   itemCard: {
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
     borderColor: '#e5e7eb',
+  },
+  itemCardSmall: {
+    padding: 12,
+    marginBottom: 8,
   },
   itemHeader: {
     flexDirection: 'row',
@@ -698,64 +778,74 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     backgroundColor: '#f3f4f6',
-    alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    alignItems: 'center',
+    marginRight: 8,
   },
-  itemTitle: {
-    flex: 1,
-    fontSize: 16,
+  itemNumber: {
+    fontSize: 14,
     fontWeight: '600',
+    color: '#374151',
+    flex: 1,
+  },
+  itemNumberSmall: {
+    fontSize: 12,
   },
   removeButton: {
     padding: 4,
   },
-  itemInputs: {
-    gap: 12,
+  removeButtonSmall: {
+    padding: 2,
   },
   inputRow: {
     flexDirection: 'row',
     gap: 12,
+    marginBottom: 12,
   },
-  inputGroup: {
+  inputRowSmall: {
+    gap: 8,
+    marginBottom: 8,
+  },
+  inputContainer: {
     flex: 1,
   },
-  halfWidth: {
-    flex: 0.5,
-  },
   inputLabel: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '500',
-    marginBottom: 6,
-    color: '#374151',
+    color: '#6b7280',
+    marginBottom: 4,
+  },
+  inputLabelSmall: {
+    fontSize: 11,
   },
   textInput: {
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#d1d5db',
     borderRadius: 8,
-    padding: 12,
+    paddingHorizontal: 12,
     fontSize: 16,
+    color: '#374151',
   },
   textArea: {
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#d1d5db',
     borderRadius: 8,
-    padding: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     fontSize: 16,
-    minHeight: 80,
-    textAlignVertical: 'top',
+    color: '#374151',
   },
   inputError: {
     borderColor: '#ef4444',
   },
   errorText: {
-    color: '#ef4444',
     fontSize: 12,
+    color: '#ef4444',
     marginTop: 4,
   },
-  totalContainer: {
+  imageButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
@@ -763,86 +853,102 @@ const styles = StyleSheet.create({
     borderColor: '#d1d5db',
     borderRadius: 8,
     paddingHorizontal: 12,
-  },
-  totalLabel: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  totalInput: {
-    flex: 1,
-    padding: 12,
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  uploadButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f9fafb',
-    borderWidth: 2,
-    borderColor: '#d1d5db',
     borderStyle: 'dashed',
-    borderRadius: 12,
-    padding: 24,
   },
-  uploadText: {
+  imageButtonSmall: {
+    paddingHorizontal: 8,
+  },
+  imageButtonText: {
     marginLeft: 8,
     fontSize: 16,
-    color: '#6b7280',
+    color: '#374151',
+  },
+  imageButtonTextSmall: {
+    fontSize: 14,
   },
   imageContainer: {
-    position: 'relative',
-  },
-  imagePreview: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#d1d5db',
-    borderRadius: 12,
-    padding: 24,
+    borderRadius: 8,
+    padding: 12,
+  },
+  imagePreview: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 20,
   },
   imageText: {
     marginTop: 8,
     fontSize: 14,
-    color: '#6b7280',
+    color: '#374151',
   },
   removeImageButton: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fef2f2',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#fecaca',
   },
-  actions: {
+  removeImageButtonSmall: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  removeImageText: {
+    marginLeft: 4,
+    fontSize: 14,
+    color: '#ef4444',
+  },
+  removeImageTextSmall: {
+    fontSize: 12,
+  },
+  actionButtons: {
     flexDirection: 'row',
     gap: 12,
-    marginTop: 24,
+    marginTop: 20,
+  },
+  actionButtonsSmall: {
+    gap: 8,
+    marginTop: 16,
   },
   cancelButton: {
     flex: 1,
-    backgroundColor: '#f3f4f6',
-    padding: 16,
-    borderRadius: 12,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f3f4f6',
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+  },
+  cancelButtonSmall: {
+    paddingVertical: 10,
   },
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#374151',
   },
+  cancelButtonTextSmall: {
+    fontSize: 14,
+  },
   submitButton: {
     flex: 2,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  submitGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 16,
+    backgroundColor: '#10b981',
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  submitButtonSmall: {
+    paddingVertical: 10,
   },
   submitButtonText: {
     fontSize: 16,
@@ -850,81 +956,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginLeft: 8,
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
-    width: '80%',
-    alignItems: 'center',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    width: '100%',
-    marginBottom: 20,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#374151',
-  },
-  closeButton: {
-    padding: 8,
-  },
-  datePickerContainer: {
-    width: '100%',
-    alignItems: 'center',
-  },
-  dateOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    marginBottom: 10,
-    width: '100%',
-    backgroundColor: '#f9fafb',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  dateOptionText: {
-    marginLeft: 12,
-    fontSize: 16,
-    color: '#374151',
-  },
-  debugSection: {
-    marginTop: 20,
-    padding: 16,
-    backgroundColor: '#f3f4f6',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  debugTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
-    color: '#374151',
-  },
-  debugContent: {
-    gap: 4,
-  },
-  debugText: {
-    fontSize: 12,
-    color: '#6b7280',
-    fontFamily: 'monospace',
-  },
-  debugError: {
-    fontSize: 12,
-    color: '#ef4444',
-    fontFamily: 'monospace',
-    fontWeight: '600',
+  submitButtonTextSmall: {
+    fontSize: 14,
   },
 });

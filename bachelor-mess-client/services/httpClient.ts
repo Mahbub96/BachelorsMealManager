@@ -264,7 +264,9 @@ class HttpClient {
         case HTTP_STATUS.INTERNAL_SERVER_ERROR:
           throw new Error('Server error. Please try again later.');
         case HTTP_STATUS.BAD_REQUEST:
-          throw new Error(errorData?.message || errorData?.error || 'Invalid request data.');
+          throw new Error(
+            errorData?.message || errorData?.error || 'Invalid request data.'
+          );
         default:
           throw error;
       }
@@ -668,10 +670,13 @@ class HttpClient {
   async getOfflineStatus() {
     const online = await this.isOnline();
     const pendingRequests = await offlineStorage.getPendingRequests();
+    const storageSize = await offlineStorage.getStorageSize();
 
     return {
       isOnline: online,
       pendingRequests: pendingRequests.length,
+      pendingCount: pendingRequests.length,
+      storageSize: storageSize,
       lastChecked: this.isOnlineCache?.timestamp || null,
     };
   }

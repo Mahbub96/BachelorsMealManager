@@ -10,6 +10,7 @@ interface MealCardProps {
   meal: MealEntry;
   onPress?: (meal: MealEntry) => void;
   isAdmin?: boolean;
+  showUserInfo?: boolean;
   onStatusUpdate?: (mealId: string, status: 'approved' | 'rejected') => void;
   onDelete?: (mealId: string) => void;
   onEdit?: (mealId: string) => void;
@@ -19,6 +20,7 @@ export const MealCard: React.FC<MealCardProps> = ({
   meal,
   onPress,
   isAdmin = false,
+  showUserInfo = false,
   onStatusUpdate,
   onDelete,
   onEdit,
@@ -88,6 +90,18 @@ export const MealCard: React.FC<MealCardProps> = ({
             </View>
           </View>
         </View>
+
+        {/* User Info for Admin/Super Admin */}
+        {showUserInfo && meal.userId && (
+          <View style={styles.userInfo}>
+            <ThemedText style={styles.userInfoLabel}>Submitted by:</ThemedText>
+            <ThemedText style={styles.userInfoText}>
+              {typeof meal.userId === 'object'
+                ? meal.userId.name || meal.userId.email
+                : `User ID: ${meal.userId}`}
+            </ThemedText>
+          </View>
+        )}
 
         {meal.notes && (
           <View style={styles.notes}>
@@ -219,6 +233,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#374151',
     lineHeight: 20,
+  },
+  userInfo: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+  },
+  userInfoLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6b7280',
+    marginBottom: 4,
+  },
+  userInfoText: {
+    fontSize: 14,
+    color: '#374151',
+    fontWeight: '500',
   },
   adminActions: {
     flexDirection: 'row',

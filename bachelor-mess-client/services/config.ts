@@ -98,6 +98,7 @@ export const API_ENDPOINTS = {
     PROFILE: '/api/users/profile',
     UPDATE_PROFILE: '/api/users/profile',
     ALL: '/api/users',
+    CREATE: '/api/users',
     BY_ID: (id: string) => `/api/users/${id}`,
     UPDATE: (id: string) => `/api/users/${id}`,
     DELETE: (id: string) => `/api/users/${id}`,

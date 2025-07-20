@@ -1858,7 +1858,7 @@ export const StatsGrid: React.FC<{
         isMobile ? styles.statsGridMobile : styles.statsGridTablet,
       ]}
     >
-      {stats.map((stat, index) => (
+      {(stats || []).map((stat, index) => (
         <Pressable
           key={index}
           style={[
