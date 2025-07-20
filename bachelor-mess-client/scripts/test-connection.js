@@ -3,9 +3,9 @@
 const axios = require('axios');
 
 const testUrls = [
-  'http://localhost:3000/health',
-  'http://localhost:3000/api/docs',
-  'http://localhost:3000/api/auth/login',
+  `${process.env.EXPO_PUBLIC_DEV_SERVER_URL}/health`,
+  `${process.env.EXPO_PUBLIC_DEV_SERVER_URL}/api/docs`,
+  `${process.env.EXPO_PUBLIC_DEV_SERVER_URL}/api/auth/login`,
 ];
 
 async function testConnection() {

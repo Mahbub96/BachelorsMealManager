@@ -1,7 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { config as API_CONFIG, ApiResponse, HTTP_STATUS } from './config';
 import offlineStorage from './offlineStorage';
-import authService from './authService';
 import authEventEmitter from './authEventEmitter';
 
 // Request configuration interface
@@ -265,7 +264,7 @@ class HttpClient {
         case HTTP_STATUS.INTERNAL_SERVER_ERROR:
           throw new Error('Server error. Please try again later.');
         case HTTP_STATUS.BAD_REQUEST:
-          throw new Error(errorData?.message || 'Invalid request data.');
+          throw new Error(errorData?.message || errorData?.error || 'Invalid request data.');
         default:
           throw error;
       }
@@ -355,19 +354,18 @@ class HttpClient {
       console.log('🔐 Auth token cleared due to unauthorized access');
 
       // Trigger logout event to redirect user to login
-      this.triggerLogout();
+      await this.triggerLogout();
     } catch (error) {
       console.error('Error clearing auth data:', error);
     }
   }
 
   // Trigger logout event
-  private triggerLogout(): void {
+  private async triggerLogout(): Promise<void> {
     try {
-      // Use auth service to trigger logout
-      authService.logout().catch(error => {
-        console.error('Error during auto-logout:', error);
-      });
+      // Clear auth data directly
+      await AsyncStorage.multiRemove(['auth_token', 'auth_user']);
+      console.log('🔐 Auth token cleared due to unauthorized access');
 
       // Emit auth event
       authEventEmitter.emitAuthEvent({

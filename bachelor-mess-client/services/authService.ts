@@ -12,6 +12,7 @@ export interface RegisterData {
   name: string;
   email: string;
   password: string;
+  phone: string;
   role?: 'admin' | 'member';
 }
 
@@ -93,11 +94,14 @@ class AuthServiceImpl implements AuthService {
     try {
       const response = await httpClient.post<{ message: string }>(
         API_ENDPOINTS.AUTH.REGISTER,
-        data
+        data,
+        {
+          skipAuth: true // Registration is a public endpoint
+        }
       );
-
       return response;
     } catch (error) {
+
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Registration failed',

@@ -2,8 +2,14 @@
 const getApiUrl = (): string => {
   // Use environment variable for API URL
   const envUrl = process.env.EXPO_PUBLIC_API_URL;
+  
+  console.log('🔧 Environment check:');
+  console.log('🔧 EXPO_PUBLIC_API_URL:', envUrl);
+  console.log('🔧 NODE_ENV:', process.env.NODE_ENV);
+  console.log('🔧 __DEV__:', __DEV__);
 
   if (envUrl) {
+    console.log('✅ Using environment API URL:', envUrl);
     return envUrl;
   }
 
@@ -13,7 +19,9 @@ const getApiUrl = (): string => {
       '⚠️  Using development API URL. Set EXPO_PUBLIC_API_URL for production.'
     );
     // Use actual IP for development - works on device/emulator
-    return 'http://192.168.0.130:3000/api';
+    const devUrl = 'https://mess.mahbub.dev';
+    console.log('🔧 Using development URL:', devUrl);
+    return devUrl;
   }
 
   // Production should always use environment variable
@@ -24,16 +32,24 @@ const getApiUrl = (): string => {
 
 export const config = {
   apiUrl: getApiUrl(),
-  timeout: 10000,
-  maxRetries: 3,
-  retryDelay: 1000,
-  cacheDuration: 300000, // 5 minutes
+  timeout: parseInt(process.env.EXPO_PUBLIC_API_TIMEOUT || '10000'),
+  maxRetries: parseInt(process.env.EXPO_PUBLIC_API_MAX_RETRIES || '3'),
+  retryDelay: parseInt(process.env.EXPO_PUBLIC_API_RETRY_DELAY || '1000'),
+  cacheDuration: parseInt(process.env.EXPO_PUBLIC_CACHE_DURATION || '300000'), // 5 minutes
 };
 
 // Validate configuration
 if (!config.apiUrl) {
   throw new Error('API URL is not configured');
 }
+
+console.log('🔧 Final config:', {
+  apiUrl: config.apiUrl,
+  timeout: config.timeout,
+  maxRetries: config.maxRetries,
+  retryDelay: config.retryDelay,
+  cacheDuration: config.cacheDuration,
+});
 
 // API Response interface
 export interface ApiResponse<T = any> {
@@ -57,79 +73,79 @@ export const HTTP_STATUS = {
   SERVICE_UNAVAILABLE: 503,
 } as const;
 
-// API Endpoints configuration
+// API Endpoints configuration - Updated to work with base URL (backend routes already include /api)
 export const API_ENDPOINTS = {
   AUTH: {
-    LOGIN: '/auth/login',
-    REGISTER: '/auth/register',
-    LOGOUT: '/auth/logout',
-    REFRESH: '/auth/refresh',
+    LOGIN: '/api/auth/login',
+    REGISTER: '/api/auth/register',
+    LOGOUT: '/api/auth/logout',
+    REFRESH: '/api/auth/refresh',
   },
   USERS: {
-    PROFILE: '/users/profile',
-    UPDATE_PROFILE: '/users/profile',
-    ALL: '/users',
-    BY_ID: (id: string) => `/users/${id}`,
-    UPDATE: (id: string) => `/users/${id}`,
-    DELETE: (id: string) => `/users/${id}`,
-    STATS: (id: string) => `/users/${id}/stats`,
+    PROFILE: '/api/users/profile',
+    UPDATE_PROFILE: '/api/users/profile',
+    ALL: '/api/users',
+    BY_ID: (id: string) => `/api/users/${id}`,
+    UPDATE: (id: string) => `/api/users/${id}`,
+    DELETE: (id: string) => `/api/users/${id}`,
+    STATS: (id: string) => `/api/users/${id}/stats`,
   },
   MEALS: {
-    SUBMIT: '/meals/submit',
-    USER: '/meals/user',
-    ALL: '/meals',
-    STATUS: (id: string) => `/meals/${id}/status`,
-    UPDATE: (id: string) => `/meals/${id}`,
-    DELETE: (id: string) => `/meals/${id}`,
-    STATS: '/meals/stats/overview',
-    USER_STATS: '/meals/user/stats',
-    BY_ID: (id: string) => `/meals/${id}`,
-    BULK_APPROVE: '/meals/bulk-approve',
+    SUBMIT: '/api/meals/submit',
+    USER: '/api/meals/user',
+    ALL: '/api/meals',
+    STATUS: (id: string) => `/api/meals/${id}/status`,
+    UPDATE: (id: string) => `/api/meals/${id}`,
+    DELETE: (id: string) => `/api/meals/${id}`,
+    STATS: '/api/meals/stats/overview',
+    USER_STATS: '/api/meals/user/stats',
+    BY_ID: (id: string) => `/api/meals/${id}`,
+    BULK_APPROVE: '/api/meals/bulk-approve',
   },
   BAZAR: {
-    SUBMIT: '/bazar',
-    USER: '/bazar/user',
-    ALL: '/bazar/all',
-    STATUS: (id: string) => `/bazar/${id}/status`,
-    STATS: '/bazar/stats/overview',
-    DELETE: (id: string) => `/bazar/${id}`,
-    BY_ID: (id: string) => `/bazar/${id}`,
-    UPDATE: (id: string) => `/bazar/${id}`,
-    USER_STATS: '/bazar/stats/user',
-    BULK_APPROVE: '/bazar/bulk-approve',
+    SUBMIT: '/api/bazar',
+    USER: '/api/bazar/user',
+    ALL: '/api/bazar/all',
+    STATUS: (id: string) => `/api/bazar/${id}/status`,
+    STATS: '/api/bazar/stats/overview',
+    DELETE: (id: string) => `/api/bazar/${id}`,
+    BY_ID: (id: string) => `/api/bazar/${id}`,
+    UPDATE: (id: string) => `/api/bazar/${id}`,
+    USER_STATS: '/api/bazar/stats/user',
+    BULK_APPROVE: '/api/bazar/bulk-approve',
   },
   DASHBOARD: {
     HEALTH: '/health', // Public health endpoint
-    STATS: '/dashboard/stats',
-    ACTIVITIES: '/dashboard/activities',
-    COMBINED: '/dashboard',
-    STATISTICS: '/dashboard/statistics',
+    STATS: '/api/dashboard/stats',
+    ACTIVITIES: '/api/dashboard/activities',
+    COMBINED: '/api/dashboard',
+    STATISTICS: '/api/dashboard/statistics',
   },
   ANALYTICS: {
-    DATA: '/analytics',
+    DATA: '/api/analytics',
   },
   STATISTICS: {
-    COMPLETE: '/statistics/complete',
-    GLOBAL: '/statistics/global',
-    MEALS: '/statistics/meals',
-    BAZAR: '/statistics/bazar',
-    USERS: '/statistics/users',
-    ACTIVITY: '/statistics/activity',
-    MONTHLY: '/statistics/monthly',
-    REFRESH: '/statistics/refresh',
+    COMPLETE: '/api/statistics/complete',
+    GLOBAL: '/api/statistics/global',
+    MEALS: '/api/statistics/meals',
+    BAZAR: '/api/statistics/bazar',
+    USERS: '/api/statistics/users',
+    ACTIVITY: '/api/statistics/activity',
+    MONTHLY: '/api/statistics/monthly',
+    REFRESH: '/api/statistics/refresh',
   },
   ACTIVITY: {
-    RECENT: '/activity/recent',
-    CURRENT_MONTH_MEALS: '/activity/current-month-meals',
-    STATS: '/activity/stats',
-    SEARCH: '/activity/search',
-    BY_ID: (id: string) => `/activity/${id}`,
+    RECENT: '/api/activity/recent',
+    CURRENT_MONTH_MEALS: '/api/activity/current-month-meals',
+    STATS: '/api/activity/stats',
+    SEARCH: '/api/activity/search',
+    BY_ID: (id: string) => `/api/activity/${id}`,
   },
   USER_STATS: {
-    DASHBOARD: '/user-stats/dashboard',
-    MEALS: '/user-stats/meals',
-    BAZAR: '/user-stats/bazar',
-    PAYMENTS: '/user-stats/payments',
+    DASHBOARD: '/api/user-stats/dashboard',
+    MEALS: '/api/user-stats/meals',
+    BAZAR: '/api/user-stats/bazar',
+    PAYMENTS: '/api/user-stats/payments',
   },
 } as const;
 

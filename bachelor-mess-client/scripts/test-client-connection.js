@@ -4,7 +4,7 @@ const axios = require('axios');
 
 // Import config directly
 const config = {
-  apiUrl: 'http://localhost:3000/api',
+  apiUrl: process.env.EXPO_PUBLIC_API_URL,
   timeout: 10000,
   maxRetries: 3,
 };

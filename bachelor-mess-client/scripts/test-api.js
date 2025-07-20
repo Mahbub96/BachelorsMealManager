@@ -1,7 +1,7 @@
 const axios = require('axios');
 
 // Test configuration
-const baseUrl = 'http://localhost:3000';
+const baseUrl = process.env.EXPO_PUBLIC_DEV_SERVER_URL;
 
 async function testApiConnection() {
   console.log('🧪 Testing API connection...');
@@ -30,7 +30,7 @@ async function testApiConnection() {
 }
 
 async function testUserStatsEndpoint() {
-  const baseUrl = 'http://localhost:3000/api';
+  const baseUrl = process.env.EXPO_PUBLIC_API_URL;
 
   console.log('\n🧪 Testing user stats endpoint...');
   console.log(`🔗 Testing URL: ${baseUrl}/user-stats/dashboard`);

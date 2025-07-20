@@ -20,8 +20,7 @@ import { ChartsSection } from './ChartsSection';
 import { DashboardHeader } from './DashboardHeader';
 import { QuickActions } from './QuickActions';
 import { RecentActivity } from './RecentActivity';
-import { ResetButton } from '../ResetButton';
-import { LogoutButton } from '../LogoutButton';
+
 import errorHandler from '@/services/errorHandler';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -305,9 +304,7 @@ export const ApiDashboard: React.FC = () => {
 
       {/* Data Source Indicator */}
       <View style={styles.dataSourceIndicator}>
-        <Text style={styles.dataSourceText}>📡 Live Data</Text>
-        <ResetButton onReset={handleReset} style={styles.resetButton} />
-        <LogoutButton style={styles.logoutButton} />
+        <Text style={styles.dataSourceText}>Live Data</Text>
       </View>
 
       {/* Stats Grid */}
@@ -399,10 +396,5 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     fontWeight: '500',
   },
-  resetButton: {
-    marginLeft: 8,
-  },
-  logoutButton: {
-    marginLeft: 8,
-  },
+
 });

@@ -23,6 +23,7 @@ export interface UseApiIntegrationReturn {
     name: string,
     email: string,
     password: string,
+    phone: string,
     role?: 'admin' | 'member'
   ) => Promise<boolean>;
   logout: () => Promise<void>;
@@ -111,6 +112,7 @@ export const useApiIntegration = (): UseApiIntegrationReturn => {
       name: string,
       email: string,
       password: string,
+      phone: string,
       role: 'admin' | 'member' = 'member'
     ): Promise<boolean> => {
       setLoading(true);
@@ -121,6 +123,7 @@ export const useApiIntegration = (): UseApiIntegrationReturn => {
           name,
           email,
           password,
+          phone,
           role,
         });
 

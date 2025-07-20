@@ -22,14 +22,8 @@ interface AuthContextType extends AuthData {
   isLoading: boolean;
 }
 
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  token: null,
-  role: null,
-  setAuth: () => {},
-  logout: async () => {},
-  isLoading: true,
-});
+// Create context with proper default values
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -48,30 +42,40 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        console.log('🔍 Checking authentication status...');
         const isAuthenticated = await authService.isAuthenticated();
+        console.log('🔍 Authentication check result:', isAuthenticated);
+        
         if (isAuthenticated) {
           const token = await authService.getStoredToken();
           const user = await authService.getStoredUser();
+          console.log('🔍 Stored token:', token ? 'Yes' : 'No');
+          console.log('🔍 Stored user:', user ? 'Yes' : 'No');
+          
           if (token && user) {
             setAuthState({
               user,
               token,
               role: user.role,
             });
+            console.log('✅ Auth state initialized with stored data');
           } else {
             // Clear invalid auth state
             setAuthState({ user: null, token: null, role: null });
+            console.log('🧹 Cleared invalid auth state');
           }
         } else {
           // No authentication found
           setAuthState({ user: null, token: null, role: null });
+          console.log('🧹 No authentication found, cleared state');
         }
       } catch (error) {
-        console.error('Error checking authentication:', error);
+        console.error('❌ Error checking authentication:', error);
         // Clear auth state on error
         setAuthState({ user: null, token: null, role: null });
       } finally {
         setIsLoading(false);
+        console.log('✅ Auth initialization complete');
       }
     };
 
@@ -95,7 +99,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
   }, []);
 
-  const setAuth = (data: AuthData) => setAuthState(data);
+  const setAuth = (data: AuthData) => {
+    console.log('🔄 Setting auth data:', { hasUser: !!data.user, hasToken: !!data.token });
+    setAuthState(data);
+  };
 
   const logout = async () => {
     try {
@@ -135,13 +142,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
+  // Create the context value
+  const contextValue: AuthContextType = {
+    ...auth,
+    setAuth,
+    logout,
+    isLoading,
+  };
+
+  console.log('🔧 AuthContext value:', {
+    hasUser: !!auth.user,
+    hasToken: !!auth.token,
+    isLoading,
+  });
+
   return (
-    <AuthContext.Provider value={{ ...auth, setAuth, logout, isLoading }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
 }
 
 export function useAuth(): AuthContextType {
-  return useContext(AuthContext);
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 }

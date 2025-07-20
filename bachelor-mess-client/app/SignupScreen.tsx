@@ -3,7 +3,7 @@ import { ThemedView } from '@/components/ThemedView';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -13,19 +13,20 @@ import {
   TextInput,
   View,
   ScrollView,
+  TouchableOpacity,
 } from 'react-native';
 import authService from '@/services/authService';
-import { useAuth } from '@/context/AuthContext';
 
 export default function SignupScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [role, setRole] = useState<'admin' | 'member'>('admin');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const { setAuth } = useAuth();
 
   const validateForm = () => {
     if (!name.trim()) {
@@ -40,8 +41,25 @@ export default function SignupScreen() {
       setError('Please enter a valid email address');
       return false;
     }
+    if (!phone.trim()) {
+      setError('Phone number is required');
+      return false;
+    }
+    if (phone.length < 10) {
+      setError('Please enter a valid phone number');
+      return false;
+    }
     if (password.length < 6) {
       setError('Password must be at least 6 characters long');
+      return false;
+    }
+    // Check for password complexity requirements
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasNumber = /\d/.test(password);
+    
+    if (!hasUpperCase || !hasLowerCase || !hasNumber) {
+      setError('Password must contain at least one uppercase letter, one lowercase letter, and one number');
       return false;
     }
     if (password !== confirmPassword) {
@@ -64,8 +82,9 @@ export default function SignupScreen() {
       const response = await authService.register({
         name: name.trim(),
         email: email.trim().toLowerCase(),
+        phone: phone.trim(),
         password,
-        role: 'member',
+        role,
       });
 
       if (response.success) {
@@ -153,6 +172,73 @@ export default function SignupScreen() {
 
             <View style={modernStyles.inputWrapper}>
               <Ionicons
+                name='call-outline'
+                size={20}
+                color='#007AFF'
+                style={modernStyles.inputIcon}
+              />
+              <TextInput
+                style={modernStyles.input}
+                placeholder='Phone Number'
+                placeholderTextColor='#b0b0b0'
+                autoCapitalize='none'
+                keyboardType='phone-pad'
+                value={phone}
+                onChangeText={setPhone}
+              />
+            </View>
+
+            <View style={modernStyles.roleContainer}>
+              <ThemedText style={modernStyles.roleLabel}>Select Role:</ThemedText>
+              <View style={modernStyles.roleButtons}>
+                <TouchableOpacity
+                  style={[
+                    modernStyles.roleButton,
+                    role === 'admin' && modernStyles.roleButtonActive,
+                  ]}
+                  onPress={() => setRole('admin')}
+                >
+                  <Ionicons
+                    name={role === 'admin' ? 'shield-checkmark' : 'shield-outline'}
+                    size={20}
+                    color={role === 'admin' ? '#fff' : '#007AFF'}
+                  />
+                  <ThemedText
+                    style={[
+                      modernStyles.roleButtonText,
+                      role === 'admin' && modernStyles.roleButtonTextActive,
+                    ]}
+                  >
+                    Admin
+                  </ThemedText>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    modernStyles.roleButton,
+                    role === 'member' && modernStyles.roleButtonActive,
+                  ]}
+                  onPress={() => setRole('member')}
+                >
+                  <Ionicons
+                    name={role === 'member' ? 'people' : 'people-outline'}
+                    size={20}
+                    color={role === 'member' ? '#fff' : '#007AFF'}
+                  />
+                  <ThemedText
+                    style={[
+                      modernStyles.roleButtonText,
+                      role === 'member' && modernStyles.roleButtonTextActive,
+                    ]}
+                  >
+                    Member
+                  </ThemedText>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={modernStyles.inputWrapper}>
+              <Ionicons
                 name='lock-closed-outline'
                 size={20}
                 color='#007AFF'
@@ -160,7 +246,7 @@ export default function SignupScreen() {
               />
               <TextInput
                 style={modernStyles.input}
-                placeholder='Password'
+                placeholder='Password (min 6 chars, 1 uppercase, 1 lowercase, 1 number)'
                 placeholderTextColor='#b0b0b0'
                 secureTextEntry
                 value={password}
@@ -303,5 +389,46 @@ const modernStyles = StyleSheet.create({
     color: '#007AFF',
     fontSize: 14,
     fontWeight: '600',
+  },
+  roleContainer: {
+    width: '100%',
+    marginBottom: 16,
+  },
+  roleLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  roleButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  roleButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#e9ecef',
+    backgroundColor: '#f8f9fa',
+    gap: 8,
+  },
+  roleButtonActive: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  roleButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#007AFF',
+  },
+  roleButtonTextActive: {
+    color: '#fff',
   },
 });

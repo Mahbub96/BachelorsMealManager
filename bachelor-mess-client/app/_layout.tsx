@@ -19,7 +19,7 @@ export const unstable_settings = {
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
-function RootLayoutContent() {
+function AppContent() {
   const { user } = useAuth();
 
   return (
@@ -105,7 +105,7 @@ export default function RootLayout() {
     <AuthProvider>
       <MessDataProvider>
         <AuthGuard>
-          <RootLayoutContent />
+          <AppContent />
         </AuthGuard>
       </MessDataProvider>
     </AuthProvider>

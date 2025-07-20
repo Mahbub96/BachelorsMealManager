@@ -367,7 +367,7 @@ const PieModal: React.FC<{
                 <ThemedText style={styles.valueCardLabel}>Value</ThemedText>
               </View>
               <ThemedText style={styles.valueCardValue}>
-                ৳{(data.value || 0).toLocaleString()}
+                {(data.value || 0).toLocaleString()}
               </ThemedText>
             </View>
 
@@ -380,7 +380,7 @@ const PieModal: React.FC<{
                 </ThemedText>
               </View>
               <ThemedText style={styles.totalCardValue}>
-                ৳{total.toLocaleString()}
+                {total.toLocaleString()}
               </ThemedText>
             </View>
 
@@ -394,7 +394,7 @@ const PieModal: React.FC<{
                   </ThemedText>
                 </View>
                 <ThemedText style={styles.forecastValue}>
-                  ৳{data.forecast.toLocaleString()}
+                  {data.forecast.toLocaleString()}
                 </ThemedText>
                 <ThemedText style={styles.forecastNote}>
                   Predicted for next period
@@ -655,10 +655,10 @@ const TrendModal: React.FC<{
                   ]}
                 >
                   {data.trend === 'up'
-                    ? '↗️ Increasing'
+                    ? 'Increasing'
                     : data.trend === 'down'
-                    ? '↘️ Decreasing'
-                    : '→ Stable'}
+                    ? 'Decreasing'
+                    : 'Stable'}
                 </ThemedText>
               </View>
             </View>
@@ -1142,7 +1142,6 @@ export const LineChart: React.FC<LineChartProps> = ({
                       },
                     ]}
                   >
-                    ৳
                     {typeof item.value === 'number' && !isNaN(item.value)
                       ? item.value.toLocaleString()
                       : '0'}
