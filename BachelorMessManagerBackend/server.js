@@ -39,6 +39,8 @@ const monitoringRoutes = require('./src/routes/monitoring');
 const userStatsRoutes = require('./src/routes/userStats');
 const activityRoutes = require('./src/routes/activity');
 const statisticsRoutes = require('./src/routes/statistics');
+const superAdminRoutes = require('./src/routes/superAdmin');
+const uiConfigRoutes = require('./src/routes/uiConfig');
 
 // Import statistics service
 const StatisticsService = require('./src/services/statisticsService');
@@ -362,6 +364,8 @@ function startServer() {
   app.use(`${config.apiPrefix}/user-stats`, userStatsRoutes);
   app.use(`${config.apiPrefix}/activity`, activityRoutes);
   app.use(`${config.apiPrefix}/statistics`, statisticsRoutes);
+  app.use(`${config.apiPrefix}/super-admin`, superAdminRoutes);
+  app.use(`${config.apiPrefix}/ui-config`, uiConfigRoutes);
 
   // API Documentation endpoint
   app.get(`${config.apiPrefix}/docs`, (req, res) => {

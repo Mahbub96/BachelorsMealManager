@@ -22,7 +22,7 @@ curl -s http://192.168.0.130:3000/health | jq '.'
 
 # Test login endpoint
 echo "🔐 Testing login endpoint..."
-curl -s -X POST http://192.168.0.130:3000/api/auth/login \
+curl -s -X POST http://192.168.0.130:3000/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"test@example.com","password":"password123"}' | jq '.'
 

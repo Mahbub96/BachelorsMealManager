@@ -1,8 +1,10 @@
+import { Platform } from 'react-native';
+
 // Environment-based configuration for security
 const getApiUrl = (): string => {
   // Use environment variable for API URL
   const envUrl = process.env.EXPO_PUBLIC_API_URL;
-  
+
   console.log('🔧 Environment check:');
   console.log('🔧 EXPO_PUBLIC_API_URL:', envUrl);
   console.log('🔧 NODE_ENV:', process.env.NODE_ENV);
@@ -19,7 +21,18 @@ const getApiUrl = (): string => {
       '⚠️  Using development API URL. Set EXPO_PUBLIC_API_URL for production.'
     );
     // Use actual IP for development - works on device/emulator
-    const devUrl = 'https://mess.mahbub.dev';
+    // Try different IPs based on environment
+    let devUrl = 'http://192.168.0.130:3000';
+
+    // For Android emulator, use 10.0.2.2
+    if (Platform.OS === 'android' && __DEV__) {
+      devUrl = 'http://10.0.2.2:3000';
+    }
+
+    // For iOS simulator, use localhost
+    if (Platform.OS === 'ios' && __DEV__) {
+      devUrl = 'http://localhost:3000';
+    }
     console.log('🔧 Using development URL:', devUrl);
     return devUrl;
   }

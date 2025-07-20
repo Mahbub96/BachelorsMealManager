@@ -23,6 +23,8 @@ export default function SignupScreen() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [role, setRole] = useState<'admin' | 'member'>('admin');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -57,9 +59,11 @@ export default function SignupScreen() {
     const hasUpperCase = /[A-Z]/.test(password);
     const hasLowerCase = /[a-z]/.test(password);
     const hasNumber = /\d/.test(password);
-    
+
     if (!hasUpperCase || !hasLowerCase || !hasNumber) {
-      setError('Password must contain at least one uppercase letter, one lowercase letter, and one number');
+      setError(
+        'Password must contain at least one uppercase letter, one lowercase letter, and one number'
+      );
       return false;
     }
     if (password !== confirmPassword) {
@@ -189,7 +193,9 @@ export default function SignupScreen() {
             </View>
 
             <View style={modernStyles.roleContainer}>
-              <ThemedText style={modernStyles.roleLabel}>Select Role:</ThemedText>
+              <ThemedText style={modernStyles.roleLabel}>
+                Select Role:
+              </ThemedText>
               <View style={modernStyles.roleButtons}>
                 <TouchableOpacity
                   style={[
@@ -199,7 +205,9 @@ export default function SignupScreen() {
                   onPress={() => setRole('admin')}
                 >
                   <Ionicons
-                    name={role === 'admin' ? 'shield-checkmark' : 'shield-outline'}
+                    name={
+                      role === 'admin' ? 'shield-checkmark' : 'shield-outline'
+                    }
                     size={20}
                     color={role === 'admin' ? '#fff' : '#007AFF'}
                   />
@@ -248,10 +256,20 @@ export default function SignupScreen() {
                 style={modernStyles.input}
                 placeholder='Password (min 6 chars, 1 uppercase, 1 lowercase, 1 number)'
                 placeholderTextColor='#b0b0b0'
-                secureTextEntry
+                secureTextEntry={!showPassword}
                 value={password}
                 onChangeText={setPassword}
               />
+              <Pressable
+                onPress={() => setShowPassword(!showPassword)}
+                style={modernStyles.passwordToggle}
+              >
+                <Ionicons
+                  name={showPassword ? 'eye-off' : 'eye'}
+                  size={20}
+                  color='#007AFF'
+                />
+              </Pressable>
             </View>
 
             <View style={modernStyles.inputWrapper}>
@@ -265,10 +283,20 @@ export default function SignupScreen() {
                 style={modernStyles.input}
                 placeholder='Confirm Password'
                 placeholderTextColor='#b0b0b0'
-                secureTextEntry
+                secureTextEntry={!showConfirmPassword}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
               />
+              <Pressable
+                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                style={modernStyles.passwordToggle}
+              >
+                <Ionicons
+                  name={showConfirmPassword ? 'eye-off' : 'eye'}
+                  size={20}
+                  color='#007AFF'
+                />
+              </Pressable>
             </View>
 
             {error ? (
@@ -355,6 +383,10 @@ const modernStyles = StyleSheet.create({
     height: 50,
     fontSize: 16,
     color: '#333',
+  },
+  passwordToggle: {
+    padding: 8,
+    marginLeft: 4,
   },
   error: {
     color: '#ef4444',

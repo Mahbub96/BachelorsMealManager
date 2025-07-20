@@ -21,7 +21,7 @@ export interface User {
   name: string;
   email: string;
   phone?: string;
-  role: 'admin' | 'member';
+  role: 'super_admin' | 'admin' | 'member';
   status: 'active' | 'inactive';
   joinDate: string;
   createdAt: string;
@@ -96,12 +96,11 @@ class AuthServiceImpl implements AuthService {
         API_ENDPOINTS.AUTH.REGISTER,
         data,
         {
-          skipAuth: true // Registration is a public endpoint
+          skipAuth: true, // Registration is a public endpoint
         }
       );
       return response;
     } catch (error) {
-
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Registration failed',

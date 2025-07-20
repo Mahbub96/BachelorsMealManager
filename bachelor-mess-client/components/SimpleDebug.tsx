@@ -1,168 +1,236 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-} from 'react-native';
-import { config } from '@/services/config';
-import httpClient from '@/services/httpClient';
-import networkService from '@/services/networkService';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { ThemedText } from './ThemedText';
+import { ThemedView } from './ThemedView';
+import authService from '@/services/authService';
+import { useAuth } from '@/context/AuthContext';
 
-export const SimpleDebug: React.FC = () => {
+export function SimpleDebug() {
+  const [isVisible, setIsVisible] = useState(false);
   const [debugInfo, setDebugInfo] = useState<any>({});
-  const [isLoading, setIsLoading] = useState(false);
+  const { user, token } = useAuth();
 
   const runDebugTests = async () => {
-    setIsLoading(true);
     const info: any = {};
 
     try {
-      // Test 1: Configuration
-      info.config = {
-        apiUrl: config.apiUrl,
-        timeout: config.timeout,
-        maxRetries: config.maxRetries,
+      // Test 1: Check environment
+      info.environment = {
+        apiUrl: process.env.EXPO_PUBLIC_API_URL,
+        nodeEnv: process.env.NODE_ENV,
+        isDev: __DEV__,
       };
 
-      // Test 2: Network Status
-      const networkStatus = await networkService.getStatus();
-      const networkType = await networkService.getNetworkType();
-      const isOnline = await networkService.isOnline();
-
-      info.network = {
-        status: networkStatus,
-        type: networkType,
-        isOnline,
+      // Test 2: Check auth service
+      info.authService = {
+        hasToken: !!token,
+        hasUser: !!user,
+        userRole: user?.role,
+        userName: user?.name,
       };
 
-      // Test 3: API Connectivity
+      // Test 3: Test API connectivity
       try {
-        const healthResponse = await httpClient.get('/health', {
-          skipAuth: true,
-          timeout: 5000,
-        });
+        const response = await fetch('http://192.168.0.130:3000/health');
+        const healthData = await response.json();
         info.apiConnectivity = {
-          success: healthResponse.success,
-          status: healthResponse.statusCode,
-          message: healthResponse.message,
+          status: response.status,
+          success: healthData.success,
+          message: healthData.message,
         };
       } catch (error) {
         info.apiConnectivity = {
-          success: false,
           error: error instanceof Error ? error.message : 'Unknown error',
         };
       }
 
-      // Test 4: HTTP Client Status
+      // Test 4: Test login endpoint
       try {
-        const offlineStatus = await httpClient.getOfflineStatus();
-        info.httpClient = {
-          offlineStatus,
+        const loginResponse = await fetch(
+          'http://192.168.0.130:3000/api/auth/login',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              email: 'mahbub@mess.com',
+              password: 'Password123',
+            }),
+          }
+        );
+        const loginData = await loginResponse.json();
+        info.loginTest = {
+          status: loginResponse.status,
+          success: loginData.success,
+          hasToken: !!loginData.data?.token,
+          hasUser: !!loginData.data?.user,
         };
       } catch (error) {
-        info.httpClient = {
+        info.loginTest = {
           error: error instanceof Error ? error.message : 'Unknown error',
         };
       }
 
       setDebugInfo(info);
+      setIsVisible(true);
     } catch (error) {
-      console.error('Debug test failed:', error);
-      setDebugInfo({
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-    } finally {
-      setIsLoading(false);
+      Alert.alert(
+        'Debug Error',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
     }
   };
 
-  useEffect(() => {
-    runDebugTests();
-  }, []);
+  if (!isVisible) {
+    return (
+      <TouchableOpacity style={styles.debugButton} onPress={runDebugTests}>
+        <ThemedText style={styles.debugButtonText}>🐛 Debug</ThemedText>
+      </TouchableOpacity>
+    );
+  }
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.title}>Debug Information</Text>
+    <ThemedView style={styles.container}>
+      <ThemedText style={styles.title}>Debug Information</ThemedText>
+
+      <ThemedText style={styles.sectionTitle}>Environment:</ThemedText>
+      <ThemedText style={styles.info}>
+        API URL: {debugInfo.environment?.apiUrl || 'Not set'}
+      </ThemedText>
+      <ThemedText style={styles.info}>
+        NODE_ENV: {debugInfo.environment?.nodeEnv || 'Not set'}
+      </ThemedText>
+      <ThemedText style={styles.info}>
+        __DEV__: {debugInfo.environment?.isDev ? 'true' : 'false'}
+      </ThemedText>
+
+      <ThemedText style={styles.sectionTitle}>Auth State:</ThemedText>
+      <ThemedText style={styles.info}>
+        Has Token: {debugInfo.authService?.hasToken ? 'Yes' : 'No'}
+      </ThemedText>
+      <ThemedText style={styles.info}>
+        Has User: {debugInfo.authService?.hasUser ? 'Yes' : 'No'}
+      </ThemedText>
+      <ThemedText style={styles.info}>
+        User Role: {debugInfo.authService?.userRole || 'None'}
+      </ThemedText>
+      <ThemedText style={styles.info}>
+        User Name: {debugInfo.authService?.userName || 'None'}
+      </ThemedText>
+
+      <ThemedText style={styles.sectionTitle}>API Connectivity:</ThemedText>
+      {debugInfo.apiConnectivity?.error ? (
+        <ThemedText style={styles.error}>
+          ❌ {debugInfo.apiConnectivity.error}
+        </ThemedText>
+      ) : (
+        <>
+          <ThemedText style={styles.info}>
+            Status: {debugInfo.apiConnectivity?.status}
+          </ThemedText>
+          <ThemedText style={styles.info}>
+            Success: {debugInfo.apiConnectivity?.success ? 'Yes' : 'No'}
+          </ThemedText>
+          <ThemedText style={styles.info}>
+            Message: {debugInfo.apiConnectivity?.message}
+          </ThemedText>
+        </>
+      )}
+
+      <ThemedText style={styles.sectionTitle}>Login Test:</ThemedText>
+      {debugInfo.loginTest?.error ? (
+        <ThemedText style={styles.error}>
+          ❌ {debugInfo.loginTest.error}
+        </ThemedText>
+      ) : (
+        <>
+          <ThemedText style={styles.info}>
+            Status: {debugInfo.loginTest?.status}
+          </ThemedText>
+          <ThemedText style={styles.info}>
+            Success: {debugInfo.loginTest?.success ? 'Yes' : 'No'}
+          </ThemedText>
+          <ThemedText style={styles.info}>
+            Has Token: {debugInfo.loginTest?.hasToken ? 'Yes' : 'No'}
+          </ThemedText>
+          <ThemedText style={styles.info}>
+            Has User: {debugInfo.loginTest?.hasUser ? 'Yes' : 'No'}
+          </ThemedText>
+        </>
+      )}
 
       <TouchableOpacity
-        style={[styles.button, isLoading && styles.buttonDisabled]}
-        onPress={runDebugTests}
-        disabled={isLoading}
+        style={styles.closeButton}
+        onPress={() => setIsVisible(false)}
       >
-        <Text style={styles.buttonText}>
-          {isLoading ? 'Running Tests...' : 'Refresh Debug Info'}
-        </Text>
+        <ThemedText style={styles.closeButtonText}>Close</ThemedText>
       </TouchableOpacity>
-
-      {Object.keys(debugInfo).length > 0 && (
-        <View style={styles.infoContainer}>
-          {Object.entries(debugInfo).map(([key, value]) => (
-            <View key={key} style={styles.section}>
-              <Text style={styles.sectionTitle}>{key.toUpperCase()}</Text>
-              <Text style={styles.sectionContent}>
-                {typeof value === 'object'
-                  ? JSON.stringify(value, null, 2)
-                  : String(value)}
-              </Text>
-            </View>
-          ))}
-        </View>
-      )}
-    </ScrollView>
+    </ThemedView>
   );
-};
+}
 
 const styles = StyleSheet.create({
+  debugButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    zIndex: 1000,
+  },
+  debugButtonText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
   container: {
-    flex: 1,
-    padding: 20,
-    backgroundColor: '#f5f5f5',
+    position: 'absolute',
+    top: 100,
+    left: 20,
+    right: 20,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    padding: 16,
+    borderRadius: 12,
+    maxHeight: 400,
+    zIndex: 1000,
   },
   title: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginBottom: 16,
     textAlign: 'center',
   },
-  button: {
-    backgroundColor: '#2196F3',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  buttonDisabled: {
-    backgroundColor: '#ccc',
-  },
-  buttonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  infoContainer: {
-    backgroundColor: 'white',
-    borderRadius: 8,
-    padding: 15,
-  },
-  section: {
-    marginBottom: 15,
-  },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
-    marginBottom: 5,
-    color: '#333',
+    marginTop: 12,
+    marginBottom: 4,
+    color: '#007AFF',
   },
-  sectionContent: {
+  info: {
     fontSize: 12,
-    fontFamily: 'monospace',
-    backgroundColor: '#f8f8f8',
-    padding: 10,
-    borderRadius: 4,
+    marginBottom: 2,
     color: '#666',
   },
+  error: {
+    fontSize: 12,
+    marginBottom: 2,
+    color: '#FF3B30',
+  },
+  closeButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginTop: 16,
+    alignSelf: 'center',
+  },
+  closeButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
 });
-
-export default SimpleDebug;

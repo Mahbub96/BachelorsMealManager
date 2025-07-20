@@ -727,18 +727,21 @@ export const BarChart: React.FC<BarChartProps> = ({
   showTrend = true,
   onBarPress,
 }) => {
+  // Safety check for data
+  const safeData = data || [];
   const router = useRouter();
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
-  const maxValue = Math.max(
-    ...data.map(item => Math.max(item.value || 0, item.forecast || 0))
-  );
+  const maxValue =
+    Math.max(
+      ...safeData.map(item => Math.max(item?.value || 0, item?.forecast || 0))
+    ) || 1; // Prevent division by zero
 
   // Responsive bar width calculation with better overflow handling
   const availableWidth = Math.min(screenWidth - 80, 320);
   const barWidth = Math.max(
     24,
-    Math.min(40, availableWidth / data.length - 10)
+    Math.min(40, availableWidth / Math.max(safeData.length, 1) - 10)
   );
   const barSpacing = 10;
   const labelArea = 90; // Increased label area for better readability
@@ -751,13 +754,13 @@ export const BarChart: React.FC<BarChartProps> = ({
     router.push({
       pathname: '/bar-details',
       params: {
-        label: item.label,
-        value: item.value.toString(),
-        forecast: item.forecast?.toString() || '0',
-        trend: item.trend || 'stable',
-        color: item.color,
-        description: item.details?.description || '',
-        notes: item.details?.notes || '',
+        label: item?.label || '',
+        value: (item?.value || 0).toString(),
+        forecast: (item?.forecast || 0).toString(),
+        trend: item?.trend || 'stable',
+        color: item?.color || '#1f2937',
+        description: item?.details?.description || '',
+        notes: item?.details?.notes || '',
       },
     });
 
@@ -792,11 +795,13 @@ export const BarChart: React.FC<BarChartProps> = ({
 
   return (
     <View style={styles.chartContainer}>
-      <View style={styles.chartHeader}>
-        <ThemedText style={styles.chartTitle} numberOfLines={1}>
-          {title}
-        </ThemedText>
-      </View>
+      {title && (
+        <View style={styles.chartHeader}>
+          <ThemedText style={styles.chartTitle} numberOfLines={1}>
+            {title}
+          </ThemedText>
+        </View>
+      )}
 
       {/* Bars */}
       <View
@@ -809,7 +814,7 @@ export const BarChart: React.FC<BarChartProps> = ({
           },
         ]}
       >
-        {data.map((item, index) => (
+        {safeData.map((item, index) => (
           <Pressable
             key={index}
             style={[
@@ -826,12 +831,12 @@ export const BarChart: React.FC<BarChartProps> = ({
             onPress={() => handleBarPress(item, index)}
           >
             {/* Forecast bar (if available) */}
-            {showForecast && item.forecast && (
+            {showForecast && item?.forecast && (
               <View
                 style={[
                   styles.forecastBar,
                   {
-                    height: (item.forecast / maxValue) * barAreaHeight,
+                    height: ((item?.forecast || 0) / maxValue) * barAreaHeight,
                     backgroundColor: '#f59e0b',
                     opacity: 0.4,
                   },
@@ -841,11 +846,11 @@ export const BarChart: React.FC<BarChartProps> = ({
 
             {/* Main bar with gradient */}
             <LinearGradient
-              colors={item.gradient}
+              colors={item?.gradient || ['#667eea', '#764ba2']}
               style={[
                 styles.mainBar,
                 {
-                  height: (item.value / maxValue) * barAreaHeight,
+                  height: ((item?.value || 0) / maxValue) * barAreaHeight,
                   width: barWidth - 6,
                   transform: [{ scale: selectedIndex === index ? 1.05 : 1 }],
                 },
@@ -853,7 +858,7 @@ export const BarChart: React.FC<BarChartProps> = ({
             />
 
             {/* Trend indicator */}
-            {showTrend && item.trend && (
+            {showTrend && item?.trend && getTrendIcon(item.trend) && (
               <View style={styles.trendContainer}>
                 <Ionicons
                   name={getTrendIcon(item.trend) as any}
@@ -868,7 +873,7 @@ export const BarChart: React.FC<BarChartProps> = ({
 
       {/* Labels with better overflow handling */}
       <View style={styles.labelsContainer}>
-        {data.map((item, index) => (
+        {safeData.map((item, index) => (
           <View
             key={index}
             style={[
@@ -885,13 +890,16 @@ export const BarChart: React.FC<BarChartProps> = ({
               numberOfLines={1}
               adjustsFontSizeToFit={true}
             >
-              {item.label}
+              {item?.label || ''}
             </ThemedText>
             <ThemedText
               style={[
                 styles.barValue,
                 {
-                  color: selectedIndex === index ? item.color : '#1f2937',
+                  color:
+                    selectedIndex === index
+                      ? item?.color || '#1f2937'
+                      : '#1f2937',
                   fontWeight: selectedIndex === index ? 'bold' : '600',
                   fontSize: 11,
                 },
@@ -899,7 +907,7 @@ export const BarChart: React.FC<BarChartProps> = ({
               numberOfLines={1}
               adjustsFontSizeToFit={true}
             >
-              {typeof item.value === 'number' && !isNaN(item.value)
+              {typeof item?.value === 'number' && !isNaN(item.value)
                 ? item.value.toLocaleString()
                 : '0'}
             </ThemedText>
@@ -956,39 +964,41 @@ export const LineChart: React.FC<LineChartProps> = ({
 
   return (
     <View style={styles.chartContainer}>
-      <View style={styles.chartHeader}>
-        <ThemedText style={styles.chartTitle} numberOfLines={1}>
-          {title}
-        </ThemedText>
-        {showTrend && (
-          <View style={styles.trendIndicator}>
-            <Ionicons
-              name={
-                trend === 'up'
-                  ? 'trending-up'
+      {title && (
+        <View style={styles.chartHeader}>
+          <ThemedText style={styles.chartTitle} numberOfLines={1}>
+            {title}
+          </ThemedText>
+          {showTrend && (
+            <View style={styles.trendIndicator}>
+              <Ionicons
+                name={
+                  trend === 'up'
+                    ? 'trending-up'
+                    : trend === 'down'
+                    ? 'trending-down'
+                    : 'remove'
+                }
+                size={16}
+                color={
+                  trend === 'up'
+                    ? '#10b981'
+                    : trend === 'down'
+                    ? '#ef4444'
+                    : '#6b7280'
+                }
+              />
+              <ThemedText style={styles.trendText} numberOfLines={1}>
+                {trend === 'up'
+                  ? 'Increasing'
                   : trend === 'down'
-                  ? 'trending-down'
-                  : 'remove'
-              }
-              size={16}
-              color={
-                trend === 'up'
-                  ? '#10b981'
-                  : trend === 'down'
-                  ? '#ef4444'
-                  : '#6b7280'
-              }
-            />
-            <ThemedText style={styles.trendText} numberOfLines={1}>
-              {trend === 'up'
-                ? 'Increasing'
-                : trend === 'down'
-                ? 'Decreasing'
-                : 'Stable'}
-            </ThemedText>
-          </View>
-        )}
-      </View>
+                  ? 'Decreasing'
+                  : 'Stable'}
+              </ThemedText>
+            </View>
+          )}
+        </View>
+      )}
 
       <View style={styles.lineChartContainer}>
         <View
@@ -1308,9 +1318,11 @@ export const PieChart: React.FC<PieChartProps> = ({
 
   return (
     <View style={styles.chartContainer}>
-      <ThemedText style={styles.chartTitle} numberOfLines={1}>
-        {title}
-      </ThemedText>
+      {title && (
+        <ThemedText style={styles.chartTitle} numberOfLines={1}>
+          {title}
+        </ThemedText>
+      )}
       <View style={styles.pieChartContainer}>
         <View style={styles.pieChart}>
           {data.map((item, index) => {
@@ -1508,39 +1520,41 @@ export const SwappableLineChart: React.FC<SwappableLineChartProps> = ({
 
   return (
     <View style={[styles.chartContainer, { width: '100%' }]}>
-      <View style={styles.chartHeader}>
-        <ThemedText style={styles.chartTitle} numberOfLines={1}>
-          {title}
-        </ThemedText>
-        {showTrend && (
-          <View style={styles.trendIndicator}>
-            <Ionicons
-              name={
-                trend === 'up'
-                  ? 'trending-up'
+      {title && (
+        <View style={styles.chartHeader}>
+          <ThemedText style={styles.chartTitle} numberOfLines={1}>
+            {title}
+          </ThemedText>
+          {showTrend && (
+            <View style={styles.trendIndicator}>
+              <Ionicons
+                name={
+                  trend === 'up'
+                    ? 'trending-up'
+                    : trend === 'down'
+                    ? 'trending-down'
+                    : 'remove'
+                }
+                size={16}
+                color={
+                  trend === 'up'
+                    ? '#10b981'
+                    : trend === 'down'
+                    ? '#ef4444'
+                    : '#6b7280'
+                }
+              />
+              <ThemedText style={styles.trendText} numberOfLines={1}>
+                {trend === 'up'
+                  ? 'Increasing'
                   : trend === 'down'
-                  ? 'trending-down'
-                  : 'remove'
-              }
-              size={16}
-              color={
-                trend === 'up'
-                  ? '#10b981'
-                  : trend === 'down'
-                  ? '#ef4444'
-                  : '#6b7280'
-              }
-            />
-            <ThemedText style={styles.trendText} numberOfLines={1}>
-              {trend === 'up'
-                ? 'Increasing'
-                : trend === 'down'
-                ? 'Decreasing'
-                : 'Stable'}
-            </ThemedText>
-          </View>
-        )}
-      </View>
+                  ? 'Decreasing'
+                  : 'Stable'}
+              </ThemedText>
+            </View>
+          )}
+        </View>
+      )}
 
       {/* Performance Summary */}
       <View style={styles.performanceSummary}>

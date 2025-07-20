@@ -78,8 +78,11 @@ export const ChartsSection: React.FC<ChartsSectionProps> = ({
       label: 'Groceries',
       value: Math.round(safeExpenses * 0.6),
       forecast: Math.round(safeExpenses * 0.6 * 1.02),
-      color: DESIGN_SYSTEM.colors.danger,
-      gradient: [DESIGN_SYSTEM.colors.danger, '#dc2626'] as [string, string],
+      color: DESIGN_SYSTEM.colors.danger || '#ef4444',
+      gradient: [DESIGN_SYSTEM.colors.danger || '#ef4444', '#dc2626'] as [
+        string,
+        string
+      ],
       trend: 'up' as const,
     },
     {
@@ -106,56 +109,77 @@ export const ChartsSection: React.FC<ChartsSectionProps> = ({
       label: 'Mon',
       value: 45,
       forecast: 48,
-      color: DESIGN_SYSTEM.colors.success,
-      gradient: [DESIGN_SYSTEM.colors.success, '#059669'] as [string, string],
+      color: DESIGN_SYSTEM.colors.success || '#10b981',
+      gradient: [DESIGN_SYSTEM.colors.success || '#10b981', '#059669'] as [
+        string,
+        string
+      ],
       trend: 'up' as const,
     },
     {
       label: 'Tue',
       value: 42,
       forecast: 44,
-      color: DESIGN_SYSTEM.colors.success,
-      gradient: [DESIGN_SYSTEM.colors.success, '#059669'] as [string, string],
+      color: DESIGN_SYSTEM.colors.success || '#10b981',
+      gradient: [DESIGN_SYSTEM.colors.success || '#10b981', '#059669'] as [
+        string,
+        string
+      ],
       trend: 'stable' as const,
     },
     {
       label: 'Wed',
       value: 48,
       forecast: 50,
-      color: DESIGN_SYSTEM.colors.success,
-      gradient: [DESIGN_SYSTEM.colors.success, '#059669'] as [string, string],
+      color: DESIGN_SYSTEM.colors.success || '#10b981',
+      gradient: [DESIGN_SYSTEM.colors.success || '#10b981', '#059669'] as [
+        string,
+        string
+      ],
       trend: 'up' as const,
     },
     {
       label: 'Thu',
       value: 40,
       forecast: 42,
-      color: DESIGN_SYSTEM.colors.success,
-      gradient: [DESIGN_SYSTEM.colors.success, '#059669'] as [string, string],
+      color: DESIGN_SYSTEM.colors.success || '#10b981',
+      gradient: [DESIGN_SYSTEM.colors.success || '#10b981', '#059669'] as [
+        string,
+        string
+      ],
       trend: 'down' as const,
     },
     {
       label: 'Fri',
       value: 52,
       forecast: 55,
-      color: DESIGN_SYSTEM.colors.success,
-      gradient: [DESIGN_SYSTEM.colors.success, '#059669'] as [string, string],
+      color: DESIGN_SYSTEM.colors.success || '#10b981',
+      gradient: [DESIGN_SYSTEM.colors.success || '#10b981', '#059669'] as [
+        string,
+        string
+      ],
       trend: 'up' as const,
     },
     {
       label: 'Sat',
       value: 38,
       forecast: 40,
-      color: DESIGN_SYSTEM.colors.success,
-      gradient: [DESIGN_SYSTEM.colors.success, '#059669'] as [string, string],
+      color: DESIGN_SYSTEM.colors.success || '#10b981',
+      gradient: [DESIGN_SYSTEM.colors.success || '#10b981', '#059669'] as [
+        string,
+        string
+      ],
       trend: 'stable' as const,
     },
     {
       label: 'Sun',
       value: 35,
       forecast: 37,
-      color: DESIGN_SYSTEM.colors.success,
-      gradient: [DESIGN_SYSTEM.colors.success, '#059669'] as [string, string],
+      color: DESIGN_SYSTEM.colors.success || '#10b981',
+      gradient: [DESIGN_SYSTEM.colors.success || '#10b981', '#059669'] as [
+        string,
+        string
+      ],
       trend: 'down' as const,
     },
   ];

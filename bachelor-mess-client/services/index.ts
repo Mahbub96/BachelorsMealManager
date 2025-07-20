@@ -65,6 +65,60 @@ export type {
   UserStats,
 } from './userService';
 
+// Notification Service
+export { notificationService } from './notificationService';
+export type {
+  NotificationData,
+  NotificationSettings,
+  NotificationService,
+} from './notificationService';
+
+// Real-time Service
+export { realtimeService } from './realtimeService';
+export type {
+  RealtimeEvent,
+  RealtimeEventType,
+  RealtimeConnection,
+  RealtimeService,
+} from './realtimeService';
+
+// Background Sync Service
+export { backgroundSyncService } from './backgroundSyncService';
+export type {
+  SyncTask,
+  SyncStatus,
+  BackgroundSyncService,
+} from './backgroundSyncService';
+
+// Crash Reporting Service
+export { crashReportingService } from './crashReportingService';
+export type {
+  CrashReport,
+  DeviceInfo as CrashDeviceInfo,
+  AppInfo as CrashAppInfo,
+  PerformanceMetric,
+  CrashReportingService,
+} from './crashReportingService';
+
+// Analytics Tracking Service
+export { analyticsTrackingService } from './analyticsTrackingService';
+export type {
+  AnalyticsEvent,
+  UserProperties,
+  SessionInfo,
+  DeviceInfo,
+  AppInfo,
+  AnalyticsTrackingService,
+} from './analyticsTrackingService';
+
+// Feature Manager Service
+export { featureManager } from './featureManager';
+export type {
+  FeatureConfig,
+  FeatureStatus,
+  FeatureManager,
+} from './featureManager';
+
 // API Service Manager - For managing all services together
 export class ApiServiceManager {
   static async clearAllCache(): Promise<void> {

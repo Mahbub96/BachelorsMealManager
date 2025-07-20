@@ -179,6 +179,11 @@ const asyncHandler = fn => {
 };
 
 /**
+ * catchAsync - Alias for asyncHandler for better readability
+ */
+const catchAsync = asyncHandler;
+
+/**
  * Validate request body against schema
  */
 const validateRequest = schema => {
@@ -262,6 +267,7 @@ module.exports = {
   RateLimitError,
   errorHandler,
   asyncHandler,
+  catchAsync,
   validateRequest,
   isOperationalError,
   handleUnhandledRejection,

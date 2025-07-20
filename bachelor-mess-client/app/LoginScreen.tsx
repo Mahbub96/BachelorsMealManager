@@ -1,5 +1,6 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { SimpleDebug } from '@/components/SimpleDebug';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -19,6 +20,7 @@ import { useAuth } from '@/context/AuthContext';
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -64,6 +66,7 @@ export default function LoginScreen() {
       colors={['#e0eafc', '#cfdef3']}
       style={modernStyles.gradient}
     >
+      <SimpleDebug />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{
@@ -114,10 +117,20 @@ export default function LoginScreen() {
               style={modernStyles.input}
               placeholder='Password'
               placeholderTextColor='#b0b0b0'
-              secureTextEntry
+              secureTextEntry={!showPassword}
               value={password}
               onChangeText={setPassword}
             />
+            <Pressable
+              onPress={() => setShowPassword(!showPassword)}
+              style={modernStyles.passwordToggle}
+            >
+              <Ionicons
+                name={showPassword ? 'eye-off' : 'eye'}
+                size={20}
+                color='#007AFF'
+              />
+            </Pressable>
           </View>
           {error ? (
             <ThemedText style={modernStyles.error}>{error}</ThemedText>
@@ -195,6 +208,10 @@ const modernStyles = StyleSheet.create({
     fontSize: 16,
     color: '#222',
     backgroundColor: 'transparent',
+  },
+  passwordToggle: {
+    padding: 8,
+    marginLeft: 4,
   },
   button: {
     backgroundColor: '#007AFF',

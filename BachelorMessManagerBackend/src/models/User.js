@@ -36,8 +36,8 @@ const userSchema = new mongoose.Schema(
     role: {
       type: String,
       enum: {
-        values: ['admin', 'member'],
-        message: 'Role must be either admin or member',
+        values: ['super_admin', 'admin', 'member'],
+        message: 'Role must be either super_admin, admin, or member',
       },
       default: 'member',
     },
@@ -115,6 +115,33 @@ const userSchema = new mongoose.Schema(
         notes: String,
       },
     ],
+    // Super Admin specific fields
+    isSuperAdmin: {
+      type: Boolean,
+      default: false,
+    },
+    superAdminPermissions: {
+      type: [String],
+      enum: [
+        'manage_users',
+        'manage_admins',
+        'view_all_data',
+        'system_settings',
+        'analytics_access',
+        'backup_restore',
+        'audit_logs',
+        'billing_management',
+        'support_management',
+      ],
+      default: [],
+    },
+    lastSuperAdminAction: {
+      type: Date,
+    },
+    superAdminNotes: {
+      type: String,
+      maxlength: [500, 'Notes cannot exceed 500 characters'],
+    },
   },
   {
     timestamps: true,
@@ -250,6 +277,9 @@ userSchema.statics.getStats = async function () {
         memberUsers: {
           $sum: { $cond: [{ $eq: ['$role', 'member'] }, 1, 0] },
         },
+        superAdminUsers: {
+          $sum: { $cond: [{ $eq: ['$role', 'super_admin'] }, 1, 0] },
+        },
       },
     },
   ]);
@@ -260,6 +290,46 @@ userSchema.statics.getStats = async function () {
       activeUsers: 0,
       adminUsers: 0,
       memberUsers: 0,
+      superAdminUsers: 0,
+    }
+  );
+};
+
+// Static method to find super admins
+userSchema.statics.findSuperAdmins = function () {
+  return this.find({
+    $or: [{ role: 'super_admin' }, { isSuperAdmin: true }],
+    status: 'active',
+  });
+};
+
+// Static method to get super admin statistics
+userSchema.statics.getSuperAdminStats = async function () {
+  const stats = await this.aggregate([
+    {
+      $match: {
+        $or: [{ role: 'super_admin' }, { isSuperAdmin: true }],
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalSuperAdmins: { $sum: 1 },
+        activeSuperAdmins: {
+          $sum: { $cond: [{ $eq: ['$status', 'active'] }, 1, 0] },
+        },
+        avgPermissions: { $avg: { $size: '$superAdminPermissions' } },
+        lastActionDate: { $max: '$lastSuperAdminAction' },
+      },
+    },
+  ]);
+
+  return (
+    stats[0] || {
+      totalSuperAdmins: 0,
+      activeSuperAdmins: 0,
+      avgPermissions: 0,
+      lastActionDate: null,
     }
   );
 };
@@ -284,10 +354,46 @@ userSchema.methods.activate = function () {
 
 // Instance method to change role
 userSchema.methods.changeRole = function (newRole) {
-  if (!['admin', 'member'].includes(newRole)) {
+  if (!['super_admin', 'admin', 'member'].includes(newRole)) {
     throw new Error('Invalid role');
   }
   this.role = newRole;
+  return this.save();
+};
+
+// Instance method to check if user is super admin
+userSchema.methods.isSuperAdminUser = function () {
+  return this.role === 'super_admin' || this.isSuperAdmin === true;
+};
+
+// Instance method to check super admin permissions
+userSchema.methods.hasSuperAdminPermission = function (permission) {
+  if (!this.isSuperAdminUser()) {
+    return false;
+  }
+  return this.superAdminPermissions.includes(permission);
+};
+
+// Instance method to add super admin permission
+userSchema.methods.addSuperAdminPermission = function (permission) {
+  if (!this.superAdminPermissions.includes(permission)) {
+    this.superAdminPermissions.push(permission);
+  }
+  return this.save();
+};
+
+// Instance method to remove super admin permission
+userSchema.methods.removeSuperAdminPermission = function (permission) {
+  this.superAdminPermissions = this.superAdminPermissions.filter(
+    p => p !== permission
+  );
+  return this.save();
+};
+
+// Instance method to update super admin action
+userSchema.methods.updateSuperAdminAction = function (action) {
+  this.lastSuperAdminAction = new Date();
+  this.superAdminNotes = action;
   return this.save();
 };
 

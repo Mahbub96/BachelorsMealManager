@@ -114,4 +114,47 @@ router.get(
   bazarController.getBazarTrends
 );
 
+// ===== ADMIN OVERRIDE ROUTES =====
+
+// @desc    Admin override: Create bazar entry for any user (admin only)
+// @route   POST /api/bazar/admin/create
+// @access  Private/Admin
+router.post(
+  '/admin/create',
+  AuthMiddleware.protect(),
+  AuthMiddleware.requireAdmin(),
+  uploadMiddleware,
+  bazarController.createBazarForUser
+);
+
+// @desc    Admin override: Update any bazar entry (admin only)
+// @route   PUT /api/bazar/admin/:bazarId
+// @access  Private/Admin
+router.put(
+  '/admin/:bazarId',
+  AuthMiddleware.protect(),
+  AuthMiddleware.requireAdmin(),
+  bazarController.adminUpdateBazar
+);
+
+// @desc    Admin override: Delete any bazar entry (admin only)
+// @route   DELETE /api/bazar/admin/:bazarId
+// @access  Private/Admin
+router.delete(
+  '/admin/:bazarId',
+  AuthMiddleware.protect(),
+  AuthMiddleware.requireAdmin(),
+  bazarController.adminDeleteBazar
+);
+
+// @desc    Admin override: Bulk operations (admin only)
+// @route   POST /api/bazar/admin/bulk
+// @access  Private/Admin
+router.post(
+  '/admin/bulk',
+  AuthMiddleware.protect(),
+  AuthMiddleware.requireAdmin(),
+  bazarController.adminBulkOperations
+);
+
 module.exports = router;

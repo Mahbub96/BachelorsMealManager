@@ -396,5 +396,4 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     fontWeight: '500',
   },
-
 });

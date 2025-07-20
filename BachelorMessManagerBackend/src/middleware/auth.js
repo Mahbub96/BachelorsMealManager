@@ -85,10 +85,24 @@ class AuthMiddleware {
   }
 
   /**
+   * Require super admin role
+   */
+  static requireSuperAdmin() {
+    return AuthMiddleware.requireRole('super_admin');
+  }
+
+  /**
    * Require member role
    */
   static requireMember() {
     return AuthMiddleware.requireRole(['admin', 'member']);
+  }
+
+  /**
+   * Authorize specific role (alias for requireRole)
+   */
+  static authorize(role) {
+    return AuthMiddleware.requireRole(role);
   }
 
   /**
