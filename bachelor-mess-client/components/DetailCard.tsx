@@ -3,32 +3,7 @@ import React from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 import { ThemedText } from "./ThemedText";
 
-const DESIGN_SYSTEM = {
-  spacing: {
-    xs: 4,
-    sm: 8,
-    md: 12,
-    lg: 16,
-    xl: 20,
-    xxl: 24,
-    xxxl: 32,
-  },
-  borderRadius: {
-    sm: 8,
-    md: 12,
-    lg: 16,
-    xl: 20,
-  },
-  shadows: {
-    small: {
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 8,
-      elevation: 4,
-    },
-  },
-};
+
 
 interface DetailCardProps {
   title: string;
@@ -179,10 +154,14 @@ export const ActionButton: React.FC<{
 const styles = StyleSheet.create({
   card: {
     backgroundColor: "#fff",
-    borderRadius: DESIGN_SYSTEM.borderRadius.md,
-    padding: DESIGN_SYSTEM.spacing.md,
-    marginBottom: DESIGN_SYSTEM.spacing.lg,
-    ...DESIGN_SYSTEM.shadows.small,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   gradientCard: {
     backgroundColor: "transparent",
@@ -190,12 +169,12 @@ const styles = StyleSheet.create({
   cardHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: DESIGN_SYSTEM.spacing.xs,
+    marginBottom: 4,
   },
   cardTitle: {
     fontSize: 12,
     color: "#6b7280",
-    marginLeft: DESIGN_SYSTEM.spacing.xs,
+    marginLeft: 4,
   },
   cardContent: {
     alignItems: "center",
@@ -208,16 +187,20 @@ const styles = StyleSheet.create({
   cardSubtitle: {
     fontSize: 11,
     color: "#6b7280",
-    marginTop: DESIGN_SYSTEM.spacing.xs,
+    marginTop: 4,
   },
   metricCard: {
     backgroundColor: "#fff",
-    borderRadius: DESIGN_SYSTEM.borderRadius.md,
-    padding: DESIGN_SYSTEM.spacing.md,
+    borderRadius: 12,
+    padding: 12,
     alignItems: "center",
     width: "48%",
-    marginBottom: DESIGN_SYSTEM.spacing.sm,
-    ...DESIGN_SYSTEM.shadows.small,
+    marginBottom: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   metricValue: {
     fontSize: 18,
@@ -232,42 +215,50 @@ const styles = StyleSheet.create({
   },
   chartCard: {
     backgroundColor: "#fff",
-    borderRadius: DESIGN_SYSTEM.borderRadius.md,
-    padding: DESIGN_SYSTEM.spacing.md,
-    marginBottom: DESIGN_SYSTEM.spacing.lg,
-    ...DESIGN_SYSTEM.shadows.small,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   chartHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: DESIGN_SYSTEM.spacing.md,
+    marginBottom: 12,
   },
   chartTitle: {
     fontSize: 14,
     fontWeight: "bold",
     color: "#1f2937",
-    marginLeft: DESIGN_SYSTEM.spacing.xs,
+    marginLeft: 4,
   },
   breakdownCard: {
     backgroundColor: "#fff",
-    borderRadius: DESIGN_SYSTEM.borderRadius.md,
-    padding: DESIGN_SYSTEM.spacing.md,
-    marginBottom: DESIGN_SYSTEM.spacing.lg,
-    ...DESIGN_SYSTEM.shadows.small,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   breakdownHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: DESIGN_SYSTEM.spacing.md,
+    marginBottom: 12,
   },
   breakdownTitle: {
     fontSize: 14,
     fontWeight: "bold",
     color: "#1f2937",
-    marginLeft: DESIGN_SYSTEM.spacing.xs,
+    marginLeft: 4,
   },
   breakdownItem: {
-    marginBottom: DESIGN_SYSTEM.spacing.md,
+    marginBottom: 12,
   },
   breakdownInfo: {
     flexDirection: "row",
@@ -297,12 +288,16 @@ const styles = StyleSheet.create({
   actionButton: {
     flexDirection: "row",
     alignItems: "center",
-    gap: DESIGN_SYSTEM.spacing.xs,
-    paddingVertical: DESIGN_SYSTEM.spacing.sm,
-    paddingHorizontal: DESIGN_SYSTEM.spacing.md,
+    gap: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     backgroundColor: "#fff",
-    borderRadius: DESIGN_SYSTEM.borderRadius.md,
-    ...DESIGN_SYSTEM.shadows.small,
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   actionButtonText: {
     fontSize: 13,

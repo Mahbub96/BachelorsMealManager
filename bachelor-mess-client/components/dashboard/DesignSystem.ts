@@ -43,6 +43,10 @@ export const DESIGN_SYSTEM = {
       tertiary: "#9ca3af",
       inverse: "#ffffff",
     },
+
+    // Additional colors for compatibility
+    light: "#f8fafc",
+    dark: "#1f2937",
   },
 
   // Spacing
@@ -99,6 +103,17 @@ export const DESIGN_SYSTEM = {
       semibold: "600" as const,
       bold: "700" as const,
     },
+  },
+
+  // Font sizes for compatibility
+  fontSize: {
+    xs: 12,
+    sm: 14,
+    md: 16,
+    lg: 18,
+    xl: 20,
+    xxl: 24,
+    xxxl: 32,
   },
 
   // Component specific

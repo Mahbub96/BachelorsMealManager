@@ -3,6 +3,7 @@ import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '../ThemedText';
+import { useTheme } from '@/context/ThemeContext';
 
 interface StatCardProps {
   title: string;
@@ -27,6 +28,7 @@ export const StatCard: React.FC<StatCardProps> = ({
   trendValue,
   compact = false,
 }) => {
+  const { theme } = useTheme();
   const Container = onPress ? TouchableOpacity : View;
 
   const getTrendIcon = (trend?: string) => {
@@ -45,13 +47,13 @@ export const StatCard: React.FC<StatCardProps> = ({
   const getTrendColor = (trend?: string) => {
     switch (trend) {
       case 'up':
-        return '#10b981';
+        return theme.status.success;
       case 'down':
-        return '#ef4444';
+        return theme.status.error;
       case 'stable':
-        return '#6b7280';
+        return theme.text.tertiary;
       default:
-        return '#6b7280';
+        return theme.text.tertiary;
     }
   };
 
@@ -67,7 +69,7 @@ export const StatCard: React.FC<StatCardProps> = ({
             <Ionicons
               name={icon as any}
               size={compact ? 20 : 24}
-              color='#fff'
+              color={theme.text.inverse}
             />
           </View>
           <View style={styles.textContainer}>

@@ -7,9 +7,18 @@ import { HapticTab } from '@/components/HapticTab';
 import { AuthAvatar } from '@/components/AuthAvatar';
 import { LoginButton } from '@/components/LoginButton';
 import { useAuth } from '@/context/AuthContext';
+import { useThemeColor } from '@/hooks/useThemeColor';
 
 export default function TabLayout() {
   const { user } = useAuth();
+
+  // Theme colors
+  const backgroundColor = useThemeColor({}, 'background');
+  const textColor = useThemeColor({}, 'text');
+  const borderColor = useThemeColor(
+    { light: '#f3f4f6', dark: '#374151' },
+    'background'
+  );
 
   // Determine which tabs to show based on user role
   const isAdmin = user?.role === 'admin';
@@ -36,11 +45,16 @@ export default function TabLayout() {
         tabBarInactiveTintColor: '#9ca3af',
         headerShown: true,
         header: () => (
-          <View style={styles.header}>
+          <View
+            style={[
+              styles.header,
+              { backgroundColor, borderBottomColor: borderColor },
+            ]}
+          >
             <View style={styles.headerContent}>
               {user && (
                 <View style={styles.welcomeText}>
-                  <Text style={styles.welcomeTitle}>
+                  <Text style={[styles.welcomeTitle, { color: textColor }]}>
                     Welcome, {user.name?.split(' ')[0] || 'User'}!
                   </Text>
                 </View>
@@ -53,9 +67,9 @@ export default function TabLayout() {
         ),
         tabBarButton: HapticTab,
         tabBarStyle: {
-          backgroundColor: '#ffffff',
+          backgroundColor,
           borderTopWidth: 1,
-          borderTopColor: '#f3f4f6',
+          borderTopColor: borderColor,
           height: 88,
           paddingBottom: 20,
           paddingTop: 12,
@@ -152,12 +166,10 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: '#fff',
     paddingTop: 50,
     paddingHorizontal: 20,
     paddingBottom: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
   },
   headerContent: {
     flexDirection: 'row',
@@ -170,7 +182,6 @@ const styles = StyleSheet.create({
   welcomeTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1f2937',
   },
   headerActions: {
     flexDirection: 'row',

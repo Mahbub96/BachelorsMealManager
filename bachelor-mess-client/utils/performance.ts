@@ -363,6 +363,69 @@ export class NetworkOptimizer {
   }
 }
 
+/**
+ * Bazar-specific performance optimizations
+ */
+export const bazarOptimizations = {
+  /**
+   * Optimized key extractor for bazar items
+   */
+  keyExtractor: (item: any): string => {
+    return item.id || item._id || Math.random().toString();
+  },
+
+  /**
+   * Get optimized getItemLayout for bazar cards (estimated height: 120px)
+   */
+  getBazarItemLayout: (data: any[], itemHeight: number = 120) => {
+    return (data: any, index: number) => ({
+      length: itemHeight,
+      offset: itemHeight * index,
+      index,
+    });
+  },
+
+  /**
+   * Optimized render item wrapper for bazar cards
+   */
+  renderBazarItem: (
+    renderItem: (item: any, index: number) => React.ReactElement
+  ) => {
+    return React.memo(({ item, index }: { item: any; index: number }) => {
+      return renderItem(item, index);
+    });
+  },
+
+  /**
+   * Debounced search for bazar items
+   */
+  debouncedSearch: debounce(
+    (searchTerm: string, callback: (results: any[]) => void) => {
+      // Implement search logic here
+      callback([]);
+    },
+    300
+  ),
+
+  /**
+   * Optimized filter function for bazar entries
+   */
+  filterBazarEntries: (entries: any[], filters: any) => {
+    return entries.filter(entry => {
+      if (filters.status && entry.status !== filters.status) return false;
+      if (
+        filters.startDate &&
+        new Date(entry.date) < new Date(filters.startDate)
+      )
+        return false;
+      if (filters.endDate && new Date(entry.date) > new Date(filters.endDate))
+        return false;
+      if (filters.userId && entry.userId !== filters.userId) return false;
+      return true;
+    });
+  },
+};
+
 // Export singleton instances
 export const performanceMonitor = PerformanceMonitor.getInstance();
 export const memoryManager = MemoryManager.getInstance();

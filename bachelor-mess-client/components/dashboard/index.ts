@@ -20,4 +20,4 @@ export { ChartSection } from './ChartSection';
 export { DashboardContainer } from './DashboardContainer';
 
 // Stat Card Component
-export { StatCard } from './StatCard';
+export { StatCard } from './cards/StatCard';

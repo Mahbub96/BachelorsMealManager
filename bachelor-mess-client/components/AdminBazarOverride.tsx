@@ -19,6 +19,7 @@ import bazarService, {
   BazarEntry,
   BazarSubmission,
 } from '../services/bazarService';
+import userService from '../services/userService';
 import { useAuth } from '../context/AuthContext';
 import { useColorScheme } from '../hooks/useColorScheme';
 
@@ -63,13 +64,33 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
     'pending' | 'approved' | 'rejected'
   >('approved');
 
-  // Mock users for demo - replace with real API call
-  const mockUsers: User[] = [
-    { id: '1', name: 'Rahim Khan', email: 'rahim@mess.com' },
-    { id: '2', name: 'Karim Ahmed', email: 'karim@mess.com' },
-    { id: '3', name: 'Salam Hossain', email: 'salam@mess.com' },
-    { id: '4', name: 'Nazrul Islam', email: 'nazrul@mess.com' },
-  ];
+  // Get real users from API
+  const [users, setUsers] = useState<User[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const loadUsers = async () => {
+    setLoadingUsers(true);
+    try {
+      const response = await userService.getAllUsers();
+      if (response.success && response.data) {
+        setUsers(
+          response.data.map((user: any) => ({
+            id: user._id || user.id,
+            name: user.name,
+            email: user.email,
+          }))
+        );
+      }
+    } catch (error) {
+      console.error('Failed to load users:', error);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
 
   useEffect(() => {
     if (visible && mode === 'update' && selectedBazar) {
@@ -234,7 +255,7 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
     <ScrollView style={styles.formContainer}>
       <ThemedText style={styles.sectionTitle}>Select User</ThemedText>
       <View style={styles.userSelector}>
-        {mockUsers.map(user => (
+        {users.map(user => (
           <TouchableOpacity
             key={user.id}
             style={[

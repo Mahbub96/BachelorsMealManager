@@ -3,6 +3,7 @@ import { View, StyleSheet, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '../ThemedText';
+import { useTheme } from '@/context/ThemeContext';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -28,6 +29,7 @@ export const StatsGrid: React.FC<StatsGridProps> = ({
   columns = 2,
   isSmallScreen = false,
 }) => {
+  const { theme } = useTheme();
   const getGridStyle = () => {
     const availableWidth = screenWidth - 32; // Account for container padding
     const gap = isSmallScreen ? 12 : 16;
@@ -50,16 +52,16 @@ export const StatsGrid: React.FC<StatsGridProps> = ({
         >
           <LinearGradient colors={stat.colors} style={styles.statGradient}>
             <View style={styles.statHeader}>
-              <Ionicons
-                name={stat.icon as any}
-                size={isSmallScreen ? 20 : 24}
-                color='#fff'
-              />
+                              <Ionicons
+                  name={stat.icon as any}
+                  size={isSmallScreen ? 20 : 24}
+                  color={theme.text.inverse}
+                />
               {stat.trend && (
                 <Ionicons
                   name={stat.trend === 'up' ? 'trending-up' : 'trending-down'}
                   size={isSmallScreen ? 12 : 14}
-                  color='#fff'
+                  color={theme.text.inverse}
                   style={styles.trendIcon}
                 />
               )}
@@ -83,7 +85,7 @@ export const StatsGrid: React.FC<StatsGridProps> = ({
                   style={[
                     styles.statChange,
                     isSmallScreen && styles.statChangeSmall,
-                    { color: stat.trend === 'up' ? '#10b981' : '#ef4444' },
+                    { color: stat.trend === 'up' ? theme.status.success : theme.status.error },
                   ]}
                 >
                   {stat.change}

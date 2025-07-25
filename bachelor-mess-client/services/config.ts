@@ -125,6 +125,7 @@ export const API_ENDPOINTS = {
     DELETE: (id: string) => `/api/bazar/${id}`,
     BY_ID: (id: string) => `/api/bazar/${id}`,
     UPDATE: (id: string) => `/api/bazar/${id}`,
+    ADMIN_UPDATE: (id: string) => `/api/bazar/admin/${id}`,
     USER_STATS: '/api/bazar/stats/user',
     BULK_APPROVE: '/api/bazar/bulk-approve',
   },
@@ -134,6 +135,10 @@ export const API_ENDPOINTS = {
     ACTIVITIES: '/api/dashboard/activities',
     COMBINED: '/api/dashboard',
     STATISTICS: '/api/dashboard/statistics',
+    ANALYTICS: '/api/dashboard/analytics',
+    MEAL_DISTRIBUTION: '/api/dashboard/meal-distribution',
+    EXPENSE_TREND: '/api/dashboard/expense-trend',
+    CATEGORY_BREAKDOWN: '/api/dashboard/category-breakdown',
   },
   ANALYTICS: {
     DATA: '/api/analytics',
@@ -150,7 +155,7 @@ export const API_ENDPOINTS = {
   },
   ACTIVITY: {
     RECENT: '/api/activity/recent',
-    CURRENT_MONTH_MEALS: '/api/activity/current-month-meals',
+    CURRENT_MONTH_MEALS: '/api/activity/meals/current-month',
     STATS: '/api/activity/stats',
     SEARCH: '/api/activity/search',
     BY_ID: (id: string) => `/api/activity/${id}`,
@@ -158,7 +163,7 @@ export const API_ENDPOINTS = {
   USER_STATS: {
     DASHBOARD: '/api/user-stats/dashboard',
     MEALS: '/api/user-stats/meals',
-    BAZAR: '/api/user-stats/bazar',
+    BAZAR: '/api/bazar/stats/user', // Fixed: Use correct backend endpoint
     PAYMENTS: '/api/user-stats/payments',
   },
 } as const;

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '../ThemedText';
+import { useTheme } from '@/context/ThemeContext';
 
 interface PaymentStatusCardProps {
   payments: {
@@ -15,16 +16,17 @@ interface PaymentStatusCardProps {
 export const PaymentStatusCard: React.FC<PaymentStatusCardProps> = ({
   payments,
 }) => {
+  const { theme } = useTheme();
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'paid':
-        return '#10b981';
+        return theme.status.success;
       case 'pending':
-        return '#f59e0b';
+        return theme.status.warning;
       case 'overdue':
-        return '#ef4444';
+        return theme.status.error;
       default:
-        return '#6b7280';
+        return theme.text.tertiary;
     }
   };
 
@@ -42,9 +44,21 @@ export const PaymentStatusCard: React.FC<PaymentStatusCardProps> = ({
   };
 
   return (
-    <View style={styles.paymentCard}>
+    <View
+      style={[
+        styles.paymentCard,
+        {
+          backgroundColor: theme.cardBackground,
+          shadowColor: theme.cardShadow,
+        },
+      ]}
+    >
       <View style={styles.paymentHeader}>
-        <ThemedText style={styles.paymentTitle}>Payment Status</ThemedText>
+        <ThemedText
+          style={[styles.paymentTitle, { color: theme.text.primary }]}
+        >
+          Payment Status
+        </ThemedText>
         <View
           style={[
             styles.statusIndicator,
@@ -54,27 +68,41 @@ export const PaymentStatusCard: React.FC<PaymentStatusCardProps> = ({
           <Ionicons
             name={getStatusIcon(payments.paymentStatus) as any}
             size={16}
-            color='#fff'
+            color={theme.text.inverse}
           />
         </View>
       </View>
       <View style={styles.paymentDetails}>
         <View style={styles.paymentRow}>
-          <ThemedText style={styles.paymentLabel}>
+          <ThemedText
+            style={[styles.paymentLabel, { color: theme.text.secondary }]}
+          >
             Monthly Contribution:
           </ThemedText>
-          <ThemedText style={styles.paymentValue}>
+          <ThemedText
+            style={[styles.paymentValue, { color: theme.text.primary }]}
+          >
             ৳{payments.monthlyContribution.toLocaleString()}
           </ThemedText>
         </View>
         <View style={styles.paymentRow}>
-          <ThemedText style={styles.paymentLabel}>Last Payment:</ThemedText>
-          <ThemedText style={styles.paymentValue}>
+          <ThemedText
+            style={[styles.paymentLabel, { color: theme.text.secondary }]}
+          >
+            Last Payment:
+          </ThemedText>
+          <ThemedText
+            style={[styles.paymentValue, { color: theme.text.primary }]}
+          >
             {payments.lastPaymentDate || 'Not available'}
           </ThemedText>
         </View>
         <View style={styles.paymentRow}>
-          <ThemedText style={styles.paymentLabel}>Status:</ThemedText>
+          <ThemedText
+            style={[styles.paymentLabel, { color: theme.text.secondary }]}
+          >
+            Status:
+          </ThemedText>
           <ThemedText
             style={[
               styles.paymentStatus,
@@ -93,10 +121,8 @@ const styles = StyleSheet.create({
   paymentCard: {
     marginHorizontal: 20,
     marginBottom: 24,
-    backgroundColor: '#fff',
     borderRadius: 16,
     padding: 20,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -111,7 +137,6 @@ const styles = StyleSheet.create({
   paymentTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1f2937',
   },
   statusIndicator: {
     width: 32,
@@ -130,12 +155,10 @@ const styles = StyleSheet.create({
   },
   paymentLabel: {
     fontSize: 14,
-    color: '#6b7280',
   },
   paymentValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1f2937',
   },
   paymentStatus: {
     fontSize: 14,

@@ -11,11 +11,13 @@ import userStatsService, {
 import { DashboardHeader } from './DashboardHeader';
 import { StatCard } from './StatCard';
 import { DataDisplay } from '../ui/DataDisplay';
+import { useTheme } from '@/context/ThemeContext';
 import errorHandler from '@/services/errorHandler';
 
 export const UserDashboard: React.FC = () => {
   const router = useRouter();
   const { user } = useAuth();
+  const { theme } = useTheme();
   const [dashboardData, setDashboardData] = useState<UserDashboardStats | null>(
     null
   );
@@ -224,7 +226,7 @@ export const UserDashboard: React.FC = () => {
         title='Your Dashboard'
         subtitle="Here's your personal overview"
         icon='person'
-        user={user ? { name: user.name, role: user.role } : undefined}
+        colors={['#667eea', '#764ba2']}
       />
 
       <ScrollView
@@ -239,14 +241,14 @@ export const UserDashboard: React.FC = () => {
             value={stats.meals.total}
             icon='fast-food'
             gradient={['#667eea', '#764ba2']}
-            detail={`${stats.meals.efficiency}% approved`}
+            subtitle={`${stats.meals.efficiency}% approved`}
           />
           <StatCard
             title='Bazar Total'
             value={`৳${stats.bazar.totalAmount.toLocaleString()}`}
             icon='card'
             gradient={['#f093fb', '#f5576c']}
-            detail={
+            subtitle={
               stats.bazar.approvedAmount > 0
                 ? `৳${stats.bazar.approvedAmount.toLocaleString()} approved`
                 : 'No approved'
@@ -257,7 +259,7 @@ export const UserDashboard: React.FC = () => {
             value={stats.meals.averagePerDay.toFixed(1)}
             icon='trending-up'
             gradient={['#43e97b', '#38f9d7']}
-            detail={`${stats.meals.daysSinceLastMeal} day${
+            subtitle={`${stats.meals.daysSinceLastMeal} day${
               stats.meals.daysSinceLastMeal !== 1 ? 's' : ''
             } ago`}
           />
@@ -276,7 +278,7 @@ export const UserDashboard: React.FC = () => {
                 ? ['#ef4444', '#dc2626']
                 : ['#f59e0b', '#d97706']
             }
-            detail={`৳${stats.payments.totalPaid.toLocaleString()} / ৳${stats.payments.monthlyContribution.toLocaleString()}`}
+            subtitle={`৳${stats.payments.totalPaid.toLocaleString()} / ৳${stats.payments.monthlyContribution.toLocaleString()}`}
           />
         </View>
 
@@ -287,7 +289,7 @@ export const UserDashboard: React.FC = () => {
             value={`${stats.overview.performanceScore}%`}
             icon='trending-up'
             gradient={['#8b5cf6', '#7c3aed']}
-            detail={`${stats.overview.recentActivityCount} recent activities`}
+            subtitle={`${stats.overview.recentActivityCount} recent activities`}
           />
         </View>
       </ScrollView>
@@ -298,7 +300,6 @@ export const UserDashboard: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
   content: {
     flex: 1,

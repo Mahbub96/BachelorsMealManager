@@ -1,5 +1,6 @@
-import { MessDataProvider } from '@/context/MessDataContext';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { ThemeProvider } from '@/context/ThemeContext';
+import { BazarProvider } from '@/context/BazarContext';
 import { AuthGuard } from '@/components/AuthGuard';
 import { Stack, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -102,12 +103,14 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <AuthProvider>
-      <MessDataProvider>
-        <AuthGuard>
-          <AppContent />
-        </AuthGuard>
-      </MessDataProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <BazarProvider>
+          <AuthGuard>
+            <AppContent />
+          </AuthGuard>
+        </BazarProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

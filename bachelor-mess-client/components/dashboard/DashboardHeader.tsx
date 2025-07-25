@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '../ThemedText';
 import { useRouter } from 'expo-router';
+import { useTheme } from '@/context/ThemeContext';
 
 interface DashboardHeaderProps {
   title: string;
@@ -27,6 +28,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   isSmallScreen = false,
 }) => {
   const router = useRouter();
+  const { theme } = useTheme();
 
   const handleNotificationPress = () => {
     if (onNotificationPress) {
@@ -42,11 +44,11 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
         <View style={styles.headerContent}>
           <View style={styles.headerLeft}>
             <View style={styles.iconContainer}>
-              <Ionicons
-                name={icon as any}
-                size={isSmallScreen ? 32 : 40}
-                color='#fff'
-              />
+                          <Ionicons
+              name={icon as any}
+              size={isSmallScreen ? 32 : 40}
+              color={theme.text.inverse}
+            />
             </View>
             <View style={styles.textContainer}>
               <ThemedText
@@ -73,7 +75,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               <Ionicons
                 name='notifications'
                 size={isSmallScreen ? 20 : 24}
-                color='#fff'
+                color={theme.text.inverse}
               />
             </TouchableOpacity>
           )}

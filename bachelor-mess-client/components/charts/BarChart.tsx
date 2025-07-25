@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Modal } from 'react-native';
+import { View, Pressable, StyleSheet, Dimensions } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { ThemedText } from '../ThemedText';
-import { ChartContainer } from './ChartContainer';
-import { DataModal } from './modals/DataModal';
+import { useTheme } from '@/context/ThemeContext';
+import { BaseChart, BaseChartProps } from './BaseChart';
+
+const { width: screenWidth } = Dimensions.get('window');
 
 export interface ChartData {
   label: string;
@@ -19,9 +23,8 @@ export interface ChartData {
   };
 }
 
-interface BarChartProps {
+export interface BarChartProps extends Omit<BaseChartProps, 'children'> {
   data: ChartData[];
-  title: string;
   height?: number;
   showForecast?: boolean;
   showTrend?: boolean;
@@ -35,15 +38,44 @@ export const BarChart: React.FC<BarChartProps> = ({
   showForecast = true,
   showTrend = true,
   onBarPress,
+  containerStyle,
+  showHeader = true,
 }) => {
-  const [selectedData, setSelectedData] = useState<ChartData | null>(null);
-  const [modalVisible, setModalVisible] = useState(false);
+  const { theme } = useTheme();
+  const router = useRouter();
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
-  const maxValue = Math.max(...data.map(item => item.value));
+  const safeData = data || [];
+  const maxValue = Math.max(
+    ...safeData.map(item => Math.max(item?.value || 0, item?.forecast || 0))
+  ) || 1;
+
+  // Responsive bar width calculation
+  const availableWidth = Math.min(screenWidth - 80, 320);
+  const barWidth = Math.max(
+    24,
+    Math.min(40, availableWidth / Math.max(safeData.length, 1) - 10)
+  );
+  const barSpacing = 10;
+  const labelArea = 90;
+  const barAreaHeight = height - labelArea - 40;
 
   const handleBarPress = (item: ChartData, index: number) => {
-    setSelectedData(item);
-    setModalVisible(true);
+    setSelectedIndex(selectedIndex === index ? null : index);
+
+    router.push({
+      pathname: '/bar-details',
+      params: {
+        label: item?.label || '',
+        value: (item?.value || 0).toString(),
+        forecast: (item?.forecast || 0).toString(),
+        trend: item?.trend || 'stable',
+        color: item?.color || theme.text.primary,
+        description: item?.details?.description || '',
+        notes: item?.details?.notes || '',
+      },
+    });
+
     onBarPress?.(item, index);
   };
 
@@ -56,136 +88,200 @@ export const BarChart: React.FC<BarChartProps> = ({
       case 'stable':
         return 'remove';
       default:
-        return 'information-circle';
+        return null;
     }
   };
 
   const getTrendColor = (trend?: string) => {
     switch (trend) {
       case 'up':
-        return '#10b981';
+        return theme.status.success;
       case 'down':
-        return '#ef4444';
+        return theme.status.error;
       case 'stable':
-        return '#6b7280';
+        return theme.text.tertiary;
       default:
-        return '#6b7280';
+        return theme.text.tertiary;
     }
   };
 
   return (
-    <>
-      <ChartContainer title={title} icon='bar-chart'>
-        <View style={[styles.chartContainer, { height }]}>
-          <View style={styles.barsContainer}>
-            {data.map((item, index) => {
-              const barHeight = (item.value / maxValue) * (height - 60);
-              return (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.barWrapper}
-                  onPress={() => handleBarPress(item, index)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.barContainer}>
-                    <View
-                      style={[
-                        styles.bar,
-                        {
-                          height: barHeight,
-                          backgroundColor: item.color,
-                        },
-                      ]}
-                    />
-                    {showForecast && item.forecast && (
-                      <View
-                        style={[
-                          styles.forecastBar,
-                          {
-                            height: (item.forecast / maxValue) * (height - 60),
-                            backgroundColor: item.color,
-                            opacity: 0.5,
-                          },
-                        ]}
-                      />
-                    )}
-                  </View>
-                  <ThemedText style={styles.barLabel}>{item.label}</ThemedText>
-                  <ThemedText style={styles.barValue}>
-                    ৳{item.value.toLocaleString()}
-                  </ThemedText>
-                  {showTrend && item.trend && (
-                    <View style={styles.trendContainer}>
-                      <Ionicons
-                        name={getTrendIcon(item.trend) as any}
-                        size={12}
-                        color={getTrendColor(item.trend)}
-                      />
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-      </ChartContainer>
+    <BaseChart
+      title={title}
+      containerStyle={containerStyle}
+      showHeader={showHeader}
+    >
+      {/* Bars */}
+      <View
+        style={[
+          styles.barChartContainer,
+          {
+            width: '100%',
+            height: barAreaHeight,
+            alignItems: 'flex-end',
+          },
+        ]}
+      >
+        {safeData.map((item, index) => (
+          <Pressable
+            key={index}
+            style={[
+              styles.barItem,
+              {
+                width: barWidth,
+                marginHorizontal: barSpacing / 2,
+                height: barAreaHeight,
+                justifyContent: 'flex-end',
+                opacity: selectedIndex === null || selectedIndex === index ? 1 : 0.7,
+              },
+            ]}
+            onPress={() => handleBarPress(item, index)}
+          >
+            {/* Forecast bar */}
+            {showForecast && item?.forecast && (
+              <View
+                style={[
+                  styles.forecastBar,
+                  {
+                    height: ((item?.forecast || 0) / maxValue) * barAreaHeight,
+                    backgroundColor: theme.status.warning,
+                    opacity: 0.4,
+                  },
+                ]}
+              />
+            )}
 
-      <DataModal
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
-        title={selectedData?.label || ''}
-        data={selectedData}
-      />
-    </>
+            {/* Main bar with gradient */}
+            <LinearGradient
+              colors={item?.gradient || [theme.primary, theme.secondary]}
+              style={[
+                styles.mainBar,
+                {
+                  height: ((item?.value || 0) / maxValue) * barAreaHeight,
+                  width: barWidth - 6,
+                  transform: [{ scale: selectedIndex === index ? 1.05 : 1 }],
+                },
+              ]}
+            />
+
+            {/* Trend indicator */}
+            {showTrend && item?.trend && getTrendIcon(item.trend) && (
+              <View style={styles.trendContainer}>
+                <Ionicons
+                  name={getTrendIcon(item.trend) as any}
+                  size={12}
+                  color={getTrendColor(item.trend)}
+                />
+              </View>
+            )}
+          </Pressable>
+        ))}
+      </View>
+
+      {/* Labels */}
+      <View style={styles.labelsContainer}>
+        {safeData.map((item, index) => (
+          <View
+            key={index}
+            style={[
+              styles.labelItem,
+              {
+                width: barWidth + barSpacing,
+                marginHorizontal: barSpacing / 2,
+                alignItems: 'center',
+              },
+            ]}
+          >
+            <ThemedText
+              style={[styles.labelText, { fontSize: 11 }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit={true}
+            >
+              {item?.label || ''}
+            </ThemedText>
+            <ThemedText
+              style={[
+                styles.barValue,
+                {
+                  color: selectedIndex === index
+                    ? item?.color || theme.text.primary
+                    : theme.text.primary,
+                  fontWeight: selectedIndex === index ? 'bold' : '600',
+                  fontSize: 11,
+                },
+              ]}
+              numberOfLines={1}
+              adjustsFontSizeToFit={true}
+            >
+              {typeof item?.value === 'number' && !isNaN(item.value)
+                ? item.value.toLocaleString()
+                : '0'}
+            </ThemedText>
+          </View>
+        ))}
+      </View>
+    </BaseChart>
   );
 };
 
 const styles = StyleSheet.create({
-  chartContainer: {
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-  },
-  barsContainer: {
+  barChartContainer: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'flex-end',
-    justifyContent: 'space-around',
+    height: 180,
     width: '100%',
-    height: '100%',
-    paddingHorizontal: 8,
+    paddingHorizontal: 12,
   },
-  barWrapper: {
+  barItem: {
     alignItems: 'center',
     flex: 1,
-    marginHorizontal: 4,
-  },
-  barContainer: {
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    flex: 1,
-    width: '100%',
-  },
-  bar: {
-    width: '80%',
-    borderRadius: 4,
-    marginBottom: 4,
   },
   forecastBar: {
-    width: '60%',
-    borderRadius: 4,
-    marginBottom: 4,
-  },
-  barLabel: {
-    fontSize: 10,
-    fontWeight: '500',
-    textAlign: 'center',
+    borderRadius: 12,
+    minHeight: 6,
     marginBottom: 2,
   },
-  barValue: {
-    fontSize: 8,
-    color: '#6b7280',
-    textAlign: 'center',
+  mainBar: {
+    borderRadius: 12,
+    minHeight: 6,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3,
   },
   trendContainer: {
-    marginTop: 2,
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    backgroundColor: 'white',
+    borderRadius: 8,
+    padding: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  labelsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 16,
+    width: '100%',
+    paddingHorizontal: 4,
+  },
+  labelItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  labelText: {
+    fontSize: 12,
+    textAlign: 'center',
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  barValue: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    marginTop: 4,
   },
 });

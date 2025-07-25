@@ -4,6 +4,7 @@ import { ThemedView } from '../ThemedView';
 import { ThemedText } from '../ThemedText';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTheme } from '@/context/ThemeContext';
 
 interface DashboardContainerProps {
   title: string;
@@ -24,14 +25,20 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
   onRefresh,
   refreshing = false,
   showHeader = true,
-  gradient = ['#667eea', '#764ba2'],
+  gradient,
   icon = 'grid',
   style,
 }) => {
+  const { theme } = useTheme();
+  const defaultGradient = [
+    theme.gradient.primary[0],
+    theme.gradient.primary[1],
+  ] as const;
+  const finalGradient = gradient || defaultGradient;
   return (
     <ThemedView style={[styles.container, style]}>
       {showHeader && (
-        <LinearGradient colors={gradient} style={styles.header}>
+        <LinearGradient colors={finalGradient} style={styles.header}>
           <View style={styles.headerContent}>
             <View style={styles.titleContainer}>
               <Ionicons name={icon as any} size={24} color='#fff' />
@@ -62,7 +69,6 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
   header: {
     paddingHorizontal: 20,

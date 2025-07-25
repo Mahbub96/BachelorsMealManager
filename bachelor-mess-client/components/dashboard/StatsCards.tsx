@@ -4,7 +4,7 @@ import React from 'react';
 import { Animated, Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '../ThemedText';
-import { DESIGN_SYSTEM } from './DesignSystem';
+import { useTheme } from '@/context/ThemeContext';
 
 interface StatsCardsProps {
   fadeAnim: Animated.Value;
@@ -16,6 +16,7 @@ export const StatsCards: React.FC<StatsCardsProps> = ({
   slideAnim,
 }) => {
   const { data, loading, error } = useAnalytics();
+  const { theme } = useTheme();
   const router = useRouter();
 
   const formatCurrency = (amount: number) => {
@@ -27,31 +28,35 @@ export const StatsCards: React.FC<StatsCardsProps> = ({
       title: 'Total Members',
       value: data?.stats?.totalMembers || 0,
       unit: 'members',
-      color: DESIGN_SYSTEM.colors.primary,
+      color: theme.status.info,
       icon: 'people',
+      gradient: theme.gradient.info,
     },
     {
       title: 'Monthly Expense',
       value: data?.stats?.monthlyExpense || 0,
       unit: 'BDT',
-      color: DESIGN_SYSTEM.colors.secondary,
+      color: theme.status.warning,
       icon: 'wallet',
       formatter: formatCurrency,
+      gradient: theme.gradient.warning,
     },
     {
       title: 'Average Meals',
       value: data?.stats?.averageMeals || 0,
       unit: 'per day',
-      color: DESIGN_SYSTEM.colors.success,
+      color: theme.status.success,
       icon: 'fast-food',
+      gradient: theme.gradient.success,
     },
     {
       title: 'Balance',
       value: data?.stats?.balance || 0,
       unit: 'BDT',
-      color: DESIGN_SYSTEM.colors.info,
+      color: theme.primary,
       icon: 'card',
       formatter: formatCurrency,
+      gradient: theme.gradient.primary,
     },
   ];
 
@@ -110,7 +115,7 @@ export const StatsCards: React.FC<StatsCardsProps> = ({
       >
         <View style={styles.errorContainer}>
           <ThemedText style={styles.errorText}>
-            {error || 'Failed to load stats'}
+            {error || 'Failed to load statistics'}
           </ThemedText>
         </View>
       </Animated.View>
@@ -127,36 +132,40 @@ export const StatsCards: React.FC<StatsCardsProps> = ({
         },
       ]}
     >
-      <View style={styles.statsGrid}>
-        {stats.map((stat, index) => (
-          <Pressable
-            key={index}
-            style={styles.statCard}
-            onPress={() => handleStatPress(stat)}
-          >
-            <View style={styles.statHeader}>
-              <Ionicons
-                name={stat.icon as any}
-                size={24}
-                color={DESIGN_SYSTEM.colors.text.primary}
-              />
-              <View
-                style={[
-                  styles.statColorIndicator,
-                  { backgroundColor: stat.color },
-                ]}
-              />
+      {stats.map((stat, index) => (
+        <Pressable
+          key={index}
+          style={[
+            styles.card,
+            {
+              backgroundColor: theme.cardBackground,
+              borderColor: theme.cardBorder,
+              shadowColor: theme.cardShadow,
+            },
+          ]}
+          onPress={() => handleStatPress(stat)}
+        >
+          <View style={styles.cardHeader}>
+            <View
+              style={[
+                styles.iconContainer,
+                {
+                  backgroundColor: stat.color + '20', // 20% opacity
+                },
+              ]}
+            >
+              <Ionicons name={stat.icon as any} size={24} color={stat.color} />
             </View>
-            <View style={styles.statContent}>
-              <ThemedText style={styles.statValue}>
+            <View style={styles.cardContent}>
+              <ThemedText style={styles.cardTitle}>{stat.title}</ThemedText>
+              <ThemedText style={styles.cardValue}>
                 {stat.formatter ? stat.formatter(stat.value) : stat.value}
               </ThemedText>
-              <ThemedText style={styles.statTitle}>{stat.title}</ThemedText>
-              <ThemedText style={styles.statUnit}>{stat.unit}</ThemedText>
+              <ThemedText style={styles.cardUnit}>{stat.unit}</ThemedText>
             </View>
-          </Pressable>
-        ))}
-      </View>
+          </View>
+        </Pressable>
+      ))}
     </Animated.View>
   );
 };
@@ -165,76 +174,66 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: DESIGN_SYSTEM.spacing.md,
-    marginBottom: DESIGN_SYSTEM.spacing.xxl,
+    justifyContent: 'space-between',
+    gap: 12,
   },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: DESIGN_SYSTEM.spacing.md,
-  },
-  statCard: {
+  card: {
     flex: 1,
     minWidth: 150,
-    borderRadius: DESIGN_SYSTEM.borderRadius.lg,
-    overflow: 'hidden',
-    ...DESIGN_SYSTEM.shadows.lg,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  statHeader: {
+  cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: DESIGN_SYSTEM.spacing.sm,
-    padding: DESIGN_SYSTEM.spacing.lg,
-    backgroundColor: DESIGN_SYSTEM.colors.background.secondary,
   },
-  statIcon: {
-    fontSize: DESIGN_SYSTEM.typography.sizes.xl,
-    color: DESIGN_SYSTEM.colors.text.primary,
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
   },
-  statColorIndicator: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+  cardContent: {
+    flex: 1,
   },
-  statContent: {
-    padding: DESIGN_SYSTEM.spacing.lg,
-    backgroundColor: DESIGN_SYSTEM.colors.background.secondary,
+  cardTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 4,
   },
-  statValue: {
-    color: DESIGN_SYSTEM.colors.text.primary,
-    fontSize: DESIGN_SYSTEM.typography.sizes.xxl,
-    fontWeight: DESIGN_SYSTEM.typography.weights.bold,
-    marginBottom: DESIGN_SYSTEM.spacing.xs,
+  cardValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 2,
   },
-  statTitle: {
-    color: DESIGN_SYSTEM.colors.text.primary,
-    fontSize: DESIGN_SYSTEM.typography.sizes.sm,
-    fontWeight: DESIGN_SYSTEM.typography.weights.semibold,
-    opacity: 0.9,
-  },
-  statUnit: {
-    color: DESIGN_SYSTEM.colors.text.secondary,
-    fontSize: DESIGN_SYSTEM.typography.sizes.xs,
-    opacity: 0.8,
+  cardUnit: {
+    fontSize: 10,
+    opacity: 0.7,
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    padding: DESIGN_SYSTEM.spacing.lg,
+    justifyContent: 'center',
+    padding: 20,
   },
   loadingText: {
-    fontSize: DESIGN_SYSTEM.typography.sizes.lg,
-    color: DESIGN_SYSTEM.colors.text.primary,
+    fontSize: 16,
   },
   errorContainer: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    padding: DESIGN_SYSTEM.spacing.lg,
+    justifyContent: 'center',
+    padding: 20,
   },
   errorText: {
-    fontSize: DESIGN_SYSTEM.typography.sizes.lg,
-    color: DESIGN_SYSTEM.colors.error,
+    fontSize: 16,
+    textAlign: 'center',
   },
 });

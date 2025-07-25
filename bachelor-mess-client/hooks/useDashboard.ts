@@ -1,11 +1,11 @@
 import {
-  Activity,
   AnalyticsData,
   CombinedDashboardData,
   DashboardFilters,
   dashboardService,
   DashboardStats,
 } from '@/services';
+import { Activity, activityService } from '@/services/activityService';
 import { useCallback, useEffect, useState } from 'react';
 
 export interface UseDashboardReturn {
@@ -76,10 +76,10 @@ export const useDashboard = (): UseDashboardReturn => {
     setError(null);
 
     try {
-      const response = await dashboardService.getActivities();
+      const response = await activityService.getRecentActivities();
 
       if (response.success && response.data) {
-        setActivities(response.data);
+        setActivities(response.data.activities);
       } else {
         setError(response.error || 'Failed to fetch activities');
       }

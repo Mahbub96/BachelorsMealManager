@@ -1,334 +1,320 @@
-import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useState, useEffect } from 'react';
 import {
-  Alert,
+  View,
+  StyleSheet,
+  TouchableOpacity,
   Animated,
   Dimensions,
-  Pressable,
-  StyleSheet,
-  View,
-} from "react-native";
-import { ThemedText } from "../ThemedText";
-import { DESIGN_SYSTEM } from "./DesignSystem";
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import { ThemedText } from '../ThemedText';
+import { useTheme } from '@/context/ThemeContext';
 
-const { width: screenWidth } = Dimensions.get("window");
+const { width: screenWidth } = Dimensions.get('window');
 
 interface StatItem {
-  id: string;
   title: string;
-  value: string;
+  value: string | number;
   icon: string;
+  color: string;
   gradient: readonly [string, string];
-  unit?: string;
+  trend?: 'up' | 'down' | 'stable';
+  change?: string;
+  period?: string;
 }
 
 interface SwappableStatsProps {
   stats: StatItem[];
-  onStatsChange?: (newStats: StatItem[]) => void;
-  fadeAnim?: Animated.Value;
-  slideAnim?: Animated.Value;
+  onStatPress?: (stat: StatItem) => void;
 }
 
 export const SwappableStats: React.FC<SwappableStatsProps> = ({
   stats,
-  onStatsChange,
-  fadeAnim,
-  slideAnim,
+  onStatPress,
 }) => {
+  const { theme } = useTheme();
   const router = useRouter();
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  const [currentStats, setCurrentStats] = useState<StatItem[]>(stats);
-  const [isEditMode, setIsEditMode] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [slideAnim] = useState(new Animated.Value(0));
 
-  const handleSwap = (fromIndex: number, toIndex: number) => {
-    if (!isEditMode) return;
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % stats.length);
+    }, 5000);
 
-    const newStats = [...currentStats];
-    const [movedItem] = newStats.splice(fromIndex, 1);
-    newStats.splice(toIndex, 0, movedItem);
+    return () => clearInterval(interval);
+  }, [stats.length]);
 
-    setCurrentStats(newStats);
-    onStatsChange?.(newStats);
-  };
+  useEffect(() => {
+    Animated.timing(slideAnim, {
+      toValue: currentIndex,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, [currentIndex, slideAnim]);
 
-  const toggleEditMode = () => {
-    setIsEditMode(!isEditMode);
-    if (isEditMode) {
-      // Save the current arrangement
-      onStatsChange?.(currentStats);
+  const handleStatPress = (stat: StatItem) => {
+    if (onStatPress) {
+      onStatPress(stat);
+    } else {
+      router.push({
+        pathname: '/stat-details',
+        params: {
+          title: stat.title,
+          value: stat.value.toString(),
+          icon: stat.icon,
+          color: stat.color,
+        },
+      });
     }
   };
 
-  const resetToDefault = () => {
-    Alert.alert(
-      "Reset Stats",
-      "Are you sure you want to reset the stats to their default order?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Reset",
-          style: "destructive",
-          onPress: () => {
-            setCurrentStats(stats);
-            onStatsChange?.(stats);
-          },
-        },
-      ]
-    );
+  const getTrendIcon = (trend?: string) => {
+    switch (trend) {
+      case 'up':
+        return 'trending-up';
+      case 'down':
+        return 'trending-down';
+      case 'stable':
+        return 'remove';
+      default:
+        return null;
+    }
   };
 
-  const renderStatCard = (stat: StatItem, index: number) => {
-    const isDragging = draggedIndex === index;
-    const scale = isDragging ? 1.05 : 1;
+  const getTrendColor = (trend?: string) => {
+    switch (trend) {
+      case 'up':
+        return theme.status.success;
+      case 'down':
+        return theme.status.error;
+      case 'stable':
+        return theme.text.tertiary;
+      default:
+        return theme.text.tertiary;
+    }
+  };
 
+  if (!stats || stats.length === 0) {
     return (
-      <Animated.View
-        key={stat.id}
+      <View style={styles.emptyContainer}>
+        <ThemedText style={styles.emptyText}>No statistics available</ThemedText>
+      </View>
+    );
+  }
+
+  const currentStat = stats[currentIndex];
+
+  return (
+    <View style={styles.container}>
+      {/* Navigation Dots */}
+      <View style={styles.dotsContainer}>
+        {stats.map((_, index) => (
+          <TouchableOpacity
+            key={index}
+            style={[
+              styles.dot,
+              {
+                backgroundColor:
+                  index === currentIndex ? theme.primary : theme.border.secondary,
+              },
+            ]}
+            onPress={() => setCurrentIndex(index)}
+          />
+        ))}
+      </View>
+
+      {/* Current Stat Card */}
+      <TouchableOpacity
         style={[
           styles.statCard,
           {
-            transform: [{ scale }],
-            zIndex: isDragging ? 1000 : 1,
+            backgroundColor: theme.cardBackground,
+            borderColor: theme.cardBorder,
+            shadowColor: theme.cardShadow,
           },
         ]}
+        onPress={() => handleStatPress(currentStat)}
       >
-        <Pressable
-          style={styles.statCardPressable}
-          onLongPress={() => setIsEditMode(true)}
-          onPress={() => {
-            if (isEditMode) {
-              // Show swap options
-              Alert.alert(
-                "Move Stat",
-                `Where would you like to move "${stat.title}"?`,
-                [
-                  { text: "Cancel", style: "cancel" },
-                  ...currentStats.map((_, i) => ({
-                    text: `Position ${i + 1}`,
-                    onPress: () => handleSwap(index, i),
-                  })),
-                ]
-              );
-            } else {
-              // Handle normal press for expense-related stats
-              if (
-                stat.title.toLowerCase().includes("expense") ||
-                stat.title.toLowerCase().includes("cost") ||
-                stat.title.toLowerCase().includes("balance")
-              ) {
-                // Navigate to expense details
-                router.push({
-                  pathname: "/expense-details",
-                  params: {
-                    title: stat.title,
-                    value: stat.value.replace(/[^\d]/g, ""), // Extract numeric value
-                    type: stat.title.toLowerCase().includes("expense")
-                      ? "monthly"
-                      : "balance",
-                    color: stat.gradient[0],
-                    description: `Detailed breakdown of ${stat.title.toLowerCase()} including all related costs and expenses.`,
-                    notes: `This data is updated daily and reflects current market conditions for ${stat.title.toLowerCase()}.`,
-                  },
-                });
-              }
-            }
-          }}
+        <LinearGradient
+          colors={currentStat.gradient}
+          style={styles.cardGradient}
         >
-          <LinearGradient colors={stat.gradient} style={styles.statGradient}>
-            <View style={styles.statHeader}>
-              <Ionicons name={stat.icon as any} size={24} color="#fff" />
-              {isEditMode && (
-                <View style={styles.editIndicator}>
-                  <Ionicons name="reorder-three" size={16} color="#fff" />
+          <View style={styles.cardContent}>
+            <View style={styles.iconContainer}>
+              <Ionicons
+                name={currentStat.icon as any}
+                size={32}
+                color={theme.text.inverse}
+              />
+            </View>
+            <View style={styles.textContainer}>
+              <ThemedText style={styles.statTitle}>{currentStat.title}</ThemedText>
+              <ThemedText style={styles.statValue}>
+                {currentStat.value}
+              </ThemedText>
+              {currentStat.trend && (
+                <View style={styles.trendContainer}>
+                  <Ionicons
+                    name={getTrendIcon(currentStat.trend) as any}
+                    size={16}
+                    color={getTrendColor(currentStat.trend)}
+                  />
+                  <ThemedText style={styles.trendText}>
+                    {currentStat.trend === 'up' ? 'Rising' : 
+                     currentStat.trend === 'down' ? 'Falling' : 'Stable'}
+                  </ThemedText>
                 </View>
               )}
             </View>
-            <ThemedText style={styles.statValue}>{stat.value}</ThemedText>
-            <ThemedText style={styles.statTitle}>{stat.title}</ThemedText>
-            {stat.unit && (
-              <ThemedText style={styles.statUnit}>{stat.unit}</ThemedText>
-            )}
-          </LinearGradient>
-        </Pressable>
-      </Animated.View>
-    );
-  };
+          </View>
+        </LinearGradient>
+      </TouchableOpacity>
 
-  return (
-    <Animated.View
-      style={[
-        styles.container,
-        fadeAnim && {
-          opacity: fadeAnim,
-        },
-        slideAnim && {
-          transform: [{ translateY: slideAnim }],
-        },
-      ]}
-    >
-      <View style={styles.header}>
-        <ThemedText style={styles.title}>Quick Stats</ThemedText>
-        <View style={styles.headerActions}>
-          {isEditMode && (
-            <Pressable style={styles.resetButton} onPress={resetToDefault}>
-              <Ionicons name="refresh" size={16} color="#667eea" />
-              <ThemedText style={styles.resetButtonText}>Reset</ThemedText>
-            </Pressable>
-          )}
-          <Pressable style={styles.editButton} onPress={toggleEditMode}>
-            <Ionicons
-              name={isEditMode ? "checkmark" : "create"}
-              size={16}
-              color={isEditMode ? "#10b981" : "#667eea"}
-            />
-            <ThemedText
-              style={[
-                styles.editButtonText,
-                { color: isEditMode ? "#10b981" : "#667eea" },
-              ]}
-            >
-              {isEditMode ? "Done" : "Edit"}
-            </ThemedText>
-          </Pressable>
-        </View>
+      {/* Quick Stats */}
+      <View style={styles.quickStatsContainer}>
+        {stats.slice(0, 3).map((stat, index) => (
+          <TouchableOpacity
+            key={index}
+            style={[
+              styles.quickStatCard,
+              {
+                backgroundColor: theme.surface,
+                borderColor: theme.border.primary,
+              },
+            ]}
+            onPress={() => {
+              setCurrentIndex(index);
+              handleStatPress(stat);
+            }}
+          >
+            <View style={styles.quickStatContent}>
+              <Ionicons
+                name={stat.icon as any}
+                size={20}
+                color={stat.color}
+              />
+              <View style={styles.quickStatText}>
+                <ThemedText style={styles.quickStatValue}>
+                  {stat.value}
+                </ThemedText>
+                <ThemedText style={styles.quickStatTitle}>
+                  {stat.title}
+                </ThemedText>
+              </View>
+            </View>
+          </TouchableOpacity>
+        ))}
       </View>
-
-      <View style={styles.statsGrid}>
-        {currentStats.map((stat, index) => renderStatCard(stat, index))}
-      </View>
-
-      {isEditMode && (
-        <View style={styles.editHint}>
-          <Ionicons name="information-circle" size={16} color="#6b7280" />
-          <ThemedText style={styles.editHintText}>
-            Long press to enter edit mode, tap cards to rearrange
-          </ThemedText>
-        </View>
-      )}
-    </Animated.View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: DESIGN_SYSTEM.spacing.lg,
+    marginBottom: 24,
   },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: DESIGN_SYSTEM.spacing.md,
+  dotsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 16,
+    gap: 8,
   },
-  title: {
-    fontSize: DESIGN_SYSTEM.typography.sizes.lg,
-    fontWeight: DESIGN_SYSTEM.typography.weights.bold,
-    color: DESIGN_SYSTEM.colors.text.primary,
-  },
-  headerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: DESIGN_SYSTEM.spacing.sm,
-  },
-  editButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: DESIGN_SYSTEM.spacing.xs,
-    paddingHorizontal: DESIGN_SYSTEM.spacing.sm,
-    borderRadius: DESIGN_SYSTEM.borderRadius.sm,
-    backgroundColor: DESIGN_SYSTEM.colors.background.secondary,
-    gap: DESIGN_SYSTEM.spacing.xs,
-  },
-  editButtonText: {
-    fontSize: DESIGN_SYSTEM.typography.sizes.sm,
-    fontWeight: DESIGN_SYSTEM.typography.weights.medium,
-  },
-  resetButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: DESIGN_SYSTEM.spacing.xs,
-    paddingHorizontal: DESIGN_SYSTEM.spacing.sm,
-    borderRadius: DESIGN_SYSTEM.borderRadius.sm,
-    backgroundColor: DESIGN_SYSTEM.colors.background.secondary,
-    gap: DESIGN_SYSTEM.spacing.xs,
-  },
-  resetButtonText: {
-    fontSize: DESIGN_SYSTEM.typography.sizes.sm,
-    fontWeight: DESIGN_SYSTEM.typography.weights.medium,
-    color: "#667eea",
-  },
-  statsGrid: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: DESIGN_SYSTEM.spacing.sm,
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   statCard: {
-    flex: 1,
-    borderRadius: DESIGN_SYSTEM.borderRadius.lg,
-    overflow: "hidden",
-    height: 120,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 16,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 4,
+    borderWidth: 1,
   },
-  statCardPressable: {
-    height: "100%",
+  cardGradient: {
+    padding: 16,
   },
-  statGradient: {
-    padding: DESIGN_SYSTEM.spacing.lg,
-    alignItems: "center",
-    justifyContent: "center",
-    height: "100%",
+  cardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  statHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: DESIGN_SYSTEM.spacing.sm,
-    position: "relative",
+  iconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
   },
-  editIndicator: {
-    position: "absolute",
-    right: -8,
-    top: -8,
-    backgroundColor: "rgba(0, 0, 0, 0.3)",
-    borderRadius: 8,
-    padding: 2,
-  },
-  statValue: {
-    fontSize: DESIGN_SYSTEM.typography.sizes.xl,
-    fontWeight: DESIGN_SYSTEM.typography.weights.bold,
-    color: "#fff",
-    marginBottom: DESIGN_SYSTEM.spacing.xs,
-    textAlign: "center",
+  textContainer: {
+    flex: 1,
   },
   statTitle: {
-    fontSize: DESIGN_SYSTEM.typography.sizes.sm,
-    color: "rgba(255, 255, 255, 0.9)",
-    textAlign: "center",
-    marginBottom: DESIGN_SYSTEM.spacing.xs,
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
+    marginBottom: 4,
   },
-  statUnit: {
-    fontSize: DESIGN_SYSTEM.typography.sizes.xs,
-    color: "rgba(255, 255, 255, 0.8)",
-    textAlign: "center",
+  statValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 4,
   },
-  editHint: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: DESIGN_SYSTEM.spacing.xs,
-    marginTop: DESIGN_SYSTEM.spacing.sm,
-    padding: DESIGN_SYSTEM.spacing.sm,
-    backgroundColor: DESIGN_SYSTEM.colors.background.secondary,
-    borderRadius: DESIGN_SYSTEM.borderRadius.sm,
+  trendContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
-  editHintText: {
-    fontSize: DESIGN_SYSTEM.typography.sizes.xs,
-    color: DESIGN_SYSTEM.colors.text.secondary,
-    textAlign: "center",
+  trendText: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  quickStatsContainer: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  quickStatCard: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  quickStatContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  quickStatText: {
+    flex: 1,
+  },
+  quickStatValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  quickStatTitle: {
+    fontSize: 10,
+    opacity: 0.7,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  emptyText: {
+    fontSize: 16,
+    textAlign: 'center',
   },
 });

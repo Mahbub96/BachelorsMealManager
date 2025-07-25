@@ -1,12 +1,15 @@
-import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { ThemedView } from '../../components/ThemedView';
 import { ThemedText } from '../../components/ThemedText';
 import { MealManagement } from '../../components/meals/MealManagement';
 import { useAuth } from '../../context/AuthContext';
+import { useThemeColor } from '@/hooks/useThemeColor';
 
 export default function MealsScreen() {
   const { user } = useAuth();
+
+  // Theme colors
+  const textColor = useThemeColor({}, 'text');
 
   const handleNavigate = (screen: string) => {
     // Handle navigation to different screens
@@ -19,7 +22,7 @@ export default function MealsScreen() {
     return (
       <ThemedView style={styles.container}>
         <View style={styles.errorContainer}>
-          <ThemedText style={styles.errorText}>
+          <ThemedText style={[styles.errorText, { color: textColor }]}>
             Please log in to view meal management
           </ThemedText>
         </View>
@@ -36,7 +39,7 @@ export default function MealsScreen() {
           console.error('💥 MealManagement render error:', error);
           return (
             <View style={styles.errorContainer}>
-              <ThemedText style={styles.errorText}>
+              <ThemedText style={[styles.errorText, { color: textColor }]}>
                 Failed to load meal management. Please try again.
               </ThemedText>
             </View>
@@ -59,7 +62,6 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
-    color: '#ef4444',
     textAlign: 'center',
   },
 });

@@ -309,8 +309,8 @@ class NetworkServiceImpl implements NetworkService {
         this.notifyListeners(event);
       }
     } catch (error) {
-      const appError = errorHandler.handleError(error, 'Network Retry');
-      console.error('❌ Error retrying failed requests:', appError.message);
+      console.error('❌ Error retrying failed requests:', error);
+      // Don't throw error, just log it to prevent app crashes
     }
   }
 

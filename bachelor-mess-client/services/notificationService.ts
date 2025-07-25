@@ -1,7 +1,7 @@
 import { Platform, Alert } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
-import { API_ENDPOINTS, ApiResponse } from './config';
+import { ApiResponse } from './config';
 import httpClient from './httpClient';
 
 // Notification types

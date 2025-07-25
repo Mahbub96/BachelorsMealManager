@@ -1,5 +1,6 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { DatabaseReset } from '@/components/DatabaseReset';
 import { featureManager } from '@/services';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -359,6 +360,16 @@ export default function SettingsScreen() {
               ['notifications', 'privacy', 'about', 'reset'].includes(item.id)
             )
             .map(renderSettingItem)}
+        </View>
+
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>Database</ThemedText>
+          <DatabaseReset
+            onReset={() => {
+              // Reload settings after database reset
+              loadFeatureConfig();
+            }}
+          />
         </View>
       </ScrollView>
     </ThemedView>

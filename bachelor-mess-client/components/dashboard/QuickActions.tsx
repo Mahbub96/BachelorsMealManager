@@ -3,6 +3,7 @@ import { View, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '../ThemedText';
+import { useTheme } from '@/context/ThemeContext';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -30,6 +31,7 @@ export const QuickActions: React.FC<QuickActionsProps> = ({
   isSmallScreen = false,
   columns = 2,
 }) => {
+  const { theme } = useTheme();
   const getGridStyle = () => {
     const containerPadding = 32; // Account for container padding (16 on each side)
     const availableWidth = screenWidth - containerPadding;
@@ -48,6 +50,7 @@ export const QuickActions: React.FC<QuickActionsProps> = ({
             <ThemedText
               style={[
                 styles.sectionTitle,
+                { color: theme.text.primary },
                 isSmallScreen && styles.sectionTitleSmall,
               ]}
             >
@@ -58,6 +61,7 @@ export const QuickActions: React.FC<QuickActionsProps> = ({
             <ThemedText
               style={[
                 styles.sectionSubtitle,
+                { color: theme.text.secondary },
                 isSmallScreen && styles.sectionSubtitleSmall,
               ]}
             >
@@ -94,7 +98,7 @@ export const QuickActions: React.FC<QuickActionsProps> = ({
                 <Ionicons
                   name={action.icon as any}
                   size={isSmallScreen ? 24 : 28}
-                  color='#fff'
+                  color={theme.text.inverse}
                 />
               </View>
               <View style={styles.actionContent}>
@@ -133,7 +137,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1f2937',
     marginBottom: 4,
   },
   sectionTitleSmall: {
@@ -141,7 +144,6 @@ const styles = StyleSheet.create({
   },
   sectionSubtitle: {
     fontSize: 14,
-    color: '#6b7280',
   },
   sectionSubtitleSmall: {
     fontSize: 12,

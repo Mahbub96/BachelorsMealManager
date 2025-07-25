@@ -1,450 +1,557 @@
-import { DetailCard } from "@/components/DetailCard";
-import { DetailPageTemplate } from "@/components/DetailPageTemplate";
-import { ThemedText } from "@/components/ThemedText";
-import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import React from "react";
-import { Alert, StyleSheet, TouchableOpacity, View } from "react-native";
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { router, useLocalSearchParams } from 'expo-router';
+import { ThemedText } from '@/components/ThemedText';
+import { useTheme } from '@/context/ThemeContext';
+import { activityService } from '@/services/activityService';
+import { Activity as ActivityItem } from '@/services/activityService';
 
-const DESIGN_SYSTEM = {
-  spacing: {
-    xs: 4,
-    sm: 8,
-    md: 12,
-    lg: 16,
-    xl: 20,
-    xxl: 24,
-    xxxl: 32,
-  },
-  borderRadius: {
-    sm: 8,
-    md: 12,
-    lg: 16,
-    xl: 20,
-  },
-  shadows: {
-    small: {
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 8,
-      elevation: 4,
-    },
-  },
-};
+interface ActivityDetailsScreenProps {}
 
-export default function ActivityDetailsPage() {
-  const router = useRouter();
+export default function ActivityDetailsScreen({}: ActivityDetailsScreenProps) {
+  const { theme } = useTheme();
   const params = useLocalSearchParams();
+  const [activity, setActivity] = useState<ActivityItem | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Parse the data from params
-  const activity = {
-    id: (params.id as string) || "1",
-    type: (params.type as string) || "meal",
-    title: (params.title as string) || "Activity Details",
-    description: (params.description as string) || "Activity description",
-    time: (params.time as string) || "2 hours ago",
-    user: (params.user as string) || "User",
-    amount: parseInt(params.amount as string) || 0,
-    priority: (params.priority as string) || "medium",
-    status: (params.status as string) || "completed",
+  useEffect(() => {
+    loadActivityDetails();
+  }, []);
+
+  const loadActivityDetails = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const activityId = params.id as string;
+
+      if (!activityId) {
+        console.error('❌ No activity ID provided');
+        setError('No activity ID provided');
+        return;
+      }
+
+      console.log('🔍 Loading activity details for ID:', activityId);
+
+      // Get activity from API
+      const response = await activityService.getActivityById(activityId);
+      console.log('📡 Activity details response:', response);
+
+      if (response.success && response.data) {
+        console.log('✅ Activity loaded successfully:', response.data);
+        setActivity(response.data);
+      } else {
+        console.error('❌ Failed to load activity:', response.error);
+        setError(response.error || 'Activity not found');
+      }
+    } catch (error) {
+      console.error('❌ Error loading activity details:', error);
+      setError('Network error. Please check your connection.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const getActivityColor = (type: string) => {
+  const handleBack = () => {
+    router.back();
+  };
+
+  const handleEdit = () => {
+    console.log('✏️ Edit activity pressed');
+    Alert.alert('Edit', 'Edit functionality will be implemented soon');
+  };
+
+  const handleDelete = () => {
+    console.log('🗑️ Delete activity pressed');
+    Alert.alert(
+      'Delete Activity',
+      'Are you sure you want to delete this activity?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            console.log('🗑️ Delete functionality not implemented yet');
+            Alert.alert('Success', 'Activity deleted successfully');
+            router.back();
+          },
+        },
+      ]
+    );
+  };
+
+  const getActivityColors = (type: string): [string, string] => {
     switch (type) {
-      case "meal":
-        return "#10b981";
-      case "bazar":
-        return "#6366f1";
-      case "payment":
-        return "#f59e0b";
-      case "member":
-        return "#8b5cf6";
-      case "approval":
-        return "#ef4444";
+      case 'meal':
+        return theme.gradient.success as [string, string];
+      case 'bazar':
+        return theme.gradient.warning as [string, string];
+      case 'member':
+        return theme.gradient.primary as [string, string];
+      case 'payment':
+        return theme.gradient.error as [string, string];
       default:
-        return "#667eea";
+        return theme.gradient.info as [string, string];
     }
   };
 
-  const getActivityIcon = (type: string) => {
+  const getActivityIcon = (type: string): string => {
     switch (type) {
-      case "meal":
-        return "restaurant";
-      case "bazar":
-        return "cart";
-      case "payment":
-        return "card";
-      case "member":
-        return "person";
-      case "approval":
-        return "checkmark-circle";
+      case 'meal':
+        return 'restaurant';
+      case 'bazar':
+        return 'basket';
+      case 'member':
+        return 'person';
+      case 'payment':
+        return 'card';
       default:
-        return "information-circle";
+        return 'information-circle';
     }
   };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "high":
-        return "#ef4444";
-      case "medium":
-        return "#f59e0b";
-      case "low":
-        return "#10b981";
-      default:
-        return "#6b7280";
-    }
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "approved":
-        return "#10b981";
-      case "rejected":
-        return "#ef4444";
-      case "pending":
-        return "#f59e0b";
-      case "completed":
-        return "#10b981";
-      default:
-        return "#6b7280";
-    }
+  const formatTime = (dateString: string) => {
+    return new Date(dateString).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
-  const formatCurrency = (amount: number) => {
-    return `৳${amount.toLocaleString()}`;
-  };
+  if (loading) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+            <Ionicons name='arrow-back' size={24} color={theme.text.primary} />
+          </TouchableOpacity>
+          <ThemedText
+            style={[styles.headerTitle, { color: theme.text.primary }]}
+          >
+            Loading...
+          </ThemedText>
+          <View style={styles.placeholderButton} />
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size='large' color={theme.primary} />
+          <ThemedText
+            style={[styles.loadingText, { color: theme.text.secondary }]}
+          >
+            Loading activity details...
+          </ThemedText>
+        </View>
+      </View>
+    );
+  }
 
-  const formatTime = (timeString: string) => {
-    // Convert relative time to more detailed format
-    if (timeString.includes("ago")) {
-      return timeString;
-    }
-    return timeString;
-  };
+  if (error) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+            <Ionicons name='arrow-back' size={24} color={theme.text.primary} />
+          </TouchableOpacity>
+          <ThemedText
+            style={[styles.headerTitle, { color: theme.text.primary }]}
+          >
+            Error
+          </ThemedText>
+          <View style={styles.placeholderButton} />
+        </View>
+        <View style={styles.errorContainer}>
+          <Ionicons
+            name='alert-circle-outline'
+            size={64}
+            color={theme.status.error}
+          />
+          <ThemedText
+            style={[styles.errorTitle, { color: theme.text.primary }]}
+          >
+            Error Loading Activity
+          </ThemedText>
+          <ThemedText
+            style={[styles.errorText, { color: theme.text.secondary }]}
+          >
+            {error}
+          </ThemedText>
+          <TouchableOpacity
+            style={[styles.retryButton, { backgroundColor: theme.primary }]}
+            onPress={loadActivityDetails}
+          >
+            <ThemedText
+              style={[styles.retryButtonText, { color: theme.text.inverse }]}
+            >
+              Try Again
+            </ThemedText>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
-  const actionButtons = [
-    {
-      icon: "share",
-      label: "Share Activity",
-      onPress: () => Alert.alert("Share", "Activity shared successfully!"),
-      color: "#667eea",
-    },
-    {
-      icon: "create",
-      label: "Edit Activity",
-      onPress: () =>
-        Alert.alert("Edit", "Edit activity functionality coming soon!"),
-      color: "#667eea",
-    },
-    {
-      icon: "trash",
-      label: "Delete Activity",
-      onPress: () => Alert.alert("Delete", "Activity deleted successfully!"),
-      color: "#ef4444",
-    },
-  ];
+  if (!activity) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+            <Ionicons name='arrow-back' size={24} color={theme.text.primary} />
+          </TouchableOpacity>
+          <ThemedText
+            style={[styles.headerTitle, { color: theme.text.primary }]}
+          >
+            Activity Not Found
+          </ThemedText>
+          <View style={styles.placeholderButton} />
+        </View>
+        <View style={styles.errorContainer}>
+          <Ionicons
+            name='help-circle-outline'
+            size={64}
+            color={theme.status.warning}
+          />
+          <ThemedText
+            style={[styles.errorTitle, { color: theme.text.primary }]}
+          >
+            Activity Not Found
+          </ThemedText>
+          <ThemedText
+            style={[styles.errorText, { color: theme.text.secondary }]}
+          >
+            The requested activity could not be found.
+          </ThemedText>
+        </View>
+      </View>
+    );
+  }
+
+  const activityColors = getActivityColors(activity.type);
+  const activityIcon = getActivityIcon(activity.type);
 
   return (
-    <DetailPageTemplate
-      title={activity.title}
-      gradientColors={[getActivityColor(activity.type), "#764ba2"]}
-      actionButtons={actionButtons}
-    >
-      {/* Activity Overview */}
-      <DetailCard
-        title="Activity Overview"
-        value={activity.type.toUpperCase()}
-        icon={getActivityIcon(activity.type)}
-        iconColor={getActivityColor(activity.type)}
-      >
-        <View style={styles.overviewContainer}>
-          <View style={styles.overviewItem}>
-            <ThemedText style={styles.overviewLabel}>Type</ThemedText>
-            <ThemedText style={styles.overviewValue}>
-              {activity.type}
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      {/* Header */}
+      <LinearGradient colors={activityColors} style={styles.header}>
+        <View style={styles.headerContent}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+            <Ionicons name='arrow-back' size={24} color='#fff' />
+          </TouchableOpacity>
+          <View style={styles.headerInfo}>
+            <ThemedText style={styles.headerTitle}>{activity.title}</ThemedText>
+            <ThemedText style={styles.headerSubtitle}>
+              {activity.description}
             </ThemedText>
           </View>
-          <View style={styles.overviewItem}>
-            <ThemedText style={styles.overviewLabel}>Status</ThemedText>
-            <View style={styles.statusContainer}>
-              <View
-                style={[
-                  styles.statusIndicator,
-                  { backgroundColor: getStatusColor(activity.status) },
-                ]}
-              />
-              <ThemedText style={styles.overviewValue}>
+          <View style={styles.headerActions}>
+            <TouchableOpacity style={styles.actionButton} onPress={handleEdit}>
+              <Ionicons name='create-outline' size={20} color='#fff' />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={handleDelete}
+            >
+              <Ionicons name='trash-outline' size={20} color='#fff' />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </LinearGradient>
+
+      {/* Content */}
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Activity Icon */}
+        <View style={styles.iconContainer}>
+          <View
+            style={[
+              styles.iconBackground,
+              { backgroundColor: activityColors[0] },
+            ]}
+          >
+            <Ionicons name={activityIcon as any} size={32} color='#fff' />
+          </View>
+        </View>
+
+        {/* Activity Details */}
+        <View
+          style={[
+            styles.detailsCard,
+            { backgroundColor: theme.cardBackground },
+          ]}
+        >
+          <ThemedText
+            style={[styles.sectionTitle, { color: theme.text.primary }]}
+          >
+            Activity Details
+          </ThemedText>
+
+          <View style={styles.detailRow}>
+            <ThemedText
+              style={[styles.detailLabel, { color: theme.text.secondary }]}
+            >
+              Type
+            </ThemedText>
+            <ThemedText
+              style={[styles.detailValue, { color: theme.text.primary }]}
+            >
+              {activity.type.charAt(0).toUpperCase() + activity.type.slice(1)}
+            </ThemedText>
+          </View>
+
+          <View style={styles.detailRow}>
+            <ThemedText
+              style={[styles.detailLabel, { color: theme.text.secondary }]}
+            >
+              Status
+            </ThemedText>
+            <View
+              style={[
+                styles.statusBadge,
+                { backgroundColor: theme.status.success },
+              ]}
+            >
+              <ThemedText
+                style={[styles.statusText, { color: theme.text.inverse }]}
+              >
                 {activity.status}
               </ThemedText>
             </View>
           </View>
-          <View style={styles.overviewItem}>
-            <ThemedText style={styles.overviewLabel}>Priority</ThemedText>
-            <View style={styles.priorityContainer}>
-              <View
-                style={[
-                  styles.priorityIndicator,
-                  { backgroundColor: getPriorityColor(activity.priority) },
-                ]}
-              />
-              <ThemedText style={styles.overviewValue}>
-                {activity.priority}
-              </ThemedText>
-            </View>
-          </View>
-          <View style={styles.overviewItem}>
-            <ThemedText style={styles.overviewLabel}>User</ThemedText>
-            <ThemedText style={styles.overviewValue}>
-              {activity.user}
-            </ThemedText>
-          </View>
-        </View>
-      </DetailCard>
 
-      {/* Activity Details */}
-      <DetailCard
-        title="Activity Details"
-        value="Information"
-        icon="document-text"
-        iconColor="#667eea"
-      >
-        <View style={styles.detailsContainer}>
-          <View style={styles.detailItem}>
-            <ThemedText style={styles.detailLabel}>Description</ThemedText>
-            <ThemedText style={styles.detailValue}>
-              {activity.description}
+          <View style={styles.detailRow}>
+            <ThemedText
+              style={[styles.detailLabel, { color: theme.text.secondary }]}
+            >
+              Created
+            </ThemedText>
+            <ThemedText
+              style={[styles.detailValue, { color: theme.text.primary }]}
+            >
+              {formatDate(activity.createdAt)}
             </ThemedText>
           </View>
-          <View style={styles.detailItem}>
-            <ThemedText style={styles.detailLabel}>Time</ThemedText>
-            <ThemedText style={styles.detailValue}>
-              {formatTime(activity.time)}
+
+          <View style={styles.detailRow}>
+            <ThemedText
+              style={[styles.detailLabel, { color: theme.text.secondary }]}
+            >
+              Time
+            </ThemedText>
+            <ThemedText
+              style={[styles.detailValue, { color: theme.text.primary }]}
+            >
+              {formatTime(activity.createdAt)}
             </ThemedText>
           </View>
-          {activity.amount > 0 && (
-            <View style={styles.detailItem}>
-              <ThemedText style={styles.detailLabel}>Amount</ThemedText>
-              <ThemedText style={styles.detailValue}>
-                {formatCurrency(activity.amount)}
+
+          {activity.updatedAt && activity.updatedAt !== activity.createdAt && (
+            <View style={styles.detailRow}>
+              <ThemedText
+                style={[styles.detailLabel, { color: theme.text.secondary }]}
+              >
+                Updated
+              </ThemedText>
+              <ThemedText
+                style={[styles.detailValue, { color: theme.text.primary }]}
+              >
+                {formatDate(activity.updatedAt)}
               </ThemedText>
             </View>
           )}
         </View>
-      </DetailCard>
 
-      {/* Related Activities */}
-      <DetailCard
-        title="Related Activities"
-        value="Similar"
-        icon="list"
-        iconColor="#667eea"
-      >
-        <View style={styles.relatedContainer}>
-          <TouchableOpacity
-            style={styles.relatedItem}
-            onPress={() =>
-              Alert.alert("Related Activity", "Viewing related activity")
-            }
+        {/* Activity Description */}
+        {activity.description && (
+          <View
+            style={[
+              styles.descriptionCard,
+              { backgroundColor: theme.cardBackground },
+            ]}
           >
-            <View
-              style={[
-                styles.relatedIcon,
-                { backgroundColor: getActivityColor(activity.type) + "20" },
-              ]}
+            <ThemedText
+              style={[styles.sectionTitle, { color: theme.text.primary }]}
             >
-              <Ionicons
-                name={getActivityIcon(activity.type) as any}
-                size={16}
-                color={getActivityColor(activity.type)}
-              />
-            </View>
-            <View style={styles.relatedContent}>
-              <ThemedText style={styles.relatedTitle}>
-                Similar {activity.type} activity
-              </ThemedText>
-              <ThemedText style={styles.relatedTime}>1 day ago</ThemedText>
-            </View>
-            <Ionicons name="chevron-forward" size={16} color="#9ca3af" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.relatedItem}
-            onPress={() =>
-              Alert.alert("Related Activity", "Viewing related activity")
-            }
-          >
-            <View
-              style={[styles.relatedIcon, { backgroundColor: "#f59e0b20" }]}
+              Description
+            </ThemedText>
+            <ThemedText
+              style={[styles.descriptionText, { color: theme.text.secondary }]}
             >
-              <Ionicons name="time" size={16} color="#f59e0b" />
-            </View>
-            <View style={styles.relatedContent}>
-              <ThemedText style={styles.relatedTitle}>
-                Recent activity by {activity.user}
-              </ThemedText>
-              <ThemedText style={styles.relatedTime}>3 days ago</ThemedText>
-            </View>
-            <Ionicons name="chevron-forward" size={16} color="#9ca3af" />
-          </TouchableOpacity>
-        </View>
-      </DetailCard>
-
-      {/* Activity Timeline */}
-      <DetailCard
-        title="Activity Timeline"
-        value="History"
-        icon="time"
-        iconColor="#667eea"
-      >
-        <View style={styles.timelineContainer}>
-          <View style={styles.timelineItem}>
-            <View
-              style={[
-                styles.timelineDot,
-                { backgroundColor: getStatusColor(activity.status) },
-              ]}
-            />
-            <View style={styles.timelineContent}>
-              <ThemedText style={styles.timelineTitle}>
-                Activity {activity.status}
-              </ThemedText>
-              <ThemedText style={styles.timelineTime}>
-                {activity.time}
-              </ThemedText>
-            </View>
+              {activity.description}
+            </ThemedText>
           </View>
-          <View style={styles.timelineItem}>
-            <View
-              style={[styles.timelineDot, { backgroundColor: "#6b7280" }]}
-            />
-            <View style={styles.timelineContent}>
-              <ThemedText style={styles.timelineTitle}>
-                Activity created
-              </ThemedText>
-              <ThemedText style={styles.timelineTime}>1 hour ago</ThemedText>
-            </View>
-          </View>
-        </View>
-      </DetailCard>
-    </DetailPageTemplate>
+        )}
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  overviewContainer: {
-    gap: DESIGN_SYSTEM.spacing.md,
+  container: {
+    flex: 1,
   },
-  overviewItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: DESIGN_SYSTEM.spacing.sm,
+  header: {
+    paddingTop: 50,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
   },
-  overviewLabel: {
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerInfo: {
+    flex: 1,
+    marginHorizontal: 16,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  headerSubtitle: {
     fontSize: 14,
-    color: "#6b7280",
-    fontWeight: "500",
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: 4,
   },
-  overviewValue: {
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  actionButton: {
+    padding: 8,
+  },
+  placeholderButton: {
+    width: 40,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    marginTop: 16,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  errorText: {
     fontSize: 14,
-    color: "#1f2937",
-    fontWeight: "600",
+    textAlign: 'center',
+    marginBottom: 24,
   },
-  statusContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: DESIGN_SYSTEM.spacing.xs,
+  retryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
   },
-  statusIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  retryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
-  priorityContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: DESIGN_SYSTEM.spacing.xs,
+  content: {
+    flex: 1,
+    padding: 20,
   },
-  priorityIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  iconContainer: {
+    alignItems: 'center',
+    marginBottom: 24,
   },
-  detailsContainer: {
-    gap: DESIGN_SYSTEM.spacing.md,
+  iconBackground: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  detailItem: {
-    marginBottom: DESIGN_SYSTEM.spacing.md,
+  detailsCard: {
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 16,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
   },
   detailLabel: {
     fontSize: 14,
-    color: "#6b7280",
-    fontWeight: "500",
-    marginBottom: DESIGN_SYSTEM.spacing.xs,
+    fontWeight: '500',
   },
   detailValue: {
-    fontSize: 16,
-    color: "#1f2937",
-    fontWeight: "600",
-  },
-  relatedContainer: {
-    gap: DESIGN_SYSTEM.spacing.md,
-  },
-  relatedItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: DESIGN_SYSTEM.spacing.md,
-    backgroundColor: "#f8fafc",
-    borderRadius: DESIGN_SYSTEM.borderRadius.md,
-  },
-  relatedIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: DESIGN_SYSTEM.spacing.md,
-  },
-  relatedContent: {
-    flex: 1,
-  },
-  relatedTitle: {
     fontSize: 14,
-    fontWeight: "600",
-    color: "#1f2937",
-    marginBottom: 2,
+    fontWeight: '600',
   },
-  relatedTime: {
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusText: {
     fontSize: 12,
-    color: "#6b7280",
+    fontWeight: '600',
   },
-  timelineContainer: {
-    gap: DESIGN_SYSTEM.spacing.md,
+  descriptionCard: {
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  timelineItem: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-  },
-  timelineDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: DESIGN_SYSTEM.spacing.md,
-    marginTop: 4,
-  },
-  timelineContent: {
-    flex: 1,
-  },
-  timelineTitle: {
+  descriptionText: {
     fontSize: 14,
-    fontWeight: "600",
-    color: "#1f2937",
-    marginBottom: 2,
+    lineHeight: 20,
   },
-  timelineTime: {
-    fontSize: 12,
-    color: "#6b7280",
+  dataCard: {
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
 });

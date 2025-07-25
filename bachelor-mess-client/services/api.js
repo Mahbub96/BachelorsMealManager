@@ -2,6 +2,7 @@
 // This file maintains backward compatibility while using the new service architecture
 
 import { dashboardService } from './index';
+import { activityService } from './activityService';
 
 // Legacy analytics API - now uses the new dashboard service
 export const analyticsAPI = {
@@ -36,7 +37,7 @@ export const analyticsAPI = {
   // Get recent activities
   getRecentActivities: async () => {
     try {
-      const response = await dashboardService.getActivities();
+      const response = await activityService.getRecentActivities();
       return response;
     } catch (error) {
       console.error('Error fetching recent activities:', error);

@@ -1,6 +1,7 @@
 import { API_ENDPOINTS, ApiResponse } from './config';
 import httpClient from './httpClient';
 import errorHandler from './errorHandler';
+import { offlineStorage } from './offlineStorage';
 
 // Type definitions for dashboard with new statistics system
 export interface DashboardStats {
@@ -166,355 +167,348 @@ export interface DashboardService {
   ) => Promise<ApiResponse<AnalyticsData['categoryBreakdown']>>;
 }
 
-// Dashboard service implementation with enhanced error handling
 class DashboardServiceImpl implements DashboardService {
   async getHealth(): Promise<
     ApiResponse<{ message: string; timestamp: string }>
   > {
     try {
-      console.log('🔍 Checking API health...');
+      console.log('🔍 Dashboard Service - Checking health...');
       const response = await httpClient.get<{
         message: string;
         timestamp: string;
-      }>(API_ENDPOINTS.DASHBOARD.HEALTH, {
-        cache: true,
-        cacheKey: 'health_check',
-        skipAuth: true, // Health check doesn't need auth
-        timeout: 10000, // 10 second timeout for health check
-      });
+      }>(API_ENDPOINTS.DASHBOARD.HEALTH);
 
-      if (!response.success) {
-        const appError = errorHandler.handleApiResponse(
-          response,
-          'Dashboard Health Check'
-        );
-        console.error('❌ Health check failed:', appError?.message);
+      if (response.success) {
+        console.log('✅ Dashboard Service - Health check successful');
       } else {
-        console.log('✅ Health check successful');
+        console.error(
+          '❌ Dashboard Service - Health check failed:',
+          response.error
+        );
       }
 
       return response;
     } catch (error) {
-      const appError = errorHandler.handleError(
-        error,
-        'Dashboard Health Check'
-      );
+      console.error('❌ Dashboard Service - Health check error:', error);
       return {
         success: false,
-        error: appError.userFriendlyMessage,
+        error: error instanceof Error ? error.message : 'Health check failed',
+        data: undefined,
       };
     }
   }
 
   async getStats(): Promise<ApiResponse<DashboardStats>> {
-    try {
-      console.log('📊 Fetching dashboard stats...');
-      const response = await httpClient.get<DashboardStats>(
-        API_ENDPOINTS.DASHBOARD.STATS,
-        {
-          cache: true,
-          cacheKey: 'dashboard_stats',
-          offlineFallback: true, // Enable offline fallback for stats
-          retries: 2, // Retry up to 2 times for stats
-        }
-      );
+    return offlineStorage
+      .getDataWithOfflineFallback(
+        'dashboard_stats',
+        async () => {
+          console.log('📊 Dashboard Service - Fetching stats from API...');
+          const response = await httpClient.get<DashboardStats>(
+            API_ENDPOINTS.DASHBOARD.STATS
+          );
 
-      if (!response.success) {
-        const appError = errorHandler.handleApiResponse(
-          response,
-          'Dashboard Stats'
-        );
-        console.error('❌ Failed to fetch dashboard stats:', appError?.message);
-      } else {
-        console.log('✅ Dashboard stats fetched successfully');
-      }
+          if (response.success && response.data) {
+            console.log('✅ Dashboard Service - Stats fetched successfully');
+            // Store offline data for future use
+            await offlineStorage.setOfflineData(
+              'dashboard_stats',
+              response.data
+            );
+          } else {
+            console.error(
+              '❌ Dashboard Service - Failed to fetch stats:',
+              response.error
+            );
+          }
 
-      return response;
-    } catch (error) {
-      const appError = errorHandler.handleError(error, 'Dashboard Stats');
-      return {
-        success: false,
-        error: appError.userFriendlyMessage,
-      };
-    }
+          return response.data;
+        },
+        { useCache: true, forceRefresh: false }
+      )
+      .then(result => ({
+        success: result.data !== null,
+        data: result.data as DashboardStats,
+        error: result.error,
+      }));
   }
 
   async getActivities(): Promise<ApiResponse<Activity[]>> {
-    try {
-      console.log('📋 Fetching dashboard activities...');
-      const response = await httpClient.get<Activity[]>(
-        API_ENDPOINTS.DASHBOARD.ACTIVITIES,
-        {
-          cache: true,
-          cacheKey: 'dashboard_activities',
-          offlineFallback: true, // Enable offline fallback for activities
-          retries: 2,
-        }
-      );
+    return offlineStorage
+      .getDataWithOfflineFallback(
+        'dashboard_activities',
+        async () => {
+          console.log('📋 Dashboard Service - Fetching activities from API...');
+          const response = await httpClient.get(
+            API_ENDPOINTS.DASHBOARD.ACTIVITIES
+          );
 
-      if (!response.success) {
-        const appError = errorHandler.handleApiResponse(
-          response,
-          'Dashboard Activities'
-        );
-        console.error('❌ Failed to fetch activities:', appError?.message);
-      } else {
-        console.log('✅ Dashboard activities fetched successfully');
-      }
+          if (response.success && response.data) {
+            console.log(
+              '✅ Dashboard Service - Activities fetched successfully'
+            );
+            // Store offline data for future use
+            await offlineStorage.setOfflineData(
+              'dashboard_activities',
+              response.data
+            );
+          } else {
+            console.error(
+              '❌ Dashboard Service - Failed to fetch activities:',
+              response.error
+            );
+          }
 
-      return response;
-    } catch (error) {
-      const appError = errorHandler.handleError(error, 'Dashboard Activities');
-      return {
-        success: false,
-        error: appError.userFriendlyMessage,
-      };
-    }
+          return response.data;
+        },
+        { useCache: false, forceRefresh: true }
+      )
+      .then(result => ({
+        success: result.data !== null,
+        data: result.data as Activity[],
+        error: result.error,
+      }));
   }
 
   async getAnalytics(
     filters: DashboardFilters = {}
   ): Promise<ApiResponse<AnalyticsData>> {
-    try {
-      console.log('📈 Fetching analytics data...', filters);
-      const queryParams = this.buildQueryParams(filters);
-      const endpoint = `${API_ENDPOINTS.ANALYTICS.DATA}${queryParams}`;
+    const cacheKey = `dashboard_analytics_${JSON.stringify(filters)}`;
 
-      const response = await httpClient.get<AnalyticsData>(endpoint, {
-        cache: true,
-        cacheKey: `analytics_${JSON.stringify(filters)}`,
-        offlineFallback: true,
-        retries: 2,
-      });
+    return offlineStorage
+      .getDataWithOfflineFallback(
+        cacheKey,
+        async () => {
+          console.log('📈 Dashboard Service - Fetching analytics from API...');
+          const queryParams = this.buildQueryParams(filters);
+          const response = await httpClient.get(
+            `${API_ENDPOINTS.DASHBOARD.ANALYTICS}?${queryParams}`
+          );
 
-      if (!response.success) {
-        const appError = errorHandler.handleApiResponse(
-          response,
-          'Dashboard Analytics'
-        );
-        console.error('❌ Failed to fetch analytics:', appError?.message);
-      } else {
-        console.log('✅ Analytics data fetched successfully');
-      }
+          if (response.success && response.data) {
+            console.log(
+              '✅ Dashboard Service - Analytics fetched successfully'
+            );
+            // Store offline data for future use
+            await offlineStorage.setOfflineData(cacheKey, response.data);
+          } else {
+            console.error(
+              '❌ Dashboard Service - Failed to fetch analytics:',
+              response.error
+            );
+          }
 
-      return response;
-    } catch (error) {
-      const appError = errorHandler.handleError(error, 'Dashboard Analytics');
-      return {
-        success: false,
-        error: appError.userFriendlyMessage,
-      };
-    }
+          return response.data;
+        },
+        { useCache: true, forceRefresh: false }
+      )
+      .then(result => ({
+        success: result.data !== null,
+        data: result.data,
+        error: result.error,
+      }));
   }
 
   async getCombinedData(
     filters: DashboardFilters = {}
   ): Promise<ApiResponse<CombinedDashboardData>> {
-    try {
-      console.log('🔄 Fetching combined dashboard data...', filters);
-      const queryParams = this.buildQueryParams(filters);
-      const endpoint = `${API_ENDPOINTS.DASHBOARD.COMBINED}${queryParams}`;
+    const cacheKey = `dashboard_combined_${JSON.stringify(filters)}`;
 
-      const response = await httpClient.get<CombinedDashboardData>(endpoint, {
-        cache: true,
-        cacheKey: `combined_dashboard_${JSON.stringify(filters)}`,
-        offlineFallback: true,
-        retries: 3, // More retries for combined data
-        timeout: 30000, // Longer timeout for combined data
-      });
+    return offlineStorage
+      .getDataWithOfflineFallback(
+        cacheKey,
+        async () => {
+          console.log(
+            '🔄 Dashboard Service - Fetching combined data from API...'
+          );
+          const queryParams = this.buildQueryParams(filters);
+          const response = await httpClient.get(
+            `${API_ENDPOINTS.DASHBOARD.COMBINED}?${queryParams}`
+          );
 
-      if (!response.success) {
-        const appError = errorHandler.handleApiResponse(
-          response,
-          'Combined Dashboard Data'
-        );
-        console.error('❌ Failed to fetch combined data:', appError?.message);
+          if (response.success && response.data) {
+            console.log(
+              '✅ Dashboard Service - Combined data fetched successfully'
+            );
+            // Store offline data for future use
+            await offlineStorage.setOfflineData(cacheKey, response.data);
+          } else {
+            console.error(
+              '❌ Dashboard Service - Failed to fetch combined data:',
+              response.error
+            );
+          }
 
-        // Return a more specific error message
-        return {
-          success: false,
-          error:
-            appError?.userFriendlyMessage ||
-            'Failed to load dashboard data. Please check your connection and try again.',
-        };
-      } else {
-        console.log('✅ Combined dashboard data fetched successfully');
-      }
-
-      return response;
-    } catch (error) {
-      const appError = errorHandler.handleError(
-        error,
-        'Combined Dashboard Data'
-      );
-
-      // Provide more specific error messages based on error type
-      let userMessage = appError.userFriendlyMessage;
-      if (appError.type === 'NETWORK') {
-        userMessage =
-          'Network connection issue. Please check your internet connection and try again.';
-      } else if (appError.type === 'SERVER') {
-        userMessage =
-          'Server is temporarily unavailable. Please try again in a few moments.';
-      } else if (appError.type === 'TIMEOUT') {
-        userMessage =
-          'Request timed out. Please check your connection and try again.';
-      }
-
-      return {
-        success: false,
-        error: userMessage,
-      };
-    }
+          return response.data;
+        },
+        { useCache: true, forceRefresh: false }
+      )
+      .then(result => ({
+        success: result.data !== null,
+        data: result.data,
+        error: result.error,
+      }));
   }
 
   async getStatistics(
     forceUpdate?: boolean
   ): Promise<ApiResponse<StatisticsData>> {
-    try {
-      console.log('�� Fetching dashboard statistics...', forceUpdate);
-      const queryParams = this.buildQueryParams({ forceUpdate: forceUpdate });
-      const endpoint = `${API_ENDPOINTS.DASHBOARD.STATISTICS}${queryParams}`;
+    return offlineStorage
+      .getDataWithOfflineFallback(
+        'dashboard_statistics',
+        async () => {
+          console.log('📊 Dashboard Service - Fetching statistics from API...');
+          const response = await httpClient.get(
+            API_ENDPOINTS.DASHBOARD.STATISTICS
+          );
 
-      const response = await httpClient.get<StatisticsData>(endpoint, {
-        cache: true,
-        cacheKey: `dashboard_statistics_${forceUpdate ? 'force' : ''}`,
-        offlineFallback: true,
-        retries: 2,
-      });
+          if (response.success && response.data) {
+            console.log(
+              '✅ Dashboard Service - Statistics fetched successfully'
+            );
+            // Store offline data for future use
+            await offlineStorage.setOfflineData(
+              'dashboard_statistics',
+              response.data
+            );
+          } else {
+            console.error(
+              '❌ Dashboard Service - Failed to fetch statistics:',
+              response.error
+            );
+          }
 
-      if (!response.success) {
-        const appError = errorHandler.handleApiResponse(
-          response,
-          'Dashboard Statistics'
-        );
-        console.error('❌ Failed to fetch statistics:', appError?.message);
-      } else {
-        console.log('✅ Dashboard statistics fetched successfully');
-      }
-
-      return response;
-    } catch (error) {
-      const appError = errorHandler.handleError(error, 'Dashboard Statistics');
-      return {
-        success: false,
-        error: appError.userFriendlyMessage,
-      };
-    }
+          return response.data;
+        },
+        { useCache: true, forceRefresh: forceUpdate || false }
+      )
+      .then(result => ({
+        success: result.data !== null,
+        data: result.data,
+        error: result.error,
+      }));
   }
 
   async getMealDistribution(
     timeframe: string = 'week'
   ): Promise<ApiResponse<AnalyticsData['mealDistribution']>> {
-    try {
-      console.log('🍽️ Fetching meal distribution...', timeframe);
-      const response = await httpClient.get<AnalyticsData['mealDistribution']>(
-        `${API_ENDPOINTS.ANALYTICS.DATA}?timeframe=${timeframe}`,
-        {
-          cache: true,
-          cacheKey: `meal_distribution_${timeframe}`,
-          offlineFallback: true,
-          retries: 2,
-        }
-      );
+    const cacheKey = `meal_distribution_${timeframe}`;
 
-      if (!response.success) {
-        const appError = errorHandler.handleApiResponse(
-          response,
-          'Meal Distribution'
-        );
-        console.error(
-          '❌ Failed to fetch meal distribution:',
-          appError?.message
-        );
-      } else {
-        console.log('✅ Meal distribution fetched successfully');
-      }
+    return offlineStorage
+      .getDataWithOfflineFallback(
+        cacheKey,
+        async () => {
+          console.log(
+            '🍽️ Dashboard Service - Fetching meal distribution from API...'
+          );
+          const response = await httpClient.get(
+            `${API_ENDPOINTS.DASHBOARD.MEAL_DISTRIBUTION}?timeframe=${timeframe}`
+          );
 
-      return response;
-    } catch (error) {
-      const appError = errorHandler.handleError(error, 'Meal Distribution');
-      return {
-        success: false,
-        error: appError.userFriendlyMessage,
-      };
-    }
+          if (response.success && response.data) {
+            console.log(
+              '✅ Dashboard Service - Meal distribution fetched successfully'
+            );
+            // Store offline data for future use
+            await offlineStorage.setOfflineData(cacheKey, response.data);
+          } else {
+            console.error(
+              '❌ Dashboard Service - Failed to fetch meal distribution:',
+              response.error
+            );
+          }
+
+          return response.data;
+        },
+        { useCache: true, forceRefresh: false }
+      )
+      .then(result => ({
+        success: result.data !== null,
+        data: result.data,
+        error: result.error,
+      }));
   }
 
   async getExpenseTrend(
     timeframe: string = 'week'
   ): Promise<ApiResponse<AnalyticsData['expenseTrend']>> {
-    try {
-      console.log('💰 Fetching expense trend...', timeframe);
-      const response = await httpClient.get<AnalyticsData['expenseTrend']>(
-        `${API_ENDPOINTS.ANALYTICS.DATA}?timeframe=${timeframe}`,
-        {
-          cache: true,
-          cacheKey: `expense_trend_${timeframe}`,
-          offlineFallback: true,
-          retries: 2,
-        }
-      );
+    const cacheKey = `expense_trend_${timeframe}`;
 
-      if (!response.success) {
-        const appError = errorHandler.handleApiResponse(
-          response,
-          'Expense Trend'
-        );
-        console.error('❌ Failed to fetch expense trend:', appError?.message);
-      } else {
-        console.log('✅ Expense trend fetched successfully');
-      }
+    return offlineStorage
+      .getDataWithOfflineFallback(
+        cacheKey,
+        async () => {
+          console.log(
+            '💰 Dashboard Service - Fetching expense trend from API...'
+          );
+          const response = await httpClient.get(
+            `${API_ENDPOINTS.DASHBOARD.EXPENSE_TREND}?timeframe=${timeframe}`
+          );
 
-      return response;
-    } catch (error) {
-      const appError = errorHandler.handleError(error, 'Expense Trend');
-      return {
-        success: false,
-        error: appError.userFriendlyMessage,
-      };
-    }
+          if (response.success && response.data) {
+            console.log(
+              '✅ Dashboard Service - Expense trend fetched successfully'
+            );
+            // Store offline data for future use
+            await offlineStorage.setOfflineData(cacheKey, response.data);
+          } else {
+            console.error(
+              '❌ Dashboard Service - Failed to fetch expense trend:',
+              response.error
+            );
+          }
+
+          return response.data;
+        },
+        { useCache: true, forceRefresh: false }
+      )
+      .then(result => ({
+        success: result.data !== null,
+        data: result.data,
+        error: result.error,
+      }));
   }
 
   async getCategoryBreakdown(
     timeframe: string = 'week'
   ): Promise<ApiResponse<AnalyticsData['categoryBreakdown']>> {
-    try {
-      console.log('📊 Fetching category breakdown...', timeframe);
-      const response = await httpClient.get<AnalyticsData['categoryBreakdown']>(
-        `${API_ENDPOINTS.ANALYTICS.DATA}?timeframe=${timeframe}`,
-        {
-          cache: true,
-          cacheKey: `category_breakdown_${timeframe}`,
-          offlineFallback: true,
-          retries: 2,
-        }
-      );
+    const cacheKey = `category_breakdown_${timeframe}`;
 
-      if (!response.success) {
-        const appError = errorHandler.handleApiResponse(
-          response,
-          'Category Breakdown'
-        );
-        console.error(
-          '❌ Failed to fetch category breakdown:',
-          appError?.message
-        );
-      } else {
-        console.log('✅ Category breakdown fetched successfully');
-      }
+    return offlineStorage
+      .getDataWithOfflineFallback(
+        cacheKey,
+        async () => {
+          console.log(
+            '📊 Dashboard Service - Fetching category breakdown from API...'
+          );
+          const response = await httpClient.get(
+            `${API_ENDPOINTS.DASHBOARD.CATEGORY_BREAKDOWN}?timeframe=${timeframe}`
+          );
 
-      return response;
-    } catch (error) {
-      const appError = errorHandler.handleError(error, 'Category Breakdown');
-      return {
-        success: false,
-        error: appError.userFriendlyMessage,
-      };
-    }
+          if (response.success && response.data) {
+            console.log(
+              '✅ Dashboard Service - Category breakdown fetched successfully'
+            );
+            // Store offline data for future use
+            await offlineStorage.setOfflineData(cacheKey, response.data);
+          } else {
+            console.error(
+              '❌ Dashboard Service - Failed to fetch category breakdown:',
+              response.error
+            );
+          }
+
+          return response.data;
+        },
+        { useCache: true, forceRefresh: false }
+      )
+      .then(result => ({
+        success: result.data !== null,
+        data: result.data,
+        error: result.error,
+      }));
   }
 
-  // Helper method to build query parameters
   private buildQueryParams(filters: DashboardFilters): string {
     const params = new URLSearchParams();
 
@@ -528,14 +522,13 @@ class DashboardServiceImpl implements DashboardService {
       params.append('endDate', filters.endDate);
     }
     if (filters.forceUpdate) {
-      params.append('forceUpdate', filters.forceUpdate.toString());
+      params.append('forceUpdate', 'true');
     }
 
-    const queryString = params.toString();
-    return queryString ? `?${queryString}` : '';
+    return params.toString();
   }
 
-  // Convenience methods for specific timeframes
+  // Convenience methods for different timeframes
   async getWeeklyData(): Promise<ApiResponse<CombinedDashboardData>> {
     return this.getCombinedData({ timeframe: 'week' });
   }
@@ -548,29 +541,42 @@ class DashboardServiceImpl implements DashboardService {
     return this.getCombinedData({ timeframe: 'year' });
   }
 
-  // Refresh dashboard data and clear cache
+  // Offline-first refresh method
   async refreshDashboard(): Promise<void> {
+    console.log('🔄 Dashboard Service - Refreshing dashboard data...');
+
     try {
-      console.log('🔄 Refreshing dashboard data...');
-      await httpClient.clearCache();
-      console.log('✅ Dashboard cache cleared');
+      // Clear cache to force fresh data
+      await offlineStorage.clearCache();
+
+      // Fetch fresh data
+      await Promise.all([
+        this.getStats(),
+        this.getActivities(),
+        this.getAnalytics(),
+        this.getStatistics(true),
+      ]);
+
+      console.log('✅ Dashboard Service - Dashboard refreshed successfully');
     } catch (error) {
-      const appError = errorHandler.handleError(error, 'Dashboard Refresh');
-      console.error('❌ Failed to refresh dashboard:', appError.message);
+      console.error(
+        '❌ Dashboard Service - Failed to refresh dashboard:',
+        error
+      );
+      throw error;
     }
   }
 
-  // Get error statistics for dashboard
+  // Error tracking methods
   getErrorStats() {
     return errorHandler.getErrorStats();
   }
 
-  // Check if there are critical errors
   hasCriticalErrors(): boolean {
     return errorHandler.hasCriticalErrors();
   }
 }
 
-// Export singleton instance
+// Create and export singleton instance
 const dashboardService = new DashboardServiceImpl();
 export default dashboardService;

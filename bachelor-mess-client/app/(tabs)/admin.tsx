@@ -3,9 +3,13 @@ import { View, StyleSheet, Text } from 'react-native';
 import { ThemedView } from '../../components/ThemedView';
 import { AdminDashboard } from '../../components/admin/AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
+import { useThemeColor } from '@/hooks/useThemeColor';
 
 export default function AdminScreen() {
   const { user } = useAuth();
+
+  // Theme colors
+  const textColor = useThemeColor({}, 'text');
 
   const handleNavigate = (screen: string) => {
     // Handle navigation to different admin screens
@@ -18,7 +22,7 @@ export default function AdminScreen() {
     return (
       <ThemedView style={styles.container}>
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>
+          <Text style={[styles.errorText, { color: textColor }]}>
             Access Denied. Admin privileges required.
           </Text>
         </View>
@@ -45,7 +49,6 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
-    color: '#ef4444',
     textAlign: 'center',
   },
 });

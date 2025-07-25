@@ -2,7 +2,9 @@ import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
 import { ThemedText } from '../ThemedText';
+import { useTheme } from '@/context/ThemeContext';
 
 export interface ActivityItem {
   id: string;
@@ -33,6 +35,7 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
   isSmallScreen = false,
   maxItems = 3,
 }) => {
+  const { theme } = useTheme();
   const displayActivities = (activities || []).slice(0, maxItems);
 
   return (
@@ -62,19 +65,34 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
         </View>
 
         {showViewAll && (
-          <TouchableOpacity style={styles.viewAllButton} onPress={onViewAll}>
+          <TouchableOpacity
+            style={styles.viewAllButton}
+            onPress={onViewAll || (() => router.push('/recent-activity'))}
+          >
             <ThemedText style={styles.viewAllText}>View All</ThemedText>
-            <Ionicons name='arrow-forward' size={16} color='#667eea' />
+            <Ionicons name='arrow-forward' size={16} color={theme.primary} />
           </TouchableOpacity>
         )}
       </View>
 
-      <View style={styles.activityList}>
+      <View
+        style={[
+          styles.activityList,
+          {
+            backgroundColor: theme.cardBackground,
+            borderColor: theme.cardBorder,
+            shadowColor: theme.cardShadow,
+          },
+        ]}
+      >
         {displayActivities.map((activity, index) => (
           <View
             key={activity.id}
             style={[
               styles.activityItem,
+              {
+                borderBottomColor: theme.border.secondary,
+              },
               index === displayActivities.length - 1 && styles.lastActivityItem,
             ]}
           >
@@ -86,7 +104,7 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
                 <Ionicons
                   name={activity.icon as any}
                   size={isSmallScreen ? 14 : 16}
-                  color='#fff'
+                  color={theme.text.inverse}
                 />
               </LinearGradient>
             </View>
@@ -152,7 +170,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1f2937',
     marginBottom: 4,
   },
   sectionTitleSmall: {
@@ -160,7 +177,7 @@ const styles = StyleSheet.create({
   },
   sectionSubtitle: {
     fontSize: 14,
-    color: '#6b7280',
+    opacity: 0.7,
   },
   sectionSubtitleSmall: {
     fontSize: 12,
@@ -174,27 +191,22 @@ const styles = StyleSheet.create({
   },
   viewAllText: {
     fontSize: 14,
-    color: '#667eea',
     fontWeight: '600',
   },
   activityList: {
-    backgroundColor: '#fff',
     borderRadius: 16,
     padding: 16,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
     borderWidth: 1,
-    borderColor: '#f3f4f6',
   },
   activityItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
   },
   lastActivityItem: {
     borderBottomWidth: 0,
@@ -215,7 +227,6 @@ const styles = StyleSheet.create({
   activityTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1f2937',
     marginBottom: 4,
   },
   activityTitleSmall: {
@@ -223,7 +234,7 @@ const styles = StyleSheet.create({
   },
   activityDescription: {
     fontSize: 14,
-    color: '#6b7280',
+    opacity: 0.7,
     marginBottom: 8,
     lineHeight: 18,
   },
@@ -238,14 +249,13 @@ const styles = StyleSheet.create({
   },
   activityTime: {
     fontSize: 12,
-    color: '#9ca3af',
+    opacity: 0.5,
   },
   activityTimeSmall: {
     fontSize: 10,
   },
   activityAmount: {
     fontSize: 12,
-    color: '#667eea',
     fontWeight: '600',
   },
   activityAmountSmall: {

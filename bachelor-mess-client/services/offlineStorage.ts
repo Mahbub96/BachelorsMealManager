@@ -1,373 +1,577 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
-import { Alert } from 'react-native';
+import sqliteDatabase from './sqliteDatabase';
 
-// Types for offline storage
-export interface OfflineRequest {
+// Types for offline data
+export interface OfflineData {
+  timestamp: number;
+  data: any;
+  version: string;
+}
+
+export interface SyncQueueItem {
   id: string;
+  action: 'CREATE' | 'UPDATE' | 'DELETE';
   endpoint: string;
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
-  data?: any;
-  headers?: Record<string, string>;
+  data: any;
   timestamp: number;
   retryCount: number;
+}
+
+export interface OfflineConfig {
   maxRetries: number;
+  syncInterval: number;
+  cacheExpiry: number;
+  maxCacheSize: number;
 }
 
-export interface OfflineStorageConfig {
-  maxRetries: number;
-  retryDelay: number; // milliseconds
-  maxStorageSize: number; // bytes
-  cleanupInterval: number; // milliseconds
-}
+// Default configuration
+const DEFAULT_CONFIG: OfflineConfig = {
+  maxRetries: 3,
+  syncInterval: 30000, // 30 seconds
+  cacheExpiry: 24 * 60 * 60 * 1000, // 24 hours
+  maxCacheSize: 50 * 1024 * 1024, // 50MB
+};
 
-export interface OfflineStorageService {
-  // Core functionality
-  storeRequest: (
-    request: Omit<OfflineRequest, 'id' | 'timestamp' | 'retryCount'>
-  ) => Promise<string>;
-  getPendingRequests: () => Promise<OfflineRequest[]>;
-  removeRequest: (id: string) => Promise<void>;
-  clearAllRequests: () => Promise<void>;
+class OfflineStorageService {
+  private config: OfflineConfig;
+  private isOnline: boolean = true;
+  private syncInterval: ReturnType<typeof setInterval> | null = null;
 
-  // Network monitoring
-  startNetworkMonitoring: () => void;
-  stopNetworkMonitoring: () => void;
-
-  // Retry mechanism
-  retryPendingRequests: () => Promise<void>;
-  retryRequest: (request: OfflineRequest) => Promise<boolean>;
-
-  // Storage management
-  getStorageSize: () => Promise<number>;
-  cleanupOldRequests: () => Promise<void>;
-
-  // Status
-  isOnline: () => Promise<boolean>;
-  getPendingCount: () => Promise<number>;
-}
-
-class OfflineStorageServiceImpl implements OfflineStorageService {
-  private readonly STORAGE_KEY = 'offline_requests';
-  private readonly CONFIG_KEY = 'offline_config';
-  private readonly STATUS_KEY = 'offline_status';
-
-  private defaultConfig: OfflineStorageConfig = {
-    maxRetries: 3,
-    retryDelay: 5000, // 5 seconds
-    maxStorageSize: 10 * 1024 * 1024, // 10MB
-    cleanupInterval: 24 * 60 * 60 * 1000, // 24 hours
-  };
-
-  private networkUnsubscribe?: () => void;
-  private isRetrying = false;
-
-  constructor() {
-    this.initializeStorage();
+  constructor(config: Partial<OfflineConfig> = {}) {
+    this.config = { ...DEFAULT_CONFIG, ...config };
+    this.initializeOfflineService();
   }
 
-  private async initializeStorage() {
+  private async initializeOfflineService() {
     try {
-      // Initialize config if not exists
-      const config = await AsyncStorage.getItem(this.CONFIG_KEY);
-      if (!config) {
-        await AsyncStorage.setItem(
-          this.CONFIG_KEY,
-          JSON.stringify(this.defaultConfig)
+      // Initialize SQLite database
+      await sqliteDatabase.init();
+
+      // Set up network monitoring
+      this.setupNetworkMonitoring();
+
+      // Start sync interval
+      this.startSyncInterval();
+
+      // Clear expired cache
+      await sqliteDatabase.clearExpiredCache();
+
+      console.log('✅ OfflineStorage - Initialized with SQLite database');
+    } catch (error) {
+      console.error('❌ OfflineStorage - Failed to initialize:', error);
+    }
+  }
+
+  private setupNetworkMonitoring() {
+    NetInfo.addEventListener(state => {
+      const wasOnline = this.isOnline;
+      this.isOnline = state.isConnected ?? false;
+
+      if (!wasOnline && this.isOnline) {
+        console.log('🌐 OfflineStorage - Network restored, syncing data...');
+        this.syncPendingData();
+      } else if (wasOnline && !this.isOnline) {
+        console.log(
+          '📴 OfflineStorage - Network lost, switching to offline mode'
         );
-      }
-
-      // Start network monitoring
-      this.startNetworkMonitoring();
-
-      // Cleanup old requests
-      await this.cleanupOldRequests();
-    } catch (error) {
-      console.error('Error initializing offline storage:', error);
-    }
-  }
-
-  async storeRequest(
-    request: Omit<OfflineRequest, 'id' | 'timestamp' | 'retryCount'>
-  ): Promise<string> {
-    try {
-      const id = this.generateRequestId();
-      const offlineRequest: OfflineRequest = {
-        ...request,
-        id,
-        timestamp: Date.now(),
-        retryCount: 0,
-        maxRetries: this.defaultConfig.maxRetries,
-      };
-
-      const existingRequests = await this.getPendingRequests();
-      existingRequests.push(offlineRequest);
-
-      await AsyncStorage.setItem(
-        this.STORAGE_KEY,
-        JSON.stringify(existingRequests)
-      );
-
-      console.log(
-        `Stored offline request: ${request.method} ${request.endpoint}`
-      );
-
-      // Show user notification
-      this.showOfflineNotification();
-
-      return id;
-    } catch (error) {
-      console.error('Error storing offline request:', error);
-      throw error;
-    }
-  }
-
-  async getPendingRequests(): Promise<OfflineRequest[]> {
-    try {
-      const data = await AsyncStorage.getItem(this.STORAGE_KEY);
-      return data ? JSON.parse(data) : [];
-    } catch (error) {
-      console.error('Error getting pending requests:', error);
-      return [];
-    }
-  }
-
-  async removeRequest(id: string): Promise<void> {
-    try {
-      const requests = await this.getPendingRequests();
-      const filteredRequests = requests.filter(req => req.id !== id);
-      await AsyncStorage.setItem(
-        this.STORAGE_KEY,
-        JSON.stringify(filteredRequests)
-      );
-    } catch (error) {
-      console.error('Error removing request:', error);
-    }
-  }
-
-  async clearAllRequests(): Promise<void> {
-    try {
-      await AsyncStorage.removeItem(this.STORAGE_KEY);
-      console.log('Cleared all offline requests');
-    } catch (error) {
-      console.error('Error clearing requests:', error);
-    }
-  }
-
-  startNetworkMonitoring(): void {
-    if (this.networkUnsubscribe) {
-      this.networkUnsubscribe();
-    }
-
-    this.networkUnsubscribe = NetInfo.addEventListener((state: any) => {
-      if (state.isConnected && !this.isRetrying) {
-        console.log('Network connected, retrying pending requests...');
-        this.retryPendingRequests();
       }
     });
   }
 
-  stopNetworkMonitoring(): void {
-    if (this.networkUnsubscribe) {
-      this.networkUnsubscribe();
-      this.networkUnsubscribe = undefined;
+  private startSyncInterval() {
+    if (this.syncInterval) {
+      clearInterval(this.syncInterval);
+    }
+
+    this.syncInterval = setInterval(async () => {
+      if (this.isOnline) {
+        const pendingSync = await sqliteDatabase.getPendingSync();
+        if (pendingSync.length > 0) {
+          this.syncPendingData();
+        }
+      }
+    }, this.config.syncInterval);
+  }
+
+  // Cache Management using SQLite
+  async setCacheData(key: string, data: any, expiry?: number): Promise<void> {
+    try {
+      const expiryTime = expiry || this.config.cacheExpiry;
+      await sqliteDatabase.saveCacheData(key, data, expiryTime / (60 * 1000)); // Convert to minutes
+
+      console.log(`💾 OfflineStorage - Cached data for key: ${key}`);
+    } catch (error) {
+      console.error('❌ OfflineStorage - Failed to cache data:', error);
     }
   }
 
-  async retryPendingRequests(): Promise<void> {
-    if (this.isRetrying) {
-      return;
-    }
-
-    this.isRetrying = true;
-
+  async getCacheData(key: string): Promise<any | null> {
     try {
-      const requests = await this.getPendingRequests();
-      if (requests.length === 0) {
-        return;
+      const data = await sqliteDatabase.getCacheData(key);
+
+      if (data) {
+        console.log(
+          `📦 OfflineStorage - Retrieved cached data for key: ${key}`
+        );
+        return data;
       }
 
-      console.log(`Retrying ${requests.length} pending requests...`);
+      console.log(
+        `⏰ OfflineStorage - Cache expired or not found for key: ${key}`
+      );
+      return null;
+    } catch (error) {
+      console.error('❌ OfflineStorage - Failed to get cached data:', error);
+      return null;
+    }
+  }
 
-      const results = await Promise.allSettled(
-        requests.map(request => this.retryRequest(request))
+  async clearCache(): Promise<void> {
+    try {
+      await sqliteDatabase.clearTable('api_cache');
+      console.log('🧹 OfflineStorage - Cache cleared');
+    } catch (error) {
+      console.error('❌ OfflineStorage - Failed to clear cache:', error);
+    }
+  }
+
+  // Sync Queue Management using SQLite
+  async addToSyncQueue(
+    item: Omit<SyncQueueItem, 'id' | 'timestamp' | 'retryCount'>
+  ): Promise<void> {
+    try {
+      await sqliteDatabase.addToSyncQueue(item);
+
+      console.log(
+        `📝 OfflineStorage - Added to sync queue: ${item.action} ${item.endpoint}`
+      );
+    } catch (error) {
+      console.error('❌ OfflineStorage - Failed to add to sync queue:', error);
+    }
+  }
+
+  private async syncPendingData(): Promise<void> {
+    try {
+      const pendingSync = await sqliteDatabase.getPendingSync();
+
+      if (pendingSync.length === 0) return;
+
+      console.log(
+        `🔄 OfflineStorage - Syncing ${pendingSync.length} pending items...`
       );
 
-      const successfulCount = results.filter(
-        result => result.status === 'fulfilled' && result.value
-      ).length;
-      const failedCount = results.length - successfulCount;
+      const successfulItems: string[] = [];
+      const failedItems: any[] = [];
 
-      if (successfulCount > 0) {
-        Alert.alert(
-          'Sync Complete',
-          `Successfully synced ${successfulCount} items${
-            failedCount > 0 ? `, ${failedCount} failed` : ''
-          }`
-        );
+      for (const item of pendingSync) {
+        try {
+          const success = await this.processSyncItem(item);
+          if (success) {
+            successfulItems.push(item.id);
+            await sqliteDatabase.markSynced(item.id);
+          } else {
+            failedItems.push(item);
+          }
+        } catch (error) {
+          console.error(
+            `❌ OfflineStorage - Failed to sync item ${item.id}:`,
+            error
+          );
+          failedItems.push(item);
+        }
       }
+
+      console.log(
+        `✅ OfflineStorage - Sync completed. Success: ${successfulItems.length}, Failed: ${failedItems.length}`
+      );
     } catch (error) {
-      console.error('Error retrying pending requests:', error);
-    } finally {
-      this.isRetrying = false;
+      console.error('❌ OfflineStorage - Failed to sync pending data:', error);
     }
   }
 
-  async retryRequest(request: OfflineRequest): Promise<boolean> {
+  private async processSyncItem(item: any): Promise<boolean> {
     try {
-      // Check if request has exceeded max retries
-      if (request.retryCount >= request.maxRetries) {
-        console.log(`Request ${request.id} exceeded max retries, removing...`);
-        await this.removeRequest(request.id);
-        return false;
-      }
-
-      // Import httpClient dynamically to avoid circular dependencies
-      const { default: httpClient } = await import('./httpClient');
-
-      let response;
-
-      switch (request.method) {
-        case 'GET':
-          response = await httpClient.get(request.endpoint, request.headers);
-          break;
-        case 'POST':
-          response = await httpClient.post(
-            request.endpoint,
-            request.data,
-            request.headers
-          );
-          break;
-        case 'PUT':
-          response = await httpClient.put(
-            request.endpoint,
-            request.data,
-            request.headers
-          );
-          break;
-        case 'PATCH':
-          response = await httpClient.patch(
-            request.endpoint,
-            request.data,
-            request.headers
-          );
-          break;
-        case 'DELETE':
-          response = await httpClient.delete(request.endpoint, request.headers);
-          break;
-        default:
-          throw new Error(`Unsupported method: ${request.method}`);
-      }
-
-      if (response.success) {
-        // Remove successful request
-        await this.removeRequest(request.id);
-        console.log(
-          `Successfully retried request: ${request.method} ${request.endpoint}`
-        );
-        return true;
-      } else {
-        // Increment retry count
-        await this.incrementRetryCount(request.id);
-        console.log(
-          `Failed to retry request: ${request.method} ${
-            request.endpoint
-          }, retry count: ${request.retryCount + 1}`
-        );
-        return false;
-      }
+      // This would integrate with your actual API service
+      // For now, we'll simulate the API call
+      const response = await this.makeApiCall(item);
+      return response.success;
     } catch (error) {
-      console.error(`Error retrying request ${request.id}:`, error);
-
-      // Increment retry count
-      await this.incrementRetryCount(request.id);
+      console.error(
+        `❌ OfflineStorage - API call failed for ${item.id}:`,
+        error
+      );
       return false;
     }
   }
 
-  private async incrementRetryCount(requestId: string): Promise<void> {
+  private async makeApiCall(item: SyncQueueItem): Promise<any> {
+    // This is a placeholder - integrate with your actual API service
+    return new Promise(resolve => {
+      setTimeout(() => {
+        resolve({ success: Math.random() > 0.3 }); // 70% success rate for demo
+      }, 1000);
+    });
+  }
+
+  // Offline-first data fetching
+  async getDataWithOfflineFallback<T>(
+    key: string,
+    fetchFunction: () => Promise<T>,
+    options: {
+      useCache?: boolean;
+      forceRefresh?: boolean;
+    } = {}
+  ): Promise<{
+    data: T | null;
+    source: 'cache' | 'network' | 'offline';
+    error?: string;
+  }> {
+    const { useCache = true, forceRefresh = false } = options;
+
     try {
-      const requests = await this.getPendingRequests();
-      const updatedRequests = requests.map(req =>
-        req.id === requestId ? { ...req, retryCount: req.retryCount + 1 } : req
-      );
-      await AsyncStorage.setItem(
-        this.STORAGE_KEY,
-        JSON.stringify(updatedRequests)
-      );
+      // If online and not forcing refresh, try network first
+      if (this.isOnline && !forceRefresh) {
+        try {
+          const networkData = await fetchFunction();
+          await this.setCacheData(key, networkData);
+          console.log(`🌐 OfflineStorage - Data fetched from network: ${key}`);
+          return { data: networkData, source: 'network' };
+        } catch (error) {
+          console.log(
+            `⚠️ OfflineStorage - Network failed, trying cache: ${key}`
+          );
+        }
+      }
+
+      // Try cache
+      if (useCache) {
+        const cachedData = await this.getCacheData(key);
+        if (cachedData) {
+          console.log(`📦 OfflineStorage - Data from cache: ${key}`);
+          return { data: cachedData, source: 'cache' };
+        }
+      }
+
+      // If offline and no cache, return offline data from SQLite
+      if (!this.isOnline) {
+        const offlineData = await this.getOfflineData(key);
+        if (offlineData) {
+          console.log(`📴 OfflineStorage - Data from offline storage: ${key}`);
+          return { data: offlineData, source: 'offline' };
+        }
+      }
+
+      console.log(`❌ OfflineStorage - No data available for: ${key}`);
+      return { data: null, source: 'offline' };
     } catch (error) {
-      console.error('Error incrementing retry count:', error);
+      console.error(
+        `❌ OfflineStorage - Error fetching data for ${key}:`,
+        error
+      );
+      return {
+        data: null,
+        source: 'offline',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
     }
   }
 
-  async getStorageSize(): Promise<number> {
+  // Offline data storage using SQLite
+  async setOfflineData(key: string, data: any): Promise<void> {
     try {
-      const data = await AsyncStorage.getItem(this.STORAGE_KEY);
-      return data ? new Blob([data]).size : 0;
+      const offlineData = {
+        id: key,
+        table_name: 'offline_data',
+        data: JSON.stringify(data),
+        timestamp: Date.now(),
+        version: '1.0',
+      };
+
+      await sqliteDatabase.saveData('dashboard_data', offlineData);
+      console.log(`📴 OfflineStorage - Stored offline data: ${key}`);
     } catch (error) {
-      console.error('Error getting storage size:', error);
+      console.error('❌ OfflineStorage - Failed to store offline data:', error);
+    }
+  }
+
+  async getOfflineData(key: string): Promise<any | null> {
+    try {
+      const result = await sqliteDatabase.getData(
+        'dashboard_data',
+        `SELECT * FROM dashboard_data WHERE id = ?`,
+        [key]
+      );
+
+      if (result.length > 0) {
+        return JSON.parse(result[0].data);
+      }
+
+      return null;
+    } catch (error) {
+      console.error('❌ OfflineStorage - Failed to get offline data:', error);
+      return null;
+    }
+  }
+
+  // Activity-specific methods
+  async saveActivity(activity: any): Promise<void> {
+    try {
+      await sqliteDatabase.saveActivity(activity);
+      console.log(`📝 OfflineStorage - Saved activity: ${activity.id}`);
+    } catch (error) {
+      console.error('❌ OfflineStorage - Failed to save activity:', error);
+    }
+  }
+
+  async getActivities(limit?: number): Promise<any[]> {
+    try {
+      const activities = await sqliteDatabase.getActivities(limit);
+      console.log(
+        `📋 OfflineStorage - Retrieved ${activities.length} activities`
+      );
+      return activities;
+    } catch (error) {
+      console.error('❌ OfflineStorage - Failed to get activities:', error);
+      return [];
+    }
+  }
+
+  // Bazar-specific methods
+  async saveBazarEntry(bazar: any): Promise<void> {
+    try {
+      await sqliteDatabase.saveBazarEntry(bazar);
+      console.log(`📝 OfflineStorage - Saved bazar entry: ${bazar.id}`);
+    } catch (error) {
+      console.error('❌ OfflineStorage - Failed to save bazar entry:', error);
+    }
+  }
+
+  async getBazarEntries(limit?: number): Promise<any[]> {
+    try {
+      const entries = await sqliteDatabase.getBazarEntries(limit);
+      console.log(
+        `📋 OfflineStorage - Retrieved ${entries.length} bazar entries`
+      );
+      return entries;
+    } catch (error) {
+      console.error('❌ OfflineStorage - Failed to get bazar entries:', error);
+      return [];
+    }
+  }
+
+  // Meal-specific methods
+  async saveMealEntry(meal: any): Promise<void> {
+    try {
+      await sqliteDatabase.saveMealEntry(meal);
+      console.log(`📝 OfflineStorage - Saved meal entry: ${meal.id}`);
+    } catch (error) {
+      console.error('❌ OfflineStorage - Failed to save meal entry:', error);
+    }
+  }
+
+  async getMealEntries(limit?: number): Promise<any[]> {
+    try {
+      const entries = await sqliteDatabase.getMealEntries(limit);
+      console.log(
+        `📋 OfflineStorage - Retrieved ${entries.length} meal entries`
+      );
+      return entries;
+    } catch (error) {
+      console.error('❌ OfflineStorage - Failed to get meal entries:', error);
+      return [];
+    }
+  }
+
+  // Statistics methods
+  async saveStatistics(type: string, data: any): Promise<void> {
+    try {
+      await sqliteDatabase.saveStatistics(type, data);
+      console.log(`📊 OfflineStorage - Saved statistics: ${type}`);
+    } catch (error) {
+      console.error('❌ OfflineStorage - Failed to save statistics:', error);
+    }
+  }
+
+  async getStatistics(type: string): Promise<any | null> {
+    try {
+      const stats = await sqliteDatabase.getStatistics(type);
+      console.log(`📊 OfflineStorage - Retrieved statistics: ${type}`);
+      return stats;
+    } catch (error) {
+      console.error('❌ OfflineStorage - Failed to get statistics:', error);
+      return null;
+    }
+  }
+
+  // Utility methods
+  isNetworkAvailable(): boolean {
+    return this.isOnline;
+  }
+
+  async getSyncQueueLength(): Promise<number> {
+    try {
+      const pendingSync = await sqliteDatabase.getPendingSync();
+      return pendingSync.length;
+    } catch (error) {
+      console.error(
+        '❌ OfflineStorage - Failed to get sync queue length:',
+        error
+      );
       return 0;
-    }
-  }
-
-  async cleanupOldRequests(): Promise<void> {
-    try {
-      const requests = await this.getPendingRequests();
-      const now = Date.now();
-      const cleanupThreshold = now - this.defaultConfig.cleanupInterval;
-
-      const validRequests = requests.filter(
-        req => req.timestamp > cleanupThreshold
-      );
-
-      if (validRequests.length !== requests.length) {
-        await AsyncStorage.setItem(
-          this.STORAGE_KEY,
-          JSON.stringify(validRequests)
-        );
-        console.log(
-          `Cleaned up ${requests.length - validRequests.length} old requests`
-        );
-      }
-    } catch (error) {
-      console.error('Error cleaning up old requests:', error);
-    }
-  }
-
-  async isOnline(): Promise<boolean> {
-    try {
-      const state = await NetInfo.fetch();
-      return state.isConnected ?? false;
-    } catch (error) {
-      console.error('Error checking network status:', error);
-      return false;
     }
   }
 
   async getPendingCount(): Promise<number> {
     try {
-      const requests = await this.getPendingRequests();
-      return requests.length;
+      const pendingSync = await sqliteDatabase.getPendingSync();
+      return pendingSync.length;
     } catch (error) {
-      console.error('Error getting pending count:', error);
+      console.error('❌ OfflineStorage - Failed to get pending count:', error);
       return 0;
     }
   }
 
-  private generateRequestId(): string {
-    return `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  async getPendingRequests(): Promise<any[]> {
+    try {
+      const pendingSync = await sqliteDatabase.getPendingSync();
+      return pendingSync;
+    } catch (error) {
+      console.error('❌ Error getting pending requests:', error);
+      // Try to reset database if it's corrupted
+      if (
+        error instanceof Error &&
+        (error.message.includes('NullPointerException') ||
+          error.message.includes('prepareAsync'))
+      ) {
+        console.log(
+          '🔄 OfflineStorage - Database corrupted, attempting reset...'
+        );
+        try {
+          await this.resetDatabase();
+        } catch (resetError) {
+          console.error(
+            '❌ OfflineStorage - Database reset failed:',
+            resetError
+          );
+        }
+      }
+      return [];
+    }
   }
 
-  private showOfflineNotification(): void {
-    Alert.alert(
-      'Offline Mode',
-      "You're offline. Your submission will be saved and synced when you're back online.",
-      [{ text: 'OK' }]
-    );
+  async storeRequest(request: any): Promise<string> {
+    try {
+      const requestId = `request_${Date.now()}_${Math.random()
+        .toString(36)
+        .substr(2, 9)}`;
+      const syncItem = {
+        id: requestId,
+        action: 'CREATE',
+        endpoint: request.endpoint,
+        data: JSON.stringify(request.data),
+        timestamp: Date.now(),
+        retryCount: 0,
+      };
+
+      await sqliteDatabase.addToSyncQueue(syncItem);
+      console.log(
+        `💾 OfflineStorage - Stored request for offline retry: ${requestId}`
+      );
+      return requestId;
+    } catch (error) {
+      console.error('❌ OfflineStorage - Failed to store request:', error);
+      throw error;
+    }
+  }
+
+  async removeRequest(requestId: string): Promise<void> {
+    try {
+      await sqliteDatabase.deleteData('sync_queue', requestId);
+      console.log(`✅ Removed request: ${requestId}`);
+    } catch (error) {
+      console.error('❌ Error removing request:', error);
+    }
+  }
+
+  async getStorageSize(): Promise<number> {
+    try {
+      const allData = await sqliteDatabase.getData('sync_queue');
+      return allData.length;
+    } catch (error) {
+      console.error('❌ Error getting storage size:', error);
+      return 0;
+    }
+  }
+
+  async clearSyncQueue(): Promise<void> {
+    try {
+      await sqliteDatabase.clearTable('sync_queue');
+      console.log('🧹 OfflineStorage - Sync queue cleared');
+    } catch (error) {
+      console.error('❌ OfflineStorage - Failed to clear sync queue:', error);
+    }
+  }
+
+  async clearAllRequests(): Promise<void> {
+    try {
+      await sqliteDatabase.clearTable('sync_queue');
+      console.log('🧹 OfflineStorage - All requests cleared');
+    } catch (error) {
+      console.error('❌ OfflineStorage - Failed to clear all requests:', error);
+    }
+  }
+
+  // Database management
+  async getDatabaseInfo(): Promise<any> {
+    try {
+      const tables = [
+        'activities',
+        'bazar_entries',
+        'meal_entries',
+        'sync_queue',
+        'dashboard_data',
+        'api_cache',
+      ];
+      const info: any = {};
+
+      for (const table of tables) {
+        const count = await sqliteDatabase.executeQuery(
+          `SELECT COUNT(*) as count FROM ${table}`
+        );
+        info[table] = count[0]?.count || 0;
+      }
+
+      return info;
+    } catch (error) {
+      console.error('❌ OfflineStorage - Failed to get database info:', error);
+      return {};
+    }
+  }
+
+  // Database management
+  async resetDatabase(): Promise<void> {
+    try {
+      console.log('🔄 OfflineStorage - Resetting database...');
+      await sqliteDatabase.forceResetDatabase();
+      console.log('✅ OfflineStorage - Database reset completed');
+    } catch (error) {
+      console.error('❌ OfflineStorage - Failed to reset database:', error);
+      throw error;
+    }
+  }
+
+  // Cleanup
+  destroy(): void {
+    if (this.syncInterval) {
+      clearInterval(this.syncInterval);
+    }
+
+    // Close database connection
+    sqliteDatabase.close().catch(error => {
+      console.error('❌ OfflineStorage - Failed to close database:', error);
+    });
   }
 }
 
-// Create singleton instance
-const offlineStorage = new OfflineStorageServiceImpl();
-
-export default offlineStorage;
+// Export singleton instance
+export const offlineStorage = new OfflineStorageService();

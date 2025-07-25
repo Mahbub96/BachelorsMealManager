@@ -1,154 +1,143 @@
-import { useMessData } from '@/context/MessDataContext';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Dimensions,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React from 'react';
-import { Alert, Dimensions, ScrollView, StyleSheet, View } from 'react-native';
-import { StatsGrid } from '../ModernCharts';
-import { ChartsSection } from './ChartsSection';
-import { DashboardHeader } from './DashboardHeader';
-import { QuickActions } from './QuickActions';
-import { RecentActivity } from './RecentActivity';
+import { ThemedText } from '../ThemedText';
+import { useTheme } from '@/context/ThemeContext';
 
 const { width: screenWidth } = Dimensions.get('window');
 
-const DESIGN_SYSTEM = {
-  colors: {
-    light: '#f8fafc',
-  },
-  spacing: {
-    lg: 20,
-    xl: 24,
-  },
-};
+interface DashboardModule {
+  id: string;
+  title: string;
+  icon: string;
+  description: string;
+  route: string;
+  color: string;
+  gradient: readonly [string, string];
+}
 
-export const ModularDashboard: React.FC = () => {
+interface ModularDashboardProps {
+  modules?: DashboardModule[];
+  onModulePress?: (module: DashboardModule) => void;
+}
+
+const defaultModules: DashboardModule[] = [
+  {
+    id: 'meals',
+    title: 'Meal Management',
+    icon: 'restaurant',
+    description: 'Add, edit, and manage daily meals',
+    route: '/meals',
+    color: '#10b981',
+    gradient: ['#10b981', '#059669'] as const,
+  },
+  {
+    id: 'bazar',
+    title: 'Bazar Management',
+    icon: 'cart',
+    description: 'Track shopping and expenses',
+    route: '/admin',
+    color: '#f59e0b',
+    gradient: ['#f59e0b', '#d97706'] as const,
+  },
+  {
+    id: 'expenses',
+    title: 'Expense Tracking',
+    icon: 'wallet',
+    description: 'Monitor monthly expenses',
+    route: '/expense-details',
+    color: '#ef4444',
+    gradient: ['#ef4444', '#dc2626'] as const,
+  },
+  {
+    id: 'members',
+    title: 'Member Management',
+    icon: 'people',
+    description: 'Manage mess members',
+    route: '/profile',
+    color: '#8b5cf6',
+    gradient: ['#8b5cf6', '#7c3aed'] as const,
+  },
+];
+
+export const ModularDashboard: React.FC<ModularDashboardProps> = ({
+  modules = defaultModules,
+  onModulePress,
+}) => {
+  const { theme } = useTheme();
   const router = useRouter();
-  const {
-    monthlyRevenue,
-    currentMonthRevenue,
-    members,
-    mealEntries,
-    bazarEntries,
-    monthlyMealStats,
-    recentActivities,
-  } = useMessData();
+  const [selectedModule, setSelectedModule] = useState<string | null>(null);
 
-  const isTablet = screenWidth >= 768;
-  const isMobile = screenWidth < 768;
-  const containerPadding = isTablet ? 24 : 16;
-  const cardSpacing = isTablet ? 20 : 12; // Reduced spacing for mobile
-
-  // Enhanced stats with better visual design
-  const stats = [
-    {
-      title: 'Total Revenue',
-      value: `৳${(currentMonthRevenue?.revenue || 0).toLocaleString()}`,
-      icon: 'trending-up',
-      gradient: ['#667eea', '#764ba2'] as [string, string],
-      details: {
-        change: '+12.5%',
-        period: 'vs last month',
-        trend: 'up',
-      },
-    },
-    {
-      title: 'Monthly Expenses',
-      value: `৳${(currentMonthRevenue?.expenses || 0).toLocaleString()}`,
-      icon: 'card',
-      gradient: ['#f59e0b', '#d97706'] as [string, string],
-      details: {
-        change: '+8.2%',
-        period: 'vs last month',
-        trend: 'up',
-      },
-    },
-    {
-      title: 'Active Members',
-      value: `${(members || []).filter(m => m.status === 'active').length}`,
-      icon: 'people',
-      gradient: ['#10b981', '#059669'] as [string, string],
-      details: {
-        change: '+1',
-        period: 'this month',
-        trend: 'up',
-      },
-    },
-    {
-      title: 'Total Meals',
-      value: `${monthlyMealStats?.totalMeals || 0}`,
-      icon: 'restaurant',
-      gradient: ['#8b5cf6', '#7c3aed'] as [string, string],
-      details: {
-        change: '+15.3%',
-        period: 'vs last month',
-        trend: 'up',
-      },
-    },
-  ];
-
-  const handleQuickAction = (action: string) => {
-    switch (action) {
-      case 'add-meal':
-        router.push('/meals');
-        break;
-      case 'add-bazar':
-        router.push('/admin');
-        break;
-      case 'view-expenses':
-        router.push({
-          pathname: '/expense-details',
-          params: {
-            title: 'Monthly Expenses',
-            value: (currentMonthRevenue?.expenses || 0).toString(),
-            type: 'monthly',
-            color: '#f59e0b',
-          },
-        });
-        break;
-      case 'view-revenue':
-        router.push({
-          pathname: '/expense-details',
-          params: {
-            title: 'Monthly Revenue',
-            value: (currentMonthRevenue?.revenue || 0).toString(),
-            type: 'monthly',
-            color: '#667eea',
-          },
-        });
-        break;
-      default:
-        Alert.alert('Coming Soon', 'This feature will be available soon!');
+  const handleModulePress = (module: DashboardModule) => {
+    setSelectedModule(module.id);
+    
+    if (onModulePress) {
+      onModulePress(module);
+    } else {
+      router.push(module.route);
     }
   };
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={[
-        styles.contentContainer,
-        { padding: containerPadding },
-      ]}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Header Section */}
-      <DashboardHeader title='Dashboard' subtitle='Overview' icon='grid' />
-
-      {/* Stats Grid */}
-      <View style={[styles.statsContainer, { marginBottom: cardSpacing }]}>
-        <StatsGrid stats={stats} />
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <View style={styles.header}>
+        <ThemedText style={styles.title}>Dashboard Modules</ThemedText>
+        <ThemedText style={styles.subtitle}>
+          Quick access to main features
+        </ThemedText>
       </View>
 
-      {/* Charts Section */}
-      <ChartsSection
-        monthlyRevenue={monthlyRevenue || []}
-        currentMonthRevenue={currentMonthRevenue || { revenue: 0, expenses: 0 }}
-        isTablet={isTablet}
-      />
-
-      {/* Quick Actions */}
-      <QuickActions onActionPress={handleQuickAction} />
-
-      {/* Recent Activity */}
-      <RecentActivity activities={recentActivities || []} maxItems={3} />
+      <View style={styles.modulesGrid}>
+        {modules.map((module) => (
+          <TouchableOpacity
+            key={module.id}
+            style={[
+              styles.moduleCard,
+              {
+                backgroundColor: theme.cardBackground,
+                borderColor: theme.cardBorder,
+                shadowColor: theme.cardShadow,
+              },
+            ]}
+            onPress={() => handleModulePress(module)}
+          >
+            <View style={styles.moduleHeader}>
+              <View
+                style={[
+                  styles.iconContainer,
+                  {
+                    backgroundColor: module.color + '20', // 20% opacity
+                  },
+                ]}
+              >
+                <Ionicons
+                  name={module.icon as any}
+                  size={24}
+                  color={module.color}
+                />
+              </View>
+              <View style={styles.moduleContent}>
+                <ThemedText style={styles.moduleTitle}>{module.title}</ThemedText>
+                <ThemedText style={styles.moduleDescription}>
+                  {module.description}
+                </ThemedText>
+              </View>
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={theme.text.tertiary}
+              />
+            </View>
+          </TouchableOpacity>
+        ))}
+      </View>
     </ScrollView>
   );
 };
@@ -156,12 +145,53 @@ export const ModularDashboard: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: DESIGN_SYSTEM.colors.light,
   },
-  contentContainer: {
-    paddingBottom: 100,
+  header: {
+    marginBottom: 24,
   },
-  statsContainer: {
-    marginBottom: DESIGN_SYSTEM.spacing.xl,
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+    opacity: 0.7,
+  },
+  modulesGrid: {
+    gap: 16,
+  },
+  moduleCard: {
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  moduleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  moduleContent: {
+    flex: 1,
+  },
+  moduleTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  moduleDescription: {
+    fontSize: 14,
+    opacity: 0.7,
   },
 });

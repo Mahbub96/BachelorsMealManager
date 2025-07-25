@@ -249,7 +249,7 @@ bazarSchema.statics.getStats = async function (filters = {}) {
     }
   }
   if (filters.userId)
-    matchStage.userId = mongoose.Types.ObjectId(filters.userId);
+    matchStage.userId = new mongoose.Types.ObjectId(filters.userId);
 
   const stats = await this.aggregate([
     { $match: matchStage },
@@ -302,7 +302,7 @@ bazarSchema.statics.getExpenseTrend = async function (filters = {}) {
     }
   }
   if (filters.userId)
-    matchStage.userId = mongoose.Types.ObjectId(filters.userId);
+    matchStage.userId = new mongoose.Types.ObjectId(filters.userId);
 
   return await this.aggregate([
     { $match: matchStage },
@@ -333,7 +333,7 @@ bazarSchema.statics.getCategoryBreakdown = async function (filters = {}) {
     }
   }
   if (filters.userId)
-    matchStage.userId = mongoose.Types.ObjectId(filters.userId);
+    matchStage.userId = new mongoose.Types.ObjectId(filters.userId);
 
   return await this.aggregate([
     { $match: matchStage },
@@ -357,7 +357,7 @@ bazarSchema.statics.existsForUserAndDate = function (userId, date) {
 
 // Static method to get user statistics
 bazarSchema.statics.getUserStats = async function (userId, filters = {}) {
-  const matchStage = { userId: mongoose.Types.ObjectId(userId) };
+  const matchStage = { userId: new mongoose.Types.ObjectId(userId) };
 
   if (filters.startDate)
     matchStage.date = { $gte: new Date(filters.startDate) };

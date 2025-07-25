@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { activityService } from '../services/activityService';
 import {
   Alert,
   Dimensions,
@@ -51,37 +52,78 @@ export const Dashboard: React.FC<DashboardProps> = ({
   refreshing = false,
 }) => {
   const router = useRouter();
+  const { theme } = useTheme();
   const [selectedTimeframe, setSelectedTimeframe] = useState<
     'week' | 'month' | 'year'
   >('week');
 
-  // Mock data - replace with real API data
-  const stats = [
+  // Get real stats from API
+  const [stats, setStats] = useState([
     {
       title: 'Total Members',
-      value: '12',
+      value: '0',
       icon: 'people',
       gradient: ['#667eea', '#764ba2'] as const,
     },
     {
       title: 'This Month',
-      value: '৳32,400',
+      value: '৳0',
       icon: 'cash',
       gradient: ['#f093fb', '#f5576c'] as const,
     },
     {
       title: 'Avg. Meals',
-      value: '2.4',
+      value: '0',
       icon: 'restaurant',
       gradient: ['#43e97b', '#38f9d7'] as const,
     },
     {
       title: 'Balance',
-      value: '৳1,200',
+      value: '৳0',
       icon: 'wallet',
       gradient: ['#fa709a', '#fee140'] as const,
     },
-  ];
+  ]);
+
+  useEffect(() => {
+    loadStats();
+  }, []);
+
+  const loadStats = async () => {
+    try {
+      const response = await dashboardService.getStats();
+      if (response.success && response.data) {
+        setStats([
+          {
+            title: 'Total Members',
+            value: response.data.totalMembers?.toString() || '0',
+            icon: 'people',
+            gradient: ['#667eea', '#764ba2'] as const,
+          },
+          {
+            title: 'This Month',
+            value: `৳${response.data.monthlyRevenue?.toLocaleString() || '0'}`,
+            icon: 'cash',
+            gradient: ['#f093fb', '#f5576c'] as const,
+          },
+          {
+            title: 'Avg. Meals',
+            value: response.data.averageMeals?.toFixed(1) || '0',
+            icon: 'restaurant',
+            gradient: ['#43e97b', '#38f9d7'] as const,
+          },
+          {
+            title: 'Balance',
+            value: `৳${response.data.balance?.toLocaleString() || '0'}`,
+            icon: 'wallet',
+            gradient: ['#fa709a', '#fee140'] as const,
+          },
+        ]);
+      }
+    } catch (error) {
+      console.error('Failed to load stats:', error);
+    }
+  };
 
   const quickActions: QuickAction[] = [
     {
@@ -118,100 +160,102 @@ export const Dashboard: React.FC<DashboardProps> = ({
     },
   ];
 
-  const recentActivity: ActivityItem[] = [
-    {
-      id: '1',
-      type: 'meal',
-      title: 'Lunch added',
-      subtitle: 'Admin User recorded lunch meal',
-      time: '2 hours ago',
-      icon: 'fast-food',
-      color: '#10b981',
-    },
-    {
-      id: '2',
-      type: 'bazar',
-      title: 'Bazar uploaded',
-      subtitle: 'Member Two uploaded bazar list',
-      time: '4 hours ago',
-      icon: 'cart',
-      color: '#6366f1',
-    },
-    {
-      id: '3',
-      type: 'payment',
-      title: 'Payment received',
-      subtitle: 'Member One paid ৳500',
-      time: '1 day ago',
-      icon: 'card',
-      color: '#f59e0b',
-    },
-    {
-      id: '4',
-      type: 'notification',
-      title: 'New member joined',
-      subtitle: 'Member Three joined the mess',
-      time: '2 days ago',
-      icon: 'person-add',
-      color: '#8b5cf6',
-    },
-  ];
+  const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
+
+  useEffect(() => {
+    loadRecentActivity();
+  }, []);
+
+  const loadRecentActivity = async () => {
+    try {
+      const response = await activityService.getRecentActivities();
+      if (response.success && response.data) {
+        const activities = response.data.activities.map((activity: any) => ({
+          id: activity.id,
+          type: activity.type || 'notification',
+          title: activity.title || 'Activity',
+          subtitle: activity.description || 'No description',
+          time: activity.time || 'Unknown',
+          icon: getActivityIcon(activity.type || 'notification'),
+          color: getActivityColor(activity.type || 'notification'),
+        }));
+        setRecentActivity(activities);
+      }
+    } catch (error) {
+      console.error('Failed to load recent activity:', error);
+    }
+  };
+
+  const getActivityColor = (type: ActivityItem['type']) => {
+    switch (type) {
+      case 'meal':
+        return theme.status.success;
+      case 'bazar':
+        return theme.primary;
+      case 'payment':
+        return theme.status.warning;
+      case 'notification':
+        return theme.status.pending;
+      default:
+        return theme.text.tertiary;
+    }
+  };
 
   const weeklyMealsData = [
     {
       label: 'Mon',
       value: 12,
       forecast: 14,
-      color: '#f59e0b',
-      gradient: ['#fbbf24', '#f59e0b'] as const,
+      color: theme.status.warning,
+      gradient: theme.gradient.warning as [string, string],
       trend: 'up' as const,
     },
     {
       label: 'Tue',
       value: 15,
       forecast: 16,
-      color: '#10b981',
-      gradient: ['#34d399', '#10b981'] as const,
+      color: theme.status.success,
+      gradient: theme.gradient.success as [string, string],
       trend: 'up' as const,
     },
     {
       label: 'Wed',
       value: 18,
       forecast: 17,
-      color: '#6366f1',
-      gradient: ['#818cf8', '#6366f1'] as const,
+      color: theme.primary,
+      gradient: theme.gradient.primary as [string, string],
       trend: 'down' as const,
     },
     {
       label: 'Thu',
       value: 14,
       forecast: 15,
-      color: '#f093fb',
-      gradient: ['#f093fb', '#f5576c'] as const,
+      color: theme.status.info,
+      gradient: theme.gradient.info as [string, string],
       trend: 'up' as const,
     },
     {
       label: 'Fri',
       value: 16,
       forecast: 18,
-      color: '#43e97b',
-      gradient: ['#43e97b', '#38f9d7'] as const,
+      color: theme.status.success,
+      gradient: theme.gradient.success as [string, string],
       trend: 'up' as const,
     },
     {
       label: 'Sat',
       value: 20,
       forecast: 22,
-      color: '#667eea',
-      gradient: ['#667eea', '#764ba2'] as const,
+      color: theme.primary,
+      gradient: theme.gradient.primary as [string, string],
       trend: 'up' as const,
     },
     {
       label: 'Sun',
       value: 13,
       forecast: 15,
-      color: '#f97316',
-      gradient: ['#fb923c', '#f97316'] as const,
+      color: theme.status.warning,
+      gradient: theme.gradient.warning as [string, string],
       trend: 'up' as const,
     },
   ];
@@ -221,29 +265,29 @@ export const Dashboard: React.FC<DashboardProps> = ({
       label: 'Groceries',
       value: 45,
       forecast: 48,
-      color: '#10b981',
-      gradient: ['#34d399', '#10b981'] as const,
+      color: theme.status.success,
+      gradient: theme.gradient.success as [string, string],
     },
     {
       label: 'Utilities',
       value: 25,
       forecast: 26,
-      color: '#6366f1',
-      gradient: ['#818cf8', '#6366f1'] as const,
+      color: theme.primary,
+      gradient: theme.gradient.primary as [string, string],
     },
     {
       label: 'Maintenance',
       value: 20,
       forecast: 18,
-      color: '#f59e0b',
-      gradient: ['#fbbf24', '#f59e0b'] as const,
+      color: theme.status.warning,
+      gradient: theme.gradient.warning as [string, string],
     },
     {
       label: 'Others',
       value: 10,
       forecast: 12,
-      color: '#f093fb',
-      gradient: ['#f093fb', '#f5576c'] as const,
+      color: theme.status.info,
+      gradient: theme.gradient.info as [string, string],
     },
   ];
 

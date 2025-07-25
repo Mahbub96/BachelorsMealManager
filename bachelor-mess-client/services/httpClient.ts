@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { config as API_CONFIG, ApiResponse, HTTP_STATUS } from './config';
-import offlineStorage from './offlineStorage';
+import { offlineStorage } from './offlineStorage';
 import authEventEmitter from './authEventEmitter';
 
 // Request configuration interface
@@ -668,17 +668,28 @@ class HttpClient {
 
   // Enhanced offline status
   async getOfflineStatus() {
-    const online = await this.isOnline();
-    const pendingRequests = await offlineStorage.getPendingRequests();
-    const storageSize = await offlineStorage.getStorageSize();
+    try {
+      const online = await this.isOnline();
+      const pendingRequests = offlineStorage?.getPendingRequests ? await offlineStorage.getPendingRequests() : [];
+      const storageSize = offlineStorage?.getStorageSize ? await offlineStorage.getStorageSize() : 0;
 
-    return {
-      isOnline: online,
-      pendingRequests: pendingRequests.length,
-      pendingCount: pendingRequests.length,
-      storageSize: storageSize,
-      lastChecked: this.isOnlineCache?.timestamp || null,
-    };
+      return {
+        isOnline: online,
+        pendingRequests: pendingRequests.length,
+        pendingCount: pendingRequests.length,
+        storageSize: storageSize,
+        lastChecked: this.isOnlineCache?.timestamp || null,
+      };
+    } catch (error) {
+      console.error('❌ Error getting offline status:', error);
+      return {
+        isOnline: await this.isOnline(),
+        pendingRequests: 0,
+        pendingCount: 0,
+        storageSize: 0,
+        lastChecked: this.isOnlineCache?.timestamp || null,
+      };
+    }
   }
 
   // Enhanced offline request retry
@@ -690,7 +701,7 @@ class HttpClient {
         return;
       }
 
-      const pendingRequests = await offlineStorage.getPendingRequests();
+      const pendingRequests = offlineStorage?.getPendingRequests ? await offlineStorage.getPendingRequests() : [];
       console.log(`🔄 Retrying ${pendingRequests.length} offline requests`);
 
       for (const request of pendingRequests) {
@@ -709,7 +720,9 @@ class HttpClient {
           const result = await this.handleResponse(response);
 
           if (result.success) {
-            await offlineStorage.removeRequest(request.id);
+            if (offlineStorage?.removeRequest) {
+              await offlineStorage.removeRequest(request.id);
+            }
             console.log(`✅ Offline request successful: ${request.endpoint}`);
           } else {
             console.log(
@@ -719,13 +732,14 @@ class HttpClient {
           }
         } catch (error) {
           console.error(
-            `❌ Error retrying offline request: ${request.endpoint}`,
+            `❌ Failed to retry offline request ${request.endpoint}:`,
             error
           );
         }
       }
     } catch (error) {
-      console.error('Error retrying offline requests:', error);
+      console.error('❌ Error retrying offline requests:', error);
+      throw error;
     }
   }
 }

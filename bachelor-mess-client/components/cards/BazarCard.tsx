@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import {
   View,
   StyleSheet,
@@ -9,6 +9,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '../ThemedText';
+import { useTheme } from '../../context/ThemeContext';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -19,7 +20,15 @@ export interface BazarCardProps {
     totalAmount: number;
     date: string;
     status: 'pending' | 'approved' | 'rejected';
-    userId: string;
+    userId:
+      | string
+      | {
+          _id: string;
+          name: string;
+          email: string;
+          fullProfile?: any;
+          id: string;
+        };
     description?: string;
   };
   onPress?: (bazar: any) => void;
@@ -32,96 +41,166 @@ export interface BazarCardProps {
   isSmallScreen?: boolean;
 }
 
-export const BazarCard: React.FC<BazarCardProps> = ({
-  bazar,
-  onPress,
-  onStatusUpdate,
-  onDelete,
-  variant = 'default',
-  showActions = false,
-  showReceipt = false,
-  isAdmin = false,
-  isSmallScreen = false,
-}) => {
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'approved':
-        return '#10b981';
-      case 'pending':
-        return '#f59e0b';
-      case 'rejected':
-        return '#ef4444';
-      default:
-        return '#6b7280';
+export const BazarCard: React.FC<BazarCardProps> = memo(
+  ({
+    bazar,
+    onPress,
+    onStatusUpdate,
+    onDelete,
+    variant = 'default',
+    showActions = false,
+    showReceipt = false,
+    isAdmin = false,
+    isSmallScreen = false,
+  }) => {
+    const { theme } = useTheme();
+
+    // Validate bazar data
+    if (!bazar || !bazar.id) {
+      console.warn('⚠️ Invalid bazar data:', bazar);
+      return (
+        <View style={styles.errorCard}>
+          <ThemedText style={styles.errorText}>Invalid bazar data</ThemedText>
+        </View>
+      );
     }
-  };
 
-  const getStatusBgColor = (status: string) => {
-    switch (status) {
-      case 'approved':
-        return '#ecfdf5';
-      case 'pending':
-        return '#fffbeb';
-      case 'rejected':
-        return '#fef2f2';
-      default:
-        return '#f3f4f6';
-    }
-  };
+    const getStatusColor = (status: string) => {
+      switch (status) {
+        case 'approved':
+          return '#10b981';
+        case 'pending':
+          return '#f59e0b';
+        case 'rejected':
+          return '#ef4444';
+        default:
+          return theme.text.tertiary;
+      }
+    };
 
-  const getItemsSummary = (items: any[]) => {
-    if (!items || items.length === 0) return 'No items';
-    if (items.length <= 2) {
-      return items.map(item => item.name).join(', ');
-    }
-    return `${items[0].name}, ${items[1].name} +${items.length - 2} more`;
-  };
+    const getStatusBgColor = (status: string) => {
+      switch (status) {
+        case 'approved':
+          return '#ecfdf5';
+        case 'pending':
+          return '#fef3c7';
+        case 'rejected':
+          return '#fef2f2';
+        default:
+          return theme.cardBackground;
+      }
+    };
 
-  const handleStatusUpdate = (status: 'approved' | 'rejected') => {
-    onStatusUpdate?.(bazar.id, status);
-  };
+    const getStatusIcon = (status: string) => {
+      switch (status) {
+        case 'approved':
+          return 'checkmark-circle';
+        case 'pending':
+          return 'time';
+        case 'rejected':
+          return 'close-circle';
+        default:
+          return 'help-circle';
+      }
+    };
 
-  const handleDelete = () => {
-    Alert.alert(
-      'Delete Bazar Entry',
-      'Are you sure you want to delete this bazar entry?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => onDelete?.(bazar.id),
-        },
-      ]
-    );
-  };
+    const getItemsSummary = (items: any[]) => {
+      if (!items || items.length === 0) return 'No items';
+      if (items.length <= 2) {
+        return items.map(item => item.name).join(', ');
+      }
+      return `${items[0].name}, ${items[1].name} +${items.length - 2} more`;
+    };
 
-  const isCompact = variant === 'compact' || isSmallScreen;
+    const handleStatusUpdate = (status: 'approved' | 'rejected') => {
+      Alert.alert(
+        'Update Status',
+        `Are you sure you want to ${status} this bazar entry?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Confirm',
+            style: status === 'approved' ? 'default' : 'destructive',
+            onPress: () => onStatusUpdate?.(bazar.id, status),
+          },
+        ]
+      );
+    };
 
-  return (
-    <TouchableOpacity
-      style={[styles.card, isCompact && styles.cardCompact]}
-      onPress={() => onPress?.(bazar)}
-      activeOpacity={0.7}
-    >
-      <LinearGradient
-        colors={['#ffffff', '#f8fafc']}
-        style={styles.cardGradient}
+    const handleDelete = () => {
+      Alert.alert(
+        'Delete Bazar Entry',
+        'Are you sure you want to delete this bazar entry? This action cannot be undone.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: () => onDelete?.(bazar.id),
+          },
+        ]
+      );
+    };
+
+    const handleActionPress = (action: () => void) => {
+      action();
+    };
+
+    const isCompact = variant === 'compact' || isSmallScreen;
+
+    return (
+      <TouchableOpacity
+        style={[styles.card, isCompact && styles.cardCompact]}
+        onPress={() => onPress?.(bazar)}
+        activeOpacity={0.8}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.titleContainer}>
-            <ThemedText
-              style={[styles.title, isCompact && styles.titleCompact]}
-            >
-              Bazar Entry
-            </ThemedText>
+        <LinearGradient
+          colors={['#ffffff', '#fafafa']}
+          style={[
+            styles.cardGradient,
+            isCompact && styles.cardGradientCompact,
+            {
+              backgroundColor: theme.cardBackground,
+              borderColor: theme.cardBorder,
+            },
+          ]}
+        >
+          {/* Header with Status Badge */}
+          <View style={styles.headerRow}>
+            <View style={styles.amountSection}>
+              <ThemedText
+                style={[
+                  styles.amountText,
+                  isCompact && styles.amountTextCompact,
+                  { color: theme.text.primary },
+                ]}
+              >
+                ৳{bazar.totalAmount.toLocaleString()}
+              </ThemedText>
+              <ThemedText
+                style={[
+                  styles.amountLabel,
+                  { color: theme.text.secondary },
+                ]}
+              >
+                Total Amount
+              </ThemedText>
+            </View>
+
             <View
               style={[
                 styles.statusBadge,
-                { backgroundColor: getStatusBgColor(bazar.status) },
+                {
+                  backgroundColor: getStatusBgColor(bazar.status),
+                  borderColor: getStatusColor(bazar.status),
+                },
               ]}
             >
+              <Ionicons
+                name={getStatusIcon(bazar.status) as any}
+                size={14}
+                color={getStatusColor(bazar.status)}
+              />
               <ThemedText
                 style={[
                   styles.statusText,
@@ -132,220 +211,323 @@ export const BazarCard: React.FC<BazarCardProps> = ({
               </ThemedText>
             </View>
           </View>
-          <ThemedText
-            style={[styles.amount, isCompact && styles.amountCompact]}
-          >
-            ৳{bazar.totalAmount.toLocaleString()}
-          </ThemedText>
-        </View>
 
-        {/* Content */}
-        <View style={styles.content}>
-          <ThemedText
-            style={[styles.itemsText, isCompact && styles.itemsTextCompact]}
-          >
-            {getItemsSummary(bazar.items)}
-          </ThemedText>
+          {/* Content Section */}
+          <View style={styles.contentSection}>
+            {/* Items Summary */}
+            <View style={styles.itemsSection}>
+              <View style={styles.itemsHeader}>
+                <Ionicons name='basket' size={16} color={theme.text.tertiary} />
+                <ThemedText
+                  style={[
+                    styles.itemsCount,
+                    { color: theme.text.secondary },
+                  ]}
+                >
+                  {bazar.items?.length || 0} items
+                </ThemedText>
+              </View>
+              <ThemedText
+                style={[
+                  styles.itemsText,
+                  isCompact && styles.itemsTextCompact,
+                  { color: theme.text.primary },
+                ]}
+                numberOfLines={2}
+              >
+                {getItemsSummary(bazar.items)}
+              </ThemedText>
+            </View>
 
-          {bazar.description && (
-            <ThemedText
+            {/* Description */}
+            {bazar.description && (
+              <View style={styles.descriptionSection}>
+                <ThemedText
+                  style={[
+                    styles.descriptionText,
+                    isCompact && styles.descriptionTextCompact,
+                    { color: theme.text.secondary },
+                  ]}
+                  numberOfLines={2}
+                >
+                  {bazar.description}
+                </ThemedText>
+              </View>
+            )}
+
+            {/* Meta Information */}
+            <View style={styles.metaSection}>
+              <View style={styles.metaItem}>
+                <Ionicons
+                  name='calendar-outline'
+                  size={14}
+                  color={theme.text.tertiary}
+                />
+                <ThemedText
+                  style={[styles.metaText, { color: theme.text.secondary }]}
+                >
+                  {new Date(bazar.date).toLocaleDateString()}
+                </ThemedText>
+              </View>
+
+              {typeof bazar.userId === 'object' && bazar.userId.name && (
+                <View style={styles.metaItem}>
+                  <Ionicons
+                    name='person-outline'
+                    size={14}
+                    color={theme.text.tertiary}
+                  />
+                  <ThemedText
+                    style={[styles.metaText, { color: theme.text.secondary }]}
+                  >
+                    {bazar.userId.name}
+                  </ThemedText>
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* Action Buttons */}
+          {showActions && isAdmin && (
+            <View
               style={[
-                styles.descriptionText,
-                isCompact && styles.descriptionTextCompact,
+                styles.actionsContainer,
+                { borderTopColor: theme.cardBorder },
               ]}
             >
-              {bazar.description}
-            </ThemedText>
+              {bazar.status === 'pending' && (
+                <>
+                  <TouchableOpacity
+                    style={[
+                      styles.actionButton,
+                      styles.approveButton,
+                    ]}
+                    onPress={() => handleActionPress(() => handleStatusUpdate('approved'))}
+                  >
+                    <Ionicons name='checkmark' size={16} color='#10b981' />
+                    <ThemedText style={styles.approveButtonText}>
+                      Approve
+                    </ThemedText>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.actionButton,
+                      styles.rejectButton,
+                    ]}
+                    onPress={() => handleActionPress(() => handleStatusUpdate('rejected'))}
+                  >
+                    <Ionicons name='close' size={16} color='#ef4444' />
+                    <ThemedText style={styles.rejectButtonText}>
+                      Reject
+                    </ThemedText>
+                  </TouchableOpacity>
+                </>
+              )}
+
+              <TouchableOpacity
+                style={[
+                  styles.actionButton,
+                  styles.deleteButton,
+                ]}
+                onPress={() => handleActionPress(handleDelete)}
+              >
+                <Ionicons name='trash' size={16} color='#ef4444' />
+                <ThemedText style={styles.deleteButtonText}>
+                  Delete
+                </ThemedText>
+              </TouchableOpacity>
+            </View>
           )}
-        </View>
+        </LinearGradient>
+      </TouchableOpacity>
+    );
+  }
+);
 
-        {/* Details */}
-        <View style={styles.details}>
-          <View style={styles.detailRow}>
-            <Ionicons name='calendar' size={16} color='#6b7280' />
-            <ThemedText style={styles.detailText}>
-              {new Date(bazar.date).toLocaleDateString()}
-            </ThemedText>
-          </View>
-          <View style={styles.detailRow}>
-            <Ionicons name='person' size={16} color='#6b7280' />
-            <ThemedText style={styles.detailText}>{bazar.userId}</ThemedText>
-          </View>
-        </View>
-
-        {/* Admin Actions */}
-        {showActions && isAdmin && (
-          <View style={styles.actions}>
-            {bazar.status === 'pending' && (
-              <>
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.approveButton]}
-                  onPress={() => handleStatusUpdate('approved')}
-                >
-                  <Ionicons name='checkmark' size={16} color='#10b981' />
-                  <ThemedText style={styles.approveButtonText}>
-                    Approve
-                  </ThemedText>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.rejectButton]}
-                  onPress={() => handleStatusUpdate('rejected')}
-                >
-                  <Ionicons name='close' size={16} color='#ef4444' />
-                  <ThemedText style={styles.rejectButtonText}>
-                    Reject
-                  </ThemedText>
-                </TouchableOpacity>
-              </>
-            )}
-            <TouchableOpacity
-              style={[styles.actionButton, styles.deleteButton]}
-              onPress={handleDelete}
-            >
-              <Ionicons name='trash' size={16} color='#ef4444' />
-              <ThemedText style={styles.deleteButtonText}>Delete</ThemedText>
-            </TouchableOpacity>
-          </View>
-        )}
-      </LinearGradient>
-    </TouchableOpacity>
-  );
-};
+BazarCard.displayName = 'BazarCard';
 
 const styles = StyleSheet.create({
   card: {
     marginBottom: 12,
     borderRadius: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 3,
+    minHeight: 140,
   },
   cardCompact: {
-    marginBottom: 8,
+    marginBottom: 10,
+    borderRadius: 14,
+    minHeight: 120,
   },
   cardGradient: {
-    padding: 16,
     borderRadius: 16,
+    padding: 18,
+    flex: 1,
+    borderWidth: 1,
   },
-  header: {
+  cardGradientCompact: {
+    borderRadius: 14,
+    padding: 14,
+    flex: 1,
+  },
+  headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: 16,
   },
-  titleContainer: {
+  amountSection: {
     flex: 1,
-    marginRight: 12,
   },
-  title: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1f2937',
-    marginBottom: 8,
-    lineHeight: 20,
+  amountText: {
+    fontSize: 24,
+    fontWeight: '800',
+    lineHeight: 28,
+    marginBottom: 2,
   },
-  titleCompact: {
-    fontSize: 14,
-    lineHeight: 18,
+  amountTextCompact: {
+    fontSize: 20,
+    fontWeight: '800',
+    lineHeight: 24,
+  },
+  amountLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    opacity: 0.7,
   },
   statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    gap: 6,
   },
   statusText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  amount: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#059669',
+  contentSection: {
+    flex: 1,
+    gap: 12,
   },
-  amountCompact: {
-    fontSize: 16,
+  itemsSection: {
+    gap: 6,
   },
-  content: {
-    marginBottom: 12,
-  },
-  itemsText: {
-    fontSize: 14,
-    color: '#374151',
-    marginBottom: 6,
-    lineHeight: 18,
-  },
-  itemsTextCompact: {
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  descriptionText: {
-    fontSize: 12,
-    color: '#6b7280',
-    lineHeight: 16,
-  },
-  descriptionTextCompact: {
-    fontSize: 10,
-    lineHeight: 14,
-  },
-  details: {
-    marginBottom: 12,
-  },
-  detailRow: {
+  itemsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    gap: 6,
   },
-  detailText: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginLeft: 8,
+  itemsCount: {
+    fontSize: 12,
+    fontWeight: '600',
   },
-  actions: {
+  itemsText: {
+    fontSize: 15,
+    fontWeight: '600',
+    lineHeight: 20,
+  },
+  itemsTextCompact: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  descriptionSection: {
+    marginTop: 4,
+  },
+  descriptionText: {
+    fontSize: 13,
+    lineHeight: 18,
+    opacity: 0.8,
+  },
+  descriptionTextCompact: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  metaSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 16,
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+  },
+  metaText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  actionsContainer: {
     flexDirection: 'row',
     gap: 8,
-    paddingTop: 12,
+    paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    marginTop: 12,
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderRadius: 8,
-    borderWidth: 1,
+    flex: 1,
+    justifyContent: 'center',
+    minHeight: 36,
+    gap: 6,
   },
   approveButton: {
     backgroundColor: '#ecfdf5',
     borderColor: '#10b981',
+    borderWidth: 1,
   },
   approveButtonText: {
+    color: '#10b981',
     fontSize: 12,
     fontWeight: '600',
-    color: '#10b981',
-    marginLeft: 4,
   },
   rejectButton: {
     backgroundColor: '#fef2f2',
     borderColor: '#ef4444',
+    borderWidth: 1,
   },
   rejectButtonText: {
+    color: '#ef4444',
     fontSize: 12,
     fontWeight: '600',
-    color: '#ef4444',
-    marginLeft: 4,
   },
   deleteButton: {
     backgroundColor: '#fef2f2',
     borderColor: '#ef4444',
+    borderWidth: 1,
   },
   deleteButtonText: {
+    color: '#ef4444',
     fontSize: 12,
     fontWeight: '600',
-    color: '#ef4444',
-    marginLeft: 4,
+  },
+  errorCard: {
+    backgroundColor: '#fef2f2',
+    padding: 16,
+    borderRadius: 12,
+    marginVertical: 6,
+    borderWidth: 1,
+    borderColor: '#fecaca',
+    minHeight: 80,
+  },
+  errorText: {
+    textAlign: 'center',
+    fontSize: 13,
+    fontWeight: '500',
   },
 });

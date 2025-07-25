@@ -12,39 +12,7 @@ import { Dimensions, StyleSheet, TouchableOpacity, View } from "react-native";
 
 const { width: screenWidth } = Dimensions.get("window");
 
-const DESIGN_SYSTEM = {
-  spacing: {
-    xs: 4,
-    sm: 8,
-    md: 12,
-    lg: 16,
-    xl: 20,
-    xxl: 24,
-    xxxl: 32,
-  },
-  borderRadius: {
-    sm: 8,
-    md: 12,
-    lg: 16,
-    xl: 20,
-  },
-  shadows: {
-    small: {
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 8,
-      elevation: 4,
-    },
-    medium: {
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.15,
-      shadowRadius: 12,
-      elevation: 8,
-    },
-  },
-};
+
 
 export default function BarDetailsPage() {
   const router = useRouter();
@@ -486,13 +454,13 @@ const styles = StyleSheet.create({
   quickStatsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: DESIGN_SYSTEM.spacing.lg,
+    marginBottom: 16,
   },
   valueComparison: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: DESIGN_SYSTEM.spacing.xs,
+    marginTop: 4,
   },
   comparisonText: {
     fontSize: 12,
@@ -505,16 +473,20 @@ const styles = StyleSheet.create({
   timeframeSelector: {
     flexDirection: "row",
     backgroundColor: "#fff",
-    borderRadius: DESIGN_SYSTEM.borderRadius.md,
+    borderRadius: 12,
     padding: 4,
-    marginBottom: DESIGN_SYSTEM.spacing.lg,
-    ...DESIGN_SYSTEM.shadows.small,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   timeframeButton: {
     flex: 1,
-    paddingVertical: DESIGN_SYSTEM.spacing.sm,
+    paddingVertical: 8,
     alignItems: "center",
-    borderRadius: DESIGN_SYSTEM.borderRadius.sm,
+    borderRadius: 8,
   },
   timeframeButtonActive: {
     backgroundColor: "#667eea",
@@ -568,12 +540,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
-    marginBottom: DESIGN_SYSTEM.spacing.lg,
+    marginBottom: 16,
   },
   forecastFactors: {
     backgroundColor: "#f9fafb",
-    borderRadius: DESIGN_SYSTEM.borderRadius.sm,
-    padding: DESIGN_SYSTEM.spacing.sm,
+    borderRadius: 8,
+    padding: 8,
   },
   factorTitle: {
     fontSize: 12,

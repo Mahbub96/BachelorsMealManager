@@ -1,190 +1,99 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
-  ScrollView,
-  TextInput,
-  Pressable,
-  RefreshControl,
-  Alert,
-  Dimensions,
   StyleSheet,
+  FlatList,
+  RefreshControl,
+  TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { router } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
-import { useActivity } from '@/hooks/useActivity';
-import { Activity, ActivityFilters } from '@/services/activityService';
+import { useTheme } from '@/context/ThemeContext';
+import { activityService } from '@/services/activityService';
+import { Activity as ActivityItem } from '@/services/activityService';
 
-const { width: screenWidth } = Dimensions.get('window');
+interface RecentActivityScreenProps {}
 
-interface FilterOption {
-  key: string;
-  label: string;
-  icon: string;
-  type?: ActivityFilters['type'];
-  status?: ActivityFilters['status'];
-}
+export default function RecentActivityScreen({}: RecentActivityScreenProps) {
+  const { theme } = useTheme();
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [filter, setFilter] = useState<'all' | 'meals' | 'bazar' | 'payments'>(
+    'all'
+  );
 
-const filterOptions: FilterOption[] = [
-  { key: 'all', label: 'All', icon: 'apps' },
-  { key: 'meals', label: 'Meals', icon: 'restaurant', type: 'meals' },
-  { key: 'bazar', label: 'Bazar', icon: 'cart', type: 'bazar' },
-  { key: 'members', label: 'Members', icon: 'people', type: 'members' },
-  { key: 'pending', label: 'Pending', icon: 'time', status: 'pending' },
-  {
-    key: 'approved',
-    label: 'Approved',
-    icon: 'checkmark-circle',
-    status: 'approved',
-  },
-];
+  useEffect(() => {
+    loadActivities();
+  }, []);
 
-export default function RecentActivityScreen() {
-  const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedFilter, setSelectedFilter] = useState('all');
-  const [showSearch, setShowSearch] = useState(false);
-
-  // Activity hook
-  const {
-    activities,
-    loading,
-    error,
-    pagination,
-    fetchActivities,
-    refreshActivities,
-    clearError,
-    setFilters,
-    currentFilters,
-  } = useActivity({
-    autoFetch: true,
-    refreshInterval: 30000, // Refresh every 30 seconds
-  });
-
-  // Handle filter selection
-  const handleFilterSelect = useCallback(
-    (filterKey: string) => {
-      setSelectedFilter(filterKey);
-
-      const filterOption = filterOptions.find(
-        option => option.key === filterKey
-      );
-      if (filterOption) {
-        const newFilters: ActivityFilters = {};
-
-        if (filterOption.type) {
-          newFilters.type = filterOption.type;
-        }
-
-        if (filterOption.status) {
-          newFilters.status = filterOption.status;
-        }
-
-        setFilters(newFilters);
+  const loadActivities = async () => {
+    try {
+      setLoading(true);
+      console.log('🔍 Loading activities...');
+      // Fetch activities from the activity service
+      const response = await activityService.getRecentActivities();
+      console.log('📡 Activity response:', JSON.stringify(response, null, 2));
+      if (response.success && response.data) {
+        console.log(
+          '✅ Activities loaded:',
+          response.data.activities?.length || 0
+        );
+        console.log('📋 First activity:', response.data.activities?.[0]);
+        setActivities(response.data.activities);
       } else {
-        // Reset filters for 'all'
-        setFilters({});
+        console.log('❌ No activities data:', response.error);
+        console.log('❌ Response details:', response);
+        setActivities([]);
       }
-    },
-    [setFilters]
-  );
-
-  // Handle search
-  const handleSearch = useCallback(
-    (query: string) => {
-      setSearchQuery(query);
-
-      if (query.trim()) {
-        setFilters({
-          ...currentFilters,
-          search: query.trim(),
-        });
-      } else {
-        setFilters(currentFilters);
-      }
-    },
-    [currentFilters, setFilters]
-  );
-
-  // Handle refresh
-  const handleRefresh = useCallback(async () => {
-    await refreshActivities();
-  }, [refreshActivities]);
-
-  // Handle activity press
-  const handleActivityPress = useCallback(
-    (activity: Activity) => {
-      switch (activity.type) {
-        case 'meal':
-          router.push({
-            pathname: '/activity-details',
-            params: {
-              id: activity.id,
-              type: 'meal',
-              title: activity.title,
-            },
-          });
-          break;
-        case 'bazar':
-          router.push({
-            pathname: '/bazar-details',
-            params: {
-              id: activity.id,
-              title: activity.title,
-            },
-          });
-          break;
-        case 'member':
-          router.push({
-            pathname: '/profile',
-            params: {
-              userId: activity.id,
-            },
-          });
-          break;
-        default:
-          Alert.alert('Activity Details', activity.description);
-      }
-    },
-    [router]
-  );
-
-  // Get priority color
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high':
-        return '#ef4444';
-      case 'medium':
-        return '#f59e0b';
-      case 'low':
-        return '#10b981';
-      default:
-        return '#6b7280';
+    } catch (error) {
+      console.error('❌ Failed to load activities:', error);
+      Alert.alert('Error', 'Failed to load activities. Please try again.');
+      setActivities([]);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Get status color
-  const getStatusColor = (status?: string) => {
-    switch (status) {
-      case 'approved':
-        return '#10b981';
-      case 'rejected':
-        return '#ef4444';
-      case 'pending':
-        return '#f59e0b';
-      default:
-        return '#6b7280';
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadActivities();
+    setRefreshing(false);
+  };
+
+  const handleActivityPress = (activity: ActivityItem) => {
+    // Navigate to activity details based on type
+    if (activity.title.toLowerCase().includes('meal')) {
+      router.push('/activity-details');
+    } else if (activity.title.toLowerCase().includes('bazar')) {
+      router.push('/bazar-details');
+    } else if (activity.title.toLowerCase().includes('payment')) {
+      router.push('/activity-details');
+    } else {
+      // Default to activity details
+      router.push('/activity-details');
     }
   };
 
-  // Format currency
-  const formatCurrency = (amount: number) => {
-    return `৳${amount.toLocaleString()}`;
+  const getActivityColors = (type: string): [string, string] => {
+    switch (type) {
+      case 'meal':
+        return theme.gradient.success as [string, string];
+      case 'bazar':
+        return theme.gradient.warning as [string, string];
+      case 'member':
+        return theme.gradient.primary as [string, string];
+      case 'payment':
+        return theme.gradient.error as [string, string];
+      default:
+        return theme.gradient.info as [string, string];
+    }
   };
 
-  // Get activity icon
-  const getActivityIcon = (type: string) => {
+  const getActivityIcon = (type: string): string => {
     switch (type) {
       case 'meal':
         return 'restaurant';
@@ -194,237 +103,175 @@ export default function RecentActivityScreen() {
         return 'person';
       case 'payment':
         return 'card';
-      case 'approval':
-        return 'checkmark-circle';
       default:
         return 'document';
     }
   };
 
-  // Filter activities based on search
-  const filteredActivities = activities.filter(activity => {
-    if (!searchQuery) return true;
+  const getFilteredActivities = () => {
+    if (filter === 'all') return activities;
 
-    const searchLower = searchQuery.toLowerCase();
-    return (
-      activity.title.toLowerCase().includes(searchLower) ||
-      activity.description.toLowerCase().includes(searchLower) ||
-      activity.user?.toLowerCase().includes(searchLower) ||
-      activity.notes?.toLowerCase().includes(searchLower)
-    );
-  });
+    return activities.filter(activity => {
+      const title = activity.title.toLowerCase();
+      switch (filter) {
+        case 'meals':
+          return (
+            title.includes('meal') ||
+            title.includes('breakfast') ||
+            title.includes('lunch') ||
+            title.includes('dinner')
+          );
+        case 'bazar':
+          return (
+            title.includes('bazar') ||
+            title.includes('shopping') ||
+            title.includes('item')
+          );
+        case 'payments':
+          return title.includes('payment');
+        default:
+          return true;
+      }
+    });
+  };
 
-  return (
-    <View style={styles.container}>
-      {/* Header */}
-      <LinearGradient
-        colors={['#667eea', '#764ba2']}
-        style={styles.headerGradient}
-      >
-        <View style={styles.header}>
-          <Pressable style={styles.backButton} onPress={() => router.back()}>
-            <Ionicons name='arrow-back' size={24} color='#fff' />
-          </Pressable>
-          <View style={styles.headerContent}>
-            <ThemedText style={styles.headerTitle}>
-              Recent Activities
-            </ThemedText>
-            <ThemedText style={styles.headerSubtitle}>
-              All recent activities and updates
-            </ThemedText>
-          </View>
-          <Pressable
-            style={styles.searchButton}
-            onPress={() => setShowSearch(!showSearch)}
-          >
-            <Ionicons
-              name={showSearch ? 'close' : 'search'}
-              size={24}
-              color='#fff'
-            />
-          </Pressable>
-        </View>
-      </LinearGradient>
-
-      <ScrollView
-        style={styles.content}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={loading} onRefresh={handleRefresh} />
-        }
-      >
-        {/* Search Bar */}
-        {showSearch && (
-          <View style={styles.searchContainer}>
-            <View style={styles.searchBar}>
-              <Ionicons
-                name='search'
-                size={20}
-                color='#9ca3af'
-                style={styles.searchIcon}
-              />
-              <TextInput
-                style={styles.searchInput}
-                placeholder='Search activities...'
-                value={searchQuery}
-                onChangeText={handleSearch}
-                placeholderTextColor='#9ca3af'
-                autoFocus
-              />
-              {searchQuery.length > 0 && (
-                <Pressable
-                  style={styles.clearButton}
-                  onPress={() => handleSearch('')}
-                >
-                  <Ionicons name='close-circle' size={20} color='#9ca3af' />
-                </Pressable>
-              )}
-            </View>
-          </View>
-        )}
-
-        {/* Filter Tabs */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.filterContainer}
+  const renderActivityItem = ({
+    item,
+    index,
+  }: {
+    item: ActivityItem;
+    index: number;
+  }) => (
+    <TouchableOpacity
+      style={[
+        styles.activityItem,
+        {
+          backgroundColor: theme.cardBackground,
+          borderColor: theme.border.secondary,
+        },
+        index === activities.length - 1 && styles.lastActivityItem,
+      ]}
+      onPress={() => handleActivityPress(item)}
+    >
+      <View style={styles.activityIcon}>
+        <LinearGradient
+          colors={getActivityColors(item.type)}
+          style={styles.activityIconGradient}
         >
-          {filterOptions.map(filter => (
-            <Pressable
-              key={filter.key}
-              style={[
-                styles.filterTab,
-                selectedFilter === filter.key && styles.activeFilterTab,
-              ]}
-              onPress={() => handleFilterSelect(filter.key)}
-            >
-              <Ionicons
-                name={filter.icon as any}
-                size={16}
-                color={selectedFilter === filter.key ? '#667eea' : '#9ca3af'}
-              />
-              <ThemedText
-                style={[
-                  styles.filterText,
-                  selectedFilter === filter.key && styles.activeFilterText,
-                ]}
-              >
-                {filter.label}
-              </ThemedText>
-            </Pressable>
-          ))}
-        </ScrollView>
+          <Ionicons
+            name={getActivityIcon(item.type) as any}
+            size={16}
+            color={theme.text.inverse}
+          />
+        </LinearGradient>
+      </View>
 
-        {/* Error Message */}
-        {error && (
-          <View style={styles.errorContainer}>
-            <Ionicons name='alert-circle' size={20} color='#ef4444' />
-            <ThemedText style={styles.errorText}>{error}</ThemedText>
-            <Pressable style={styles.retryButton} onPress={clearError}>
-              <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
-            </Pressable>
-          </View>
-        )}
-
-        {/* Activities List */}
-        <View style={styles.activitiesContainer}>
-          {filteredActivities.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Ionicons name='search' size={48} color='#9ca3af' />
-              <ThemedText style={styles.emptyStateTitle}>
-                {loading ? 'Loading activities...' : 'No activities found'}
-              </ThemedText>
-              <ThemedText style={styles.emptyStateSubtitle}>
-                {loading
-                  ? 'Please wait while we fetch your activities'
-                  : 'Try adjusting your search or filters'}
-              </ThemedText>
-            </View>
-          ) : (
-            filteredActivities.map((activity, index) => (
-              <Pressable
-                key={`${activity.id}-${index}`}
-                style={styles.activityCard}
-                onPress={() => handleActivityPress(activity)}
-              >
-                <View style={styles.activityHeader}>
-                  <View style={styles.activityIcon}>
-                    <Ionicons
-                      name={
-                        (activity.icon || getActivityIcon(activity.type)) as any
-                      }
-                      size={20}
-                      color='#667eea'
-                    />
-                  </View>
-                  <View style={styles.activityInfo}>
-                    <ThemedText style={styles.activityTitle} numberOfLines={1}>
-                      {activity.title}
-                    </ThemedText>
-                    <ThemedText
-                      style={styles.activityDescription}
-                      numberOfLines={2}
-                    >
-                      {activity.description}
-                    </ThemedText>
-                    <View style={styles.activityMeta}>
-                      <ThemedText style={styles.activityTime}>
-                        {activity.time}
-                      </ThemedText>
-                      {activity.user && (
-                        <ThemedText style={styles.activityUser}>
-                          by {activity.user}
-                        </ThemedText>
-                      )}
-                    </View>
-                  </View>
-                  <View style={styles.activityActions}>
-                    {activity.amount !== undefined && activity.amount > 0 && (
-                      <View style={styles.amountContainer}>
-                        <ThemedText style={styles.amountText}>
-                          {formatCurrency(activity.amount)}
-                        </ThemedText>
-                      </View>
-                    )}
-                    {activity.status && (
-                      <View
-                        style={[
-                          styles.statusBadge,
-                          { backgroundColor: getStatusColor(activity.status) },
-                        ]}
-                      >
-                        <ThemedText style={styles.statusText}>
-                          {activity.status}
-                        </ThemedText>
-                      </View>
-                    )}
-                  </View>
-                </View>
-
-                {activity.notes && (
-                  <View style={styles.notesContainer}>
-                    <ThemedText style={styles.notesText} numberOfLines={2}>
-                      {activity.notes}
-                    </ThemedText>
-                  </View>
-                )}
-              </Pressable>
-            ))
+      <View style={styles.activityContent}>
+        <ThemedText style={styles.activityTitle}>{item.title}</ThemedText>
+        <ThemedText style={styles.activityDescription}>
+          {item.description}
+        </ThemedText>
+        <View style={styles.activityMeta}>
+          <ThemedText style={styles.activityTime}>{item.time}</ThemedText>
+          {item.amount && (
+            <ThemedText style={styles.activityAmount}>
+              ৳{item.amount}
+            </ThemedText>
           )}
         </View>
+      </View>
+    </TouchableOpacity>
+  );
 
-        {/* Pagination Info */}
-        {pagination && pagination.total > 0 && (
-          <View style={styles.paginationInfo}>
-            <ThemedText style={styles.paginationText}>
-              Showing{' '}
-              {pagination.page * pagination.limit - pagination.limit + 1} to{' '}
-              {Math.min(pagination.page * pagination.limit, pagination.total)}{' '}
-              of {pagination.total} activities
-            </ThemedText>
-          </View>
-        )}
-      </ScrollView>
+  const renderFilterButton = (
+    filterType: 'all' | 'meals' | 'bazar' | 'payments',
+    label: string,
+    icon: string
+  ) => (
+    <TouchableOpacity
+      style={[
+        styles.filterButton,
+        {
+          backgroundColor:
+            filter === filterType ? theme.primary : theme.surface,
+          borderColor: theme.border.primary,
+        },
+      ]}
+      onPress={() => setFilter(filterType)}
+    >
+      <Ionicons
+        name={icon as any}
+        size={16}
+        color={filter === filterType ? theme.text.inverse : theme.text.primary}
+      />
+      <ThemedText
+        style={[
+          styles.filterButtonText,
+          {
+            color:
+              filter === filterType ? theme.text.inverse : theme.text.primary,
+          },
+        ]}
+      >
+        {label}
+      </ThemedText>
+    </TouchableOpacity>
+  );
+
+  const renderEmptyState = () => (
+    <View style={styles.emptyState}>
+      <Ionicons name='time-outline' size={64} color={theme.text.tertiary} />
+      <ThemedText style={styles.emptyTitle}>No Activities Found</ThemedText>
+      <ThemedText style={styles.emptyDescription}>
+        {filter === 'all'
+          ? 'No activities have been recorded yet.'
+          : `No ${filter} activities found.`}
+      </ThemedText>
+    </View>
+  );
+
+  return (
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Ionicons name='arrow-back' size={24} color={theme.text.primary} />
+        </TouchableOpacity>
+        <ThemedText style={styles.headerTitle}>Recent Activities</ThemedText>
+        <TouchableOpacity style={styles.refreshButton} onPress={onRefresh}>
+          <Ionicons name='refresh' size={24} color={theme.text.primary} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Filter Buttons */}
+      <View style={styles.filterContainer}>
+        {renderFilterButton('all', 'All', 'list')}
+        {renderFilterButton('meals', 'Meals', 'restaurant')}
+        {renderFilterButton('bazar', 'Bazar', 'cart')}
+        {renderFilterButton('payments', 'Payments', 'card')}
+      </View>
+
+      {/* Activities List */}
+      <FlatList
+        data={getFilteredActivities()}
+        renderItem={renderActivityItem}
+        keyExtractor={item => item.id}
+        style={styles.list}
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[theme.primary]}
+            tintColor={theme.primary}
+          />
+        }
+        ListEmptyComponent={renderEmptyState}
+        showsVerticalScrollIndicator={false}
+      />
     </View>
   );
 }
@@ -432,238 +279,120 @@ export default function RecentActivityScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-  headerGradient: {
-    paddingTop: 50,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
   },
   backButton: {
     padding: 8,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  headerContent: {
-    flex: 1,
-    marginLeft: 16,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
-  },
-  searchButton: {
+  refreshButton: {
     padding: 8,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  content: {
-    flex: 1,
-  },
-  searchContainer: {
-    padding: 16,
-    backgroundColor: '#fff',
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f3f4f6',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  searchIcon: {
-    marginRight: 12,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: '#1f2937',
-  },
-  clearButton: {
-    padding: 4,
   },
   filterContainer: {
+    flexDirection: 'row',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#fff',
+    gap: 8,
   },
-  filterTab: {
+  filterButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginRight: 12,
-    borderRadius: 20,
-    backgroundColor: '#f3f4f6',
-  },
-  activeFilterTab: {
-    backgroundColor: '#667eea',
-  },
-  filterText: {
-    marginLeft: 6,
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6b7280',
-  },
-  activeFilterText: {
-    color: '#fff',
-  },
-  errorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    margin: 16,
-    backgroundColor: '#fef2f2',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#fecaca',
-  },
-  errorText: {
-    flex: 1,
-    marginLeft: 8,
-    fontSize: 14,
-    color: '#dc2626',
-  },
-  retryButton: {
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: '#dc2626',
-    borderRadius: 6,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    gap: 4,
   },
-  retryButtonText: {
+  filterButtonText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#fff',
   },
-  activitiesContainer: {
-    padding: 16,
+  list: {
+    flex: 1,
   },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 60,
+  listContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 20,
   },
-  emptyStateTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#6b7280',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyStateSubtitle: {
-    fontSize: 14,
-    color: '#9ca3af',
-    textAlign: 'center',
-  },
-  activityCard: {
-    backgroundColor: '#fff',
+  activityItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    marginVertical: 4,
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
+    borderWidth: 1,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 2,
   },
-  activityHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+  lastActivityItem: {
+    marginBottom: 0,
   },
   activityIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#f3f4f6',
-    alignItems: 'center',
-    justifyContent: 'center',
     marginRight: 12,
   },
-  iconText: {
-    fontSize: 20,
+  activityIconGradient: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  activityInfo: {
+  activityContent: {
     flex: 1,
   },
   activityTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1f2937',
     marginBottom: 4,
   },
   activityDescription: {
     fontSize: 14,
-    color: '#6b7280',
+    opacity: 0.7,
     marginBottom: 8,
-    lineHeight: 20,
+    lineHeight: 18,
   },
   activityMeta: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
   activityTime: {
     fontSize: 12,
-    color: '#9ca3af',
+    opacity: 0.5,
   },
-  activityUser: {
-    fontSize: 12,
-    color: '#9ca3af',
-    marginLeft: 8,
-  },
-  activityActions: {
-    alignItems: 'flex-end',
-  },
-  amountContainer: {
-    backgroundColor: '#f0f9ff',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    marginBottom: 4,
-  },
-  amountText: {
+  activityAmount: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#0369a1',
   },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  statusText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#fff',
-    textTransform: 'uppercase',
-  },
-  notesContainer: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#f3f4f6',
-  },
-  notesText: {
-    fontSize: 12,
-    color: '#6b7280',
-    fontStyle: 'italic',
-  },
-  paginationInfo: {
-    padding: 16,
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
+    paddingVertical: 60,
   },
-  paginationText: {
-    fontSize: 12,
-    color: '#9ca3af',
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyDescription: {
+    fontSize: 14,
+    opacity: 0.7,
+    textAlign: 'center',
+    paddingHorizontal: 32,
   },
 });

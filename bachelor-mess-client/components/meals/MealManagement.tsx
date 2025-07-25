@@ -8,6 +8,7 @@ import {
   RefreshControl,
   Dimensions,
   TextInput,
+  FlatList,
 } from 'react-native';
 
 const { width } = Dimensions.get('window');
@@ -20,6 +21,7 @@ import { MealCard } from '../cards/MealCard';
 import { useAuth } from '../../context/AuthContext';
 import { useMealManagement } from '../../hooks/useMealManagement';
 import mealService from '../../services/mealService';
+import { useThemeColor } from '../../hooks/useThemeColor';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -31,6 +33,16 @@ export const MealManagement: React.FC<MealManagementProps> = ({
   onNavigate,
 }) => {
   const { user } = useAuth();
+
+  // Theme colors
+  const backgroundColor = useThemeColor({}, 'background');
+  const textColor = useThemeColor({}, 'text');
+  const iconColor = useThemeColor({}, 'icon');
+  const borderColor = useThemeColor(
+    { light: '#e5e7eb', dark: '#374151' },
+    'background'
+  );
+
   const [activeTab, setActiveTab] = useState<'overview' | 'add' | 'history'>(
     'overview'
   );
@@ -110,7 +122,10 @@ export const MealManagement: React.FC<MealManagementProps> = ({
         // Go back to overview
         setActiveTab('overview');
       } else {
-        Alert.alert('Error', response.error || 'Failed to submit meal');
+        Alert.alert(
+          'Error',
+          response.message || response.error || 'Failed to submit meal'
+        );
       }
     } catch (error) {
       Alert.alert('Error', 'An unexpected error occurred');
@@ -121,10 +136,10 @@ export const MealManagement: React.FC<MealManagementProps> = ({
   };
 
   const getMealSummary = (meal: any) => {
-    const meals = [];
-    if (meal.breakfast) meals.push('Breakfast');
-    if (meal.lunch) meals.push('Lunch');
-    if (meal.dinner) meals.push('Dinner');
+    const meals: string[] = [];
+    if (meal?.breakfast) meals.push('Breakfast');
+    if (meal?.lunch) meals.push('Lunch');
+    if (meal?.dinner) meals.push('Dinner');
     return meals.join(', ') || 'No meals selected';
   };
 
@@ -177,7 +192,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
             >
               <Ionicons name='time' size={28} color='#fff' />
               <ThemedText style={styles.statValue}>
-                {meals?.filter(m => m.status === 'pending').length || 0}
+                {meals?.filter(m => m?.status === 'pending').length || 0}
               </ThemedText>
               <ThemedText style={styles.statLabel}>Pending</ThemedText>
             </LinearGradient>
@@ -190,7 +205,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
             >
               <Ionicons name='checkmark-circle' size={28} color='#fff' />
               <ThemedText style={styles.statValue}>
-                {meals?.filter(m => m.status === 'approved').length || 0}
+                {meals?.filter(m => m?.status === 'approved').length || 0}
               </ThemedText>
               <ThemedText style={styles.statLabel}>Approved</ThemedText>
             </LinearGradient>
@@ -204,6 +219,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
               <Ionicons name='calendar' size={28} color='#fff' />
               <ThemedText style={styles.statValue}>
                 {meals?.filter(m => {
+                  if (!m?.date) return false;
                   const today = new Date().toDateString();
                   const mealDate = new Date(m.date).toDateString();
                   return mealDate === today;
@@ -293,21 +309,21 @@ export const MealManagement: React.FC<MealManagementProps> = ({
             <View style={styles.summaryCard}>
               <Ionicons name='sunny' size={24} color='#f59e0b' />
               <ThemedText style={styles.summaryValue}>
-                {meals?.filter(m => m.breakfast).length || 0}
+                {meals?.filter(m => m?.breakfast).length || 0}
               </ThemedText>
               <ThemedText style={styles.summaryLabel}>Breakfast</ThemedText>
             </View>
             <View style={styles.summaryCard}>
               <Ionicons name='partly-sunny' size={24} color='#10b981' />
               <ThemedText style={styles.summaryValue}>
-                {meals?.filter(m => m.lunch).length || 0}
+                {meals?.filter(m => m?.lunch).length || 0}
               </ThemedText>
               <ThemedText style={styles.summaryLabel}>Lunch</ThemedText>
             </View>
             <View style={styles.summaryCard}>
               <Ionicons name='moon' size={24} color='#8b5cf6' />
               <ThemedText style={styles.summaryValue}>
-                {meals?.filter(m => m.dinner).length || 0}
+                {meals?.filter(m => m?.dinner).length || 0}
               </ThemedText>
               <ThemedText style={styles.summaryLabel}>Dinner</ThemedText>
             </View>
@@ -349,19 +365,21 @@ export const MealManagement: React.FC<MealManagementProps> = ({
           <View style={styles.mealsList}>
             {meals?.slice(0, 5).map((meal, index) => (
               <ActivityCard
-                key={meal.id || index}
-                title={`Meal on ${new Date(meal.date).toLocaleDateString()}`}
+                key={meal.id || `meal-${index}`}
+                title={`Meal on ${new Date(
+                  meal.date || new Date()
+                ).toLocaleDateString()}`}
                 description={getMealSummary(meal)}
                 icon='restaurant'
                 iconBackgroundColor='#10b981'
-                timestamp={meal.date}
-                amount={`${meal.breakfast ? 1 : 0}${meal.lunch ? 1 : 0}${
-                  meal.dinner ? 1 : 0
+                timestamp={meal.date || new Date().toISOString()}
+                amount={`${meal?.breakfast ? 1 : 0}${meal?.lunch ? 1 : 0}${
+                  meal?.dinner ? 1 : 0
                 } meals`}
                 status={
-                  meal.status === 'approved'
+                  meal?.status === 'approved'
                     ? 'success'
-                    : meal.status === 'rejected'
+                    : meal?.status === 'rejected'
                     ? 'error'
                     : 'warning'
                 }
@@ -390,19 +408,19 @@ export const MealManagement: React.FC<MealManagementProps> = ({
           <View style={styles.quickStatsGrid}>
             <View style={styles.quickStatCard}>
               <ThemedText style={styles.quickStatValue}>
-                {meals?.filter(m => m.status === 'approved').length || 0}
+                {meals?.filter(m => m?.status === 'approved').length || 0}
               </ThemedText>
               <ThemedText style={styles.quickStatLabel}>Approved</ThemedText>
             </View>
             <View style={styles.quickStatCard}>
               <ThemedText style={styles.quickStatValue}>
-                {meals?.filter(m => m.status === 'pending').length || 0}
+                {meals?.filter(m => m?.status === 'pending').length || 0}
               </ThemedText>
               <ThemedText style={styles.quickStatLabel}>Pending</ThemedText>
             </View>
             <View style={styles.quickStatCard}>
               <ThemedText style={styles.quickStatValue}>
-                {meals?.filter(m => m.status === 'rejected').length || 0}
+                {meals?.filter(m => m?.status === 'rejected').length || 0}
               </ThemedText>
               <ThemedText style={styles.quickStatLabel}>Rejected</ThemedText>
             </View>
@@ -448,6 +466,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
                 style={[
                   styles.mealOptionText,
                   selectedMeals.breakfast && styles.mealOptionTextSelected,
+                  { color: selectedMeals.breakfast ? '#fff' : textColor },
                 ]}
               >
                 Breakfast
@@ -469,6 +488,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
                 style={[
                   styles.mealOptionText,
                   selectedMeals.lunch && styles.mealOptionTextSelected,
+                  { color: selectedMeals.lunch ? '#fff' : textColor },
                 ]}
               >
                 Lunch
@@ -490,6 +510,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
                 style={[
                   styles.mealOptionText,
                   selectedMeals.dinner && styles.mealOptionTextSelected,
+                  { color: selectedMeals.dinner ? '#fff' : textColor },
                 ]}
               >
                 Dinner
@@ -503,9 +524,12 @@ export const MealManagement: React.FC<MealManagementProps> = ({
             Notes (Optional)
           </ThemedText>
           <TextInput
-            style={styles.notesInput}
+            style={[
+              styles.notesInput,
+              { backgroundColor, borderColor, color: textColor },
+            ]}
             placeholder='Add any special notes about your meal...'
-            placeholderTextColor='#9ca3af'
+            placeholderTextColor={iconColor}
             value={notes}
             onChangeText={setNotes}
             multiline
@@ -540,7 +564,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
   );
 
   const renderHistory = () => (
-    <ScrollView style={styles.scrollView}>
+    <View style={styles.container}>
       <LinearGradient colors={['#f59e0b', '#d97706']} style={styles.header}>
         <View style={styles.headerContent}>
           <View style={styles.headerIconContainer}>
@@ -557,36 +581,43 @@ export const MealManagement: React.FC<MealManagementProps> = ({
 
       <View style={styles.historyContent}>
         <View style={styles.historyStats}>
-          <View style={styles.historyStatCard}>
-            <ThemedText style={styles.historyStatValue}>
+          <View style={[styles.historyStatCard, { backgroundColor }]}>
+            <ThemedText style={[styles.historyStatValue, { color: textColor }]}>
               {meals?.length || 0}
             </ThemedText>
-            <ThemedText style={styles.historyStatLabel}>Total Meals</ThemedText>
-          </View>
-          <View style={styles.historyStatCard}>
-            <ThemedText style={styles.historyStatValue}>
-              {meals?.filter(m => m.status === 'approved').length || 0}
+            <ThemedText style={[styles.historyStatLabel, { color: iconColor }]}>
+              Total Meals
             </ThemedText>
-            <ThemedText style={styles.historyStatLabel}>Approved</ThemedText>
+          </View>
+          <View style={[styles.historyStatCard, { backgroundColor }]}>
+            <ThemedText style={[styles.historyStatValue, { color: textColor }]}>
+              {meals?.filter(m => m?.status === 'approved').length || 0}
+            </ThemedText>
+            <ThemedText style={[styles.historyStatLabel, { color: iconColor }]}>
+              Approved
+            </ThemedText>
           </View>
         </View>
 
-        <View style={styles.historyList}>
-          {meals?.map((meal, index) => (
+        <FlatList
+          data={meals || []}
+          keyExtractor={(item, index) => item.id || `meal-${index}`}
+          renderItem={({ item: meal, index }) => (
             <ActivityCard
-              key={meal.id || index}
-              title={`Meal on ${new Date(meal.date).toLocaleDateString()}`}
+              title={`Meal on ${new Date(
+                meal.date || new Date()
+              ).toLocaleDateString()}`}
               description={getMealSummary(meal)}
               icon='restaurant'
               iconBackgroundColor='#10b981'
-              timestamp={meal.date}
-              amount={`${meal.breakfast ? 1 : 0}${meal.lunch ? 1 : 0}${
-                meal.dinner ? 1 : 0
+              timestamp={meal.date || new Date().toISOString()}
+              amount={`${meal?.breakfast ? 1 : 0}${meal?.lunch ? 1 : 0}${
+                meal?.dinner ? 1 : 0
               } meals`}
               status={
-                meal.status === 'approved'
+                meal?.status === 'approved'
                   ? 'success'
-                  : meal.status === 'rejected'
+                  : meal?.status === 'rejected'
                   ? 'error'
                   : 'warning'
               }
@@ -594,10 +625,10 @@ export const MealManagement: React.FC<MealManagementProps> = ({
               variant='compact'
               isSmallScreen={isSmallScreen}
             />
-          ))}
-          {(!meals || meals.length === 0) && (
+          )}
+          ListEmptyComponent={() => (
             <View style={styles.emptyState}>
-              <Ionicons name='restaurant-outline' size={48} color='#9ca3af' />
+              <Ionicons name='restaurant-outline' size={48} color={iconColor} />
               <ThemedText style={styles.emptyStateText}>
                 No meal history found
               </ThemedText>
@@ -606,7 +637,9 @@ export const MealManagement: React.FC<MealManagementProps> = ({
               </ThemedText>
             </View>
           )}
-        </View>
+          contentContainerStyle={styles.historyList}
+          showsVerticalScrollIndicator={false}
+        />
 
         <TouchableOpacity
           style={styles.backButton}
@@ -617,7 +650,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
           </ThemedText>
         </TouchableOpacity>
       </View>
-    </ScrollView>
+    </View>
   );
 
   return (
@@ -878,7 +911,6 @@ const styles = StyleSheet.create({
   mealOptionText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1f2937',
     marginTop: 8,
   },
   mealOptionSelected: {
@@ -889,11 +921,9 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   notesInput: {
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
     minHeight: 100,
     justifyContent: 'center',
   },
@@ -933,7 +963,6 @@ const styles = StyleSheet.create({
   },
   historyStatCard: {
     flex: 1,
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -946,12 +975,10 @@ const styles = StyleSheet.create({
   historyStatValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1f2937',
     marginBottom: 4,
   },
   historyStatLabel: {
     fontSize: 12,
-    color: '#6b7280',
     fontWeight: '500',
   },
   historyList: {

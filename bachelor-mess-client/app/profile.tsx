@@ -18,6 +18,7 @@ import { useUsers } from '@/hooks/useUsers';
 import { useMeals } from '@/hooks/useMeals';
 import { useBazar } from '@/hooks/useBazar';
 import { LinearGradient } from 'expo-linear-gradient';
+import authService from '@/services/authService';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
@@ -200,62 +201,102 @@ export default function ProfileScreen() {
     try {
       await getProfile();
 
-      // Load meal and bazar data
-      const mealResponse = await getUserMeals();
-      const bazarResponse = await getBazarStats();
-
-      // Calculate statistics
-      const currentDate = new Date();
-      const currentMonth = currentDate.getMonth();
-      const currentYear = currentDate.getFullYear();
-
-      // Mock data for demonstration (replace with real calculations)
-      const mockStats = {
-        totalMeals: 87,
-        totalBazar: 23,
-        totalAmount: 12500,
-        thisMonthMeals: 12,
-        thisMonthBazar: 3,
-        thisMonthAmount: 1800,
-        averageDailyMeals: 2.1,
-        averageBazarAmount: 543,
-      };
-
-      setUserStats(mockStats);
-
-      // Mock recent activity
-      const mockActivity = [
+      // Load user statistics from API
+      const userStatsResponse = await fetch(
+        `${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000'}/api/user-stats/dashboard`,
         {
-          type: 'meal',
-          action: 'Submitted breakfast and lunch',
-          date: '2 hours ago',
-          icon: 'fast-food',
-        },
-        {
-          type: 'bazar',
-          action: 'Added grocery items worth ৳450',
-          date: '1 day ago',
-          icon: 'cart',
-        },
-        {
-          type: 'payment',
-          action: 'Paid monthly mess bill',
-          date: '3 days ago',
-          icon: 'card',
-        },
-        {
-          type: 'meal',
-          action: 'Submitted dinner',
-          date: '4 days ago',
-          icon: 'moon',
-        },
-      ];
+          headers: {
+            'Authorization': `Bearer ${await authService.getStoredToken()}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
-      setRecentActivity(mockActivity);
+      if (userStatsResponse.ok) {
+        const statsData = await userStatsResponse.json();
+        
+        if (statsData.success && statsData.data) {
+          const { meals, bazar, payments, overview } = statsData.data;
+          
+          // Calculate real statistics from API data
+          const realStats = {
+            totalMeals: meals.total || 0,
+            totalBazar: bazar.totalEntries || 0,
+            totalAmount: bazar.totalAmount || 0,
+            thisMonthMeals: meals.approved || 0, // Using approved meals as this month
+            thisMonthBazar: bazar.totalEntries || 0,
+            thisMonthAmount: bazar.approvedAmount || 0,
+            averageDailyMeals: meals.averagePerDay || 0,
+            averageBazarAmount: bazar.averageAmount || 0,
+          };
+
+          setUserStats(realStats);
+
+          // Create real activity based on API data
+          const realActivity = [];
+          
+          if (meals.lastMealDate) {
+            realActivity.push({
+              type: 'meal',
+              action: `Last meal submitted ${meals.daysSinceLastMeal || 0} days ago`,
+              date: new Date(meals.lastMealDate).toLocaleDateString(),
+              icon: 'fast-food',
+            });
+          }
+
+          if (bazar.totalEntries > 0) {
+            realActivity.push({
+              type: 'bazar',
+              action: `Total bazar entries: ${bazar.totalEntries} (৳${bazar.totalAmount})`,
+              date: 'Recent',
+              icon: 'cart',
+            });
+          }
+
+          if (payments.lastPaymentDate) {
+            realActivity.push({
+              type: 'payment',
+              action: `Last payment: ৳${payments.monthlyContribution}`,
+              date: new Date(payments.lastPaymentDate).toLocaleDateString(),
+              icon: 'card',
+            });
+          }
+
+          setRecentActivity(realActivity);
+        }
+      } else {
+        console.error('Failed to load user statistics:', userStatsResponse.status);
+        // Fallback to mock data if API fails
+        const mockStats = {
+          totalMeals: 0,
+          totalBazar: 0,
+          totalAmount: 0,
+          thisMonthMeals: 0,
+          thisMonthBazar: 0,
+          thisMonthAmount: 0,
+          averageDailyMeals: 0,
+          averageBazarAmount: 0,
+        };
+        setUserStats(mockStats);
+        setRecentActivity([]);
+      }
     } catch (error) {
       console.error('Error loading user data:', error);
+      // Fallback to mock data on error
+      const mockStats = {
+        totalMeals: 0,
+        totalBazar: 0,
+        totalAmount: 0,
+        thisMonthMeals: 0,
+        thisMonthBazar: 0,
+        thisMonthAmount: 0,
+        averageDailyMeals: 0,
+        averageBazarAmount: 0,
+      };
+      setUserStats(mockStats);
+      setRecentActivity([]);
     }
-  }, [getProfile, getUserMeals, getBazarStats]);
+  }, [getProfile]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -272,60 +313,7 @@ export default function ProfileScreen() {
     // Only load on initial mount, not on every loadUserData change
     const initialLoad = async () => {
       try {
-        await getProfile();
-
-        // Load meal and bazar data
-        const mealResponse = await getUserMeals();
-        const bazarResponse = await getBazarStats();
-
-        // Calculate statistics
-        const currentDate = new Date();
-        const currentMonth = currentDate.getMonth();
-        const currentYear = currentDate.getFullYear();
-
-        // Mock data for demonstration (replace with real calculations)
-        const mockStats = {
-          totalMeals: 87,
-          totalBazar: 23,
-          totalAmount: 12500,
-          thisMonthMeals: 12,
-          thisMonthBazar: 3,
-          thisMonthAmount: 1800,
-          averageDailyMeals: 2.1,
-          averageBazarAmount: 543,
-        };
-
-        setUserStats(mockStats);
-
-        // Mock recent activity
-        const mockActivity = [
-          {
-            type: 'meal',
-            action: 'Submitted breakfast and lunch',
-            date: '2 hours ago',
-            icon: 'fast-food',
-          },
-          {
-            type: 'bazar',
-            action: 'Added grocery items worth ৳450',
-            date: '1 day ago',
-            icon: 'cart',
-          },
-          {
-            type: 'payment',
-            action: 'Paid monthly mess bill',
-            date: '3 days ago',
-            icon: 'card',
-          },
-          {
-            type: 'meal',
-            action: 'Submitted dinner',
-            date: '4 days ago',
-            icon: 'moon',
-          },
-        ];
-
-        setRecentActivity(mockActivity);
+        await loadUserData();
       } catch (error) {
         console.error('Error loading user data:', error);
       }

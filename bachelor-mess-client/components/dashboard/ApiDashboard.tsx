@@ -20,25 +20,18 @@ import { ChartsSection } from './ChartsSection';
 import { DashboardHeader } from './DashboardHeader';
 import { QuickActions } from './QuickActions';
 import { RecentActivity } from './RecentActivity';
+import { useTheme } from '@/context/ThemeContext';
+import { ThemedView } from '../ThemedView';
 
 import errorHandler from '@/services/errorHandler';
 
 const { width: screenWidth } = Dimensions.get('window');
 
-const DESIGN_SYSTEM = {
-  colors: {
-    light: '#f8fafc',
-    error: '#ef4444',
-    success: '#10b981',
-  },
-  spacing: {
-    lg: 20,
-    xl: 24,
-  },
-};
+// Removed hardcoded design system - using theme instead
 
 export const ApiDashboard: React.FC = () => {
   const router = useRouter();
+  const { theme } = useTheme();
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -138,7 +131,7 @@ export const ApiDashboard: React.FC = () => {
         title: 'Total Members',
         value: safeString(stats.totalMembers || 0),
         icon: 'people',
-        gradient: ['#10b981', '#059669'] as [string, string],
+        gradient: theme.gradient.success as [string, string],
         details: {
           change: '0',
           period: 'this month',
@@ -149,7 +142,7 @@ export const ApiDashboard: React.FC = () => {
         title: 'Monthly Expenses',
         value: `৳${safeNumber(stats.monthlyExpense || 0).toLocaleString()}`,
         icon: 'card',
-        gradient: ['#f59e0b', '#d97706'] as [string, string],
+        gradient: theme.gradient.warning as [string, string],
         details: {
           change: '0%',
           period: 'vs last month',
@@ -160,7 +153,7 @@ export const ApiDashboard: React.FC = () => {
         title: 'Total Meals',
         value: safeString(stats.totalMeals || 0),
         icon: 'restaurant',
-        gradient: ['#8b5cf6', '#7c3aed'] as [string, string],
+        gradient: theme.gradient.info as [string, string],
         details: {
           change: '0%',
           period: 'vs last month',
@@ -171,7 +164,7 @@ export const ApiDashboard: React.FC = () => {
         title: 'Average Meals',
         value: safeString(stats.averageMeals || 0),
         icon: 'trending-up',
-        gradient: ['#667eea', '#764ba2'] as [string, string],
+        gradient: theme.gradient.primary as [string, string],
         details: {
           change: '0',
           period: 'per day',
@@ -187,6 +180,7 @@ export const ApiDashboard: React.FC = () => {
 
   const getChartsData = () => {
     if (!dashboardData?.charts) {
+      console.log('❌ No charts data available');
       return {
         monthlyRevenue: [],
         currentMonthRevenue: {
@@ -196,13 +190,21 @@ export const ApiDashboard: React.FC = () => {
       };
     }
 
-    return {
+    const chartsData = {
       monthlyRevenue: dashboardData.charts.monthlyRevenue || [],
       currentMonthRevenue: {
         revenue: safeNumber(dashboardData.stats?.balance || 0),
         expenses: safeNumber(dashboardData.stats?.monthlyExpense || 0),
       },
     };
+
+    console.log('📊 Charts data:', {
+      monthlyRevenueCount: chartsData.monthlyRevenue.length,
+      monthlyRevenueData: chartsData.monthlyRevenue,
+      currentMonthRevenue: chartsData.currentMonthRevenue,
+    });
+
+    return chartsData;
   };
 
   const handleQuickAction = (action: string) => {
@@ -235,19 +237,23 @@ export const ApiDashboard: React.FC = () => {
   // Show loading state
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size='large' color='#667eea' />
-        <Text style={styles.loadingText}>Loading dashboard...</Text>
-      </View>
+      <ThemedView style={styles.loadingContainer}>
+        <ActivityIndicator size='large' color={theme.primary} />
+        <Text style={[styles.loadingText, { color: theme.text.primary }]}>
+          Loading dashboard...
+        </Text>
+      </ThemedView>
     );
   }
 
   // Show error state
   if (error) {
     return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorTitle}>Connection Issue</Text>
-        <Text style={styles.errorText}>
+      <ThemedView style={styles.errorContainer}>
+        <Text style={[styles.errorTitle, { color: theme.text.primary }]}>
+          Connection Issue
+        </Text>
+        <Text style={[styles.errorText, { color: theme.text.secondary }]}>
           {error.includes('Network') || error.includes('connection')
             ? 'Unable to connect to the server. Please check your internet connection and try again.'
             : error.includes('Server') || error.includes('unavailable')
@@ -256,22 +262,30 @@ export const ApiDashboard: React.FC = () => {
             ? 'Request timed out. Please check your connection and try again.'
             : error}
         </Text>
-        <Text style={styles.retryText} onPress={refreshData}>
+        <Text
+          style={[styles.retryText, { color: theme.primary }]}
+          onPress={refreshData}
+        >
           Tap to retry
         </Text>
-      </View>
+      </ThemedView>
     );
   }
 
   // Show no data state
   if (!dashboardData) {
     return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>No dashboard data available</Text>
-        <Text style={styles.retryText} onPress={refreshData}>
+      <ThemedView style={styles.errorContainer}>
+        <Text style={[styles.errorText, { color: theme.text.secondary }]}>
+          No dashboard data available
+        </Text>
+        <Text
+          style={[styles.retryText, { color: theme.primary }]}
+          onPress={refreshData}
+        >
           Tap to retry
         </Text>
-      </View>
+      </ThemedView>
     );
   }
 
@@ -280,142 +294,153 @@ export const ApiDashboard: React.FC = () => {
   const chartsData = getChartsData();
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={[
-        styles.contentContainer,
-        { padding: containerPadding },
-      ]}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <View style={styles.refreshControl}>
-          <Text style={styles.refreshText} onPress={refreshData}>
-            Pull to refresh
+    <ThemedView style={styles.container}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[
+          styles.contentContainer,
+          { padding: containerPadding },
+        ]}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <View style={styles.refreshControl}>
+            <Text
+              style={[styles.refreshText, { color: theme.text.secondary }]}
+              onPress={refreshData}
+            >
+              Pull to refresh
+            </Text>
+          </View>
+        }
+      >
+        {/* Header Section */}
+        <DashboardHeader
+          title='Admin Dashboard'
+          subtitle='Manage your mess operations'
+          icon='analytics'
+          colors={['#667eea', '#764ba2']}
+        />
+
+        {/* Data Source Indicator */}
+        <View
+          style={[
+            styles.dataSourceIndicator,
+            {
+              backgroundColor: theme.cardBackground,
+              borderColor: theme.cardBorder,
+            },
+          ]}
+        >
+          <Text style={[styles.dataSourceText, { color: theme.text.primary }]}>
+            Live Data
           </Text>
         </View>
-      }
-    >
-      {/* Header Section */}
-      <DashboardHeader
-        title='Admin Dashboard'
-        subtitle='Manage your mess operations'
-        icon='analytics'
-        colors={['#667eea', '#764ba2']}
-      />
 
-      {/* Data Source Indicator */}
-      <View style={styles.dataSourceIndicator}>
-        <Text style={styles.dataSourceText}>Live Data</Text>
-      </View>
+        {/* Stats Grid */}
+        <View style={[styles.statsContainer, { marginBottom: cardSpacing }]}>
+          <StatsGrid stats={stats || []} />
+        </View>
 
-      {/* Stats Grid */}
-      <View style={[styles.statsContainer, { marginBottom: cardSpacing }]}>
-        <StatsGrid stats={stats || []} />
-      </View>
+        {/* Charts Section */}
+        <ChartsSection
+          monthlyRevenue={chartsData?.monthlyRevenue || []}
+          currentMonthRevenue={chartsData?.currentMonthRevenue || {}}
+          isTablet={isTablet}
+        />
 
-      {/* Charts Section */}
-      <ChartsSection
-        monthlyRevenue={chartsData?.monthlyRevenue || []}
-        currentMonthRevenue={chartsData?.currentMonthRevenue || {}}
-        isTablet={isTablet}
-      />
+        {/* Quick Actions */}
+        <QuickActions
+          actions={[
+            {
+              id: 'add-meal',
+              title: 'Add Meal',
+              subtitle: "Record today's meals",
+              icon: 'restaurant',
+              color: '#10b981',
+              onPress: () => handleQuickAction('add-meal'),
+            },
+            {
+              id: 'add-bazar',
+              title: 'Add Bazar',
+              subtitle: 'Upload shopping list',
+              icon: 'cart',
+              color: '#f59e0b',
+              onPress: () => handleQuickAction('add-bazar'),
+            },
+            {
+              id: 'view-expenses',
+              title: 'View Expenses',
+              subtitle: 'Check spending details',
+              icon: 'card',
+              color: '#ef4444',
+              onPress: () => handleQuickAction('view-expenses'),
+            },
+            {
+              id: 'view-revenue',
+              title: 'View Revenue',
+              subtitle: 'See income breakdown',
+              icon: 'trending-up',
+              color: '#667eea',
+              onPress: () => handleQuickAction('view-revenue'),
+            },
+          ]}
+        />
 
-      {/* Quick Actions */}
-      <QuickActions
-        actions={[
-          {
-            id: 'add-meal',
-            title: 'Add Meal',
-            subtitle: "Record today's meals",
-            icon: 'restaurant',
-            color: '#10b981',
-            onPress: () => handleQuickAction('add-meal'),
-          },
-          {
-            id: 'add-bazar',
-            title: 'Add Bazar',
-            subtitle: 'Upload shopping list',
-            icon: 'cart',
-            color: '#f59e0b',
-            onPress: () => handleQuickAction('add-bazar'),
-          },
-          {
-            id: 'view-expenses',
-            title: 'View Expenses',
-            subtitle: 'Check spending details',
-            icon: 'card',
-            color: '#ef4444',
-            onPress: () => handleQuickAction('view-expenses'),
-          },
-          {
-            id: 'view-revenue',
-            title: 'View Revenue',
-            subtitle: 'See income breakdown',
-            icon: 'trending-up',
-            color: '#667eea',
-            onPress: () => handleQuickAction('view-revenue'),
-          },
-        ]}
-      />
-
-      {/* Recent Activity */}
-      <RecentActivity
-        activities={(activities || []).map(activity => ({
-          ...activity,
-          colors: ['#667eea', '#764ba2'] as [string, string],
-          amount: activity.amount?.toString(),
-        }))}
-        maxItems={3}
-      />
-    </ScrollView>
+        {/* Recent Activity */}
+        <RecentActivity
+          activities={(activities || []).map(activity => ({
+            ...activity,
+            colors: ['#667eea', '#764ba2'] as [string, string],
+            amount: activity.amount?.toString(),
+          }))}
+          maxItems={3}
+        />
+      </ScrollView>
+    </ThemedView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: DESIGN_SYSTEM.colors.light,
+  },
+  scrollView: {
+    flex: 1,
   },
   contentContainer: {
     paddingBottom: 100,
   },
   statsContainer: {
-    marginBottom: DESIGN_SYSTEM.spacing.xl,
+    marginBottom: 24,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: DESIGN_SYSTEM.colors.light,
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#6b7280',
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: DESIGN_SYSTEM.colors.light,
     padding: 20,
   },
   errorTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: DESIGN_SYSTEM.colors.error,
     textAlign: 'center',
     marginBottom: 8,
   },
   errorText: {
     fontSize: 16,
-    color: DESIGN_SYSTEM.colors.error,
     textAlign: 'center',
     marginBottom: 16,
   },
   retryText: {
     fontSize: 14,
-    color: DESIGN_SYSTEM.colors.success,
     textDecorationLine: 'underline',
   },
   refreshControl: {
@@ -424,19 +449,17 @@ const styles = StyleSheet.create({
   },
   refreshText: {
     fontSize: 14,
-    color: '#6b7280',
   },
   dataSourceIndicator: {
-    backgroundColor: '#f3f4f6',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
     alignSelf: 'flex-start',
     marginBottom: 16,
+    borderWidth: 1,
   },
   dataSourceText: {
     fontSize: 12,
-    color: '#6b7280',
     fontWeight: '500',
   },
 });

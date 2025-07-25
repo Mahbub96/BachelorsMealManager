@@ -1,1260 +1,553 @@
-import { DetailCard, MetricCard } from "@/components/DetailCard";
-import { DetailPageTemplate } from "@/components/DetailPageTemplate";
-import { SwappableLineChart } from "@/components/ModernCharts";
-import { ThemedText } from "@/components/ThemedText";
-import { useMessData } from "@/context/MessDataContext";
-import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useState } from "react";
+import { DetailCard, MetricCard } from '@/components/DetailCard';
+import { DetailPageTemplate } from '@/components/DetailPageTemplate';
+import { SwappableLineChart } from '@/components/ModernCharts';
+import { ThemedText } from '@/components/ThemedText';
+import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useState, useEffect } from 'react';
 import {
   Alert,
   Dimensions,
   StyleSheet,
   TouchableOpacity,
   View,
-} from "react-native";
+  ActivityIndicator,
+} from 'react-native';
+import statisticsService from '@/services/statisticsService';
+import userStatsService from '@/services/userStatsService';
+import { useTheme } from '@/context/ThemeContext';
 
-const { width: screenWidth } = Dimensions.get("window");
-
-const DESIGN_SYSTEM = {
-  spacing: {
-    xs: 4,
-    sm: 8,
-    md: 12,
-    lg: 16,
-    xl: 20,
-    xxl: 24,
-    xxxl: 32,
-  },
-  borderRadius: {
-    sm: 8,
-    md: 12,
-    lg: 16,
-    xl: 20,
-  },
-  shadows: {
-    small: {
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 8,
-      elevation: 4,
-    },
-  },
-};
+const { width: screenWidth } = Dimensions.get('window');
 
 export default function ExpenseDetailsPage() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const {
-    monthlyRevenue,
-    currentMonthRevenue,
-    members,
-    mealEntries,
-    bazarEntries,
-    quickStats,
-  } = useMessData();
+  const { theme } = useTheme();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [expenseData, setExpenseData] = useState<any>(null);
 
-  const [selectedPeriod, setSelectedPeriod] = useState("current");
+  const [selectedPeriod, setSelectedPeriod] = useState('current');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadExpenseData();
+  }, []);
+
+  const loadExpenseData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      console.log('🔍 Loading expense data...');
+
+      // Fetch statistics data
+      const statsResponse = await statisticsService.getCompleteStatistics();
+      console.log('📊 Statistics response:', statsResponse);
+
+      if (statsResponse.success && statsResponse.data) {
+        setExpenseData(statsResponse.data);
+        console.log('✅ Expense data loaded successfully');
+      } else {
+        console.error('❌ Failed to load expense data:', statsResponse.error);
+        setError(statsResponse.error || 'Failed to load expense data');
+      }
+    } catch (error) {
+      console.error('❌ Error loading expense data:', error);
+      setError('Network error. Please check your connection.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Parse the data from params
   const data = {
-    title: (params.title as string) || "Monthly Expenses",
-    value: parseInt(params.value as string) || currentMonthRevenue.expenses,
-    type: (params.type as string) || "monthly",
-    color: (params.color as string) || "#667eea",
-    gradient: [(params.color as string) || "#667eea", "#764ba2"] as [
+    title: (params.title as string) || 'Monthly Expenses',
+    value: parseInt(params.value as string) || (expenseData?.monthlyExpenses || 0),
+    type: (params.type as string) || 'monthly',
+    color: (params.color as string) || theme.primary,
+    gradient: [(params.color as string) || theme.primary, theme.secondary] as [
       string,
       string
     ],
     details: {
       description:
         (params.description as string) ||
-        "Comprehensive breakdown of all monthly expenses including groceries, utilities, and maintenance costs.",
+        'Comprehensive breakdown of all monthly expenses including groceries, utilities, and maintenance costs.',
       notes:
         (params.notes as string) ||
-        "This data is updated daily and reflects current market conditions.",
+        'This data is updated daily and reflects current market conditions.',
     },
   };
 
-  // Generate chart data from context
-  const expenseTrendData = monthlyRevenue.slice(-6).map((item) => ({
+  // Generate chart data from API data
+  const expenseTrendData = expenseData?.monthlyData?.slice(-6).map((item: any) => ({
     month: item.month,
-    expenses: item.expenses,
-    budget: item.revenue,
-    savings: item.revenue - item.expenses,
-    meals: Math.round(item.averageMeals * item.memberCount * 30),
-  }));
+    expenses: item.expenses || 0,
+    budget: item.revenue || 0,
+    savings: (item.revenue || 0) - (item.expenses || 0),
+    meals: item.totalMeals || 0,
+  })) || [];
 
-  // Generate daily expense data from meal entries
-  const dailyExpenseData = (mealEntries || []).slice(-7).map((meal, index) => ({
-    day: new Date(meal.date).toLocaleDateString("en-US", { weekday: "short" }),
-    amount: meal.cost,
-    meals:
-      (meal.breakfast ? 1 : 0) + (meal.lunch ? 1 : 0) + (meal.dinner ? 1 : 0),
-  }));
+  // Generate daily expense data
+  const dailyExpenseData = expenseData?.dailyData?.slice(-7).map((item: any) => ({
+    day: new Date(item.date).toLocaleDateString('en-US', { weekday: 'short' }),
+    amount: item.expenses || 0,
+    meals: item.meals || 0,
+  })) || [];
 
-  // Generate expense breakdown from bazar entries
+  // Generate expense breakdown from API data
   const expenseBreakdown = [
     {
-      category: "Groceries",
-      amount: (bazarEntries || []).reduce(
-        (sum, bazar) => sum + bazar.totalAmount,
-        0
-      ),
+      category: 'Groceries',
+      amount: expenseData?.bazarStats?.totalAmount || 0,
       percentage: 60,
-      color: "#10b981",
-      icon: "fast-food",
-      subItems: (bazarEntries || []).slice(-5).map((bazar) => ({
-        name: bazar.items.slice(0, 3).join(", "),
-        amount: bazar.totalAmount,
+      color: theme.status.success,
+      icon: 'fast-food',
+      subItems: expenseData?.recentBazarEntries?.slice(-5).map((bazar: any) => ({
+        name: bazar.items?.slice(0, 3).join(', ') || 'Unknown items',
+        amount: bazar.totalAmount || 0,
         percentage: Math.round(
-          (bazar.totalAmount /
-            (bazarEntries || []).reduce((sum, b) => sum + b.totalAmount, 0)) *
-            100
+          ((bazar.totalAmount || 0) / (expenseData?.bazarStats?.totalAmount || 1)) * 100
         ),
-      })),
+      })) || [],
     },
     {
-      category: "Utilities",
-      amount: Math.round(currentMonthRevenue.expenses * 0.25),
+      category: 'Utilities',
+      amount: Math.round((expenseData?.monthlyExpenses || 0) * 0.25),
       percentage: 25,
-      color: "#6366f1",
-      icon: "flash",
+      color: theme.status.info,
+      icon: 'flash',
       subItems: [
         {
-          name: "Electricity",
-          amount: Math.round(currentMonthRevenue.expenses * 0.15),
+          name: 'Electricity',
+          amount: Math.round((expenseData?.monthlyExpenses || 0) * 0.15),
           percentage: 60,
         },
         {
-          name: "Gas",
-          amount: Math.round(currentMonthRevenue.expenses * 0.06),
+          name: 'Gas',
+          amount: Math.round((expenseData?.monthlyExpenses || 0) * 0.06),
           percentage: 24,
         },
         {
-          name: "Water",
-          amount: Math.round(currentMonthRevenue.expenses * 0.04),
+          name: 'Water',
+          amount: Math.round((expenseData?.monthlyExpenses || 0) * 0.04),
           percentage: 16,
         },
       ],
     },
     {
-      category: "Maintenance",
-      amount: Math.round(currentMonthRevenue.expenses * 0.15),
+      category: 'Maintenance',
+      amount: Math.round((expenseData?.monthlyExpenses || 0) * 0.15),
       percentage: 15,
-      color: "#f59e0b",
-      icon: "construct",
+      color: theme.status.warning,
+      icon: 'construct',
       subItems: [
         {
-          name: "Kitchen Equipment",
-          amount: Math.round(currentMonthRevenue.expenses * 0.08),
-          percentage: 53,
+          name: 'Repairs',
+          amount: Math.round((expenseData?.monthlyExpenses || 0) * 0.09),
+          percentage: 60,
         },
         {
-          name: "Cleaning Supplies",
-          amount: Math.round(currentMonthRevenue.expenses * 0.04),
+          name: 'Cleaning',
+          amount: Math.round((expenseData?.monthlyExpenses || 0) * 0.04),
           percentage: 27,
         },
         {
-          name: "Repairs",
-          amount: Math.round(currentMonthRevenue.expenses * 0.03),
-          percentage: 20,
+          name: 'Supplies',
+          amount: Math.round((expenseData?.monthlyExpenses || 0) * 0.02),
+          percentage: 13,
         },
       ],
     },
   ];
 
-  // Generate member contributions from context
-  const memberContributions = members.map((member) => {
-    const totalMeals = 30; // Assuming 30 days
-    const mealsTaken = member.totalMeals;
-    const mealEfficiency = Math.round((mealsTaken / totalMeals) * 100);
-    const avgCostPerMeal = Math.round(
-      currentMonthRevenue.expenses / (members.length * totalMeals)
+  if (loading) {
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
+        <ActivityIndicator size="large" color={theme.primary} />
+        <ThemedText style={[styles.loadingText, { color: theme.text.secondary }]}>
+          Loading expense details...
+        </ThemedText>
+      </View>
     );
-    const costSavings = Math.round(
-      avgCostPerMeal * totalMeals - member.monthlyContribution
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.errorContainer, { backgroundColor: theme.background }]}>
+        <Ionicons name='alert-circle-outline' size={64} color={theme.status.error} />
+        <ThemedText style={[styles.errorTitle, { color: theme.text.primary }]}>
+          Error Loading Expenses
+        </ThemedText>
+        <ThemedText style={[styles.errorText, { color: theme.text.secondary }]}>
+          {error}
+        </ThemedText>
+        <TouchableOpacity
+          style={[styles.retryButton, { backgroundColor: theme.primary }]}
+          onPress={loadExpenseData}
+        >
+          <ThemedText style={[styles.retryButtonText, { color: theme.text.inverse }]}>
+            Try Again
+          </ThemedText>
+        </TouchableOpacity>
+      </View>
     );
-
-    return {
-      name: member.name,
-      contributed: member.monthlyContribution,
-      status: member.lastPaymentDate ? "paid" : "pending",
-      lastPayment: member.lastPaymentDate,
-      mealsTaken,
-      totalMeals,
-      mealEfficiency,
-      avgCostPerMeal,
-      paymentHistory: [
-        {
-          date: member.lastPaymentDate,
-          amount: member.monthlyContribution,
-          status: "paid",
-        },
-      ],
-      performance:
-        mealEfficiency >= 90
-          ? "excellent"
-          : mealEfficiency >= 80
-          ? "good"
-          : "needs_improvement",
-      attendance: mealEfficiency,
-      costSavings,
-    };
-  });
-
-  // Generate historical data from context
-  const historicalData = monthlyRevenue.slice(-6).map((item) => ({
-    month: item.month,
-    amount: item.expenses,
-    trend: item.expenses > item.revenue * 0.85 ? "up" : "down",
-    savings: item.revenue - item.expenses,
-    efficiency: Math.round((item.profit / item.revenue) * 100),
-  }));
-
-  // Generate expense trends from context
-  const expenseTrends = {
-    changePercentage: Math.round(
-      ((currentMonthRevenue.expenses -
-        monthlyRevenue[monthlyRevenue.length - 2]?.expenses || 0) /
-        (monthlyRevenue[monthlyRevenue.length - 2]?.expenses || 1)) *
-        100
-    ),
-    trend:
-      currentMonthRevenue.expenses >
-      (monthlyRevenue[monthlyRevenue.length - 2]?.expenses || 0)
-        ? "up"
-        : "down",
-    efficiencyScore: Math.round(
-      (currentMonthRevenue.profit / currentMonthRevenue.revenue) * 100
-    ),
-    budgetLimit: currentMonthRevenue.revenue,
-    savingsRate: Math.round(
-      (currentMonthRevenue.profit / currentMonthRevenue.revenue) * 100
-    ),
-  };
-
-  // Budget vs Actual comparison
-  const budgetComparison = {
-    groceries: {
-      budget: Math.round(currentMonthRevenue.revenue * 0.6),
-      actual: expenseBreakdown[0].amount,
-      variance:
-        expenseBreakdown[0].amount -
-        Math.round(currentMonthRevenue.revenue * 0.6),
-      status:
-        expenseBreakdown[0].amount >
-        Math.round(currentMonthRevenue.revenue * 0.6)
-          ? "over"
-          : "under",
-    },
-    utilities: {
-      budget: Math.round(currentMonthRevenue.revenue * 0.25),
-      actual: expenseBreakdown[1].amount,
-      variance:
-        expenseBreakdown[1].amount -
-        Math.round(currentMonthRevenue.revenue * 0.25),
-      status:
-        expenseBreakdown[1].amount >
-        Math.round(currentMonthRevenue.revenue * 0.25)
-          ? "over"
-          : "under",
-    },
-    maintenance: {
-      budget: Math.round(currentMonthRevenue.revenue * 0.15),
-      actual: expenseBreakdown[2].amount,
-      variance:
-        expenseBreakdown[2].amount -
-        Math.round(currentMonthRevenue.revenue * 0.15),
-      status:
-        expenseBreakdown[2].amount >
-        Math.round(currentMonthRevenue.revenue * 0.15)
-          ? "over"
-          : "under",
-    },
-  };
-
-  const periods = [
-    { key: "current", label: "Current Month" },
-    { key: "previous", label: "Previous Month" },
-    { key: "quarter", label: "This Quarter" },
-    { key: "year", label: "This Year" },
-  ];
+  }
 
   const formatCurrency = (amount: number) => {
     return `৳${amount.toLocaleString()}`;
   };
 
   const getTrendColor = (trend: string) => {
-    return trend === "up" ? "#10b981" : "#ef4444";
+    return trend === 'up' ? theme.status.success : theme.status.error;
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "paid":
-        return "#10b981";
-      case "pending":
-        return "#f59e0b";
-      case "overdue":
-        return "#ef4444";
+      case 'good':
+        return theme.status.success;
+      case 'warning':
+        return theme.status.warning;
+      case 'critical':
+        return theme.status.error;
       default:
-        return "#6b7280";
+        return theme.status.info;
     }
   };
 
   const getBudgetStatusColor = (status: string) => {
     switch (status) {
-      case "under":
-        return "#10b981";
-      case "over":
-        return "#ef4444";
-      case "on":
-        return "#f59e0b";
+      case 'under':
+        return theme.status.success;
+      case 'over':
+        return theme.status.error;
+      case 'at':
+        return theme.status.warning;
       default:
-        return "#6b7280";
+        return theme.status.info;
     }
   };
 
   const handleCategoryPress = (category: string) => {
-    setSelectedCategory(selectedCategory === category ? null : category);
+    console.log('📊 Category pressed:', category);
+    setSelectedCategory(category);
   };
 
   const handleMemberPress = (member: any) => {
-    const performanceEmoji =
-      member.performance === "excellent"
-        ? "🟢"
-        : member.performance === "good"
-        ? "🟡"
-        : "🔴";
-    const attendanceEmoji =
-      member.attendance >= 90 ? "🟢" : member.attendance >= 80 ? "🟡" : "🔴";
-    const costSavingsEmoji = member.costSavings > 0 ? "💰" : "⚠️";
-    const statusEmoji =
-      member.status === "paid"
-        ? "✅"
-        : member.status === "pending"
-        ? "⏳"
-        : "❌";
-
-    const performanceText =
-      member.performance === "excellent"
-        ? "Excellent Performance"
-        : member.performance === "good"
-        ? "Good Performance"
-        : "Needs Improvement";
-
-    const attendanceText =
-      member.attendance >= 90
-        ? "Excellent Attendance"
-        : member.attendance >= 80
-        ? "Good Attendance"
-        : "Low Attendance";
-
-    const costSavingsText =
-      member.costSavings > 0
-        ? `Cost Efficient (+${formatCurrency(member.costSavings)})`
-        : `Above Average Cost (${formatCurrency(
-            Math.abs(member.costSavings)
-          )})`;
-
-    Alert.alert(
-      `${member.name} - Performance Overview`,
-      `${performanceEmoji} ${performanceText}\n` +
-        `${attendanceEmoji} ${attendanceText} (${member.attendance}%)\n` +
-        `${costSavingsEmoji} ${costSavingsText}\n\n` +
-        `📊 Meal Efficiency: ${member.mealEfficiency}% (${member.mealsTaken}/${member.totalMeals})\n` +
-        `💵 Avg Cost/Meal: ${formatCurrency(member.avgCostPerMeal)}\n` +
-        `💰 Total Contributed: ${formatCurrency(member.contributed)}\n` +
-        `${statusEmoji} Payment Status: ${member.status.toUpperCase()}\n` +
-        `📅 Last Payment: ${member.lastPayment}\n\n` +
-        `📈 Payment History:\n` +
-        `${member.paymentHistory
-          .map(
-            (p: any) => `  ${p.date}: ${formatCurrency(p.amount)} (${p.status})`
-          )
-          .join("\n")}\n\n` +
-        `💡 Recommendations:\n` +
-        `${
-          member.performance === "excellent"
-            ? "• Keep up the excellent work!"
-            : member.performance === "good"
-            ? "• Consider increasing meal attendance"
-            : "• Focus on improving meal attendance and cost efficiency"
-        }`
-    );
+    console.log('👤 Member pressed:', member);
+    // Navigate to member details if needed
   };
 
-  const actionButtons = [
-    {
-      icon: "download",
-      label: "Export Report",
-      onPress: () => Alert.alert("Export", "Report exported successfully!"),
-      color: "#667eea",
-    },
-    {
-      icon: "create",
-      label: "Edit Expenses",
-      onPress: () =>
-        Alert.alert("Edit", "Edit expenses functionality coming soon!"),
-      color: "#667eea",
-    },
-    {
-      icon: "share",
-      label: "Share Report",
-      onPress: () => Alert.alert("Share", "Report shared successfully!"),
-      color: "#667eea",
-    },
-  ];
+      return (
+      <DetailPageTemplate
+        title={data.title}
+        gradientColors={data.gradient}
+      >
+      {/* Main Content */}
+      <View style={styles.content}>
+        {/* Summary Cards */}
+        <View style={styles.summarySection}>
+          <MetricCard
+            icon="wallet"
+            value={formatCurrency(data.value)}
+            label="Total Expenses"
+            color={data.color}
+          />
+          <MetricCard
+            icon="checkmark-circle"
+            value={expenseData?.budgetStatus || 'Under Budget'}
+            label="Budget Status"
+            color={getBudgetStatusColor(expenseData?.budgetStatus || 'under')}
+          />
+        </View>
 
-  return (
-    <DetailPageTemplate
-      title={data.title}
-      gradientColors={data.gradient}
-      actionButtons={actionButtons}
-    >
-      {/* Quick Stats Row */}
-      <View style={styles.quickStatsRow}>
-        <MetricCard
+        {/* Expense Trend Chart */}
+        <DetailCard
+          title="Expense Trend"
+          value="Last 6 months"
+          subtitle="Last 6 months expense pattern"
           icon="trending-up"
-          value={`+${expenseTrends.changePercentage}%`}
-          label="vs Last Month"
-          color={getTrendColor(expenseTrends.trend)}
-        />
-        <MetricCard
+        >
+          <SwappableLineChart
+            monthlyRevenue={expenseTrendData.map((item: any) => ({
+              month: item.month,
+              revenue: item.expenses,
+              value: item.expenses,
+              details: {
+                budget: item.budget,
+                savings: item.savings,
+                meals: item.meals,
+              },
+            }))}
+            color={data.color}
+            onPointPress={(point) => {
+              console.log('📈 Chart point pressed:', point);
+            }}
+          />
+        </DetailCard>
+
+        {/* Daily Breakdown */}
+        <DetailCard
+          title="Daily Breakdown"
+          value="This week"
+          subtitle="This week's daily expenses"
           icon="calendar"
-          value={formatCurrency(Math.round(currentMonthRevenue.expenses / 30))}
-          label="Daily Average"
-          color="#667eea"
-        />
-        <MetricCard
-          icon="analytics"
-          value={formatCurrency(
-            Math.round(currentMonthRevenue.expenses * 1.05)
-          )}
-          label="Projected"
-          color="#f59e0b"
-        />
-      </View>
-
-      {/* Main Expense Card */}
-      <DetailCard
-        title="Total Expenses"
-        value={formatCurrency(data.value)}
-        subtitle={`${expenseTrends.changePercentage > 0 ? "+" : ""}${
-          expenseTrends.changePercentage
-        }% vs last month`}
-        icon="cash"
-        iconColor="#667eea"
-      >
-        <View style={styles.expenseComparison}>
-          <ThemedText style={styles.comparisonText}>
-            vs{" "}
-            {formatCurrency(
-              monthlyRevenue[monthlyRevenue.length - 2]?.expenses || 0
-            )}{" "}
-            last month
-          </ThemedText>
-          <ThemedText
-            style={[
-              styles.comparisonChange,
-              { color: getTrendColor(expenseTrends.trend) },
-            ]}
-          >
-            {expenseTrends.changePercentage > 0 ? "+" : ""}
-            {expenseTrends.changePercentage}%
-          </ThemedText>
-        </View>
-      </DetailCard>
-
-      {/* Monthly Expense Trend Chart */}
-      <DetailCard
-        title="Monthly Expense Trend"
-        value="6 months"
-        icon="trending-up"
-        iconColor="#667eea"
-      >
-        <View style={styles.chartContainer}>
-          <SwappableLineChart
-            monthlyRevenue={[
-              {
-                month: "Jan",
-                revenue: 28500,
-                details: { budget: 30000, savings: 1500, meals: 180 },
-              },
-              {
-                month: "Feb",
-                revenue: 29800,
-                details: { budget: 30000, savings: 200, meals: 175 },
-              },
-              {
-                month: "Mar",
-                revenue: 31200,
-                details: { budget: 30000, savings: -1200, meals: 190 },
-              },
-              {
-                month: "Apr",
-                revenue: 29500,
-                details: { budget: 30000, savings: 500, meals: 185 },
-              },
-              {
-                month: "May",
-                revenue: 32400,
-                details: { budget: 30000, savings: -2400, meals: 200 },
-              },
-              {
-                month: "Jun",
-                revenue: 31800,
-                details: { budget: 30000, savings: -1800, meals: 195 },
-              },
-            ]}
-            title="Monthly Expenses (৳)"
-            color="#667eea"
-            onPointPress={(item) => {
-              const details = item.details || {};
-              const savingsText =
-                details.savings >= 0
-                  ? `+${details.savings}`
-                  : `${details.savings}`;
-              const savingsColor = details.savings >= 0 ? "🟢" : "🔴";
-
-              Alert.alert(
-                `${item.date} - Monthly Overview`,
-                `💰 Total Expenses: ${formatCurrency(item.value)}\n` +
-                  `📊 Budget: ${formatCurrency(details.budget || 0)}\n` +
-                  `💵 Savings: ${savingsColor} ${formatCurrency(
-                    Math.abs(details.savings || 0)
-                  )}\n` +
-                  `🍽️ Meals Served: ${details.meals || 0}\n` +
-                  `📈 Performance: ${
-                    details.savings >= 0 ? "Under Budget" : "Over Budget"
-                  }`
-              );
-            }}
-          />
-        </View>
-      </DetailCard>
-
-      {/* Daily Expense Chart */}
-      <DetailCard
-        title="Daily Expense Tracking"
-        value="This Week"
-        icon="calendar"
-        iconColor="#667eea"
-      >
-        <View style={styles.chartContainer}>
-          <SwappableLineChart
-            monthlyRevenue={[
-              {
-                month: "Mon",
-                revenue: 1080,
-                details: { meals: 12, avgCost: 90, efficiency: 85 },
-              },
-              {
-                month: "Tue",
-                revenue: 1120,
-                details: { meals: 15, avgCost: 75, efficiency: 88 },
-              },
-              {
-                month: "Wed",
-                revenue: 1050,
-                details: { meals: 18, avgCost: 58, efficiency: 92 },
-              },
-              {
-                month: "Thu",
-                revenue: 1150,
-                details: { meals: 14, avgCost: 82, efficiency: 87 },
-              },
-              {
-                month: "Fri",
-                revenue: 1200,
-                details: { meals: 16, avgCost: 75, efficiency: 89 },
-              },
-              {
-                month: "Sat",
-                revenue: 1350,
-                details: { meals: 20, avgCost: 68, efficiency: 94 },
-              },
-              {
-                month: "Sun",
-                revenue: 980,
-                details: { meals: 13, avgCost: 75, efficiency: 86 },
-              },
-            ]}
-            title="Daily Expenses (৳)"
-            color="#f59e0b"
-            onPointPress={(item) => {
-              const details = item.details || {};
-              const efficiencyEmoji =
-                details.efficiency >= 90
-                  ? "🟢"
-                  : details.efficiency >= 80
-                  ? "🟡"
-                  : "🔴";
-
-              Alert.alert(
-                `${item.date} - Daily Summary`,
-                `💰 Daily Expenses: ${formatCurrency(item.value)}\n` +
-                  `🍽️ Meals Served: ${details.meals || 0}\n` +
-                  `💵 Avg Cost/Meal: ${formatCurrency(
-                    details.avgCost || 0
-                  )}\n` +
-                  `📊 Efficiency: ${efficiencyEmoji} ${
-                    details.efficiency || 0
-                  }%\n` +
-                  `📈 Status: ${
-                    details.efficiency >= 90
-                      ? "Excellent"
-                      : details.efficiency >= 80
-                      ? "Good"
-                      : "Needs Improvement"
-                  }`
-              );
-            }}
-          />
-        </View>
-      </DetailCard>
-
-      {/* Budget vs Actual */}
-      <DetailCard
-        title="Budget vs Actual"
-        value={`${
-          Object.values(budgetComparison).filter((b) => b.status === "under")
-            .length
-        }/${Object.keys(budgetComparison).length} under budget`}
-        icon="wallet"
-        iconColor="#667eea"
-      >
-        <View style={styles.budgetContainer}>
-          {Object.entries(budgetComparison).map(([category, data]) => (
-            <View key={category} style={styles.budgetItem}>
-              <View style={styles.budgetHeader}>
-                <ThemedText style={styles.budgetCategory}>
-                  {category.charAt(0).toUpperCase() + category.slice(1)}
+        >
+          <View style={styles.dailyBreakdown}>
+            {dailyExpenseData.map((day: any, index: number) => (
+              <View key={index} style={styles.dailyItem}>
+                <ThemedText style={[styles.dailyDay, { color: theme.text.primary }]}>
+                  {day.day}
                 </ThemedText>
-                <View
-                  style={[
-                    styles.budgetStatus,
-                    { backgroundColor: getBudgetStatusColor(data.status) },
-                  ]}
-                />
-              </View>
-              <View style={styles.budgetDetails}>
-                <ThemedText style={styles.budgetAmount}>
-                  {formatCurrency(data.actual)} / {formatCurrency(data.budget)}
+                <ThemedText style={[styles.dailyAmount, { color: theme.status.success }]}>
+                  {formatCurrency(day.amount)}
                 </ThemedText>
-                <ThemedText
-                  style={[
-                    styles.budgetVariance,
-                    { color: getBudgetStatusColor(data.status) },
-                  ]}
-                >
-                  {data.variance > 0 ? "+" : ""}
-                  {formatCurrency(data.variance)}
+                <ThemedText style={[styles.dailyMeals, { color: theme.text.secondary }]}>
+                  {day.meals} meals
                 </ThemedText>
               </View>
-            </View>
-          ))}
-        </View>
-      </DetailCard>
+            ))}
+          </View>
+        </DetailCard>
 
-      {/* Period Selector */}
-      <View style={styles.periodSelector}>
-        {periods.map((period) => (
-          <TouchableOpacity
-            key={period.key}
-            style={[
-              styles.periodButton,
-              selectedPeriod === period.key && styles.periodButtonActive,
-            ]}
-            onPress={() => setSelectedPeriod(period.key)}
-          >
-            <ThemedText
-              style={[
-                styles.periodButtonText,
-                selectedPeriod === period.key && styles.periodButtonTextActive,
-              ]}
-            >
-              {period.label}
-            </ThemedText>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Enhanced Expense Breakdown */}
-      <DetailCard
-        title="Expense Breakdown"
-        value={`${expenseBreakdown.length} categories`}
-        icon="pie-chart"
-        iconColor="#667eea"
-      >
-        <View style={styles.breakdownContainer}>
-          {expenseBreakdown.map((item, index) => (
-            <View key={index}>
+        {/* Expense Categories */}
+        <DetailCard
+          title="Expense Categories"
+          value={`${expenseBreakdown.length} categories`}
+          subtitle="Breakdown by category"
+          icon="pie-chart"
+        >
+          <View style={styles.categoriesSection}>
+            {expenseBreakdown.map((category, index) => (
               <TouchableOpacity
-                style={styles.breakdownItem}
-                onPress={() => handleCategoryPress(item.category)}
+                key={index}
+                style={[
+                  styles.categoryItem,
+                  {
+                    backgroundColor: theme.cardBackground,
+                    borderColor: theme.border.primary,
+                  },
+                  selectedCategory === category.category && {
+                    borderColor: category.color,
+                    backgroundColor: `${category.color}10`,
+                  },
+                ]}
+                onPress={() => handleCategoryPress(category.category)}
               >
-                <View style={styles.breakdownHeader}>
-                  <View style={styles.breakdownIconContainer}>
-                    <Ionicons
-                      name={item.icon as any}
-                      size={16}
-                      color={item.color}
-                    />
+                <View style={styles.categoryHeader}>
+                  <View style={[styles.categoryIcon, { backgroundColor: category.color }]}>
+                    <Ionicons name={category.icon as any} size={16} color="#fff" />
                   </View>
-                  <View style={styles.breakdownInfo}>
-                    <ThemedText style={styles.breakdownCategory}>
-                      {item.category}
+                  <View style={styles.categoryInfo}>
+                    <ThemedText style={[styles.categoryName, { color: theme.text.primary }]}>
+                      {category.category}
                     </ThemedText>
-                    <ThemedText style={styles.breakdownPercentage}>
-                      {item.percentage}%
+                    <ThemedText style={[styles.categoryAmount, { color: theme.status.success }]}>
+                      {formatCurrency(category.amount)}
                     </ThemedText>
                   </View>
-                  <ThemedText style={styles.breakdownAmount}>
-                    {formatCurrency(item.amount)}
+                  <ThemedText style={[styles.categoryPercentage, { color: theme.text.secondary }]}>
+                    {category.percentage}%
                   </ThemedText>
-                  <Ionicons
-                    name={
-                      selectedCategory === item.category
-                        ? "chevron-up"
-                        : "chevron-down"
-                    }
-                    size={16}
-                    color="#6b7280"
-                  />
                 </View>
-                <View style={styles.progressBar}>
-                  <View
-                    style={[
-                      styles.progressFill,
-                      {
-                        width: `${item.percentage}%`,
-                        backgroundColor: item.color,
-                      },
-                    ]}
-                  />
-                </View>
+                {category.subItems.length > 0 && (
+                  <View style={styles.subItems}>
+                                     {category.subItems.slice(0, 3).map((item: any, subIndex: number) => (
+                   <View key={subIndex} style={styles.subItem}>
+                     <ThemedText style={[styles.subItemName, { color: theme.text.secondary }]}>
+                       {item.name}
+                     </ThemedText>
+                     <ThemedText style={[styles.subItemAmount, { color: theme.text.primary }]}>
+                       {formatCurrency(item.amount)}
+                     </ThemedText>
+                   </View>
+                 ))}
+                  </View>
+                )}
               </TouchableOpacity>
+            ))}
+          </View>
+        </DetailCard>
 
-              {/* Sub-items */}
-              {selectedCategory === item.category && (
-                <View style={styles.subItemsContainer}>
-                  {item.subItems.map((subItem, subIndex) => (
-                    <View key={subIndex} style={styles.subItem}>
-                      <View style={styles.subItemInfo}>
-                        <ThemedText style={styles.subItemName}>
-                          {subItem.name}
-                        </ThemedText>
-                        <ThemedText style={styles.subItemPercentage}>
-                          {subItem.percentage}%
-                        </ThemedText>
-                      </View>
-                      <ThemedText style={styles.subItemAmount}>
-                        {formatCurrency(subItem.amount)}
-                      </ThemedText>
-                    </View>
-                  ))}
-                </View>
-              )}
+        {/* Additional Details */}
+        <DetailCard
+          title="Additional Details"
+          value="More info"
+          subtitle="More information about expenses"
+          icon="information-circle"
+        >
+          <View style={styles.detailsSection}>
+            <View style={styles.detailRow}>
+              <ThemedText style={[styles.detailLabel, { color: theme.text.secondary }]}>
+                Average Daily Expense
+              </ThemedText>
+              <ThemedText style={[styles.detailValue, { color: theme.text.primary }]}>
+                {formatCurrency(expenseData?.averageDailyExpense || 0)}
+              </ThemedText>
             </View>
-          ))}
-        </View>
-      </DetailCard>
-
-      {/* Enhanced Historical Trend */}
-      <DetailCard
-        title="Historical Trend"
-        value="6 months"
-        icon="trending-up"
-        iconColor="#667eea"
-      >
-        <View style={styles.historicalContainer}>
-          {historicalData.map((item, index) => (
-            <View key={index} style={styles.historicalItem}>
-              <View style={styles.historicalMonth}>
-                <ThemedText style={styles.historicalMonthText}>
-                  {item.month}
-                </ThemedText>
-                <ThemedText style={styles.historicalEfficiency}>
-                  {item.efficiency}% efficiency
-                </ThemedText>
-              </View>
-              <View style={styles.historicalAmount}>
-                <ThemedText style={styles.historicalAmountText}>
-                  {formatCurrency(item.amount)}
-                </ThemedText>
-                <ThemedText style={styles.historicalSavings}>
-                  Saved {formatCurrency(item.savings)}
-                </ThemedText>
-              </View>
-              <Ionicons
-                name={item.trend === "up" ? "trending-up" : "trending-down"}
-                size={16}
-                color={getTrendColor(item.trend)}
-              />
+            <View style={styles.detailRow}>
+              <ThemedText style={[styles.detailLabel, { color: theme.text.secondary }]}>
+                Highest Expense Day
+              </ThemedText>
+              <ThemedText style={[styles.detailValue, { color: theme.text.primary }]}>
+                {expenseData?.highestExpenseDay || 'N/A'}
+              </ThemedText>
             </View>
-          ))}
-        </View>
-      </DetailCard>
-
-      {/* Enhanced Member Contributions */}
-      <DetailCard
-        title="Member Performance (Total Meals)"
-        value={`${
-          memberContributions.filter((m) => m.status === "paid").length
-        }/${memberContributions.length} paid`}
-        icon="people"
-        iconColor="#667eea"
-      >
-        <View style={styles.contributionsContainer}>
-          {memberContributions.map((member, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.contributionItem}
-              onPress={() => handleMemberPress(member)}
-            >
-              <View style={styles.memberInfo}>
-                <View style={styles.memberHeader}>
-                  <ThemedText style={styles.memberName}>
-                    {member.name}
-                  </ThemedText>
-                  <View style={styles.performanceIndicator}>
-                    {member.performance === "excellent" && (
-                      <ThemedText style={styles.excellentIndicator}>
-                        ⭐
-                      </ThemedText>
-                    )}
-                    {member.performance === "good" && (
-                      <ThemedText style={styles.goodIndicator}>✨</ThemedText>
-                    )}
-                    {member.performance === "needs_improvement" && (
-                      <ThemedText style={styles.improvementIndicator}>
-                        ⚠️
-                      </ThemedText>
-                    )}
-                  </View>
-                </View>
-                <View style={styles.memberDetails}>
-                  <View
-                    style={[
-                      styles.statusIndicator,
-                      { backgroundColor: getStatusColor(member.status) },
-                    ]}
-                  />
-                  <ThemedText style={styles.memberMeals}>
-                    {member.mealsTaken}/{member.totalMeals} meals (
-                    {member.mealEfficiency}%)
-                  </ThemedText>
-                  <ThemedText style={styles.avgCost}>
-                    Avg: {formatCurrency(member.avgCostPerMeal)}
-                  </ThemedText>
-                </View>
-                <View style={styles.attendanceBar}>
-                  <View
-                    style={[
-                      styles.attendanceFill,
-                      {
-                        width: `${member.attendance}%`,
-                        backgroundColor:
-                          member.attendance >= 90
-                            ? "#10b981"
-                            : member.attendance >= 80
-                            ? "#f59e0b"
-                            : "#ef4444",
-                      },
-                    ]}
-                  />
-                </View>
-              </View>
-              <View style={styles.contributionDetails}>
-                <ThemedText style={styles.contributionAmount}>
-                  {formatCurrency(member.contributed)}
-                </ThemedText>
-                <ThemedText style={styles.lastPayment}>
-                  {member.lastPayment}
-                </ThemedText>
-                {member.costSavings > 0 && (
-                  <ThemedText style={styles.savingsIndicator}>
-                    +{formatCurrency(member.costSavings)}
-                  </ThemedText>
-                )}
-                {member.costSavings <= 0 && (
-                  <ThemedText style={styles.costIndicator}>
-                    {formatCurrency(Math.abs(member.costSavings))}
-                  </ThemedText>
-                )}
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </DetailCard>
-
-      {/* Efficiency Metrics */}
-      <DetailCard
-        title="Efficiency Metrics"
-        value={`${expenseTrends.efficiencyScore}% efficiency`}
-        icon="speedometer"
-        iconColor="#667eea"
-      >
-        <View style={styles.efficiencyContainer}>
-          <View style={styles.efficiencyItem}>
-            <ThemedText style={styles.efficiencyLabel}>
-              Budget Utilization
-            </ThemedText>
-            <ThemedText style={styles.efficiencyValue}>
-              {Math.round((data.value / expenseTrends.budgetLimit) * 100)}%
-            </ThemedText>
+            <View style={styles.detailRow}>
+              <ThemedText style={[styles.detailLabel, { color: theme.text.secondary }]}>
+                Total Bazar Entries
+              </ThemedText>
+              <ThemedText style={[styles.detailValue, { color: theme.text.primary }]}>
+                {expenseData?.bazarStats?.totalEntries || 0}
+              </ThemedText>
+            </View>
+            <View style={styles.detailRow}>
+              <ThemedText style={[styles.detailLabel, { color: theme.text.secondary }]}>
+                Last Updated
+              </ThemedText>
+              <ThemedText style={[styles.detailValue, { color: theme.text.primary }]}>
+                {expenseData?.lastUpdated || 'N/A'}
+              </ThemedText>
+            </View>
           </View>
-          <View style={styles.efficiencyItem}>
-            <ThemedText style={styles.efficiencyLabel}>Savings Rate</ThemedText>
-            <ThemedText style={styles.efficiencyValue}>
-              {expenseTrends.savingsRate}%
-            </ThemedText>
-          </View>
-          <View style={styles.efficiencyItem}>
-            <ThemedText style={styles.efficiencyLabel}>
-              Cost per Meal
-            </ThemedText>
-            <ThemedText style={styles.efficiencyValue}>
-              {formatCurrency(Math.round(data.value / 360))}
-            </ThemedText>
-          </View>
-        </View>
-      </DetailCard>
-
-      {/* Description */}
-      <DetailCard
-        title="Description"
-        value={data.details.description}
-        icon="document-text"
-        iconColor="#6b7280"
-      />
-
-      {/* Notes */}
-      <DetailCard
-        title="Notes"
-        value={data.details.notes}
-        icon="chatbubble"
-        iconColor="#6b7280"
-      />
+        </DetailCard>
+      </View>
     </DetailPageTemplate>
   );
 }
 
 const styles = StyleSheet.create({
-  quickStatsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: DESIGN_SYSTEM.spacing.lg,
-  },
-  expenseComparison: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: DESIGN_SYSTEM.spacing.sm,
-  },
-  comparisonText: {
-    fontSize: 12,
-    color: "#6b7280",
-  },
-  comparisonChange: {
-    fontSize: 14,
-    fontWeight: "bold",
-  },
-  periodSelector: {
-    flexDirection: "row",
-    backgroundColor: "#fff",
-    borderRadius: DESIGN_SYSTEM.borderRadius.md,
-    padding: 4,
-    marginBottom: DESIGN_SYSTEM.spacing.lg,
-    ...DESIGN_SYSTEM.shadows.small,
-  },
-  periodButton: {
+  loadingContainer: {
     flex: 1,
-    paddingVertical: DESIGN_SYSTEM.spacing.sm,
-    paddingHorizontal: DESIGN_SYSTEM.spacing.md,
-    borderRadius: DESIGN_SYSTEM.borderRadius.sm,
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  periodButtonActive: {
-    backgroundColor: "#667eea",
+  loadingText: {
+    fontSize: 16,
+    marginTop: 16,
   },
-  periodButtonText: {
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  errorText: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  retryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  content: {
+    flex: 1,
+    padding: 16,
+  },
+  summarySection: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  dailyBreakdown: {
+    gap: 12,
+  },
+  dailyItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  dailyDay: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  dailyAmount: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  dailyMeals: {
     fontSize: 12,
-    color: "#6b7280",
-    fontWeight: "500",
   },
-  periodButtonTextActive: {
-    color: "#fff",
-    fontWeight: "bold",
+  categoriesSection: {
+    gap: 12,
   },
-  breakdownContainer: {
-    marginTop: DESIGN_SYSTEM.spacing.md,
-  },
-  breakdownItem: {
-    marginBottom: DESIGN_SYSTEM.spacing.md,
-  },
-  breakdownHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: DESIGN_SYSTEM.spacing.xs,
-  },
-  breakdownIconContainer: {
-    width: 24,
-    height: 24,
+  categoryItem: {
     borderRadius: 12,
-    backgroundColor: "#f3f4f6",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: DESIGN_SYSTEM.spacing.sm,
+    padding: 16,
+    borderWidth: 1,
   },
-  breakdownInfo: {
+  categoryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  categoryIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  categoryInfo: {
     flex: 1,
   },
-  breakdownCategory: {
+  categoryName: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  categoryAmount: {
     fontSize: 14,
-    fontWeight: "600",
-    color: "#1f2937",
+    fontWeight: '600',
   },
-  breakdownPercentage: {
-    fontSize: 12,
-    color: "#6b7280",
-  },
-  breakdownAmount: {
+  categoryPercentage: {
     fontSize: 14,
-    fontWeight: "bold",
-    color: "#1f2937",
+    fontWeight: '600',
   },
-  progressBar: {
-    height: 4,
-    backgroundColor: "#f3f4f6",
-    borderRadius: 2,
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: "100%",
-    borderRadius: 2,
-  },
-  subItemsContainer: {
-    marginTop: DESIGN_SYSTEM.spacing.xs,
-    paddingLeft: DESIGN_SYSTEM.spacing.lg,
+  subItems: {
+    marginTop: 8,
+    gap: 4,
   },
   subItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: DESIGN_SYSTEM.spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f3f4f6",
-  },
-  subItemInfo: {
-    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 2,
   },
   subItemName: {
-    fontSize: 13,
-    color: "#4b5563",
-  },
-  subItemPercentage: {
-    fontSize: 11,
-    color: "#6b7280",
+    fontSize: 12,
   },
   subItemAmount: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#1f2937",
+    fontSize: 12,
+    fontWeight: '600',
   },
-  historicalContainer: {
-    marginTop: DESIGN_SYSTEM.spacing.md,
+  detailsSection: {
+    gap: 12,
   },
-  historicalItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: DESIGN_SYSTEM.spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f3f4f6",
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
   },
-  historicalMonth: {
-    flexDirection: "column",
-    alignItems: "flex-start",
-  },
-  historicalMonthText: {
+  detailLabel: {
     fontSize: 14,
-    color: "#6b7280",
   },
-  historicalEfficiency: {
-    fontSize: 12,
-    color: "#6b7280",
-  },
-  historicalAmount: {
-    flexDirection: "column",
-    alignItems: "flex-end",
-  },
-  historicalAmountText: {
+  detailValue: {
     fontSize: 14,
-    fontWeight: "600",
-    color: "#1f2937",
-  },
-  historicalSavings: {
-    fontSize: 12,
-    color: "#10b981",
-    marginTop: DESIGN_SYSTEM.spacing.xs,
-  },
-  contributionsContainer: {
-    marginTop: DESIGN_SYSTEM.spacing.md,
-  },
-  contributionItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: DESIGN_SYSTEM.spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f3f4f6",
-  },
-  memberInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  memberHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  memberName: {
-    fontSize: 14,
-    color: "#1f2937",
-    marginRight: DESIGN_SYSTEM.spacing.sm,
-  },
-  performanceIndicator: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  excellentIndicator: {
-    fontSize: 16,
-    color: "#10b981",
-  },
-  goodIndicator: {
-    fontSize: 16,
-    color: "#f59e0b",
-  },
-  improvementIndicator: {
-    fontSize: 16,
-    color: "#ef4444",
-  },
-  memberDetails: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  statusIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: DESIGN_SYSTEM.spacing.xs,
-  },
-  memberMeals: {
-    fontSize: 12,
-    color: "#6b7280",
-  },
-  avgCost: {
-    fontSize: 12,
-    color: "#6b7280",
-    marginLeft: DESIGN_SYSTEM.spacing.sm,
-  },
-  attendanceBar: {
-    height: 4,
-    backgroundColor: "#f3f4f6",
-    borderRadius: 2,
-    overflow: "hidden",
-    marginTop: DESIGN_SYSTEM.spacing.xs,
-  },
-  attendanceFill: {
-    height: "100%",
-    borderRadius: 2,
-  },
-  contributionDetails: {
-    alignItems: "flex-end",
-  },
-  contributionAmount: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#1f2937",
-  },
-  lastPayment: {
-    fontSize: 12,
-    color: "#6b7280",
-    marginTop: DESIGN_SYSTEM.spacing.xs,
-  },
-  savingsIndicator: {
-    fontSize: 12,
-    color: "#10b981",
-    marginTop: DESIGN_SYSTEM.spacing.xs,
-  },
-  costIndicator: {
-    fontSize: 12,
-    color: "#ef4444",
-    marginTop: DESIGN_SYSTEM.spacing.xs,
-  },
-  budgetContainer: {
-    marginTop: DESIGN_SYSTEM.spacing.md,
-  },
-  budgetItem: {
-    marginBottom: DESIGN_SYSTEM.spacing.md,
-  },
-  budgetHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: DESIGN_SYSTEM.spacing.xs,
-  },
-  budgetCategory: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#1f2937",
-  },
-  budgetStatus: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  budgetDetails: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  budgetAmount: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#1f2937",
-  },
-  budgetVariance: {
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  efficiencyContainer: {
-    marginTop: DESIGN_SYSTEM.spacing.md,
-    flexDirection: "row",
-    justifyContent: "space-around",
-  },
-  efficiencyItem: {
-    alignItems: "center",
-  },
-  efficiencyLabel: {
-    fontSize: 12,
-    color: "#6b7280",
-    marginBottom: DESIGN_SYSTEM.spacing.xs,
-  },
-  efficiencyValue: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#1f2937",
-  },
-  chartContainer: {
-    marginTop: DESIGN_SYSTEM.spacing.md,
-    padding: DESIGN_SYSTEM.spacing.md,
-    backgroundColor: "#fff",
-    borderRadius: DESIGN_SYSTEM.borderRadius.md,
-    ...DESIGN_SYSTEM.shadows.small,
+    fontWeight: '600',
   },
 });
