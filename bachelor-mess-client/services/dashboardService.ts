@@ -199,6 +199,16 @@ class DashboardServiceImpl implements DashboardService {
   }
 
   async getStats(): Promise<ApiResponse<DashboardStats>> {
+    // Initialize dashboard data system
+    try {
+      await offlineStorage.initializeDashboardData();
+    } catch (error) {
+      console.error(
+        '❌ Dashboard Service - Failed to initialize dashboard data:',
+        error
+      );
+    }
+
     return offlineStorage
       .getDataWithOfflineFallback(
         'dashboard_stats',
@@ -228,7 +238,7 @@ class DashboardServiceImpl implements DashboardService {
       )
       .then(result => ({
         success: result.data !== null,
-        data: result.data as DashboardStats,
+        data: result.data as DashboardStats | undefined,
         error: result.error,
       }));
   }
@@ -265,7 +275,7 @@ class DashboardServiceImpl implements DashboardService {
       )
       .then(result => ({
         success: result.data !== null,
-        data: result.data as Activity[],
+        data: result.data as Activity[] | undefined,
         error: result.error,
       }));
   }

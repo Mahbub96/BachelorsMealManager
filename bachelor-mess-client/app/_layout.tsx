@@ -91,6 +91,12 @@ function AppContent() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name='bazar-list'
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

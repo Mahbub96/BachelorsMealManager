@@ -13,8 +13,8 @@ import bazarService from '../services/bazarService';
 interface BazarStats {
   totalAmount: number;
   totalEntries: number;
-  pendingAmount: number;
-  approvedAmount: number;
+  pendingAmount: number; // Actually pending count
+  approvedAmount: number; // Actually approved count
   averageAmount: number;
 }
 
@@ -128,25 +128,43 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
 
       if (response.success && response.data) {
         console.log('✅ Bazar stats loaded successfully:', response.data);
+        console.log('🔍 Raw API response structure:', {
+          keys: Object.keys(response.data),
+          values: response.data,
+          types: Object.keys(response.data).map(key => ({
+            key,
+            type: typeof (response.data as any)[key],
+            value: (response.data as any)[key],
+          })),
+        });
 
-        // Transform backend data to match our interface
+        // Transform backend data to match our interface with better error handling
         const backendStats = response.data as any;
+
+        // Validate and transform the data with fallbacks
         const transformedStats: BazarStats = {
-          totalAmount: backendStats.totalAmount || 0,
-          totalEntries: backendStats.totalEntries || 0,
-          pendingAmount: backendStats.pendingCount || 0, // Map pendingCount to pendingAmount
-          approvedAmount: backendStats.approvedCount || 0, // Map approvedCount to approvedAmount
-          averageAmount: backendStats.averageAmount || 0,
+          totalAmount: Number(backendStats.totalAmount) || 0,
+          totalEntries: Number(backendStats.totalEntries) || 0,
+          pendingAmount:
+            Number(backendStats.pendingCount || backendStats.pendingAmount) ||
+            0, // Handle both field names
+          approvedAmount:
+            Number(backendStats.approvedCount || backendStats.approvedAmount) ||
+            0, // Handle both field names
+          averageAmount: Number(backendStats.averageAmount) || 0,
         };
 
+        console.log('🔄 Transformed stats:', transformedStats);
         setBazarStats(transformedStats);
       } else {
         console.error('❌ Failed to load bazar stats:', response.error);
         setStatsError(response.error || 'Failed to load statistics');
+        // Don't clear existing stats on error, keep them for fallback
       }
     } catch (error) {
       console.error('💥 Error loading bazar stats:', error);
       setStatsError('Failed to load statistics');
+      // Don't clear existing stats on error, keep them for fallback
     } finally {
       setLoadingStats(false);
     }
@@ -218,24 +236,51 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
           id: entry._id || entry.id,
         }));
 
+        console.log('🔄 Setting bazar entries:', {
+          count: transformedEntries.length,
+          entries: transformedEntries.map(e => ({
+            id: e.id,
+            totalAmount: e.totalAmount,
+            status: e.status,
+          })),
+        });
+        console.log('🔍 BazarContext - Final transformed entries:', {
+          count: transformedEntries.length,
+          sampleEntries: transformedEntries.slice(0, 2).map(e => ({
+            id: e.id,
+            totalAmount: e.totalAmount,
+            status: e.status,
+          })),
+        });
+
         setBazarEntries(transformedEntries);
       } else {
         console.error('❌ Failed to load bazar entries:', response.error);
         setEntriesError(response.error || 'Failed to load bazar entries');
+        // Don't clear existing entries on error, keep them for fallback
       }
     } catch (error) {
       console.error('💥 Error loading bazar entries:', error);
       setEntriesError('Failed to load bazar entries');
+      // Don't clear existing entries on error, keep them for fallback
     } finally {
       setLoadingEntries(false);
     }
-  }, [user, filters]);
+  }, [user]); // Remove filters dependency to prevent re-running and clearing data
 
   // Update filters
-  const updateFilters = useCallback((newFilters: BazarFilters) => {
-    setFilters(newFilters);
-    console.log('🔍 Filters updated:', newFilters);
-  }, []);
+  const updateFilters = useCallback(
+    (newFilters: BazarFilters) => {
+      setFilters(newFilters);
+      console.log('🔍 Filters updated:', newFilters);
+
+      // Reload data when filters change
+      if (user) {
+        loadBazarEntries();
+      }
+    },
+    [user, loadBazarEntries]
+  );
 
   // Update search query
   const updateSearchQuery = useCallback((query: string) => {
@@ -326,6 +371,11 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
       totalEntries: bazarEntries.length,
       searchQuery,
       filters,
+      entriesData: bazarEntries.map(e => ({
+        id: e.id,
+        totalAmount: e.totalAmount,
+        status: e.status,
+      })),
     });
 
     // Filter by search query
@@ -386,7 +436,7 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
       setBazarStats(null);
       setBazarEntries([]);
     }
-  }, [user, loadBazarStats, loadBazarEntries]);
+  }, [user]); // Remove function dependencies to prevent infinite re-renders
 
   const contextValue: BazarContextType = {
     // State

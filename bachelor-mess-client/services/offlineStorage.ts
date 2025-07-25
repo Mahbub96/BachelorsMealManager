@@ -39,26 +39,73 @@ class OfflineStorageService {
 
   constructor(config: Partial<OfflineConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
-    this.initializeOfflineService();
+    // Initialize asynchronously to avoid blocking the constructor
+    setTimeout(() => {
+      this.initializeOfflineService();
+    }, 100);
   }
 
   private async initializeOfflineService() {
-    try {
-      // Initialize SQLite database
-      await sqliteDatabase.init();
+    const maxRetries = 3;
+    let retryCount = 0;
 
-      // Set up network monitoring
-      this.setupNetworkMonitoring();
+    while (retryCount < maxRetries) {
+      try {
+        console.log(
+          `🔄 OfflineStorage - Initializing SQLite database (attempt ${
+            retryCount + 1
+          }/${maxRetries})...`
+        );
 
-      // Start sync interval
-      this.startSyncInterval();
+        // Initialize SQLite database
+        await sqliteDatabase.init();
 
-      // Clear expired cache
-      await sqliteDatabase.clearExpiredCache();
+        // Perform health check
+        const isHealthy = await sqliteDatabase.healthCheck();
+        if (!isHealthy) {
+          throw new Error('Database health check failed');
+        }
 
-      console.log('✅ OfflineStorage - Initialized with SQLite database');
-    } catch (error) {
-      console.error('❌ OfflineStorage - Failed to initialize:', error);
+        console.log('🔄 OfflineStorage - Setting up network monitoring...');
+        // Set up network monitoring
+        this.setupNetworkMonitoring();
+
+        console.log('🔄 OfflineStorage - Starting sync interval...');
+        // Start sync interval
+        this.startSyncInterval();
+
+        console.log('🔄 OfflineStorage - Clearing expired cache...');
+        // Clear expired cache
+        try {
+          await sqliteDatabase.clearExpiredCache();
+        } catch (cacheError) {
+          console.log(
+            '⚠️ OfflineStorage - Failed to clear expired cache:',
+            cacheError instanceof Error ? cacheError.message : 'Unknown error'
+          );
+        }
+
+        console.log('✅ OfflineStorage - Initialized with SQLite database');
+        return; // Success, exit the retry loop
+      } catch (error) {
+        retryCount++;
+        console.error(
+          `❌ OfflineStorage - Failed to initialize (attempt ${retryCount}/${maxRetries}):`,
+          error instanceof Error ? error.message : 'Unknown error'
+        );
+
+        if (retryCount >= maxRetries) {
+          console.error(
+            '❌ OfflineStorage - Max retries reached, giving up initialization'
+          );
+          return;
+        }
+
+        // Wait before retrying with exponential backoff
+        await new Promise(resolve =>
+          setTimeout(resolve, 1000 * Math.pow(2, retryCount - 1))
+        );
+      }
     }
   }
 
@@ -132,6 +179,86 @@ class OfflineStorageService {
       console.log('🧹 OfflineStorage - Cache cleared');
     } catch (error) {
       console.error('❌ OfflineStorage - Failed to clear cache:', error);
+    }
+  }
+
+  async clearDashboardData(): Promise<void> {
+    try {
+      await sqliteDatabase.clearTable('dashboard_data');
+      console.log('🧹 OfflineStorage - Dashboard data cleared');
+    } catch (error) {
+      console.error(
+        '❌ OfflineStorage - Failed to clear dashboard data:',
+        error
+      );
+    }
+  }
+
+  async ensureDashboardDataExists(): Promise<void> {
+    try {
+      // Check if dashboard_data table exists
+      const tableExists = await sqliteDatabase.executeQuery(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='dashboard_data'"
+      );
+
+      if (tableExists.length === 0) {
+        console.log('🔄 OfflineStorage - Creating dashboard_data table...');
+        await sqliteDatabase.init();
+
+        // Verify the table was created
+        const verifyTable = await sqliteDatabase.executeQuery(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='dashboard_data'"
+        );
+
+        if (verifyTable.length > 0) {
+          console.log(
+            '✅ OfflineStorage - dashboard_data table created successfully'
+          );
+        } else {
+          console.error(
+            '❌ OfflineStorage - Failed to create dashboard_data table'
+          );
+        }
+      } else {
+        console.log('✅ OfflineStorage - dashboard_data table already exists');
+      }
+    } catch (error) {
+      console.error(
+        '❌ OfflineStorage - Failed to ensure dashboard data exists:',
+        error
+      );
+      throw error;
+    }
+  }
+
+  async initializeDashboardData(): Promise<void> {
+    try {
+      console.log('🔄 OfflineStorage - Initializing dashboard data...');
+
+      // Ensure the database and tables exist
+      await this.ensureDashboardDataExists();
+
+      // Test saving and retrieving data
+      const testData = {
+        test: 'dashboard_data_initialized',
+        timestamp: Date.now(),
+      };
+      await this.setOfflineData('test_dashboard', testData);
+
+      const retrievedData = await this.getOfflineData('test_dashboard');
+      if (retrievedData && retrievedData.test === testData.test) {
+        console.log(
+          '✅ OfflineStorage - Dashboard data system working correctly'
+        );
+      } else {
+        console.error('❌ OfflineStorage - Dashboard data system test failed');
+      }
+    } catch (error) {
+      console.error(
+        '❌ OfflineStorage - Failed to initialize dashboard data:',
+        error
+      );
+      throw error;
     }
   }
 
@@ -281,7 +408,7 @@ class OfflineStorageService {
     try {
       const offlineData = {
         id: key,
-        table_name: 'offline_data',
+        table_name: 'dashboard_data',
         data: JSON.stringify(data),
         timestamp: Date.now(),
         version: '1.0',
@@ -296,6 +423,19 @@ class OfflineStorageService {
 
   async getOfflineData(key: string): Promise<any | null> {
     try {
+      // First check if the table exists
+      const tableExists = await sqliteDatabase.executeQuery(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='dashboard_data'"
+      );
+
+      if (tableExists.length === 0) {
+        console.log(
+          '⚠️ OfflineStorage - dashboard_data table does not exist, creating...'
+        );
+        await this.ensureDashboardDataExists();
+        return null;
+      }
+
       const result = await sqliteDatabase.getData(
         'dashboard_data',
         `SELECT * FROM dashboard_data WHERE id = ?`,
@@ -303,12 +443,26 @@ class OfflineStorageService {
       );
 
       if (result.length > 0) {
-        return JSON.parse(result[0].data);
+        const parsedData = JSON.parse(result[0].data);
+        console.log(`📴 OfflineStorage - Retrieved offline data: ${key}`);
+        return parsedData;
       }
 
+      console.log(`📴 OfflineStorage - No offline data found for: ${key}`);
       return null;
     } catch (error) {
       console.error('❌ OfflineStorage - Failed to get offline data:', error);
+
+      // Try to recover by ensuring tables exist
+      try {
+        await this.ensureDashboardDataExists();
+      } catch (recoveryError) {
+        console.error(
+          '❌ OfflineStorage - Failed to recover dashboard data:',
+          recoveryError
+        );
+      }
+
       return null;
     }
   }
@@ -552,11 +706,28 @@ class OfflineStorageService {
   async resetDatabase(): Promise<void> {
     try {
       console.log('🔄 OfflineStorage - Resetting database...');
-      await sqliteDatabase.forceResetDatabase();
+      await sqliteDatabase.softResetDatabase();
       console.log('✅ OfflineStorage - Database reset completed');
     } catch (error) {
-      console.error('❌ OfflineStorage - Failed to reset database:', error);
-      throw error;
+      console.error(
+        '❌ OfflineStorage - Failed to reset database:',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+
+      // Try hard reset as last resort
+      try {
+        console.log('🔄 OfflineStorage - Attempting hard reset...');
+        await sqliteDatabase.resetDatabase();
+        console.log('✅ OfflineStorage - Hard reset completed');
+      } catch (hardResetError) {
+        console.error(
+          '❌ OfflineStorage - Hard reset also failed:',
+          hardResetError instanceof Error
+            ? hardResetError.message
+            : 'Unknown error'
+        );
+        throw error;
+      }
     }
   }
 

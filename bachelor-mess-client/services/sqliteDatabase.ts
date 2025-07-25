@@ -23,24 +23,96 @@ export interface DatabaseService {
   executeQuery(query: string, params?: any[]): Promise<any>;
 }
 
+// SQLite best practices constants
+const SQLITE_CONSTANTS = {
+  BUSY_TIMEOUT: 30000, // 30 seconds
+  MAX_RETRIES: 3,
+  RETRY_DELAY: 100,
+  LOCK_TIMEOUT: 5000,
+  PRAGMA_SETTINGS: {
+    journal_mode: 'WAL', // Write-Ahead Logging for better concurrency
+    synchronous: 'NORMAL', // Balance between safety and performance
+    cache_size: 1000, // Cache size in pages
+    temp_store: 'MEMORY', // Store temp tables in memory
+    mmap_size: 268435456, // 256MB memory mapping
+    page_size: 4096,
+    auto_vacuum: 'INCREMENTAL',
+    incremental_vacuum: 1000,
+  },
+  // Connection pool settings
+  CONNECTION_POOL: {
+    MAX_CONNECTIONS: 1, // SQLite is single-threaded, so only one connection
+    CONNECTION_TIMEOUT: 10000,
+    IDLE_TIMEOUT: 30000,
+  },
+  // Transaction settings
+  TRANSACTION: {
+    TIMEOUT: 30000,
+    MAX_RETRIES: 3,
+  },
+} as const;
+
 class SQLiteDatabaseService implements DatabaseService {
   private db: SQLite.SQLiteDatabase | null = null;
   private readonly DATABASE_NAME = 'mess_manager.db';
+  private isInitializing = false;
+  private isInitialized = false;
+  private isLocked = false;
+  private lockTimeout = SQLITE_CONSTANTS.LOCK_TIMEOUT;
+  private readonly MAX_RETRIES = SQLITE_CONSTANTS.MAX_RETRIES;
+  private readonly RETRY_DELAY = SQLITE_CONSTANTS.RETRY_DELAY;
+  private connectionTimeout: ReturnType<typeof setTimeout> | null = null;
+  private lastActivity = Date.now();
 
   async init(): Promise<void> {
-    try {
-      if (this.db) {
-        console.log('✅ SQLite Database - Already initialized');
-        return;
+    // Prevent multiple simultaneous initializations
+    if (this.isInitializing) {
+      console.log(
+        '🔄 SQLite Database - Initialization already in progress, waiting...'
+      );
+      while (this.isInitializing) {
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
+      return;
+    }
 
+    if (this.isInitialized && this.db) {
+      console.log('✅ SQLite Database - Already initialized');
+      return;
+    }
+
+    this.isInitializing = true;
+
+    try {
+      console.log('🔄 SQLite Database - Opening database...');
       this.db = await SQLite.openDatabaseAsync(this.DATABASE_NAME);
+
+      // Configure SQLite for better performance and concurrency
+      await this.configureDatabase();
+
+      console.log('🔄 SQLite Database - Creating tables...');
       await this.createTables();
+
+      console.log('🔄 SQLite Database - Running migrations...');
       await this.migrateDatabase();
+
+      this.isInitialized = true;
       console.log('✅ SQLite Database - Initialized successfully');
     } catch (error) {
       console.error('❌ SQLite Database - Failed to initialize:', error);
-      throw error;
+
+      // Try to reset and reinitialize if initialization fails
+      try {
+        console.log('🔄 SQLite Database - Attempting database reset...');
+        await this.resetDatabase();
+        this.isInitialized = true;
+      } catch (resetError) {
+        console.error('❌ SQLite Database - Reset also failed:', resetError);
+        this.isInitialized = false;
+        throw error; // Throw original error
+      }
+    } finally {
+      this.isInitializing = false;
     }
   }
 
@@ -48,44 +120,53 @@ class SQLiteDatabaseService implements DatabaseService {
     try {
       console.log('🔄 SQLite Database - Resetting database...');
 
+      // Release any existing locks
+      this.releaseLock();
+
       // Close existing connection
       if (this.db) {
-        await this.db.closeAsync();
+        try {
+          await this.db.closeAsync();
+        } catch (closeError) {
+          console.log(
+            '⚠️ SQLite Database - Error closing database:',
+            closeError
+          );
+        }
         this.db = null;
       }
 
+      this.isInitialized = false;
+
       // Wait a bit before trying to delete
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       // Try to delete database
       try {
         await SQLite.deleteDatabaseAsync(this.DATABASE_NAME);
+        console.log('🗑️ SQLite Database - Database file deleted');
       } catch (deleteError) {
         console.log(
-          '⚠️ Could not delete database, will recreate tables instead'
+          '⚠️ Could not delete database file, will recreate tables instead'
         );
       }
+
+      // Wait a bit before recreating
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       // Recreate database
       this.db = await SQLite.openDatabaseAsync(this.DATABASE_NAME);
 
-      // Drop and recreate all tables
-      await this.db.execAsync('DROP TABLE IF EXISTS dashboard_data');
-      await this.db.execAsync('DROP TABLE IF EXISTS api_cache');
-      await this.db.execAsync('DROP TABLE IF EXISTS sync_queue');
-      await this.db.execAsync('DROP TABLE IF EXISTS activities');
-      await this.db.execAsync('DROP TABLE IF EXISTS bazar_entries');
-      await this.db.execAsync('DROP TABLE IF EXISTS meal_entries');
-      await this.db.execAsync('DROP TABLE IF EXISTS user_data');
-      await this.db.execAsync('DROP TABLE IF EXISTS statistics');
-
+      // Create tables
       await this.createTables();
 
       console.log('✅ SQLite Database - Reset successfully');
     } catch (error) {
       console.error('❌ SQLite Database - Failed to reset:', error);
+
       // Try to reinitialize without deleting
       try {
+        console.log('🔄 SQLite Database - Attempting reinitialization...');
         this.db = await SQLite.openDatabaseAsync(this.DATABASE_NAME);
         await this.createTables();
         console.log('✅ SQLite Database - Reinitialized successfully');
@@ -99,30 +180,66 @@ class SQLiteDatabaseService implements DatabaseService {
     }
   }
 
+  async softResetDatabase(): Promise<void> {
+    try {
+      console.log('🔄 SQLite Database - Performing soft reset...');
+
+      // Release any existing locks
+      this.releaseLock();
+
+      if (!this.db) {
+        await this.init();
+        return;
+      }
+
+      // Only recreate missing tables, don't drop existing ones
+      await this.createTables();
+
+      console.log('✅ SQLite Database - Soft reset completed');
+    } catch (error) {
+      console.error('❌ SQLite Database - Soft reset failed:', error);
+      throw error;
+    }
+  }
+
   async forceResetDatabase(): Promise<void> {
     try {
       console.log('🔄 SQLite Database - Force resetting database...');
 
+      // Release any existing locks
+      this.releaseLock();
+
       // Close existing connection
       if (this.db) {
-        await this.db.closeAsync();
+        try {
+          await this.db.closeAsync();
+        } catch (closeError) {
+          console.log(
+            '⚠️ SQLite Database - Error closing database:',
+            closeError
+          );
+        }
         this.db = null;
       }
+
+      this.isInitialized = false;
 
       // Force delete database file
       try {
         await SQLite.deleteDatabaseAsync(this.DATABASE_NAME);
+        console.log('🗑️ SQLite Database - Database file force deleted');
       } catch (deleteError) {
         console.log('⚠️ Could not delete database file, continuing...');
       }
 
       // Wait a bit before recreating
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Recreate database
       this.db = await SQLite.openDatabaseAsync(this.DATABASE_NAME);
       await this.createTables();
 
+      this.isInitialized = true;
       console.log('✅ SQLite Database - Force reset completed');
     } catch (error) {
       console.error('❌ SQLite Database - Force reset failed:', error);
@@ -132,25 +249,274 @@ class SQLiteDatabaseService implements DatabaseService {
 
   async close(): Promise<void> {
     if (this.db) {
-      await this.db.closeAsync();
+      try {
+        // Release any pending locks
+        this.releaseLock();
+
+        // Commit any pending transactions
+        await this.db.execAsync('COMMIT');
+
+        await this.db.closeAsync();
+        console.log('🔒 SQLite Database - Closed successfully');
+      } catch (error) {
+        console.log('⚠️ SQLite Database - Error closing database:', error);
+      }
       this.db = null;
-      console.log('🔒 SQLite Database - Closed successfully');
+    }
+    this.isInitialized = false;
+    this.isLocked = false;
+  }
+
+  async ensureConnection(): Promise<void> {
+    if (!this.db || !this.isInitialized) {
+      await this.init();
+    }
+
+    // Test connection health
+    try {
+      await this.db!.getAllAsync('SELECT 1');
+    } catch (error) {
+      console.log('🔄 SQLite Database - Connection lost, reinitializing...');
+      await this.init();
+    }
+  }
+
+  private async waitForUnlock(): Promise<void> {
+    if (this.isLocked) {
+      console.log('🔒 SQLite Database - Waiting for database unlock...');
+      const startTime = Date.now();
+
+      while (this.isLocked && Date.now() - startTime < this.lockTimeout) {
+        await new Promise(resolve => setTimeout(resolve, this.RETRY_DELAY));
+      }
+
+      if (this.isLocked) {
+        console.log(
+          '⚠️ SQLite Database - Lock timeout reached, forcing unlock'
+        );
+        this.isLocked = false;
+      }
+    }
+  }
+
+  private async acquireLock(): Promise<void> {
+    await this.waitForUnlock();
+    this.isLocked = true;
+  }
+
+  private releaseLock(): void {
+    this.isLocked = false;
+  }
+
+  private async configureDatabase(): Promise<void> {
+    if (!this.db) return;
+
+    try {
+      // Set PRAGMA settings for better performance and concurrency
+      const pragmaSettings = SQLITE_CONSTANTS.PRAGMA_SETTINGS;
+
+      await this.db.execAsync(
+        `PRAGMA journal_mode = ${pragmaSettings.journal_mode}`
+      );
+      await this.db.execAsync(
+        `PRAGMA synchronous = ${pragmaSettings.synchronous}`
+      );
+      await this.db.execAsync(
+        `PRAGMA cache_size = ${pragmaSettings.cache_size}`
+      );
+      await this.db.execAsync(
+        `PRAGMA temp_store = ${pragmaSettings.temp_store}`
+      );
+      await this.db.execAsync(`PRAGMA mmap_size = ${pragmaSettings.mmap_size}`);
+      await this.db.execAsync(`PRAGMA page_size = ${pragmaSettings.page_size}`);
+      await this.db.execAsync(
+        `PRAGMA auto_vacuum = ${pragmaSettings.auto_vacuum}`
+      );
+      await this.db.execAsync(
+        `PRAGMA incremental_vacuum = ${pragmaSettings.incremental_vacuum}`
+      );
+
+      // Set busy timeout to handle concurrent access
+      await this.db.execAsync(
+        `PRAGMA busy_timeout = ${SQLITE_CONSTANTS.BUSY_TIMEOUT}`
+      );
+
+      // Enable foreign keys
+      await this.db.execAsync('PRAGMA foreign_keys = ON');
+
+      // Set recursive triggers
+      await this.db.execAsync('PRAGMA recursive_triggers = ON');
+
+      console.log('✅ SQLite Database - Configured with optimized settings');
+    } catch (error) {
+      console.log(
+        '⚠️ SQLite Database - Failed to configure some settings:',
+        error
+      );
+    }
+  }
+
+  private updateActivity(): void {
+    this.lastActivity = Date.now();
+    this.resetConnectionTimeout();
+  }
+
+  private resetConnectionTimeout(): void {
+    if (this.connectionTimeout) {
+      clearTimeout(this.connectionTimeout);
+    }
+
+    this.connectionTimeout = setTimeout(() => {
+      this.closeIdleConnection();
+    }, SQLITE_CONSTANTS.CONNECTION_POOL.IDLE_TIMEOUT);
+  }
+
+  private async closeIdleConnection(): Promise<void> {
+    const idleTime = Date.now() - this.lastActivity;
+    if (idleTime >= SQLITE_CONSTANTS.CONNECTION_POOL.IDLE_TIMEOUT) {
+      console.log('🔄 SQLite Database - Closing idle connection...');
+      await this.close();
+    }
+  }
+
+  private async executeWithRetry<T>(
+    operation: () => Promise<T>,
+    operationName: string
+  ): Promise<T> {
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= this.MAX_RETRIES; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+
+        if (attempt < this.MAX_RETRIES) {
+          console.log(
+            `🔄 SQLite Database - ${operationName} failed (attempt ${attempt}/${this.MAX_RETRIES}), retrying...`
+          );
+          await new Promise(resolve =>
+            setTimeout(resolve, this.RETRY_DELAY * attempt)
+          );
+        }
+      }
+    }
+
+    throw (
+      lastError ||
+      new Error(`${operationName} failed after ${this.MAX_RETRIES} attempts`)
+    );
+  }
+
+  async healthCheck(): Promise<boolean> {
+    try {
+      if (!this.db) {
+        console.log(
+          '🔍 SQLite Database - Health check: Database not initialized'
+        );
+        return false;
+      }
+
+      // Try a simple query to test database health
+      await this.db.getAllAsync('SELECT 1');
+      console.log('✅ SQLite Database - Health check passed');
+      return true;
+    } catch (error) {
+      console.error(
+        '❌ SQLite Database - Health check failed:',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      return false;
+    }
+  }
+
+  private shouldResetDatabase(errorMessage: string): boolean {
+    return (
+      errorMessage.includes('NullPointerException') ||
+      errorMessage.includes('prepareAsync') ||
+      errorMessage.includes('Access to closed resource') ||
+      errorMessage.includes('database is locked') ||
+      errorMessage.includes('database table is locked')
+    );
+  }
+
+  private async handleDatabaseCorruption(): Promise<void> {
+    console.log(
+      '🔄 SQLite Database - Database corrupted, attempting soft reset...'
+    );
+    try {
+      await this.softResetDatabase();
+    } catch (resetError) {
+      console.error(
+        '❌ SQLite Database - Soft reset failed:',
+        resetError instanceof Error ? resetError.message : 'Unknown error'
+      );
+      console.log('🔄 SQLite Database - Attempting hard reset...');
+      await this.resetDatabase();
     }
   }
 
   private async createTables(): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) {
+      console.log(
+        '🔄 SQLite Database - Database not initialized, attempting to initialize...'
+      );
+      await this.init();
+      if (!this.db) throw new Error('Database not initialized after init');
+    }
+
+    // Wait for any existing locks
+    await this.waitForUnlock();
 
     try {
-      // Drop existing tables to ensure clean schema
-      await this.db.execAsync('DROP TABLE IF EXISTS dashboard_data');
-      await this.db.execAsync('DROP TABLE IF EXISTS api_cache');
-      await this.db.execAsync('DROP TABLE IF EXISTS sync_queue');
-      await this.db.execAsync('DROP TABLE IF EXISTS activities');
-      await this.db.execAsync('DROP TABLE IF EXISTS bazar_entries');
-      await this.db.execAsync('DROP TABLE IF EXISTS meal_entries');
-      await this.db.execAsync('DROP TABLE IF EXISTS user_data');
-      await this.db.execAsync('DROP TABLE IF EXISTS statistics');
+      console.log('🔄 SQLite Database - Checking existing tables...');
+
+      // Check if tables already exist
+      const existingTables = await this.db.getAllAsync(
+        "SELECT name FROM sqlite_master WHERE type='table'"
+      );
+
+      const tableNames = existingTables.map((row: any) => row.name);
+      console.log('📋 SQLite Database - Existing tables:', tableNames);
+
+      // Only create tables if they don't exist
+      const requiredTables = [
+        'dashboard_data',
+        'api_cache',
+        'sync_queue',
+        'activities',
+        'bazar_entries',
+        'meal_entries',
+        'user_data',
+        'statistics',
+      ];
+
+      // Check which tables are missing
+      const missingTables = requiredTables.filter(
+        table => !tableNames.includes(table)
+      );
+
+      if (missingTables.length > 0) {
+        console.log(
+          `🔄 SQLite Database - Creating missing tables: ${missingTables.join(
+            ', '
+          )}`
+        );
+
+        // Use transaction for table creation
+        await this.db.execAsync('BEGIN TRANSACTION');
+        try {
+          await this.createMissingTables(missingTables);
+          await this.db.execAsync('COMMIT');
+          console.log('✅ SQLite Database - Tables created successfully');
+        } catch (error) {
+          await this.db.execAsync('ROLLBACK');
+          throw error;
+        }
+      } else {
+        console.log('✅ SQLite Database - All required tables already exist');
+        return;
+      }
 
       const tables = [
         // Dashboard data table
@@ -265,117 +631,292 @@ class SQLiteDatabaseService implements DatabaseService {
     }
   }
 
+  private async createMissingTables(missingTables: string[]): Promise<void> {
+    const tableDefinitions: { [key: string]: string } = {
+      dashboard_data: `
+        CREATE TABLE dashboard_data (
+          id TEXT PRIMARY KEY,
+          table_name TEXT NOT NULL,
+          data TEXT NOT NULL,
+          timestamp INTEGER NOT NULL,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          version TEXT DEFAULT '1.0'
+        )
+      `,
+      api_cache: `
+        CREATE TABLE api_cache (
+          id TEXT PRIMARY KEY,
+          key TEXT UNIQUE NOT NULL,
+          data TEXT NOT NULL,
+          timestamp INTEGER NOT NULL,
+          expiry INTEGER NOT NULL,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL
+        )
+      `,
+      sync_queue: `
+        CREATE TABLE sync_queue (
+          id TEXT PRIMARY KEY,
+          action TEXT NOT NULL,
+          endpoint TEXT NOT NULL,
+          data TEXT NOT NULL,
+          timestamp INTEGER NOT NULL,
+          retry_count INTEGER DEFAULT 0,
+          max_retries INTEGER DEFAULT 3,
+          status TEXT DEFAULT 'pending'
+        )
+      `,
+      activities: `
+        CREATE TABLE activities (
+          id TEXT PRIMARY KEY,
+          title TEXT NOT NULL,
+          description TEXT,
+          time TEXT NOT NULL,
+          amount REAL,
+          icon TEXT,
+          colors TEXT,
+          type TEXT,
+          priority TEXT,
+          user_id TEXT,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL
+        )
+      `,
+      bazar_entries: `
+        CREATE TABLE bazar_entries (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          date TEXT NOT NULL,
+          items TEXT NOT NULL,
+          total_amount REAL NOT NULL,
+          description TEXT,
+          status TEXT DEFAULT 'pending',
+          notes TEXT,
+          approved_by TEXT,
+          approved_at TEXT,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL
+        )
+      `,
+      meal_entries: `
+        CREATE TABLE meal_entries (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          date TEXT NOT NULL,
+          meal_type TEXT NOT NULL,
+          status TEXT DEFAULT 'pending',
+          notes TEXT,
+          approved_by TEXT,
+          approved_at TEXT,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL
+        )
+      `,
+      user_data: `
+        CREATE TABLE user_data (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          email TEXT NOT NULL,
+          role TEXT NOT NULL,
+          profile_data TEXT,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL
+        )
+      `,
+      statistics: `
+        CREATE TABLE statistics (
+          id TEXT PRIMARY KEY,
+          type TEXT NOT NULL,
+          data TEXT NOT NULL,
+          timestamp INTEGER NOT NULL,
+          version TEXT DEFAULT '1.0'
+        )
+      `,
+    };
+
+    for (const tableName of missingTables) {
+      if (tableDefinitions[tableName]) {
+        await this.db!.execAsync(tableDefinitions[tableName]);
+        console.log(`✅ SQLite Database - Created table: ${tableName}`);
+      }
+    }
+  }
+
   private async migrateDatabase(): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
 
     try {
+      // Check if api_cache table exists first
+      const tableCheck = await this.db.getAllAsync(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='api_cache'"
+      );
+
+      if (tableCheck.length === 0) {
+        console.log(
+          '📋 SQLite Database - api_cache table does not exist, skipping migration'
+        );
+        return;
+      }
+
       // Check if api_cache table has updated_at column
       const tableInfo = await this.db.getAllAsync(
-        "PRAGMA table_info(api_cache)"
+        'PRAGMA table_info(api_cache)'
       );
-      
-      const hasUpdatedAt = tableInfo.some((column: any) => 
-        column.name === 'updated_at'
+
+      const hasUpdatedAt = tableInfo.some(
+        (column: any) => column.name === 'updated_at'
       );
 
       if (!hasUpdatedAt) {
-        console.log('🔄 SQLite Database - Adding updated_at column to api_cache table');
+        console.log(
+          '🔄 SQLite Database - Adding updated_at column to api_cache table'
+        );
         await this.db.execAsync(
           'ALTER TABLE api_cache ADD COLUMN updated_at INTEGER NOT NULL DEFAULT 0'
         );
         console.log('✅ SQLite Database - Migration completed');
+      } else {
+        console.log(
+          '✅ SQLite Database - Migration not needed, updated_at column already exists'
+        );
       }
     } catch (error) {
-      console.error('❌ SQLite Database - Migration failed:', error instanceof Error ? error.message : 'Unknown error');
+      console.error(
+        '❌ SQLite Database - Migration failed:',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
       // Don't throw error, just log it
     }
   }
 
   async saveData(table: string, data: any): Promise<void> {
     try {
-      if (!this.db) {
-        console.log('🔄 SQLite Database - Reinitializing database...');
-        await this.init();
-      }
+      await this.ensureConnection();
+      await this.acquireLock();
+      this.updateActivity();
 
       const timestamp = Date.now();
       const id =
         data.id ||
         `${table}_${timestamp}_${Math.random().toString(36).substr(2, 9)}`;
+      const dataKeys = Object.keys(data).filter(key => key !== 'id');
 
+      // Use prepared statement for better performance and security
       const query = `
         INSERT OR REPLACE INTO ${table} 
-        (id, ${Object.keys(data)
-          .filter(key => key !== 'id')
-          .join(', ')}, created_at, updated_at)
-        VALUES (?, ${Object.keys(data)
-          .filter(key => key !== 'id')
-          .map(() => '?')
-          .join(', ')}, ?, ?)
+        (id, ${dataKeys.join(', ')}, created_at, updated_at)
+        VALUES (?, ${dataKeys.map(() => '?').join(', ')}, ?, ?)
       `;
 
       const params = [
         id,
-        ...Object.keys(data)
-          .filter(key => key !== 'id')
-          .map(key =>
-            typeof data[key] === 'object'
-              ? JSON.stringify(data[key])
-              : data[key]
-          ),
+        ...dataKeys.map(key =>
+          typeof data[key] === 'object' ? JSON.stringify(data[key]) : data[key]
+        ),
         timestamp,
         timestamp,
       ];
 
-      if (this.db) {
-        await this.db.runAsync(query, params);
-        console.log(`💾 SQLite Database - Saved data to ${table}: ${id}`);
-      }
+      // Use transaction for better performance and atomicity
+      await this.executeWithRetry(async () => {
+        // Check if we're already in a transaction
+        const inTransaction = await this.isInTransaction();
+        if (!inTransaction) {
+          await this.db!.execAsync('BEGIN TRANSACTION');
+        }
+
+        try {
+          await this.db!.runAsync(query, params);
+          if (!inTransaction) {
+            await this.db!.execAsync('COMMIT');
+          }
+        } catch (error) {
+          if (!inTransaction) {
+            await this.db!.execAsync('ROLLBACK');
+          }
+          throw error;
+        }
+      }, `save data to ${table}`);
+
+      console.log(`💾 SQLite Database - Saved data to ${table}: ${id}`);
     } catch (error) {
       console.error(
         `❌ SQLite Database - Failed to save data to ${table}:`,
         error instanceof Error ? error.message : 'Unknown error'
       );
 
-      // Try to reset database if it's corrupted
-      if (
-        error instanceof Error && (
-          error.message.includes('NullPointerException') ||
-          error.message.includes('prepareAsync') ||
-          error.message.includes('Failed to save data')
-        )
-      ) {
-        console.log(
-          '🔄 SQLite Database - Database corrupted, attempting reset...'
-        );
-        try {
-          await this.resetDatabase();
-        } catch (resetError) {
-          console.error('❌ SQLite Database - Reset failed:', resetError instanceof Error ? resetError.message : 'Unknown error');
-          // Try force reset as last resort
-          await this.forceResetDatabase();
-        }
+      if (error instanceof Error && this.shouldResetDatabase(error.message)) {
+        await this.handleDatabaseCorruption();
       }
 
-      // Don't throw error, just log it to prevent app crashes
       console.log(
         `⚠️ SQLite Database - Skipping save to ${table} due to error`
       );
+    } finally {
+      this.releaseLock();
+    }
+  }
+
+  private async isInTransaction(): Promise<boolean> {
+    try {
+      const result = await this.db!.getAllAsync(
+        'SELECT * FROM sqlite_master LIMIT 1'
+      );
+      return false; // If we can query, we're not in a failed transaction
+    } catch (error) {
+      return true; // If query fails, we might be in a failed transaction
     }
   }
 
   async getData(table: string, query?: string, params?: any[]): Promise<any[]> {
     try {
-      if (!this.db) {
-        console.log('🔄 SQLite Database - Reinitializing database...');
-        await this.init();
+      await this.ensureConnection();
+      await this.acquireLock();
+      this.updateActivity();
+
+      // Check if table exists first
+      const tableExists = await this.executeWithRetry(async () => {
+        const result = await this.db!.getAllAsync(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+          [table]
+        );
+        return result.length > 0;
+      }, `check table ${table} exists`);
+
+      if (!tableExists) {
+        console.log(
+          `⚠️ SQLite Database - Table ${table} does not exist, creating missing tables...`
+        );
+        await this.createTables();
+        return [];
       }
 
       const sql = query || `SELECT * FROM ${table} ORDER BY created_at DESC`;
-      const result = await this.db.getAllAsync(sql, params || []);
+
+      // Use transaction for read operations to ensure consistency
+      const result = await this.executeWithRetry(async () => {
+        const inTransaction = await this.isInTransaction();
+        if (!inTransaction) {
+          await this.db!.execAsync('BEGIN TRANSACTION');
+        }
+
+        try {
+          const data = await this.db!.getAllAsync(sql, params || []);
+          if (!inTransaction) {
+            await this.db!.execAsync('COMMIT');
+          }
+          return data;
+        } catch (error) {
+          if (!inTransaction) {
+            await this.db!.execAsync('ROLLBACK');
+          }
+          throw error;
+        }
+      }, `get data from ${table}`);
 
       // Parse JSON fields
-      const parsedResult = result.map(row => {
+      const parsedResult = result.map((row: any) => {
         const parsed = { ...row };
         Object.keys(parsed).forEach(key => {
           if (
@@ -399,29 +940,16 @@ class SQLiteDatabaseService implements DatabaseService {
     } catch (error) {
       console.error(
         `❌ SQLite Database - Failed to get data from ${table}:`,
-        error
+        error instanceof Error ? error.message : 'Unknown error'
       );
 
-      // Try to reset database if it's corrupted
-      if (
-        error.message.includes('NullPointerException') ||
-        error.message.includes('prepareAsync') ||
-        error.message.includes('Failed to get data')
-      ) {
-        console.log(
-          '🔄 SQLite Database - Database corrupted, attempting reset...'
-        );
-        try {
-          await this.resetDatabase();
-        } catch (resetError) {
-          console.error('❌ SQLite Database - Reset failed:', resetError);
-          // Try force reset as last resort
-          await this.forceResetDatabase();
-        }
+      if (error instanceof Error && this.shouldResetDatabase(error.message)) {
+        await this.handleDatabaseCorruption();
       }
 
-      // Return empty array instead of throwing error
       return [];
+    } finally {
+      this.releaseLock();
     }
   }
 
@@ -488,15 +1016,33 @@ class SQLiteDatabaseService implements DatabaseService {
 
   async getPendingSync(): Promise<any[]> {
     try {
-      if (!this.db) {
-        console.log('🔄 SQLite Database - Reinitializing database...');
-        await this.init();
+      await this.ensureConnection();
+      await this.acquireLock();
+
+      // Check if sync_queue table exists
+      const tableCheck = await this.executeWithRetry(
+        () =>
+          this.db!.getAllAsync(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='sync_queue'"
+          ),
+        'check sync_queue table existence'
+      );
+
+      if (tableCheck.length === 0) {
+        console.log(
+          "⚠️ SQLite Database - sync_queue table doesn't exist, creating missing tables..."
+        );
+        await this.createTables();
+        return [];
       }
 
       const query = `SELECT * FROM sync_queue WHERE status = 'pending' ORDER BY timestamp ASC`;
-      const result = await this.db.getAllAsync(query);
+      const result = await this.executeWithRetry(
+        () => this.db!.getAllAsync(query),
+        'get pending sync items'
+      );
 
-      const parsedResult = result.map(row => ({
+      const parsedResult = result.map((row: any) => ({
         ...row,
         data: JSON.parse(row.data),
       }));
@@ -506,27 +1052,18 @@ class SQLiteDatabaseService implements DatabaseService {
       );
       return parsedResult;
     } catch (error) {
-      console.error('❌ SQLite Database - Failed to get pending sync:', error);
+      console.error(
+        '❌ SQLite Database - Failed to get pending sync:',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
 
-      // Try to reset database if it's corrupted
-      if (
-        error.message.includes('NullPointerException') ||
-        error.message.includes('prepareAsync') ||
-        error.message.includes('Failed to get pending sync')
-      ) {
-        console.log(
-          '🔄 SQLite Database - Database corrupted, attempting reset...'
-        );
-        try {
-          await this.resetDatabase();
-        } catch (resetError) {
-          console.error('❌ SQLite Database - Reset failed:', resetError);
-          // Try force reset as last resort
-          await this.forceResetDatabase();
-        }
+      if (error instanceof Error && this.shouldResetDatabase(error.message)) {
+        await this.handleDatabaseCorruption();
       }
 
       return [];
+    } finally {
+      this.releaseLock();
     }
   }
 

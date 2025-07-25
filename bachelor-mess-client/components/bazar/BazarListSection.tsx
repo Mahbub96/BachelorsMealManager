@@ -48,7 +48,13 @@ export const BazarListSection: React.FC<BazarListSectionProps> = ({
     loading,
     error,
     isAdmin,
+    showAllButton,
+    showAllButtonText,
+    onShowAllPress: !!onShowAllPress,
   });
+
+  // Create title with count
+  const titleWithCount = `${title} (${bazarEntries?.length || 0})`;
 
   return (
     <View style={styles.listContainer}>
@@ -56,13 +62,13 @@ export const BazarListSection: React.FC<BazarListSectionProps> = ({
         <ThemedText
           style={[styles.sectionTitle, { color: theme.text.primary }]}
         >
-          {title}
+          {titleWithCount}
         </ThemedText>
         {showAllButton && onShowAllPress && (
           <TouchableOpacity
             style={[
               styles.showAllButton,
-              { backgroundColor: theme.primaryLight },
+              { backgroundColor: theme.cardBackground },
             ]}
             onPress={onShowAllPress}
             activeOpacity={0.7}
@@ -72,7 +78,15 @@ export const BazarListSection: React.FC<BazarListSectionProps> = ({
             >
               {showAllButtonText}
             </ThemedText>
-            <Ionicons name='chevron-forward' size={16} color={theme.primary} />
+            <Ionicons
+              name={
+                showAllButtonText.includes('Recent')
+                  ? 'chevron-up'
+                  : 'chevron-forward'
+              }
+              size={16}
+              color={theme.primary}
+            />
           </TouchableOpacity>
         )}
       </View>
@@ -98,26 +112,37 @@ export const BazarListSection: React.FC<BazarListSectionProps> = ({
 const styles = StyleSheet.create({
   listContainer: {
     flex: 1,
-    marginTop: 4, // Reduced from 8
+    marginTop: 4,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12, // Reduced from 20
-    paddingHorizontal: 2, // Reduced from 4
+    marginBottom: 16,
+    paddingHorizontal: 4,
+    paddingVertical: 8,
   },
   sectionTitle: {
-    fontSize: 18, // Reduced from 20
+    fontSize: 18,
     fontWeight: '700',
+    letterSpacing: -0.5,
   },
   showAllButton: {
-    paddingHorizontal: 12, // Reduced from 16
-    paddingVertical: 6, // Reduced from 8
-    borderRadius: 8, // Reduced from 10
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
   showAllButtonText: {
-    fontSize: 13, // Reduced from 14
+    fontSize: 13,
     fontWeight: '600',
+    letterSpacing: -0.2,
   },
 });

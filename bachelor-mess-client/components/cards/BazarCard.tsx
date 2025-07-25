@@ -167,21 +167,14 @@ export const BazarCard: React.FC<BazarCardProps> = memo(
         >
           {/* Header with Status Badge */}
           <View style={styles.headerRow}>
-            <View style={styles.amountSection}>
+            <View style={styles.headerLeft}>
               <ThemedText
-                style={[
-                  styles.amountText,
-                  isCompact && styles.amountTextCompact,
-                  { color: theme.text.primary },
-                ]}
+                style={[styles.amountValue, { color: theme.text.primary }]}
               >
                 ৳{bazar.totalAmount.toLocaleString()}
               </ThemedText>
               <ThemedText
-                style={[
-                  styles.amountLabel,
-                  { color: theme.text.secondary },
-                ]}
+                style={[styles.amountLabel, { color: theme.text.secondary }]}
               >
                 Total Amount
               </ThemedText>
@@ -216,27 +209,30 @@ export const BazarCard: React.FC<BazarCardProps> = memo(
           <View style={styles.contentSection}>
             {/* Items Summary */}
             <View style={styles.itemsSection}>
-              <View style={styles.itemsHeader}>
-                <Ionicons name='basket' size={16} color={theme.text.tertiary} />
-                <ThemedText
-                  style={[
-                    styles.itemsCount,
-                    { color: theme.text.secondary },
-                  ]}
-                >
-                  {bazar.items?.length || 0} items
-                </ThemedText>
-              </View>
               <ThemedText
-                style={[
-                  styles.itemsText,
-                  isCompact && styles.itemsTextCompact,
-                  { color: theme.text.primary },
-                ]}
-                numberOfLines={2}
+                style={[styles.itemsTitle, { color: theme.text.secondary }]}
               >
-                {getItemsSummary(bazar.items)}
+                Items
               </ThemedText>
+              <View style={styles.itemsList}>
+                {bazar.items?.map((item, index) => (
+                  <View key={index} style={styles.itemRow}>
+                    <ThemedText
+                      style={[styles.itemName, { color: theme.text.primary }]}
+                    >
+                      {item.name}
+                    </ThemedText>
+                    <ThemedText
+                      style={[
+                        styles.itemDetails,
+                        { color: theme.text.secondary },
+                      ]}
+                    >
+                      {item.quantity} x ৳{item.price.toLocaleString()}
+                    </ThemedText>
+                  </View>
+                ))}
+              </View>
             </View>
 
             {/* Description */}
@@ -245,10 +241,8 @@ export const BazarCard: React.FC<BazarCardProps> = memo(
                 <ThemedText
                   style={[
                     styles.descriptionText,
-                    isCompact && styles.descriptionTextCompact,
                     { color: theme.text.secondary },
                   ]}
-                  numberOfLines={2}
                 >
                   {bazar.description}
                 </ThemedText>
@@ -298,11 +292,10 @@ export const BazarCard: React.FC<BazarCardProps> = memo(
               {bazar.status === 'pending' && (
                 <>
                   <TouchableOpacity
-                    style={[
-                      styles.actionButton,
-                      styles.approveButton,
-                    ]}
-                    onPress={() => handleActionPress(() => handleStatusUpdate('approved'))}
+                    style={[styles.actionButton, styles.approveButton]}
+                    onPress={() =>
+                      handleActionPress(() => handleStatusUpdate('approved'))
+                    }
                   >
                     <Ionicons name='checkmark' size={16} color='#10b981' />
                     <ThemedText style={styles.approveButtonText}>
@@ -311,11 +304,10 @@ export const BazarCard: React.FC<BazarCardProps> = memo(
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={[
-                      styles.actionButton,
-                      styles.rejectButton,
-                    ]}
-                    onPress={() => handleActionPress(() => handleStatusUpdate('rejected'))}
+                    style={[styles.actionButton, styles.rejectButton]}
+                    onPress={() =>
+                      handleActionPress(() => handleStatusUpdate('rejected'))
+                    }
                   >
                     <Ionicons name='close' size={16} color='#ef4444' />
                     <ThemedText style={styles.rejectButtonText}>
@@ -326,16 +318,11 @@ export const BazarCard: React.FC<BazarCardProps> = memo(
               )}
 
               <TouchableOpacity
-                style={[
-                  styles.actionButton,
-                  styles.deleteButton,
-                ]}
+                style={[styles.actionButton, styles.deleteButton]}
                 onPress={() => handleActionPress(handleDelete)}
               >
                 <Ionicons name='trash' size={16} color='#ef4444' />
-                <ThemedText style={styles.deleteButtonText}>
-                  Delete
-                </ThemedText>
+                <ThemedText style={styles.deleteButtonText}>Delete</ThemedText>
               </TouchableOpacity>
             </View>
           )}
@@ -351,12 +338,12 @@ const styles = StyleSheet.create({
   card: {
     marginBottom: 12,
     borderRadius: 16,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 3,
     minHeight: 140,
+    overflow: 'hidden',
   },
   cardCompact: {
     marginBottom: 10,
@@ -366,8 +353,8 @@ const styles = StyleSheet.create({
   cardGradient: {
     borderRadius: 16,
     padding: 18,
-    flex: 1,
     borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
   },
   cardGradientCompact: {
     borderRadius: 14,
@@ -378,113 +365,108 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 16,
+    marginBottom: 12,
   },
-  amountSection: {
+  headerLeft: {
     flex: 1,
-  },
-  amountText: {
-    fontSize: 24,
-    fontWeight: '800',
-    lineHeight: 28,
-    marginBottom: 2,
-  },
-  amountTextCompact: {
-    fontSize: 20,
-    fontWeight: '800',
-    lineHeight: 24,
   },
   amountLabel: {
     fontSize: 12,
     fontWeight: '500',
+    marginBottom: 4,
     opacity: 0.7,
   },
+  amountValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
   statusBadge: {
-    flexDirection: 'row',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    gap: 6,
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 4,
   },
   statusText: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 11,
+    fontWeight: '600',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
   contentSection: {
-    flex: 1,
-    gap: 12,
+    marginBottom: 12,
   },
   itemsSection: {
-    gap: 6,
+    marginBottom: 8,
   },
-  itemsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  itemsCount: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  itemsText: {
-    fontSize: 15,
-    fontWeight: '600',
-    lineHeight: 20,
-  },
-  itemsTextCompact: {
+  itemsTitle: {
     fontSize: 13,
-    lineHeight: 18,
-  },
-  descriptionSection: {
-    marginTop: 4,
-  },
-  descriptionText: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontWeight: '600',
+    marginBottom: 6,
     opacity: 0.8,
   },
-  descriptionTextCompact: {
+  itemsList: {
+    gap: 2,
+  },
+  itemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  itemName: {
+    fontSize: 12,
+    flex: 1,
+  },
+  itemDetails: {
+    fontSize: 11,
+    opacity: 0.7,
+    textAlign: 'right',
+  },
+  descriptionSection: {
+    marginBottom: 8,
+  },
+  descriptionText: {
     fontSize: 12,
     lineHeight: 16,
+    opacity: 0.8,
   },
   metaSection: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 8,
-    gap: 16,
   },
   metaItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    flex: 1,
+    gap: 4,
   },
   metaText: {
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: 11,
+    opacity: 0.6,
   },
   actionsContainer: {
     flexDirection: 'row',
+    justifyContent: 'flex-end',
     gap: 8,
-    paddingTop: 16,
-    borderTopWidth: 1,
     marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
   },
   actionButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    flex: 1,
-    justifyContent: 'center',
-    minHeight: 36,
-    gap: 6,
+    gap: 4,
+  },
+  actionButtonText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   approveButton: {
     backgroundColor: '#ecfdf5',
@@ -493,7 +475,7 @@ const styles = StyleSheet.create({
   },
   approveButtonText: {
     color: '#10b981',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
   rejectButton: {
@@ -503,7 +485,7 @@ const styles = StyleSheet.create({
   },
   rejectButtonText: {
     color: '#ef4444',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
   deleteButton: {
@@ -513,21 +495,19 @@ const styles = StyleSheet.create({
   },
   deleteButtonText: {
     color: '#ef4444',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
   errorCard: {
-    backgroundColor: '#fef2f2',
     padding: 16,
     borderRadius: 12,
-    marginVertical: 6,
+    backgroundColor: '#fef2f2',
     borderWidth: 1,
     borderColor: '#fecaca',
-    minHeight: 80,
   },
   errorText: {
+    fontSize: 14,
+    color: '#dc2626',
     textAlign: 'center',
-    fontSize: 13,
-    fontWeight: '500',
   },
 });

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ThemedView } from '../ThemedView';
 import { useAuth } from '../../context/AuthContext';
@@ -96,11 +96,17 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
   };
 
   const handleShowAllPress = () => {
+    console.log('🎯 Show All button pressed. Current state:', {
+      filteredEntriesCount: filteredEntries?.length || 0,
+      onShowAllPress: !!onShowAllPress,
+    });
+
     if (onShowAllPress) {
       onShowAllPress();
     } else {
-      // Navigate to a different screen or handle differently
-      console.log('Show all bazar entries');
+      // Navigate to dedicated bazar list page
+      console.log('🔄 Navigating to bazar-list page');
+      router.push('/bazar-list');
     }
   };
 
@@ -137,13 +143,20 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
     entriesError,
     searchQuery,
     filters,
+    actualEntriesToShow:
+      (customBazarEntries || filteredEntries?.slice(0, 2))?.length || 0,
   });
 
   return (
     <ThemedView style={styles.container}>
       <View style={styles.mainContainer}>
         {/* Header */}
-        <BazarHeader title={title} subtitle={subtitle} />
+        <BazarHeader
+          title={title}
+          subtitle={
+            filteredEntries?.length === 0 ? 'No bazar items found' : subtitle
+          }
+        />
 
         {/* Add Button */}
         {showAddButton && (
@@ -184,12 +197,26 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
 
         {/* Bazar Statistics */}
         {showStatistics && (
-          <BazarStatistics
-            stats={bazarStats}
-            loading={loadingStats}
-            error={statsError}
-            onRetry={() => refreshData()}
-          />
+          <>
+            {console.log(
+              '🎯 BazarManagement - showStatistics:',
+              showStatistics
+            )}
+            {console.log('🎯 BazarManagement - Stats Data:', {
+              bazarStats,
+              loadingStats,
+              statsError,
+              hasStats: !!bazarStats,
+              loadingStatsValue: loadingStats,
+            })}
+            <BazarStatistics
+              stats={bazarStats}
+              loading={loadingStats}
+              error={statsError}
+              onRetry={() => refreshData()}
+              compact={true}
+            />
+          </>
         )}
 
         {/* Bazar Items List */}
@@ -201,14 +228,37 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
           onRefresh={handleRefresh}
           onShowAllPress={handleShowAllPress}
           showAllButton={true}
-          showAllButtonText='Show All'
+          showAllButtonText='View All'
           filters={customFilters || filters}
-          bazarEntries={customBazarEntries || filteredEntries}
+          bazarEntries={customBazarEntries || filteredEntries?.slice(0, 2)}
           loading={customLoading !== undefined ? customLoading : loadingEntries}
           error={customError || entriesError}
           onStatusUpdate={handleStatusUpdate}
           onDelete={handleDelete}
         />
+
+        {/* Alternative: Using ShowAllList component
+        <ShowAllList
+          title="Bazar Items"
+          items={filteredEntries || []}
+          renderItem={(bazar, index) => (
+            <BazarCard
+              bazar={bazar}
+              onPress={handleBazarPress}
+              onStatusUpdate={handleStatusUpdate}
+              onDelete={handleDelete}
+              showActions={isAdmin}
+              isAdmin={isAdmin}
+            />
+          )}
+          maxRecentItems={2}
+          showAllButton={true}
+          showAllButtonText="Show All"
+          loading={customLoading !== undefined ? customLoading : loadingEntries}
+          error={customError || entriesError}
+          emptyMessage="No bazar items found"
+        />
+        */}
       </View>
     </ThemedView>
   );
@@ -220,7 +270,6 @@ const styles = StyleSheet.create({
   },
   mainContainer: {
     flex: 1,
-    paddingHorizontal: 12, // Reduced from 16
     paddingVertical: 12, // Reduced from 20
   },
   searchFiltersRow: {
