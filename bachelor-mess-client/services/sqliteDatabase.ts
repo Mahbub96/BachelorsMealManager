@@ -664,7 +664,8 @@ class SQLiteDatabaseService implements DatabaseService {
           timestamp INTEGER NOT NULL,
           retry_count INTEGER DEFAULT 0,
           max_retries INTEGER DEFAULT 3,
-          status TEXT DEFAULT 'pending'
+          status TEXT DEFAULT 'pending',
+          created_at INTEGER NOT NULL
         )
       `,
       activities: `
@@ -747,12 +748,42 @@ class SQLiteDatabaseService implements DatabaseService {
     if (!this.db) throw new Error('Database not initialized');
 
     try {
-      // Check if api_cache table exists first
-      const tableCheck = await this.db.getAllAsync(
+      // Check if sync_queue table exists first
+      const syncQueueCheck = await this.db.getAllAsync(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='sync_queue'"
+      );
+
+      if (syncQueueCheck.length > 0) {
+        // Check if sync_queue table has created_at column
+        const syncQueueInfo = await this.db.getAllAsync(
+          'PRAGMA table_info(sync_queue)'
+        );
+
+        const hasCreatedAt = syncQueueInfo.some(
+          (column: any) => column.name === 'created_at'
+        );
+
+        if (!hasCreatedAt) {
+          console.log(
+            '🔄 SQLite Database - Adding created_at column to sync_queue table'
+          );
+          await this.db.execAsync(
+            'ALTER TABLE sync_queue ADD COLUMN created_at INTEGER NOT NULL DEFAULT 0'
+          );
+          console.log('✅ SQLite Database - sync_queue migration completed');
+        } else {
+          console.log(
+            '✅ SQLite Database - sync_queue migration not needed, created_at column already exists'
+          );
+        }
+      }
+
+      // Check if api_cache table exists
+      const apiCacheCheck = await this.db.getAllAsync(
         "SELECT name FROM sqlite_master WHERE type='table' AND name='api_cache'"
       );
 
-      if (tableCheck.length === 0) {
+      if (apiCacheCheck.length === 0) {
         console.log(
           '📋 SQLite Database - api_cache table does not exist, skipping migration'
         );
@@ -760,11 +791,11 @@ class SQLiteDatabaseService implements DatabaseService {
       }
 
       // Check if api_cache table has updated_at column
-      const tableInfo = await this.db.getAllAsync(
+      const apiCacheInfo = await this.db.getAllAsync(
         'PRAGMA table_info(api_cache)'
       );
 
-      const hasUpdatedAt = tableInfo.some(
+      const hasUpdatedAt = apiCacheInfo.some(
         (column: any) => column.name === 'updated_at'
       );
 
@@ -775,10 +806,10 @@ class SQLiteDatabaseService implements DatabaseService {
         await this.db.execAsync(
           'ALTER TABLE api_cache ADD COLUMN updated_at INTEGER NOT NULL DEFAULT 0'
         );
-        console.log('✅ SQLite Database - Migration completed');
+        console.log('✅ SQLite Database - api_cache migration completed');
       } else {
         console.log(
-          '✅ SQLite Database - Migration not needed, updated_at column already exists'
+          '✅ SQLite Database - api_cache migration not needed, updated_at column already exists'
         );
       }
     } catch (error) {
@@ -892,7 +923,25 @@ class SQLiteDatabaseService implements DatabaseService {
         return [];
       }
 
-      const sql = query || `SELECT * FROM ${table} ORDER BY created_at DESC`;
+      // Check if table has created_at column before using it in ORDER BY
+      let defaultOrderBy = 'id DESC';
+      try {
+        const tableInfo = await this.db!.getAllAsync(
+          `PRAGMA table_info(${table})`
+        );
+        const hasCreatedAt = tableInfo.some(
+          (column: any) => column.name === 'created_at'
+        );
+        if (hasCreatedAt) {
+          defaultOrderBy = 'created_at DESC';
+        }
+      } catch (error) {
+        console.log(
+          `⚠️ SQLite Database - Could not check columns for ${table}, using default ordering`
+        );
+      }
+
+      const sql = query || `SELECT * FROM ${table} ORDER BY ${defaultOrderBy}`;
 
       // Use transaction for read operations to ensure consistency
       const result = await this.executeWithRetry(async () => {
@@ -1095,12 +1144,13 @@ class SQLiteDatabaseService implements DatabaseService {
         retry_count: 0,
         max_retries: 3,
         status: 'pending',
+        created_at: Date.now(),
       };
 
       const query = `
         INSERT INTO sync_queue 
-        (id, action, endpoint, data, timestamp, retry_count, max_retries, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        (id, action, endpoint, data, timestamp, retry_count, max_retries, status, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
       const params = [
@@ -1112,6 +1162,7 @@ class SQLiteDatabaseService implements DatabaseService {
         syncItem.retry_count,
         syncItem.max_retries,
         syncItem.status,
+        syncItem.created_at,
       ];
 
       await this.db.runAsync(query, params);
