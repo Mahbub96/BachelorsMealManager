@@ -24,12 +24,34 @@ export interface User {
   role: 'super_admin' | 'admin' | 'member';
   status: 'active' | 'inactive';
   joinDate: string;
+  lastLogin?: string;
+  isEmailVerified?: boolean;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface LoginResponse {
   token: string;
+  refreshToken: string;
   user: User;
+}
+
+export interface ChangePasswordData {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface ForgotPasswordData {
+  email: string;
+}
+
+export interface ResetPasswordData {
+  token: string;
+  newPassword: string;
+}
+
+export interface RefreshTokenData {
+  refreshToken: string;
 }
 
 export interface AuthService {
@@ -39,8 +61,19 @@ export interface AuthService {
   refreshToken: () => Promise<ApiResponse<{ token: string }>>;
   getProfile: () => Promise<ApiResponse<User>>;
   updateProfile: (data: Partial<User>) => Promise<ApiResponse<User>>;
+  changePassword: (
+    data: ChangePasswordData
+  ) => Promise<ApiResponse<{ message: string }>>;
+  forgotPassword: (
+    data: ForgotPasswordData
+  ) => Promise<ApiResponse<{ message: string }>>;
+  resetPassword: (
+    data: ResetPasswordData
+  ) => Promise<ApiResponse<{ message: string }>>;
+  verifyToken: () => Promise<ApiResponse<{ valid: boolean }>>;
   isAuthenticated: () => Promise<boolean>;
   getStoredToken: () => Promise<string | null>;
+  getStoredRefreshToken: () => Promise<string | null>;
   clearStoredAuth: () => Promise<void>;
 }
 
@@ -72,9 +105,16 @@ class AuthServiceImpl implements AuthService {
         console.log('❌ Login error:', response.error);
       }
 
-      if (response.success && response.data) {
-        // Store token and user data
-        await this.storeAuthData(response.data.token, response.data.user);
+      // Handle the new API response structure where data is nested under response.data
+      const loginData = response.data as LoginResponse;
+
+      if (response.success && loginData && loginData.token && loginData.user) {
+        // Store token, refresh token and user data
+        await this.storeAuthData(
+          loginData.token,
+          loginData.refreshToken,
+          loginData.user
+        );
         console.log('✅ Auth data stored successfully');
       }
 
@@ -155,16 +195,38 @@ class AuthServiceImpl implements AuthService {
 
   async refreshToken(): Promise<ApiResponse<{ token: string }>> {
     try {
-      const response = await httpClient.post<{ token: string }>(
-        API_ENDPOINTS.AUTH.REFRESH
-      );
+      const storedRefreshToken = await this.getStoredRefreshToken();
 
-      if (response.success && response.data) {
-        // Update stored token
-        await AsyncStorage.setItem(this.TOKEN_KEY, response.data.token);
+      if (!storedRefreshToken) {
+        return {
+          success: false,
+          error: 'No refresh token available',
+        };
       }
 
-      return response;
+      const response = await httpClient.post<{
+        token: string;
+        refreshToken: string;
+      }>(API_ENDPOINTS.AUTH.REFRESH, { refreshToken: storedRefreshToken });
+
+      // Handle the new API response structure where data is nested under response.data
+      const tokenData = response.data as {
+        token: string;
+        refreshToken: string;
+      };
+
+      if (response.success && tokenData && tokenData.token) {
+        // Update stored token and refresh token
+        await AsyncStorage.multiSet([
+          [this.TOKEN_KEY, tokenData.token],
+          ['refresh_token', tokenData.refreshToken],
+        ]);
+      }
+
+      return {
+        ...response,
+        data: { token: tokenData?.token || '' },
+      };
     } catch (error) {
       return {
         success: false,
@@ -180,12 +242,12 @@ class AuthServiceImpl implements AuthService {
         cacheKey: 'user_profile',
       });
 
-      if (response.success && response.data) {
+      // Handle the new API response structure where data is nested under response.data
+      const userData = response.data as User;
+
+      if (response.success && userData) {
         // Update stored user data
-        await AsyncStorage.setItem(
-          this.USER_KEY,
-          JSON.stringify(response.data)
-        );
+        await AsyncStorage.setItem(this.USER_KEY, JSON.stringify(userData));
       }
 
       return response;
@@ -205,12 +267,12 @@ class AuthServiceImpl implements AuthService {
         data
       );
 
-      if (response.success && response.data) {
+      // Handle the new API response structure where data is nested under response.data
+      const userData = response.data as User;
+
+      if (response.success && userData) {
         // Update stored user data
-        await AsyncStorage.setItem(
-          this.USER_KEY,
-          JSON.stringify(response.data)
-        );
+        await AsyncStorage.setItem(this.USER_KEY, JSON.stringify(userData));
         // Clear profile cache
         await httpClient.clearCache();
       }
@@ -221,6 +283,77 @@ class AuthServiceImpl implements AuthService {
         success: false,
         error:
           error instanceof Error ? error.message : 'Failed to update profile',
+      };
+    }
+  }
+
+  async changePassword(
+    data: ChangePasswordData
+  ): Promise<ApiResponse<{ message: string }>> {
+    try {
+      const response = await httpClient.put<{ message: string }>(
+        API_ENDPOINTS.AUTH.CHANGE_PASSWORD,
+        data
+      );
+      return response;
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error instanceof Error ? error.message : 'Failed to change password',
+      };
+    }
+  }
+
+  async forgotPassword(
+    data: ForgotPasswordData
+  ): Promise<ApiResponse<{ message: string }>> {
+    try {
+      const response = await httpClient.post<{ message: string }>(
+        API_ENDPOINTS.AUTH.FORGOT_PASSWORD,
+        data
+      );
+      return response;
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to send forgot password email',
+      };
+    }
+  }
+
+  async resetPassword(
+    data: ResetPasswordData
+  ): Promise<ApiResponse<{ message: string }>> {
+    try {
+      const response = await httpClient.post<{ message: string }>(
+        API_ENDPOINTS.AUTH.RESET_PASSWORD,
+        data
+      );
+      return response;
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error instanceof Error ? error.message : 'Failed to reset password',
+      };
+    }
+  }
+
+  async verifyToken(): Promise<ApiResponse<{ valid: boolean }>> {
+    try {
+      const response = await httpClient.get<{ valid: boolean }>(
+        API_ENDPOINTS.AUTH.VERIFY_TOKEN
+      );
+      return response;
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error instanceof Error ? error.message : 'Failed to verify token',
       };
     }
   }
@@ -243,10 +376,23 @@ class AuthServiceImpl implements AuthService {
     }
   }
 
+  async getStoredRefreshToken(): Promise<string | null> {
+    try {
+      return await AsyncStorage.getItem('refresh_token'); // Assuming refresh token is stored under 'refresh_token' key
+    } catch (error) {
+      console.error('Error getting stored refresh token:', error);
+      return null;
+    }
+  }
+
   async clearStoredAuth(): Promise<void> {
     try {
       console.log('🧹 Clearing stored auth data...');
-      await AsyncStorage.multiRemove([this.TOKEN_KEY, this.USER_KEY]);
+      await AsyncStorage.multiRemove([
+        this.TOKEN_KEY,
+        this.USER_KEY,
+        'refresh_token',
+      ]);
       // Clear all API cache
       await httpClient.clearCache();
       console.log('✅ Stored auth data cleared');
@@ -255,11 +401,16 @@ class AuthServiceImpl implements AuthService {
     }
   }
 
-  private async storeAuthData(token: string, user: User): Promise<void> {
+  private async storeAuthData(
+    token: string,
+    refreshToken: string,
+    user: User
+  ): Promise<void> {
     try {
       await AsyncStorage.multiSet([
         [this.TOKEN_KEY, token],
         [this.USER_KEY, JSON.stringify(user)],
+        ['refresh_token', refreshToken], // Store refresh token
       ]);
     } catch (error) {
       console.error('Error storing auth data:', error);

@@ -159,7 +159,7 @@ class ActivityService {
         queryParams.append('sortOrder', filters.sortOrder);
       }
 
-      const response = await httpClient.get<ActivityResponse>(
+      const response = await httpClient.get<{ activities: Activity[]; pagination: any; stats: ActivityStats }>(
         `${API_ENDPOINTS.ACTIVITY.RECENT}?${queryParams.toString()}`,
         {
           cache: true,
@@ -177,6 +177,17 @@ class ActivityService {
         console.error('❌ Failed to fetch activities:', appError?.message);
       } else {
         console.log('✅ Recent activities fetched successfully');
+        // Transform the response to match expected structure
+        if (response.data) {
+          return {
+            ...response,
+            data: {
+              activities: response.data.activities || [],
+              pagination: response.data.pagination || {},
+              stats: response.data.stats || {}
+            }
+          };
+        }
       }
 
       return response;

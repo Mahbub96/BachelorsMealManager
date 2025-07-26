@@ -1,10 +1,10 @@
-import React from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { useTheme } from '@/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import React from 'react';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ThemedText } from '../ThemedText';
-import { useTheme } from '@/context/ThemeContext';
 
 export interface ActivityItem {
   id: string;
@@ -14,6 +14,7 @@ export interface ActivityItem {
   amount?: string;
   icon: string;
   colors: [string, string];
+  onPress?: () => void;
 }
 
 interface RecentActivityProps {
@@ -86,7 +87,7 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
         ]}
       >
         {displayActivities.map((activity, index) => (
-          <View
+          <TouchableOpacity
             key={activity.id}
             style={[
               styles.activityItem,
@@ -95,6 +96,8 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
               },
               index === displayActivities.length - 1 && styles.lastActivityItem,
             ]}
+            onPress={activity.onPress}
+            activeOpacity={activity.onPress ? 0.8 : 1}
           >
             <View style={styles.activityIcon}>
               <LinearGradient
@@ -147,7 +150,7 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
                 )}
               </View>
             </View>
-          </View>
+          </TouchableOpacity>
         ))}
       </View>
     </View>

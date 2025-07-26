@@ -152,6 +152,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 16,
+    justifyContent: 'center',
   },
   actionsGridSmall: {
     gap: 12,

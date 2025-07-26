@@ -1,6 +1,5 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { SimpleDebug } from '@/components/SimpleDebug';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -28,8 +27,23 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     setError('');
+
+    // Enhanced validation
     if (!email || !password) {
       setError('Please enter both email and password.');
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+
+    // Validate password length
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters long.');
       return;
     }
 
@@ -66,7 +80,6 @@ export default function LoginScreen() {
       colors={['#e0eafc', '#cfdef3']}
       style={modernStyles.gradient}
     >
-      <SimpleDebug />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{
@@ -145,7 +158,7 @@ export default function LoginScreen() {
             </ThemedText>
           </Pressable>
 
-          <View style={modernStyles.footer}>
+                    <View style={modernStyles.footer}>
             <ThemedText style={modernStyles.footerText}>
               Don&apos;t have an account?{' '}
             </ThemedText>
@@ -166,7 +179,8 @@ const modernStyles = StyleSheet.create({
     alignItems: 'center',
   },
   card: {
-    width: 340,
+    width: '90%',
+    maxWidth: 340,
     padding: 32,
     borderRadius: 24,
     backgroundColor: 'rgba(255,255,255,0.95)',

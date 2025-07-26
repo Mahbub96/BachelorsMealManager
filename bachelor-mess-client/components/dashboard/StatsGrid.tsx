@@ -1,9 +1,9 @@
-import React from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
+import { useTheme } from '@/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import React from 'react';
+import { Dimensions, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ThemedText } from '../ThemedText';
-import { useTheme } from '@/context/ThemeContext';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -16,6 +16,7 @@ export interface StatItem {
   change?: string;
   period?: string;
   isSmallScreen?: boolean;
+  onPress?: () => void;
 }
 
 interface StatsGridProps {
@@ -42,21 +43,23 @@ export const StatsGrid: React.FC<StatsGridProps> = ({
   return (
     <View style={[styles.container, isSmallScreen && styles.containerSmall]}>
       {stats.map((stat, index) => (
-        <View
+        <TouchableOpacity
           key={index}
           style={[
             styles.statCard,
             getGridStyle(),
             isSmallScreen && styles.statCardSmall,
           ]}
+          onPress={stat.onPress}
+          activeOpacity={stat.onPress ? 0.8 : 1}
         >
           <LinearGradient colors={stat.colors} style={styles.statGradient}>
             <View style={styles.statHeader}>
-                              <Ionicons
-                  name={stat.icon as any}
-                  size={isSmallScreen ? 20 : 24}
-                  color={theme.text.inverse}
-                />
+              <Ionicons
+                name={stat.icon as any}
+                size={isSmallScreen ? 20 : 24}
+                color={theme.text.inverse}
+              />
               {stat.trend && (
                 <Ionicons
                   name={stat.trend === 'up' ? 'trending-up' : 'trending-down'}
@@ -85,7 +88,12 @@ export const StatsGrid: React.FC<StatsGridProps> = ({
                   style={[
                     styles.statChange,
                     isSmallScreen && styles.statChangeSmall,
-                    { color: stat.trend === 'up' ? theme.status.success : theme.status.error },
+                    {
+                      color:
+                        stat.trend === 'up'
+                          ? theme.status.success
+                          : theme.status.error,
+                    },
                   ]}
                 >
                   {stat.change}
@@ -103,7 +111,7 @@ export const StatsGrid: React.FC<StatsGridProps> = ({
               </View>
             )}
           </LinearGradient>
-        </View>
+        </TouchableOpacity>
       ))}
     </View>
   );
@@ -114,6 +122,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 16,
+    justifyContent: 'center',
+    paddingBottom: 20,
   },
   containerSmall: {
     gap: 12,

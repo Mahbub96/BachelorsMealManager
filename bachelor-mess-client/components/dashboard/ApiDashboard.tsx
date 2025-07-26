@@ -345,6 +345,8 @@ export const ApiDashboard: React.FC = () => {
         <ChartsSection
           monthlyRevenue={chartsData?.monthlyRevenue || []}
           currentMonthRevenue={chartsData?.currentMonthRevenue || {}}
+          expenseBreakdown={dashboardData?.charts?.expenseBreakdown || []}
+          weeklyMeals={dashboardData?.charts?.weeklyMeals || []}
           isTablet={isTablet}
         />
 
@@ -356,7 +358,7 @@ export const ApiDashboard: React.FC = () => {
               title: 'Add Meal',
               subtitle: "Record today's meals",
               icon: 'restaurant',
-              color: '#10b981',
+              color: theme.status.success,
               onPress: () => handleQuickAction('add-meal'),
             },
             {
@@ -364,7 +366,7 @@ export const ApiDashboard: React.FC = () => {
               title: 'Add Bazar',
               subtitle: 'Upload shopping list',
               icon: 'cart',
-              color: '#f59e0b',
+              color: theme.status.warning,
               onPress: () => handleQuickAction('add-bazar'),
             },
             {
@@ -372,7 +374,7 @@ export const ApiDashboard: React.FC = () => {
               title: 'View Expenses',
               subtitle: 'Check spending details',
               icon: 'card',
-              color: '#ef4444',
+              color: theme.status.error,
               onPress: () => handleQuickAction('view-expenses'),
             },
             {
@@ -380,7 +382,7 @@ export const ApiDashboard: React.FC = () => {
               title: 'View Revenue',
               subtitle: 'See income breakdown',
               icon: 'trending-up',
-              color: '#667eea',
+              color: theme.status.info,
               onPress: () => handleQuickAction('view-revenue'),
             },
           ]}
@@ -390,7 +392,7 @@ export const ApiDashboard: React.FC = () => {
         <RecentActivity
           activities={(activities || []).map(activity => ({
             ...activity,
-            colors: ['#667eea', '#764ba2'] as [string, string],
+            colors: [theme.primary, theme.secondary] as [string, string],
             amount: activity.amount?.toString(),
           }))}
           maxItems={3}

@@ -1,18 +1,25 @@
-import React, { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
-import { ThemedView } from '../ThemedView';
 import { useAuth } from '@/context/AuthContext';
+import { useTheme } from '@/context/ThemeContext';
 import { useApiData } from '@/hooks/useApiData';
-import statisticsService from '@/services/statisticsService';
+import { activityService, type Activity } from '@/services/activityService';
+import errorHandler from '@/services/errorHandler';
 import userStatsService, {
   UserDashboardStats,
 } from '@/services/userStatsService';
-import { DashboardHeader } from './DashboardHeader';
-import { StatCard } from './StatCard';
+import { useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { Alert, ScrollView, StyleSheet } from 'react-native';
+import { ThemedView } from '../ThemedView';
 import { DataDisplay } from '../ui/DataDisplay';
-import { useTheme } from '@/context/ThemeContext';
-import errorHandler from '@/services/errorHandler';
+import {
+  DashboardHeader,
+  QuickActions,
+  RecentActivity,
+  StatsGrid,
+  type ActionItem,
+  type ActivityItem,
+  type StatItem,
+} from './index';
 
 export const UserDashboard: React.FC = () => {
   const router = useRouter();
@@ -36,8 +43,14 @@ export const UserDashboard: React.FC = () => {
     maxRetries: 3,
   });
 
+  // Activity data from API
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [activitiesLoading, setActivitiesLoading] = useState(false);
+  const [activitiesError, setActivitiesError] = useState<string | null>(null);
+
   useEffect(() => {
     loadDashboardData();
+    loadActivities();
   }, []);
 
   const loadDashboardData = async () => {
@@ -100,8 +113,37 @@ export const UserDashboard: React.FC = () => {
     }
   };
 
+  const loadActivities = async () => {
+    try {
+      setActivitiesLoading(true);
+      setActivitiesError(null);
+
+      console.log('📋 Loading recent activities...');
+      const response = await activityService.getRecentActivities({}, 1, 10);
+
+      if (response.success && response.data) {
+        setActivities(response.data.activities);
+        console.log(
+          '✅ Activities loaded successfully:',
+          response.data.activities.length
+        );
+      } else {
+        setActivitiesError(response.error || 'Failed to load activities');
+        console.error('❌ Failed to load activities:', response.error);
+      }
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to load activities';
+      setActivitiesError(errorMessage);
+      console.error('❌ Error loading activities:', err);
+    } finally {
+      setActivitiesLoading(false);
+    }
+  };
+
   const handleRetry = async () => {
     await loadDashboardData();
+    await loadActivities();
   };
 
   const handleQuickAction = (action: string) => {
@@ -129,6 +171,326 @@ export const UserDashboard: React.FC = () => {
     }
   };
 
+  // Handle stat card clicks
+  const handleStatCardClick = (statType: string) => {
+    if (!user) {
+      Alert.alert('Login Required', 'Please log in to access this feature', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Login', onPress: () => router.push('/LoginScreen') },
+      ]);
+      return;
+    }
+
+    switch (statType) {
+      case 'Total Meals':
+        router.push('/(tabs)/meals');
+        break;
+      case 'Bazar Total':
+        router.push('/(tabs)/explore');
+        break;
+      case 'Avg/Day':
+        router.push('/(tabs)/meals');
+        break;
+      case 'Payment Status':
+        Alert.alert('Payment Details', 'Payment management coming soon!');
+        break;
+      default:
+        break;
+    }
+  };
+
+  // Handle activity card clicks
+  const handleActivityClick = (activity: ActivityItem) => {
+    if (!user) {
+      Alert.alert('Login Required', 'Please log in to access this feature', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Login', onPress: () => router.push('/LoginScreen') },
+      ]);
+      return;
+    }
+
+    switch (activity.icon) {
+      case 'fast-food':
+        router.push('/(tabs)/meals');
+        break;
+      case 'cart':
+        router.push('/(tabs)/explore');
+        break;
+      case 'card':
+        Alert.alert('Payment Details', 'Payment management coming soon!');
+        break;
+      case 'person':
+        router.push('/profile');
+        break;
+      default:
+        router.push('/recent-activity');
+        break;
+    }
+  };
+
+  // Prepare dashboard data
+  const stats = dashboardData || userStats;
+  const userGreeting = user ? `Welcome back, ${user.name}` : undefined;
+
+  // Debug logging
+  console.log('🔍 Dashboard Debug:', {
+    dashboardData: dashboardData,
+    userStats: userStats,
+    stats: stats,
+    isLoading: isLoading,
+    statsLoading: statsLoading,
+    error: error,
+    statsError: statsError,
+    apiConnected: apiConnected,
+  });
+
+  // Prepare stats for StatsGrid - using real API data with click handlers
+  const dashboardStats: StatItem[] = stats
+    ? [
+        {
+          title: 'Total Meals',
+          value: stats.meals?.total ?? 0,
+          icon: 'fast-food',
+          colors: theme.gradient.primary as [string, string],
+          trend: stats.meals?.efficiency > 70 ? 'up' : 'neutral',
+          change:
+            stats.meals?.efficiency !== undefined
+              ? `${stats.meals.efficiency}% approved`
+              : 'N/A',
+          period: 'this month',
+          onPress: () => handleStatCardClick('Total Meals'),
+        },
+        {
+          title: 'Bazar Total',
+          value:
+            stats.bazar?.totalAmount !== undefined
+              ? `৳${stats.bazar.totalAmount.toLocaleString()}`
+              : '৳0',
+          icon: 'card',
+          colors: theme.gradient.secondary as [string, string],
+          trend: stats.bazar?.approvedAmount > 0 ? 'up' : 'neutral',
+          change:
+            stats.bazar?.approvedAmount !== undefined
+              ? `৳${stats.bazar.approvedAmount.toLocaleString()} approved`
+              : 'N/A',
+          period: 'this month',
+          onPress: () => handleStatCardClick('Bazar Total'),
+        },
+        {
+          title: 'Avg/Day',
+          value:
+            stats.meals?.averagePerDay !== undefined
+              ? stats.meals.averagePerDay.toFixed(1)
+              : 'N/A',
+          icon: 'trending-up',
+          colors: theme.gradient.success as [string, string],
+          trend: stats.meals?.averagePerDay > 2 ? 'up' : 'down',
+          change:
+            stats.meals?.daysSinceLastMeal !== undefined
+              ? `${stats.meals.daysSinceLastMeal} days ago`
+              : 'N/A',
+          period: 'last meal',
+          onPress: () => handleStatCardClick('Avg/Day'),
+        },
+        {
+          title: 'Payment Status',
+          value: stats.payments?.paymentStatus
+            ? stats.payments.paymentStatus.toUpperCase()
+            : 'N/A',
+          icon: 'card',
+          colors:
+            stats.payments?.paymentStatus === 'paid'
+              ? (theme.gradient.success as [string, string])
+              : stats.payments?.paymentStatus === 'overdue'
+              ? (theme.gradient.error as [string, string])
+              : (theme.gradient.warning as [string, string]),
+          change:
+            stats.payments?.totalPaid !== undefined &&
+            stats.payments?.monthlyContribution !== undefined
+              ? `৳${stats.payments.totalPaid.toLocaleString()} / ৳${stats.payments.monthlyContribution.toLocaleString()}`
+              : 'N/A',
+          period: 'monthly',
+          onPress: () => handleStatCardClick('Payment Status'),
+        },
+      ]
+    : [
+        // Default stats when no data available
+        {
+          title: 'Total Meals',
+          value: 'N/A',
+          icon: 'fast-food',
+          colors: theme.gradient.primary as [string, string],
+          trend: 'neutral',
+          change: 'Login required',
+          period: 'this month',
+          onPress: () => handleStatCardClick('Total Meals'),
+        },
+        {
+          title: 'Bazar Total',
+          value: '৳N/A',
+          icon: 'card',
+          colors: theme.gradient.secondary as [string, string],
+          trend: 'neutral',
+          change: 'Login required',
+          period: 'this month',
+          onPress: () => handleStatCardClick('Bazar Total'),
+        },
+        {
+          title: 'Avg/Day',
+          value: 'N/A',
+          icon: 'trending-up',
+          colors: theme.gradient.success as [string, string],
+          trend: 'neutral',
+          change: 'Login required',
+          period: 'last meal',
+          onPress: () => handleStatCardClick('Avg/Day'),
+        },
+        {
+          title: 'Payment Status',
+          value: 'N/A',
+          icon: 'card',
+          colors: theme.gradient.warning as [string, string],
+          change: 'Login required',
+          period: 'monthly',
+          onPress: () => handleStatCardClick('Payment Status'),
+        },
+      ];
+
+  // Prepare quick actions - using real data from API or defaults
+  const quickActions: ActionItem[] = [
+    {
+      id: 'add-meal',
+      title: 'Add Meal',
+      subtitle: 'Record your meals',
+      icon: 'fast-food',
+      color: theme.gradient.primary[0],
+      onPress: () => {
+        if (!user) {
+          Alert.alert('Login Required', 'Please log in to add meals', [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Login', onPress: () => router.push('/LoginScreen') },
+          ]);
+          return;
+        }
+        router.push('/(tabs)/meals');
+      },
+    },
+    {
+      id: 'add-bazar',
+      title: 'Add Bazar',
+      subtitle: 'Submit bazar items',
+      icon: 'cart',
+      color: theme.gradient.secondary[0],
+      onPress: () => {
+        if (!user) {
+          Alert.alert('Login Required', 'Please log in to add bazar items', [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Login', onPress: () => router.push('/LoginScreen') },
+          ]);
+          return;
+        }
+        router.push('/(tabs)/explore');
+      },
+    },
+    {
+      id: 'view-profile',
+      title: 'Profile',
+      subtitle: 'Manage your account',
+      icon: 'person',
+      color: theme.gradient.success[0],
+      onPress: () => {
+        if (!user) {
+          Alert.alert('Login Required', 'Please log in to view profile', [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Login', onPress: () => router.push('/LoginScreen') },
+          ]);
+          return;
+        }
+        router.push('/profile');
+      },
+    },
+    {
+      id: 'payments',
+      title: 'Payments',
+      subtitle: 'View payment status',
+      icon: 'card',
+      color: theme.gradient.warning[0],
+      onPress: () => {
+        if (!user) {
+          Alert.alert('Login Required', 'Please log in to view payments', [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Login', onPress: () => router.push('/LoginScreen') },
+          ]);
+          return;
+        }
+        Alert.alert('Payments', 'Payment management coming soon!');
+      },
+    },
+  ];
+
+  // Convert API activities to component format
+  const convertActivitiesToComponentFormat = (
+    activities: Activity[]
+  ): ActivityItem[] => {
+    return activities.map((activity, index) => ({
+      id: activity.id || `activity-${index}`,
+      title: activity.title || 'Activity',
+      description: activity.description || 'No description',
+      time: activity.time || 'Unknown time',
+      icon: activity.icon || 'information-circle',
+      colors: getActivityColors(activity.type, theme) as [string, string],
+      onPress: () =>
+        handleActivityClick({
+          id: activity.id || `activity-${index}`,
+          title: activity.title || 'Activity',
+          description: activity.description || 'No description',
+          time: activity.time || 'Unknown time',
+          icon: activity.icon || 'information-circle',
+          colors: getActivityColors(activity.type, theme) as [string, string],
+        }),
+    }));
+  };
+
+  // Helper function to get activity icon
+  const getActivityIcon = (type: string): string => {
+    switch (type) {
+      case 'meal':
+        return 'fast-food';
+      case 'bazar':
+        return 'cart';
+      case 'payment':
+        return 'card';
+      case 'member':
+        return 'person';
+      case 'approval':
+        return 'checkmark-circle';
+      default:
+        return 'notifications';
+    }
+  };
+
+  // Helper function to get activity colors
+  const getActivityColors = (type: string, theme: any): [string, string] => {
+    switch (type) {
+      case 'meal':
+        return theme.gradient.success as [string, string];
+      case 'bazar':
+        return theme.gradient.secondary as [string, string];
+      case 'payment':
+        return theme.gradient.warning as [string, string];
+      case 'member':
+        return theme.gradient.primary as [string, string];
+      case 'approval':
+        return theme.gradient.success as [string, string];
+      default:
+        return theme.gradient.primary as [string, string];
+    }
+  };
+
+  // Use real activities from API
+  const recentActivities: ActivityItem[] =
+    activities.length > 0 ? convertActivitiesToComponentFormat(activities) : [];
+
   // Show loading state
   if (isLoading || statsLoading) {
     return (
@@ -137,7 +499,6 @@ export const UserDashboard: React.FC = () => {
           title='Your Dashboard'
           subtitle="Here's your personal overview"
           icon='person'
-          user={user ? { name: user.name, role: user.role } : undefined}
         />
         <DataDisplay
           data={null}
@@ -159,7 +520,6 @@ export const UserDashboard: React.FC = () => {
           title='Your Dashboard'
           subtitle="Here's your personal overview"
           icon='person'
-          user={user ? { name: user.name, role: user.role } : undefined}
         />
         <DataDisplay
           data={null}
@@ -181,7 +541,6 @@ export const UserDashboard: React.FC = () => {
           title='Your Dashboard'
           subtitle="Here's your personal overview"
           icon='person'
-          user={user ? { name: user.name, role: user.role } : undefined}
         />
         <DataDisplay
           data={null}
@@ -195,9 +554,6 @@ export const UserDashboard: React.FC = () => {
     );
   }
 
-  // Use dashboard data from API
-  const stats = dashboardData || userStats;
-
   // Show no data state
   if (!stats) {
     return (
@@ -206,12 +562,15 @@ export const UserDashboard: React.FC = () => {
           title='Your Dashboard'
           subtitle="Here's your personal overview"
           icon='person'
-          user={user ? { name: user.name, role: user.role } : undefined}
         />
         <DataDisplay
           data={null}
           loading={false}
-          error='No dashboard data available'
+          error={
+            !user
+              ? 'Please log in to view your dashboard'
+              : 'No dashboard data available'
+          }
           onRetry={handleRetry}
         >
           {() => null}
@@ -226,72 +585,35 @@ export const UserDashboard: React.FC = () => {
         title='Your Dashboard'
         subtitle="Here's your personal overview"
         icon='person'
-        colors={['#667eea', '#764ba2']}
+        userGreeting={userGreeting}
       />
 
       <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 20 }}
+        contentContainerStyle={styles.scrollContent}
       >
-        {/* Personal Stats */}
-        <View style={styles.statsContainer}>
-          <StatCard
-            title='Total Meals'
-            value={stats.meals.total}
-            icon='fast-food'
-            gradient={['#667eea', '#764ba2']}
-            subtitle={`${stats.meals.efficiency}% approved`}
-          />
-          <StatCard
-            title='Bazar Total'
-            value={`৳${stats.bazar.totalAmount.toLocaleString()}`}
-            icon='card'
-            gradient={['#f093fb', '#f5576c']}
-            subtitle={
-              stats.bazar.approvedAmount > 0
-                ? `৳${stats.bazar.approvedAmount.toLocaleString()} approved`
-                : 'No approved'
-            }
-          />
-          <StatCard
-            title='Avg/Day'
-            value={stats.meals.averagePerDay.toFixed(1)}
-            icon='trending-up'
-            gradient={['#43e97b', '#38f9d7']}
-            subtitle={`${stats.meals.daysSinceLastMeal} day${
-              stats.meals.daysSinceLastMeal !== 1 ? 's' : ''
-            } ago`}
-          />
-        </View>
+        {/* Stats Grid */}
+        <StatsGrid stats={dashboardStats} columns={2} isSmallScreen={false} />
 
-        {/* Payment Status */}
-        <View style={styles.paymentCard}>
-          <StatCard
-            title='Payment Status'
-            value={stats.payments.paymentStatus.toUpperCase()}
-            icon='card'
-            gradient={
-              stats.payments.paymentStatus === 'paid'
-                ? ['#10b981', '#059669']
-                : stats.payments.paymentStatus === 'overdue'
-                ? ['#ef4444', '#dc2626']
-                : ['#f59e0b', '#d97706']
-            }
-            subtitle={`৳${stats.payments.totalPaid.toLocaleString()} / ৳${stats.payments.monthlyContribution.toLocaleString()}`}
-          />
-        </View>
+        {/* Quick Actions */}
+        <QuickActions
+          actions={quickActions}
+          title='Quick Actions'
+          subtitle='Manage your mess efficiently'
+          columns={2}
+          isSmallScreen={false}
+        />
 
-        {/* Performance Overview */}
-        <View style={styles.overviewCard}>
-          <StatCard
-            title='Performance'
-            value={`${stats.overview.performanceScore}%`}
-            icon='trending-up'
-            gradient={['#8b5cf6', '#7c3aed']}
-            subtitle={`${stats.overview.recentActivityCount} recent activities`}
-          />
-        </View>
+        {/* Recent Activity */}
+        <RecentActivity
+          activities={recentActivities}
+          title='Recent Activity'
+          subtitle='Latest updates from your mess'
+          showViewAll={true}
+          maxItems={3}
+          isSmallScreen={false}
+        />
       </ScrollView>
     </ThemedView>
   );
@@ -304,19 +626,8 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    marginTop: 20,
-    marginBottom: 24,
-  },
-  paymentCard: {
-    paddingHorizontal: 20,
-    marginBottom: 16,
-  },
-  overviewCard: {
-    paddingHorizontal: 20,
-    marginBottom: 16,
+  scrollContent: {
+    paddingBottom: 20,
+    paddingLeft: 10,
   },
 });

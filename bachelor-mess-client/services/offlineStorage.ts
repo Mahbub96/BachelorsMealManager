@@ -1,4 +1,6 @@
 import NetInfo from '@react-native-community/netinfo';
+import databaseHealthMonitor from './databaseHealthMonitor';
+import databaseInitializer from './databaseInitializer';
 import sqliteDatabase from './sqliteDatabase';
 
 // Types for offline data
@@ -57,13 +59,13 @@ class OfflineStorageService {
           }/${maxRetries})...`
         );
 
-        // Initialize SQLite database
-        await sqliteDatabase.init();
+        // Initialize SQLite database using the initializer
+        await databaseInitializer.initialize();
 
-        // Perform health check
-        const isHealthy = await sqliteDatabase.healthCheck();
-        if (!isHealthy) {
-          throw new Error('Database health check failed');
+        // Verify database is ready
+        const isReady = await databaseInitializer.isReady();
+        if (!isReady) {
+          throw new Error('Database not ready after initialization');
         }
 
         console.log('🔄 OfflineStorage - Setting up network monitoring...');
@@ -73,6 +75,11 @@ class OfflineStorageService {
         console.log('🔄 OfflineStorage - Starting sync interval...');
         // Start sync interval
         this.startSyncInterval();
+
+        console.log(
+          '🔄 OfflineStorage - Database health monitoring already started by initializer'
+        );
+        // Health monitoring is started by the database initializer
 
         console.log('🔄 OfflineStorage - Clearing expired cache...');
         // Clear expired cache
@@ -85,7 +92,9 @@ class OfflineStorageService {
           );
         }
 
-        console.log('✅ OfflineStorage - Initialized with SQLite database');
+        console.log(
+          '✅ OfflineStorage - Initialized with SQLite database and health monitoring'
+        );
         return; // Success, exit the retry loop
       } catch (error) {
         retryCount++;
@@ -93,6 +102,33 @@ class OfflineStorageService {
           `❌ OfflineStorage - Failed to initialize (attempt ${retryCount}/${maxRetries}):`,
           error instanceof Error ? error.message : 'Unknown error'
         );
+
+        // If we've had multiple failures, try emergency reset
+        if (retryCount >= 2) {
+          console.log(
+            '🚨 OfflineStorage - Multiple failures detected, attempting emergency reset...'
+          );
+          try {
+            await sqliteDatabase.emergencyReset();
+            // Continue with next attempt
+          } catch (resetError) {
+            console.log(
+              '⚠️ OfflineStorage - Emergency reset failed, trying bypass mode'
+            );
+            try {
+              await sqliteDatabase.bypassDatabase();
+              console.log(
+                '⚠️ OfflineStorage - Using bypass mode - limited functionality'
+              );
+              return; // Exit retry loop
+            } catch (bypassError) {
+              console.error(
+                '❌ OfflineStorage - All recovery methods failed:',
+                bypassError
+              );
+            }
+          }
+        }
 
         if (retryCount >= maxRetries) {
           console.error(
@@ -318,10 +354,26 @@ class OfflineStorageService {
 
   private async processSyncItem(item: any): Promise<boolean> {
     try {
-      // This would integrate with your actual API service
-      // For now, we'll simulate the API call
+      console.log(
+        `🔄 OfflineStorage - Processing sync item: ${item.id} for ${item.endpoint}`
+      );
+
+      // Make API call
       const response = await this.makeApiCall(item);
-      return response.success;
+
+      if (response.success) {
+        console.log(`✅ OfflineStorage - Sync successful for ${item.id}`);
+
+        // Clear the corresponding SQLite data after successful API submission
+        await this.clearSyncedData(item);
+
+        return true;
+      } else {
+        console.log(
+          `❌ OfflineStorage - Sync failed for ${item.id}: ${response.error}`
+        );
+        return false;
+      }
     } catch (error) {
       console.error(
         `❌ OfflineStorage - API call failed for ${item.id}:`,
@@ -331,13 +383,65 @@ class OfflineStorageService {
     }
   }
 
+  // Clear synced data from SQLite after successful API submission
+  private async clearSyncedData(item: any): Promise<void> {
+    try {
+      const itemId = item.data?.id || item.id;
+
+      // Determine which table to clear based on endpoint
+      if (item.endpoint.includes('/bazar')) {
+        await sqliteDatabase.deleteData('bazar_entries', itemId);
+        console.log(`🗑️ OfflineStorage - Cleared bazar entry: ${itemId}`);
+      } else if (item.endpoint.includes('/meals')) {
+        await sqliteDatabase.deleteData('meal_entries', itemId);
+        console.log(`🗑️ OfflineStorage - Cleared meal entry: ${itemId}`);
+      } else if (item.endpoint.includes('/payments')) {
+        await sqliteDatabase.deleteData('payment_entries', itemId);
+        console.log(`🗑️ OfflineStorage - Cleared payment entry: ${itemId}`);
+      } else {
+        // Generic clear from activities table
+        await sqliteDatabase.deleteData('activities', itemId);
+        console.log(`🗑️ OfflineStorage - Cleared activity entry: ${itemId}`);
+      }
+    } catch (error) {
+      console.error('❌ OfflineStorage - Failed to clear synced data:', error);
+    }
+  }
+
   private async makeApiCall(item: SyncQueueItem): Promise<any> {
-    // This is a placeholder - integrate with your actual API service
-    return new Promise(resolve => {
-      setTimeout(() => {
-        resolve({ success: Math.random() > 0.3 }); // 70% success rate for demo
-      }, 1000);
-    });
+    try {
+      console.log(`🌐 OfflineStorage - Making API call to ${item.endpoint}`);
+
+      // Import HTTP client dynamically to avoid circular dependencies
+      const { httpClient } = await import('./httpClient');
+
+      let response;
+      switch (item.action) {
+        case 'CREATE':
+          response = await httpClient.post(item.endpoint, item.data);
+          break;
+        case 'UPDATE':
+          response = await httpClient.put(item.endpoint, item.data);
+          break;
+        case 'DELETE':
+          response = await httpClient.delete(item.endpoint);
+          break;
+        default:
+          throw new Error(`Unknown action: ${item.action}`);
+      }
+
+      console.log(`✅ OfflineStorage - API call successful for ${item.id}`);
+      return { success: true, data: response };
+    } catch (error) {
+      console.error(
+        `❌ OfflineStorage - API call failed for ${item.id}:`,
+        error
+      );
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
   }
 
   // Offline-first data fetching
@@ -533,6 +637,343 @@ class OfflineStorageService {
     } catch (error) {
       console.error('❌ OfflineStorage - Failed to get meal entries:', error);
       return [];
+    }
+  }
+
+  // Form submission methods with offline-first approach
+  async submitBazarForm(formData: any): Promise<{
+    success: boolean;
+    message: string;
+    isOffline: boolean;
+    syncId?: string;
+  }> {
+    try {
+      // Always save to SQLite first
+      await sqliteDatabase.saveBazarEntry(formData);
+      console.log('✅ OfflineStorage - Bazar form saved to SQLite');
+
+      // Check if online
+      if (this.isOnline) {
+        try {
+          // Try to submit to API immediately
+          const { httpClient } = await import('./httpClient');
+          const response = await httpClient.post('/api/bazar', formData);
+
+          if (response.success) {
+            console.log(
+              '✅ OfflineStorage - Bazar form submitted to API successfully'
+            );
+            return {
+              success: true,
+              message: 'Form submitted successfully',
+              isOffline: false,
+            };
+          } else {
+            throw new Error(response.error || 'API submission failed');
+          }
+        } catch (apiError) {
+          console.log(
+            '⚠️ OfflineStorage - API submission failed, will sync later'
+          );
+          // Add to sync queue for later
+          await this.addToSyncQueue({
+            action: 'CREATE',
+            endpoint: '/api/bazar',
+            data: formData,
+          });
+
+          return {
+            success: true,
+            message: 'Form saved offline, will sync when network is restored',
+            isOffline: true,
+            syncId: formData.id,
+          };
+        }
+      } else {
+        // Offline - add to sync queue
+        await this.addToSyncQueue({
+          action: 'CREATE',
+          endpoint: '/api/bazar',
+          data: formData,
+        });
+
+        console.log('📱 OfflineStorage - Bazar form saved offline');
+        return {
+          success: true,
+          message: 'Form saved offline, will sync when network is restored',
+          isOffline: true,
+          syncId: formData.id,
+        };
+      }
+    } catch (error) {
+      console.error('❌ OfflineStorage - Failed to submit bazar form:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        isOffline: true,
+      };
+    }
+  }
+
+  async submitMealForm(formData: any): Promise<{
+    success: boolean;
+    message: string;
+    isOffline: boolean;
+    syncId?: string;
+  }> {
+    try {
+      // Always save to SQLite first
+      await sqliteDatabase.saveMealEntry(formData);
+      console.log('✅ OfflineStorage - Meal form saved to SQLite');
+
+      // Check if online
+      if (this.isOnline) {
+        try {
+          // Try to submit to API immediately
+          const { httpClient } = await import('./httpClient');
+          const response = await httpClient.post('/api/meals', formData);
+
+          if (response.success) {
+            console.log(
+              '✅ OfflineStorage - Meal form submitted to API successfully'
+            );
+            return {
+              success: true,
+              message: 'Form submitted successfully',
+              isOffline: false,
+            };
+          } else {
+            throw new Error(response.error || 'API submission failed');
+          }
+        } catch (apiError) {
+          console.log(
+            '⚠️ OfflineStorage - API submission failed, will sync later'
+          );
+          // Add to sync queue for later
+          await this.addToSyncQueue({
+            action: 'CREATE',
+            endpoint: '/api/meals',
+            data: formData,
+          });
+
+          return {
+            success: true,
+            message: 'Form saved offline, will sync when network is restored',
+            isOffline: true,
+            syncId: formData.id,
+          };
+        }
+      } else {
+        // Offline - add to sync queue
+        await this.addToSyncQueue({
+          action: 'CREATE',
+          endpoint: '/api/meals',
+          data: formData,
+        });
+
+        console.log('📱 OfflineStorage - Meal form saved offline');
+        return {
+          success: true,
+          message: 'Form saved offline, will sync when network is restored',
+          isOffline: true,
+          syncId: formData.id,
+        };
+      }
+    } catch (error) {
+      console.error('❌ OfflineStorage - Failed to submit meal form:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        isOffline: true,
+      };
+    }
+  }
+
+  async submitPaymentForm(formData: any): Promise<{
+    success: boolean;
+    message: string;
+    isOffline: boolean;
+    syncId?: string;
+  }> {
+    try {
+      // Always save to SQLite first
+      await sqliteDatabase.savePaymentEntryData(formData);
+      console.log('✅ OfflineStorage - Payment form saved to SQLite');
+
+      // Check if online
+      if (this.isOnline) {
+        try {
+          // Try to submit to API immediately
+          const { httpClient } = await import('./httpClient');
+          const response = await httpClient.post('/api/payments', formData);
+
+          if (response.success) {
+            console.log(
+              '✅ OfflineStorage - Payment form submitted to API successfully'
+            );
+            return {
+              success: true,
+              message: 'Form submitted successfully',
+              isOffline: false,
+            };
+          } else {
+            throw new Error(response.error || 'API submission failed');
+          }
+        } catch (apiError) {
+          console.log(
+            '⚠️ OfflineStorage - API submission failed, will sync later'
+          );
+          // Add to sync queue for later
+          await this.addToSyncQueue({
+            action: 'CREATE',
+            endpoint: '/api/payments',
+            data: formData,
+          });
+
+          return {
+            success: true,
+            message: 'Form saved offline, will sync when network is restored',
+            isOffline: true,
+            syncId: formData.id,
+          };
+        }
+      } else {
+        // Offline - add to sync queue
+        await this.addToSyncQueue({
+          action: 'CREATE',
+          endpoint: '/api/payments',
+          data: formData,
+        });
+
+        console.log('📱 OfflineStorage - Payment form saved offline');
+        return {
+          success: true,
+          message: 'Form saved offline, will sync when network is restored',
+          isOffline: true,
+          syncId: formData.id,
+        };
+      }
+    } catch (error) {
+      console.error(
+        '❌ OfflineStorage - Failed to submit payment form:',
+        error
+      );
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        isOffline: true,
+      };
+    }
+  }
+
+  // Generic form submission method
+  async submitForm(
+    endpoint: string,
+    formData: any,
+    action: 'CREATE' | 'UPDATE' | 'DELETE' = 'CREATE'
+  ): Promise<{
+    success: boolean;
+    message: string;
+    isOffline: boolean;
+    syncId?: string;
+  }> {
+    try {
+      // Generate unique ID for the form data
+      const formId =
+        formData.id ||
+        `form_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const dataWithId = { ...formData, id: formId };
+
+      // Save to appropriate SQLite table based on endpoint
+      if (endpoint.includes('/bazar')) {
+        await sqliteDatabase.saveBazarEntry(dataWithId);
+      } else if (endpoint.includes('/meals')) {
+        await sqliteDatabase.saveMealEntry(dataWithId);
+      } else if (endpoint.includes('/payments')) {
+        await sqliteDatabase.savePaymentEntryData(dataWithId);
+      } else {
+        // Generic save to activities table
+        await sqliteDatabase.saveActivity({
+          ...dataWithId,
+          type: 'form_submission',
+          endpoint: endpoint,
+        });
+      }
+
+      console.log(`✅ OfflineStorage - Form saved to SQLite for ${endpoint}`);
+
+      // Check if online
+      if (this.isOnline) {
+        try {
+          // Try to submit to API immediately
+          const { httpClient } = await import('./httpClient');
+          let response;
+
+          switch (action) {
+            case 'CREATE':
+              response = await httpClient.post(endpoint, dataWithId);
+              break;
+            case 'UPDATE':
+              response = await httpClient.put(endpoint, dataWithId);
+              break;
+            case 'DELETE':
+              response = await httpClient.delete(endpoint);
+              break;
+          }
+
+          if (response.success) {
+            console.log(
+              `✅ OfflineStorage - Form submitted to API successfully: ${endpoint}`
+            );
+            return {
+              success: true,
+              message: 'Form submitted successfully',
+              isOffline: false,
+            };
+          } else {
+            throw new Error(response.error || 'API submission failed');
+          }
+        } catch (apiError) {
+          console.log(
+            '⚠️ OfflineStorage - API submission failed, will sync later'
+          );
+          // Add to sync queue for later
+          await this.addToSyncQueue({
+            action: action,
+            endpoint: endpoint,
+            data: dataWithId,
+          });
+
+          return {
+            success: true,
+            message: 'Form saved offline, will sync when network is restored',
+            isOffline: true,
+            syncId: formId,
+          };
+        }
+      } else {
+        // Offline - add to sync queue
+        await this.addToSyncQueue({
+          action: action,
+          endpoint: endpoint,
+          data: dataWithId,
+        });
+
+        console.log(`📱 OfflineStorage - Form saved offline for ${endpoint}`);
+        return {
+          success: true,
+          message: 'Form saved offline, will sync when network is restored',
+          isOffline: true,
+          syncId: formId,
+        };
+      }
+    } catch (error) {
+      console.error('❌ OfflineStorage - Failed to submit form:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        isOffline: true,
+      };
     }
   }
 
@@ -736,6 +1177,12 @@ class OfflineStorageService {
     if (this.syncInterval) {
       clearInterval(this.syncInterval);
     }
+
+    // Stop health monitoring
+    databaseHealthMonitor.destroy();
+
+    // Destroy database initializer
+    databaseInitializer.destroy();
 
     // Close database connection
     sqliteDatabase.close().catch(error => {

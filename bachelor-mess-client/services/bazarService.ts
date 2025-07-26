@@ -298,10 +298,52 @@ class BazarServiceImpl implements BazarService {
       const queryParams = this.buildQueryParams(filters);
       const endpoint = `${API_ENDPOINTS.BAZAR.ALL}${queryParams}`;
 
-      const response = await httpClient.get<BazarEntry[]>(endpoint, {
+      // Fix: Use correct response type for nested structure
+      const response = await httpClient.get<{
+        bazarEntries: BazarEntry[];
+        pagination: any;
+      }>(endpoint, {
         cache: true,
         cacheKey: `all_bazar_${JSON.stringify(filters)}`,
       });
+
+      // Transform the response to match expected structure
+      if (response.success && response.data) {
+        let bazarEntries: BazarEntry[] = [];
+
+        // Handle nested response structure from backend
+        if (
+          response.data &&
+          typeof response.data === 'object' &&
+          'bazarEntries' in response.data
+        ) {
+          bazarEntries = (response.data as any).bazarEntries || [];
+        } else {
+          // Fallback: treat response.data as array directly
+          bazarEntries = Array.isArray(response.data) ? response.data : [];
+        }
+
+        // Transform entries to ensure proper structure
+        const transformedEntries = bazarEntries.map(
+          (entry: any): BazarEntry => ({
+            ...entry,
+            id: entry._id || entry.id,
+            items: entry.items || [],
+            totalAmount: entry.totalAmount || 0,
+            date: entry.date || new Date().toISOString(),
+            status: entry.status || 'pending',
+            userId: entry.userId || 'Unknown',
+            description: entry.description || '',
+            createdAt: entry.createdAt || new Date().toISOString(),
+            updatedAt: entry.updatedAt || new Date().toISOString(),
+          })
+        );
+
+        return {
+          ...response,
+          data: transformedEntries,
+        } as ApiResponse<BazarEntry[]>;
+      }
 
       return response;
     } catch (error) {

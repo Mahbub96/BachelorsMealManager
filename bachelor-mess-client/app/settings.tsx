@@ -1,7 +1,6 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { DatabaseReset } from '@/components/DatabaseReset';
-import { featureManager } from '@/services';
+import { featureManager, offlineStorage } from '@/services';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -364,12 +363,37 @@ export default function SettingsScreen() {
 
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Database</ThemedText>
-          <DatabaseReset
-            onReset={() => {
-              // Reload settings after database reset
-              loadFeatureConfig();
+          <TouchableOpacity
+            style={styles.resetButton}
+            onPress={async () => {
+              Alert.alert(
+                'Reset Database',
+                'This will clear all offline data. Are you sure?',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Reset',
+                    style: 'destructive',
+                    onPress: async () => {
+                      try {
+                        console.log('🔄 Starting database reset...');
+                        await offlineStorage.resetDatabase();
+                        console.log('✅ Database reset completed');
+                        Alert.alert('Success', 'Database reset completed');
+                        // Reload settings after database reset
+                        loadFeatureConfig();
+                      } catch (error) {
+                        console.error('❌ Database reset failed:', error);
+                        Alert.alert('Error', 'Failed to reset database');
+                      }
+                    },
+                  },
+                ]
+              );
             }}
-          />
+          >
+            <ThemedText style={styles.resetButtonText}>Reset Database</ThemedText>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </ThemedView>
@@ -432,5 +456,17 @@ const styles = StyleSheet.create({
   },
   settingAction: {
     marginLeft: 16,
+  },
+  resetButton: {
+    backgroundColor: '#ef4444',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginTop: 8,
+  },
+  resetButtonText: {
+    color: 'white',
+    fontWeight: '600',
   },
 });

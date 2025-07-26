@@ -4,17 +4,15 @@ import { useRouter } from 'expo-router';
 import { ThemedView } from '../ThemedView';
 import { useAuth } from '../../context/AuthContext';
 import { useBazar } from '../../context/BazarContext';
-import {
-  BazarHeader,
-  BazarAddButton,
-  BazarStatistics,
-  BazarListSection,
-  BazarFilters,
-  BazarSearchBar,
-  BazarEmptyState,
-  BazarLoadingState,
-  BazarErrorState,
-} from './index';
+import { BazarHeader } from './BazarHeader';
+import { BazarAddButton } from './BazarAddButton';
+import { BazarStatistics } from './BazarStatistics';
+import { BazarListSection } from './BazarListSection';
+import { BazarFilters } from './BazarFilters';
+import { BazarSearchBar } from './BazarSearchBar';
+import { BazarEmptyState } from './BazarEmptyState';
+import { BazarLoadingState } from './BazarLoadingState';
+import { BazarErrorState } from './BazarErrorState';
 
 interface BazarManagementProps {
   showFilters?: boolean;

@@ -1,8 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useState, useEffect } from 'react';
-import { activityService } from '../services/activityService';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Dimensions,
@@ -12,6 +11,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import { activityService } from '../services/activityService';
 import {
   BarChart,
   LineChart,

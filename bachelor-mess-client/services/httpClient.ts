@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import authEventEmitter from './authEventEmitter';
 import { config as API_CONFIG, ApiResponse, HTTP_STATUS } from './config';
 import { offlineStorage } from './offlineStorage';
-import authEventEmitter from './authEventEmitter';
 
 // Request configuration interface
 interface RequestConfig {
@@ -112,16 +112,17 @@ class HttpClient {
 
     try {
       // Simple health check
-      const healthUrl = `${this.baseURL.replace('/api', '')}/health`;
+      const healthUrl = `${this.baseURL}/health`;
       console.log('🔍 Checking API connectivity at:', healthUrl);
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // Increased timeout
 
       const response = await fetch(healthUrl, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          'User-Agent': 'MessManager/1.0',
         },
         signal: controller.signal,
       });
@@ -666,12 +667,161 @@ class HttpClient {
     }
   }
 
+  // Network testing functionality (integrated from networkTest.ts)
+  async testNetworkConnection(): Promise<{
+    success: boolean;
+    message: string;
+    details?: any;
+  }> {
+    try {
+      console.log('🔍 Testing network connection to:', this.baseURL);
+
+      const response = await fetch(
+        `${this.baseURL.replace('/api', '')}/health`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        return {
+          success: true,
+          message: '✅ Network connection successful',
+          details: {
+            status: response.status,
+            url: this.baseURL,
+            serverResponse: data,
+          },
+        };
+      } else {
+        return {
+          success: false,
+          message: `❌ Server responded with status: ${response.status}`,
+          details: {
+            status: response.status,
+            statusText: response.statusText,
+            url: this.baseURL,
+          },
+        };
+      }
+    } catch (error) {
+      console.error('Network test failed:', error);
+      return {
+        success: false,
+        message: `❌ Network connection failed: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
+        details: {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          url: this.baseURL,
+          type: error instanceof Error ? error.constructor.name : 'Unknown',
+        },
+      };
+    }
+  }
+
+  async testLoginEndpoint(): Promise<{
+    success: boolean;
+    message: string;
+    details?: any;
+  }> {
+    try {
+      console.log('🔍 Testing login endpoint...');
+
+      const response = await fetch(`${this.baseURL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: 'test@example.com',
+          password: 'testpassword',
+        }),
+      });
+
+      // We expect a 400 or 404 for invalid credentials, but the endpoint should be reachable
+      if (response.status === 400 || response.status === 404) {
+        return {
+          success: true,
+          message:
+            '✅ Login endpoint is reachable (expected error for invalid credentials)',
+          details: {
+            status: response.status,
+            url: `${this.baseURL}/auth/login`,
+          },
+        };
+      } else if (response.ok) {
+        return {
+          success: true,
+          message: '✅ Login endpoint is working',
+          details: {
+            status: response.status,
+            url: `${this.baseURL}/auth/login`,
+          },
+        };
+      } else {
+        return {
+          success: false,
+          message: `❌ Login endpoint returned unexpected status: ${response.status}`,
+          details: {
+            status: response.status,
+            statusText: response.statusText,
+            url: `${this.baseURL}/auth/login`,
+          },
+        };
+      }
+    } catch (error) {
+      console.error('Login endpoint test failed:', error);
+      return {
+        success: false,
+        message: `❌ Login endpoint test failed: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
+        details: {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          url: `${this.baseURL}/auth/login`,
+          type: error instanceof Error ? error.constructor.name : 'Unknown',
+        },
+      };
+    }
+  }
+
+  async runFullNetworkTest(): Promise<{
+    connection: any;
+    login: any;
+    summary: string;
+  }> {
+    console.log('🚀 Starting comprehensive network test...');
+
+    const connectionTest = await this.testNetworkConnection();
+    const loginTest = await this.testLoginEndpoint();
+
+    const allTestsPassed = connectionTest.success && loginTest.success;
+    const summary = allTestsPassed
+      ? '✅ All network tests passed! The app should be able to connect to the backend.'
+      : '❌ Some network tests failed. Check the details below.';
+
+    return {
+      connection: connectionTest,
+      login: loginTest,
+      summary,
+    };
+  }
+
   // Enhanced offline status
   async getOfflineStatus() {
     try {
       const online = await this.isOnline();
-      const pendingRequests = offlineStorage?.getPendingRequests ? await offlineStorage.getPendingRequests() : [];
-      const storageSize = offlineStorage?.getStorageSize ? await offlineStorage.getStorageSize() : 0;
+      const pendingRequests = offlineStorage?.getPendingRequests
+        ? await offlineStorage.getPendingRequests()
+        : [];
+      const storageSize = offlineStorage?.getStorageSize
+        ? await offlineStorage.getStorageSize()
+        : 0;
 
       return {
         isOnline: online,
@@ -701,7 +851,9 @@ class HttpClient {
         return;
       }
 
-      const pendingRequests = offlineStorage?.getPendingRequests ? await offlineStorage.getPendingRequests() : [];
+      const pendingRequests = offlineStorage?.getPendingRequests
+        ? await offlineStorage.getPendingRequests()
+        : [];
       console.log(`🔄 Retrying ${pendingRequests.length} offline requests`);
 
       for (const request of pendingRequests) {

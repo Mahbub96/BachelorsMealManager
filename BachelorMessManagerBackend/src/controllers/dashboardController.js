@@ -19,7 +19,7 @@ class DashboardController {
       // Get basic counts instead of complex stats
       const userCount = await User.countDocuments({ status: 'active' });
       const mealCount = await Meal.countDocuments(isAdmin ? {} : { userId });
-      const bazarCount = await Bazar.countDocuments(isAdmin ? {} : { userId });
+      // const bazarCount = await Bazar.countDocuments(isAdmin ? {} : { userId });
 
       // Get pending counts
       const pendingMeals = await Meal.countDocuments({
@@ -217,24 +217,6 @@ class DashboardController {
   async getWeeklyMealsData(userId, isAdmin) {
     try {
       const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-      const colors = [
-        '#f59e0b',
-        '#10b981',
-        '#6366f1',
-        '#f093fb',
-        '#43e97b',
-        '#667eea',
-        '#f97316',
-      ];
-      const gradients = [
-        ['#fbbf24', '#f59e0b'],
-        ['#34d399', '#10b981'],
-        ['#818cf8', '#6366f1'],
-        ['#f093fb', '#f5576c'],
-        ['#43e97b', '#38f9d7'],
-        ['#667eea', '#764ba2'],
-        ['#fb923c', '#f97316'],
-      ];
 
       const weeklyData = [];
       const startOfWeek = new Date();
@@ -244,12 +226,28 @@ class DashboardController {
         const date = new Date(startOfWeek);
         date.setDate(date.getDate() + i);
 
-        const query = { date: date.toISOString().split('T')[0] };
+        // Create date range for the specific day
+        const startOfDay = new Date(date);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(date);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        const query = {
+          date: {
+            $gte: startOfDay,
+            $lte: endOfDay,
+          },
+        };
         if (!isAdmin) {
           query.userId = userId;
         }
 
+        console.log(`🔍 Querying meals for ${date.toDateString()}:`, query);
         const meals = await Meal.find(query);
+        console.log(
+          `📊 Found ${meals.length} meals for ${date.toDateString()}`
+        );
+
         const totalMeals = meals.reduce((sum, meal) => {
           return (
             sum +
@@ -263,8 +261,6 @@ class DashboardController {
           label: days[i],
           value: totalMeals,
           forecast: Math.round(totalMeals * 1.1), // Simple forecast
-          color: colors[i],
-          gradient: gradients[i],
           trend:
             i > 0
               ? totalMeals > weeklyData[i - 1]?.value
@@ -288,7 +284,8 @@ class DashboardController {
       const currentMonth = new Date().getMonth();
       const currentYear = new Date().getFullYear();
 
-      for (let i = 0; i < 4; i++) {
+      // Get data for the last 6 months instead of 4
+      for (let i = 5; i >= 0; i--) {
         const month = new Date(currentYear, currentMonth - i, 1);
         const monthName = month.toLocaleDateString('en-US', { month: 'short' });
 
@@ -312,14 +309,41 @@ class DashboardController {
           0
         );
 
+        // Calculate expenses (mock data for now - in real app this would be from a separate expenses collection)
+        const expenses = Math.round(totalAmount * 0.7); // 70% of revenue goes to expenses
+
+        // Calculate profit
+        const profit = totalAmount - expenses;
+
+        // Calculate member count (mock data)
+        const memberCount = Math.floor(Math.random() * 10) + 5; // 5-15 members
+
         monthlyData.push({
           date: monthName,
           value: totalAmount,
           forecast: Math.round(totalAmount * 1.05), // Simple forecast
+          expenses: expenses,
+          profit: profit,
+          memberCount: memberCount,
+          details: {
+            expenses: expenses,
+            profit: profit,
+            memberCount: memberCount,
+            entryCount: bazarEntries.length,
+          },
         });
       }
 
-      return monthlyData.reverse();
+      console.log('📊 Monthly revenue data calculated:', {
+        dataPoints: monthlyData.length,
+        totalRevenue: monthlyData.reduce((sum, item) => sum + item.value, 0),
+        averageRevenue: Math.round(
+          monthlyData.reduce((sum, item) => sum + item.value, 0) /
+            monthlyData.length
+        ),
+      });
+
+      return monthlyData;
     } catch (error) {
       logger.error('Error getting monthly revenue data:', error);
       return [];
@@ -332,58 +356,71 @@ class DashboardController {
       const categories = [
         {
           name: 'Groceries',
-          color: '#10b981',
-          gradient: ['#34d399', '#10b981'],
+          percentage: 0.6, // 60% of total expenses
         },
         {
           name: 'Utilities',
-          color: '#6366f1',
-          gradient: ['#818cf8', '#6366f1'],
+          percentage: 0.25, // 25% of total expenses
         },
         {
           name: 'Maintenance',
-          color: '#f59e0b',
-          gradient: ['#fbbf24', '#f59e0b'],
+          percentage: 0.1, // 10% of total expenses
         },
-        { name: 'Others', color: '#f093fb', gradient: ['#f093fb', '#f5576c'] },
+        {
+          name: 'Others',
+          percentage: 0.05, // 5% of total expenses
+        },
       ];
 
       const breakdownData = [];
       const currentMonth = new Date().getMonth();
       const currentYear = new Date().getFullYear();
 
+      // Get total expenses for current month
+      const query = {
+        createdAt: {
+          $gte: new Date(currentYear, currentMonth, 1),
+          $lte: new Date(currentYear, currentMonth + 1, 0),
+        },
+      };
+      if (!isAdmin) {
+        query.userId = userId;
+      }
+
+      const bazarEntries = await Bazar.find(query);
+      const totalExpenses = bazarEntries.reduce(
+        (sum, entry) => sum + entry.totalAmount,
+        0
+      );
+
+      // If no real data, use a reasonable default
+      const baseExpenses = totalExpenses > 0 ? totalExpenses : 5000;
+
       for (const category of categories) {
-        // For now, we'll use mock data since we don't have category field in Bazar model
-        // In a real implementation, you'd query by category
-        const query = {
-          createdAt: {
-            $gte: new Date(currentYear, currentMonth, 1),
-            $lte: new Date(currentYear, currentMonth + 1, 0),
-          },
-        };
-        if (!isAdmin) {
-          query.userId = userId;
-        }
-
-        const bazarEntries = await Bazar.find(query);
-        const totalAmount = bazarEntries.reduce(
-          (sum, entry) => sum + entry.totalAmount,
-          0
-        );
-
-        // Distribute amount across categories (mock implementation)
-        const categoryAmount = Math.round(
-          totalAmount * (Math.random() * 0.4 + 0.1)
-        );
+        const categoryAmount = Math.round(baseExpenses * category.percentage);
+        const forecastAmount = Math.round(categoryAmount * 1.02); // 2% increase forecast
 
         breakdownData.push({
           label: category.name,
           value: categoryAmount,
-          forecast: Math.round(categoryAmount * 1.02),
-          color: category.color,
-          gradient: category.gradient,
+          forecast: forecastAmount,
+          trend: forecastAmount > categoryAmount ? 'up' : 'stable',
+          details: {
+            percentage: Math.round(category.percentage * 100),
+            description: `${category.name} expenses for current month`,
+          },
         });
       }
+
+      console.log('📊 Expense breakdown data calculated:', {
+        totalExpenses: baseExpenses,
+        categories: breakdownData.length,
+        breakdown: breakdownData.map(item => ({
+          label: item.label,
+          value: item.value,
+          percentage: item.details.percentage,
+        })),
+      });
 
       return breakdownData;
     } catch (error) {

@@ -24,7 +24,7 @@ export default function TabLayout() {
   const isAdmin = user?.role === 'admin';
   const isSuperAdmin = user?.role === 'super_admin';
 
-  // Debug logging
+  // Debug logging for troubleshooting
   console.log('🔍 TabLayout Debug:', {
     userRole: user?.role,
     isAdmin,
@@ -78,6 +78,8 @@ export default function TabLayout() {
           shadowOpacity: 0.1,
           shadowRadius: 8,
           elevation: 8,
+          // Fix for iOS safe area
+          paddingHorizontal: 0,
         },
         tabBarLabelStyle: {
           fontSize: 12,
@@ -144,10 +146,10 @@ export default function TabLayout() {
           }}
         />
       )}
-      {/* Super Admin tab - temporarily disabled for debugging */}
-      {/* {user?.role === 'super_admin' && (
+      {/* Super Admin tab - only visible to super admin users */}
+      {isSuperAdmin && (
         <Tabs.Screen
-          name='super-admin-redirect'
+          name='super-admin'
           options={{
             title: 'Super Admin',
             tabBarIcon: ({ color, focused }) => (
@@ -159,7 +161,7 @@ export default function TabLayout() {
             ),
           }}
         />
-      )} */}
+      )}
     </Tabs>
   );
 }
@@ -170,21 +172,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 10,
     borderBottomWidth: 1,
+    // Ensure header is properly positioned
+    minHeight: 80,
   },
   headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    // Ensure content is properly aligned
+    flex: 1,
   },
   welcomeText: {
     flex: 1,
+    // Prevent text overflow
+    marginRight: 10,
   },
   welcomeTitle: {
     fontSize: 16,
     fontWeight: '600',
+    // Ensure text doesn't overflow
+    flexShrink: 1,
   },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
+    // Ensure actions are properly positioned
+    flexShrink: 0,
   },
 });

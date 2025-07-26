@@ -1,31 +1,31 @@
-import React from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { useTheme } from '@/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ThemedText } from '../ThemedText';
 import { useRouter } from 'expo-router';
-import { useTheme } from '@/context/ThemeContext';
+import React from 'react';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ThemedText } from '../ThemedText';
 
 interface DashboardHeaderProps {
   title: string;
   subtitle: string;
   icon: string;
-  colors: [string, string];
   showNotificationButton?: boolean;
   onNotificationPress?: () => void;
   userGreeting?: string;
   isSmallScreen?: boolean;
+  user?: { name: string; role: string };
 }
 
 export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   title,
   subtitle,
   icon,
-  colors,
   showNotificationButton = false,
   onNotificationPress,
   userGreeting,
   isSmallScreen = false,
+  user,
 }) => {
   const router = useRouter();
   const { theme } = useTheme();
@@ -40,24 +40,40 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={colors} style={styles.headerGradient}>
+      <LinearGradient
+        colors={theme.gradient.primary}
+        style={styles.headerGradient}
+      >
         <View style={styles.headerContent}>
           <View style={styles.headerLeft}>
-            <View style={styles.iconContainer}>
-                          <Ionicons
-              name={icon as any}
-              size={isSmallScreen ? 32 : 40}
-              color={theme.text.inverse}
-            />
+            <View
+              style={[
+                styles.iconContainer,
+                { backgroundColor: theme.overlay.light },
+              ]}
+            >
+              <Ionicons
+                name={icon as any}
+                size={isSmallScreen ? 32 : 40}
+                color={theme.text.inverse}
+              />
             </View>
             <View style={styles.textContainer}>
               <ThemedText
-                style={[styles.title, isSmallScreen && styles.titleSmall]}
+                style={[
+                  styles.title,
+                  isSmallScreen && styles.titleSmall,
+                  { color: theme.text.inverse },
+                ]}
               >
                 {title}
               </ThemedText>
               <ThemedText
-                style={[styles.subtitle, isSmallScreen && styles.subtitleSmall]}
+                style={[
+                  styles.subtitle,
+                  isSmallScreen && styles.subtitleSmall,
+                  { color: theme.text.inverse },
+                ]}
               >
                 {userGreeting ? `${subtitle}, ${userGreeting}!` : subtitle}
               </ThemedText>
@@ -69,6 +85,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               style={[
                 styles.notificationButton,
                 isSmallScreen && styles.notificationButtonSmall,
+                { backgroundColor: theme.overlay.light },
               ]}
               onPress={handleNotificationPress}
             >

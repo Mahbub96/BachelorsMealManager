@@ -9,12 +9,16 @@ const { width: screenWidth } = Dimensions.get('window');
 interface ChartsSectionProps {
   monthlyRevenue: any[];
   currentMonthRevenue: any;
+  expenseBreakdown: any[];
+  weeklyMeals: any[];
   isTablet?: boolean;
 }
 
 export const ChartsSection: React.FC<ChartsSectionProps> = ({
   monthlyRevenue,
   currentMonthRevenue,
+  expenseBreakdown,
+  weeklyMeals,
   isTablet = false,
 }) => {
   const { theme } = useTheme();
@@ -44,70 +48,61 @@ export const ChartsSection: React.FC<ChartsSectionProps> = ({
 
   console.log('📊 Processed revenue chart data:', revenueChartData);
 
-  // Create meaningful expense breakdown data with safety checks
-  const safeExpenses = currentMonthRevenue?.expenses || 0;
-  const expenseChartData = [
-    {
-      label: 'Groceries',
-      value: Math.round(safeExpenses * 0.6),
-      forecast: Math.round(safeExpenses * 0.6 * 1.02),
-      color: theme.status.error,
-      gradient: theme.gradient.error as [string, string],
-      trend: 'up' as const,
-    },
-    {
-      label: 'Utilities',
-      value: Math.round(safeExpenses * 0.25),
-      forecast: Math.round(safeExpenses * 0.25 * 1.01),
-      color: theme.status.info,
-      gradient: theme.gradient.info as [string, string],
-      trend: 'stable' as const,
-    },
-    {
-      label: 'Maintenance',
-      value: Math.round(safeExpenses * 0.15),
-      forecast: Math.round(safeExpenses * 0.15 * 1.03),
-      color: theme.status.warning,
-      gradient: theme.gradient.warning as [string, string],
-      trend: 'down' as const,
-    },
-  ];
+  // Create expense breakdown data from API with theme colors
+  const expenseChartData = (expenseBreakdown || []).map((item, index) => {
+    const colors = [
+      theme.status.error,
+      theme.status.info,
+      theme.status.warning,
+      theme.status.success,
+    ];
+    const gradients = [
+      theme.gradient.error,
+      theme.gradient.info,
+      theme.gradient.warning,
+      theme.gradient.success,
+    ];
 
-  // Generate meal consumption data from API data or show empty state
-  const mealChartData =
-    monthlyRevenue && monthlyRevenue.length > 0
-      ? monthlyRevenue.slice(-7).map((item, index) => {
-          const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-          const value = item?.meals?.total || 0;
-          const forecast = Math.round(value * 1.05); // Simple forecast
-          const trend =
-            value > (monthlyRevenue[index - 1]?.meals?.total || 0)
-              ? 'up'
-              : value < (monthlyRevenue[index - 1]?.meals?.total || 0)
-              ? 'down'
-              : 'stable';
+    return {
+      label: item.label || `Category ${index + 1}`,
+      value: item.value || 0,
+      forecast: item.forecast || 0,
+      color: colors[index % colors.length],
+      gradient: gradients[index % gradients.length] as [string, string],
+      trend: item.trend || 'stable',
+    };
+  });
 
-          return {
-            label: days[index] || `Day ${index + 1}`,
-            value,
-            forecast,
-            color: theme.status.success,
-            gradient: theme.gradient.success as [string, string],
-            trend: trend as const,
-          };
-        })
-      : [
-          {
-            label: 'No Data',
-            value: 0,
-            color: theme.text.tertiary,
-            gradient: [theme.text.tertiary, theme.text.tertiary] as [
-              string,
-              string
-            ],
-            trend: 'stable' as 'up' | 'down' | 'stable',
-          },
-        ];
+  // Create meal chart data from API with theme colors
+  const mealChartData = (weeklyMeals || []).map((item, index) => {
+    const colors = [
+      theme.status.success,
+      theme.status.info,
+      theme.status.warning,
+      theme.status.error,
+      theme.primary,
+      theme.secondary,
+      theme.accent,
+    ];
+    const gradients = [
+      theme.gradient.success,
+      theme.gradient.info,
+      theme.gradient.warning,
+      theme.gradient.error,
+      theme.gradient.primary,
+      theme.gradient.secondary,
+      theme.gradient.accent,
+    ];
+
+    return {
+      label: item.label || `Day ${index + 1}`,
+      value: item.value || 0,
+      forecast: item.forecast || 0,
+      color: colors[index % colors.length],
+      gradient: gradients[index % gradients.length] as [string, string],
+      trend: item.trend || 'stable',
+    };
+  });
 
   const handlePeriodChange = (period: string) => {
     setSelectedPeriod(period);

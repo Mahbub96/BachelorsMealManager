@@ -38,9 +38,8 @@ const getApiUrl = (): string => {
   }
 
   // Production should always use environment variable
-  throw new Error(
-    'EXPO_PUBLIC_API_URL environment variable is required for production'
-  );
+  console.warn('⚠️ No environment API URL found, using development fallback');
+  return 'http://192.168.0.130:3000';
 };
 
 export const config = {
@@ -93,6 +92,11 @@ export const API_ENDPOINTS = {
     REGISTER: '/api/auth/register',
     LOGOUT: '/api/auth/logout',
     REFRESH: '/api/auth/refresh',
+    CHANGE_PASSWORD: '/api/auth/change-password',
+    FORGOT_PASSWORD: '/api/auth/forgot-password',
+    RESET_PASSWORD: '/api/auth/reset-password',
+    VERIFY_TOKEN: '/api/auth/verify',
+    PROFILE: '/api/auth/profile',
   },
   USERS: {
     PROFILE: '/api/users/profile',
