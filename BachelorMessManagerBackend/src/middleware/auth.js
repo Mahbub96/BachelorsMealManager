@@ -1,12 +1,12 @@
 // Temporarily removed imports to fix logout issue
-// const jwt = require('jsonwebtoken');
-// const User = require('../models/User');
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
 // const logger = require('../utils/logger');
-// const {
-//   AuthenticationError,
-//   AuthorizationError,
-// } = require('../utils/errorHandler');
-// const { cacheManager } = require('../utils/cache');
+const {
+  AuthenticationError,
+  // AuthorizationError,
+} = require('../utils/errorHandler');
+const { cacheManager } = require('../utils/cache');
 
 /**
  * Enhanced Authentication Middleware
@@ -198,7 +198,7 @@ class AuthMiddleware {
    * Token refresh middleware
    */
   static refreshToken() {
-    return async (req, res, next) => {
+    return async (req, res, _next) => {
       try {
         const { refreshToken } = req.body;
 

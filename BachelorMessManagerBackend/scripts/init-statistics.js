@@ -1,17 +1,21 @@
 const mongoose = require('mongoose');
 const Statistics = require('../src/models/Statistics');
 const User = require('../src/models/User');
-const Meal = require('../src/models/Meal');
 const Bazar = require('../src/models/Bazar');
+const Meal = require('../src/models/Meal');
+require('dotenv').config();
 
 // Database connection
 const connectDB = async () => {
   try {
     const conn = await mongoose.connect(
-      process.env.MONGODB_URI || 'mongodb://localhost:27017/bachelor-mess'
+      process.env.MONGODB_URI || 'mongodb://localhost:27017/bachelor-mess',
+      {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+      }
     );
     console.log(`MongoDB Connected: ${conn.connection.host}`);
-    return conn;
   } catch (error) {
     console.error('Database connection error:', error);
     process.exit(1);
@@ -19,77 +23,92 @@ const connectDB = async () => {
 };
 
 // Initialize statistics
-const initializeStatistics = async () => {
+const initStatistics = async () => {
   try {
-    console.log('🔄 Initializing statistics...');
+    console.log('📊 Initializing statistics...');
 
-    // Update all statistics
-    await Statistics.updateAllStatistics();
-    console.log('✅ Global statistics updated');
+    // Clear existing statistics
+    await Statistics.deleteMany({});
+    console.log('🗑️  Cleared existing statistics');
 
-    // Update monthly statistics
-    await Statistics.updateMonthlyStatistics();
-    console.log('✅ Monthly statistics updated');
+    // Get current counts
+    const totalUsers = await User.countDocuments();
+    const adminUsers = await User.countDocuments({ role: 'admin' });
+    const memberUsers = await User.countDocuments({ role: 'member' });
+    const inactiveUsers = await User.countDocuments({ status: 'inactive' });
 
-    // Get the statistics document
-    const stats = await Statistics.getOrCreate();
-    const formattedStats = stats.getFormattedStats();
+    const totalMeals = await Meal.countDocuments();
+    const approvedMeals = await Meal.countDocuments({ status: 'approved' });
+    const pendingMeals = await Meal.countDocuments({ status: 'pending' });
+    const rejectedMeals = await Meal.countDocuments({ status: 'rejected' });
 
-    console.log('\n📊 Statistics Summary:');
-    console.log('=====================');
-    console.log(`Total Users: ${formattedStats.global.totalUsers}`);
-    console.log(`Active Users: ${formattedStats.global.activeUsers}`);
-    console.log(`Total Meals: ${formattedStats.global.totalMeals}`);
-    console.log(
-      `Total Bazar Entries: ${formattedStats.global.totalBazarEntries}`
-    );
-    console.log(
-      `Total Expenses: ৳${formattedStats.global.totalExpenses.toLocaleString()}`
-    );
-    console.log(
-      `Meal Efficiency: ${formattedStats.meals.efficiency.toFixed(1)}%`
-    );
-    console.log(
-      `Average Meals Per Day: ${formattedStats.meals.averageMealsPerDay.toFixed(1)}`
-    );
-    console.log(
-      `Average Bazar Amount: ৳${formattedStats.bazar.averageAmount.toFixed(0)}`
-    );
+    const totalBazar = await Bazar.countDocuments();
+    const approvedBazar = await Bazar.countDocuments({ status: 'approved' });
+    const pendingBazar = await Bazar.countDocuments({ status: 'pending' });
+    const rejectedBazar = await Bazar.countDocuments({ status: 'rejected' });
 
-    console.log('\n📅 Current Month:');
-    console.log('================');
-    console.log(`Meals: ${formattedStats.monthly.currentMonth.meals.total}`);
-    console.log(
-      `Bazar Amount: ৳${formattedStats.monthly.currentMonth.bazar.totalAmount.toLocaleString()}`
-    );
-    console.log(
-      `New Users: ${formattedStats.monthly.currentMonth.users.newUsers}`
-    );
+    // Get current month data
+    const currentMonth = new Date();
+    currentMonth.setDate(1);
+    currentMonth.setHours(0, 0, 0, 0);
 
-    console.log('\n✅ Statistics initialization completed successfully!');
-    console.log(`Last Updated: ${formattedStats.lastUpdated}`);
-    console.log(`Cache Version: ${stats.cache.version}`);
+    const newUsersThisMonth = await User.countDocuments({
+      createdAt: { $gte: currentMonth },
+    });
+
+    const activeUsersThisMonth = await User.countDocuments({
+      status: 'active',
+      lastLogin: { $gte: currentMonth },
+    });
+
+    // Create statistics document
+    const stats = new Statistics({
+      users: {
+        totalUsers,
+        adminUsers,
+        memberUsers,
+        inactiveUsers,
+        newUsersThisMonth,
+        activeUsersThisMonth,
+      },
+      meals: {
+        totalMeals,
+        approvedMeals,
+        pendingMeals,
+        rejectedMeals,
+      },
+      bazar: {
+        totalEntries: totalBazar,
+        approvedEntries: approvedBazar,
+        pendingEntries: pendingBazar,
+        rejectedEntries: rejectedBazar,
+      },
+      lastUpdated: new Date(),
+    });
+
+    await stats.save();
+    console.log('✅ Statistics initialized successfully!');
+
+    console.log('\n📈 Current Statistics:');
+    console.log(
+      `  Users: ${totalUsers} (${adminUsers} admins, ${memberUsers} members, ${inactiveUsers} inactive)`
+    );
+    console.log(
+      `  Meals: ${totalMeals} (${approvedMeals} approved, ${pendingMeals} pending, ${rejectedMeals} rejected)`
+    );
+    console.log(
+      `  Bazar: ${totalBazar} (${approvedBazar} approved, ${pendingBazar} pending, ${rejectedBazar} rejected)`
+    );
+    console.log(`  New users this month: ${newUsersThisMonth}`);
+    console.log(`  Active users this month: ${activeUsersThisMonth}`);
   } catch (error) {
-    console.error('❌ Error initializing statistics:', error);
-    process.exit(1);
+    console.error('❌ Statistics initialization failed:', error);
+  } finally {
+    mongoose.connection.close();
   }
 };
 
-// Main execution
-const main = async () => {
-  try {
-    await connectDB();
-    await initializeStatistics();
-    process.exit(0);
-  } catch (error) {
-    console.error('❌ Script failed:', error);
-    process.exit(1);
-  }
-};
-
-// Run the script
-if (require.main === module) {
-  main();
-}
-
-module.exports = { initializeStatistics };
+// Run initialization
+connectDB().then(() => {
+  initStatistics();
+});
