@@ -63,8 +63,10 @@ jobs:
           host: ${{ secrets.IP }}
           username: ${{ secrets.USER }}
           key: ${{ secrets.PRIVATE_SSH_VPS }}
+          port: ${{ secrets.SSH_PORT || 22 }}
           source: "BachelorMessManagerBackend/deploy/*"
           target: "/var/www/html/test.mahbub.dev"
+          strip_components: 0
 
       # ✅ Step 7: Install dependencies, run seeder & restart app
       - name: Run Seeder & Restart Test App on Port 4000
@@ -73,6 +75,7 @@ jobs:
           host: ${{ secrets.IP }}
           username: ${{ secrets.USER }}
           key: ${{ secrets.PRIVATE_SSH_VPS }}
+          port: ${{ secrets.SSH_PORT || 22 }}
           script: |
             cd /var/www/html/test.mahbub.dev
 
