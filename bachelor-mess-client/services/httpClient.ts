@@ -39,6 +39,18 @@ class HttpClient {
       'Content-Type': 'application/json',
       Accept: 'application/json',
     };
+    
+    // Log the configured base URL for debugging
+    console.log('🌐 HttpClient initialized with baseURL:', this.baseURL);
+    console.log('🌐 API_CONFIG.apiUrl:', API_CONFIG.apiUrl);
+    
+    // Validate that baseURL is not pointing to Metro bundler
+    if (this.baseURL.includes(':8081')) {
+      console.error('❌ ERROR: baseURL is pointing to Metro bundler port (8081) instead of backend API!');
+      console.error('❌ Current baseURL:', this.baseURL);
+      console.error('❌ Expected: http://localhost:3000 (or your backend URL)');
+      console.error('❌ Fix: Set EXPO_PUBLIC_API_URL=http://localhost:3000 in .env file');
+    }
   }
 
   // Add request interceptor
@@ -111,39 +123,55 @@ class HttpClient {
     }
 
     try {
-      // Simple health check
-      const healthUrl = `${this.baseURL}/health`;
-      console.log('🔍 Checking API connectivity at:', healthUrl);
+      // Try both /health and /api/health endpoints
+      const healthUrls = [
+        `${this.baseURL}/health`,
+        `${this.baseURL}/api/health`,
+      ];
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // Increased timeout
+      let lastError: Error | null = null;
+      
+      // Try each health URL
+      for (const healthUrl of healthUrls) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-      const response = await fetch(healthUrl, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'User-Agent': 'MessManager/1.0',
-        },
-        signal: controller.signal,
-      });
+          const response = await fetch(healthUrl, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'User-Agent': 'MessManager/1.0',
+            },
+            signal: controller.signal,
+          });
 
-      clearTimeout(timeoutId);
+          clearTimeout(timeoutId);
 
-      if (response.ok) {
-        console.log('✅ API connectivity check successful');
-        this.isOnlineCache = {
-          status: true,
-          timestamp: Date.now(),
-        };
-        return true;
-      } else {
-        console.log('❌ Health check failed with status:', response.status);
-        this.isOnlineCache = {
-          status: false,
-          timestamp: Date.now(),
-        };
-        return false;
+          if (response.ok) {
+            console.log(`✅ API connectivity check successful via ${healthUrl}`);
+            this.isOnlineCache = {
+              status: true,
+              timestamp: Date.now(),
+            };
+            return true;
+          } else {
+            lastError = new Error(`HTTP ${response.status}: ${response.statusText}`);
+            continue; // Try next URL
+          }
+        } catch (error) {
+          lastError = error instanceof Error ? error : new Error(String(error));
+          continue; // Try next URL
+        }
       }
+
+      // All URLs failed
+      console.log('❌ All health check URLs failed:', lastError?.message);
+      this.isOnlineCache = {
+        status: false,
+        timestamp: Date.now(),
+      };
+      return false;
     } catch (error) {
       console.log('❌ API connectivity check failed:', error);
       this.isOnlineCache = {
@@ -425,7 +453,12 @@ class HttpClient {
       const requestConfig = await this.createRequestConfig(endpoint, config);
       const url = `${this.baseURL}${endpoint}`;
 
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'httpClient.ts:454',message:'Making API request',data:{method:requestConfig.method,endpoint,baseURL:this.baseURL,fullUrl:url},timestamp:Date.now(),sessionId:'debug-session',runId:'api-request',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+
       console.log(`🌐 Making ${requestConfig.method} request to: ${url}`);
+      console.log(`🌐 Base URL (from env): ${this.baseURL}`);
 
       // Check if device is online
       const online = await this.isOnline();

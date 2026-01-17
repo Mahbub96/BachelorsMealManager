@@ -1,4 +1,4 @@
-import { API_ENDPOINTS, ApiResponse } from './config';
+import { API_ENDPOINTS, ApiResponse, config as API_CONFIG } from './config';
 import httpClient from './httpClient';
 import errorHandler from './errorHandler';
 import { offlineStorage } from './offlineStorage';
@@ -324,6 +324,10 @@ class DashboardServiceImpl implements DashboardService {
   ): Promise<ApiResponse<CombinedDashboardData>> {
     const cacheKey = `dashboard_combined_${JSON.stringify(filters)}`;
 
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboardService.ts:322',message:'getCombinedData called',data:{filters,baseURL:API_CONFIG.apiUrl,endpoint:API_ENDPOINTS.DASHBOARD.COMBINED},timestamp:Date.now(),sessionId:'debug-session',runId:'dashboard',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+
     return offlineStorage
       .getDataWithOfflineFallback(
         cacheKey,
@@ -332,14 +336,30 @@ class DashboardServiceImpl implements DashboardService {
             '🔄 Dashboard Service - Fetching combined data from API...'
           );
           const queryParams = this.buildQueryParams(filters);
+          const endpoint = `${API_ENDPOINTS.DASHBOARD.COMBINED}?${queryParams}`;
+          const fullUrl = `${API_CONFIG.apiUrl}${endpoint}`;
+
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboardService.ts:335',message:'About to fetch combined data',data:{baseURL:API_CONFIG.apiUrl,endpoint,fullUrl},timestamp:Date.now(),sessionId:'debug-session',runId:'dashboard',hypothesisId:'A'})}).catch(()=>{});
+          // #endregion
+
           const response = await httpClient.get(
-            `${API_ENDPOINTS.DASHBOARD.COMBINED}?${queryParams}`
+            endpoint
           );
+
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboardService.ts:345',message:'Combined data response received',data:{success:response.success,hasData:!!response.data,error:response.error,dataKeys:response.data?Object.keys(response.data):[],stats:response.data?.stats,bazarAmount:response.data?.stats?.totalBazarAmount},timestamp:Date.now(),sessionId:'debug-session',runId:'dashboard',hypothesisId:'A'})}).catch(()=>{});
+          // #endregion
 
           if (response.success && response.data) {
             console.log(
               '✅ Dashboard Service - Combined data fetched successfully'
             );
+            console.log('📊 Dashboard Service - Stats data:', {
+              totalBazarAmount: response.data.stats?.totalBazarAmount,
+              pendingBazar: response.data.stats?.pendingBazar,
+              totalMembers: response.data.stats?.totalMembers,
+            });
             // Store offline data for future use
             await offlineStorage.setOfflineData(cacheKey, response.data);
           } else {

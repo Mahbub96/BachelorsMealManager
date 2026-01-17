@@ -38,6 +38,7 @@ class OfflineStorageService {
   private config: OfflineConfig;
   private isOnline: boolean = true;
   private syncInterval: ReturnType<typeof setInterval> | null = null;
+  private netInfoUnsubscribe: (() => void) | null = null;
 
   constructor(config: Partial<OfflineConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -146,7 +147,8 @@ class OfflineStorageService {
   }
 
   private setupNetworkMonitoring() {
-    NetInfo.addEventListener(state => {
+    // Store unsubscribe function to prevent memory leak
+    this.netInfoUnsubscribe = NetInfo.addEventListener(state => {
       const wasOnline = this.isOnline;
       this.isOnline = state.isConnected ?? false;
 
@@ -1176,6 +1178,13 @@ class OfflineStorageService {
   destroy(): void {
     if (this.syncInterval) {
       clearInterval(this.syncInterval);
+      this.syncInterval = null;
+    }
+
+    // Unsubscribe from NetInfo to prevent memory leak
+    if (this.netInfoUnsubscribe) {
+      this.netInfoUnsubscribe();
+      this.netInfoUnsubscribe = null;
     }
 
     // Stop health monitoring

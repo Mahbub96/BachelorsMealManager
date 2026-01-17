@@ -2,44 +2,60 @@ import { Platform } from 'react-native';
 
 // Environment-based configuration for security
 const getApiUrl = (): string => {
-  // Use environment variable for API URL
+  // Use environment variable for API URL (highest priority)
   const envUrl = process.env.EXPO_PUBLIC_API_URL;
 
   console.log('🔧 Environment check:');
-  console.log('🔧 EXPO_PUBLIC_API_URL:', envUrl);
+  console.log('🔧 EXPO_PUBLIC_API_URL:', envUrl || 'Not set');
   console.log('🔧 NODE_ENV:', process.env.NODE_ENV);
   console.log('🔧 __DEV__:', __DEV__);
+  console.log('🔧 Platform:', Platform.OS);
 
+  // If environment variable is set, use it (remove trailing /api if present, we add it in endpoints)
   if (envUrl) {
-    console.log('✅ Using environment API URL:', envUrl);
-    return envUrl;
+    // Remove trailing slash and /api if present
+    const cleanUrl = envUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
+    console.log('✅ Using environment API URL:', cleanUrl);
+    return cleanUrl;
   }
 
-  // Development fallback - should be overridden by environment
+  // Development fallback - platform-specific defaults
   if (__DEV__) {
     console.warn(
-      '⚠️  Using development API URL. Set EXPO_PUBLIC_API_URL for production.'
+      '⚠️  EXPO_PUBLIC_API_URL not set. Using development defaults. Create .env file with EXPO_PUBLIC_API_URL for custom configuration.'
     );
-    // Use actual IP for development - works on device/emulator
-    // Try different IPs based on environment
-    let devUrl = 'http://192.168.0.130:3000';
+    
+    // Use localhost for web platform (browser) - works with local backend
+    if (Platform.OS === 'web') {
+      const devUrl = 'http://localhost:3000';
+      console.log('🔧 Using development URL for web:', devUrl);
+      return devUrl;
+    }
 
-    // For Android emulator, use 10.0.2.2
-    if (Platform.OS === 'android' && __DEV__) {
-      devUrl = 'http://10.0.2.2:3000';
+    // For Android emulator, use 10.0.2.2 (maps to host's localhost)
+    if (Platform.OS === 'android') {
+      const devUrl = 'http://10.0.2.2:3000';
+      console.log('🔧 Using development URL for Android:', devUrl);
+      return devUrl;
     }
 
     // For iOS simulator, use localhost
-    if (Platform.OS === 'ios' && __DEV__) {
-      devUrl = 'http://localhost:3000';
+    if (Platform.OS === 'ios') {
+      const devUrl = 'http://localhost:3000';
+      console.log('🔧 Using development URL for iOS:', devUrl);
+      return devUrl;
     }
-    console.log('🔧 Using development URL:', devUrl);
+
+    // Fallback for other platforms
+    const devUrl = 'http://localhost:3000';
+    console.log('🔧 Using default development URL:', devUrl);
     return devUrl;
   }
 
   // Production should always use environment variable
-  console.warn('⚠️ No environment API URL found, using development fallback');
-  return 'http://192.168.0.130:3000';
+  throw new Error(
+    'EXPO_PUBLIC_API_URL is required in production. Please set it in your .env file.'
+  );
 };
 
 export const config = {

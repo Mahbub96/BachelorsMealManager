@@ -1,40 +1,13 @@
-import * as SQLite from 'expo-sqlite';
+import { Platform } from 'react-native';
+import type { DatabaseService } from './databaseService.types';
+// Platform-specific import: on web, this imports null; on native, it imports expo-sqlite
+// Metro will use sqliteLoader.native.ts on native and sqliteLoader.ts on web
+import SQLiteModule from './sqliteLoader';
 
-// Database interface with improved type safety
-export interface DatabaseService {
-  // Core operations
-  init(): Promise<void>;
-  close(): Promise<void>;
+const SQLite = SQLiteModule;
 
-  // Data operations
-  saveData(table: string, data: Record<string, any>): Promise<void>;
-  getData(
-    table: string,
-    query?: string,
-    params?: any[]
-  ): Promise<Record<string, any>[]>;
-  updateData(
-    table: string,
-    id: string,
-    data: Record<string, any>
-  ): Promise<void>;
-  deleteData(table: string, id: string): Promise<void>;
-  clearTable(table: string): Promise<void>;
-
-  // Sync operations
-  getPendingSync(): Promise<Record<string, any>[]>;
-  markSynced(id: string): Promise<void>;
-  addToSyncQueue(item: Record<string, any>): Promise<void>;
-
-  // Utility operations
-  getTableInfo(table: string): Promise<Record<string, any>[]>;
-  executeQuery(query: string, params?: any[]): Promise<any>;
-
-  // Health and maintenance
-  healthCheck(): Promise<boolean>;
-  vacuum(): Promise<void>;
-  optimize(): Promise<void>;
-}
+// Re-export the interface for backward compatibility
+export type { DatabaseService };
 
 // SQLite best practices constants with improved configuration
 const SQLITE_CONSTANTS = {
@@ -76,7 +49,7 @@ const SQLITE_CONSTANTS = {
 } as const;
 
 class SQLiteDatabaseService implements DatabaseService {
-  private db: SQLite.SQLiteDatabase | null = null;
+  private db: any = null; // Using any to handle web platform where SQLite is null
   private DATABASE_NAME = 'mess_manager.db';
   private isInitializing = false;
   private isInitialized = false;
@@ -91,7 +64,32 @@ class SQLiteDatabaseService implements DatabaseService {
   private consecutiveErrors = 0;
   private readonly MAX_CONSECUTIVE_ERRORS = 5;
 
+  // Helper method to check if SQLite is available
+  private isSQLiteAvailable(): boolean {
+    if (Platform.OS === 'web') {
+      return false;
+    }
+    // SQLite is loaded via platform-specific import (sqliteLoader.native.ts or sqliteLoader.ts)
+    return SQLite !== null;
+  }
+
+  // Helper method to throw error if SQLite is not available
+  private ensureSQLiteAvailable(): void {
+    if (!this.isSQLiteAvailable()) {
+      throw new Error('SQLite is not available on web platform');
+    }
+  }
+
   async init(): Promise<void> {
+    // Skip SQLite initialization on web platform
+    if (Platform.OS === 'web' || !this.isSQLiteAvailable()) {
+      console.log(
+        'ℹ️ SQLite Database - Skipping initialization on web platform'
+      );
+      this.isInitialized = true; // Mark as initialized to prevent retries
+      return;
+    }
+
     // If already initializing, wait for the existing promise
     if (this.isInitializing && this.initializationPromise) {
       console.log(
@@ -156,6 +154,9 @@ class SQLiteDatabaseService implements DatabaseService {
 
     try {
       console.log('🔄 SQLite Database - Starting initialization...');
+
+      // Ensure SQLite is available (lazy loads if needed)
+      this.ensureSQLiteAvailable();
 
       // Reset error tracking
       this.lastError = null;
@@ -282,6 +283,7 @@ class SQLiteDatabaseService implements DatabaseService {
 
   // Check database file integrity
   private async checkDatabaseFileIntegrity(): Promise<void> {
+    if (!SQLite) return;
     try {
       // Try to check if database file exists and is accessible
       const testDb = await SQLite.openDatabaseAsync(this.DATABASE_NAME);
@@ -297,6 +299,7 @@ class SQLiteDatabaseService implements DatabaseService {
 
   // Delete database file safely
   private async deleteDatabaseFile(): Promise<void> {
+    if (!SQLite) return;
     try {
       await SQLite.deleteDatabaseAsync(this.DATABASE_NAME);
       console.log('🗑️ SQLite Database - Database file deleted');
@@ -372,6 +375,7 @@ class SQLiteDatabaseService implements DatabaseService {
   }
 
   private async aggressiveReset(): Promise<void> {
+    if (!SQLite) return;
     try {
       console.log('🔄 SQLite Database - Performing aggressive reset...');
 
@@ -425,6 +429,7 @@ class SQLiteDatabaseService implements DatabaseService {
   }
 
   async resetDatabase(): Promise<void> {
+    if (!SQLite) return;
     try {
       console.log('🔄 SQLite Database - Resetting database...');
 
@@ -521,6 +526,7 @@ class SQLiteDatabaseService implements DatabaseService {
   }
 
   async forceResetDatabase(): Promise<void> {
+    if (!SQLite) return;
     try {
       console.log('🔄 SQLite Database - Force resetting database...');
 
@@ -566,6 +572,12 @@ class SQLiteDatabaseService implements DatabaseService {
   }
 
   async close(): Promise<void> {
+    // Clear connection timeout to prevent memory leak
+    if (this.connectionTimeout) {
+      clearTimeout(this.connectionTimeout);
+      this.connectionTimeout = null;
+    }
+
     if (this.db) {
       try {
         // Release any pending locks
@@ -586,6 +598,11 @@ class SQLiteDatabaseService implements DatabaseService {
   }
 
   async ensureConnection(): Promise<void> {
+    // Skip on web platform
+    if (!this.isSQLiteAvailable()) {
+      return;
+    }
+
     if (!this.db || !this.isInitialized) {
       await this.init();
     }
@@ -890,6 +907,14 @@ class SQLiteDatabaseService implements DatabaseService {
 
   async healthCheck(): Promise<boolean> {
     try {
+      // Skip health check on web platform
+      if (!this.isSQLiteAvailable()) {
+        console.log(
+          'ℹ️ SQLite Database - Health check skipped on web platform'
+        );
+        return true; // Return true to prevent errors
+      }
+
       if (!this.db) {
         console.log(
           '🔍 SQLite Database - Health check: Database not initialized'
@@ -2553,14 +2578,20 @@ class SQLiteDatabaseService implements DatabaseService {
 
       // Try multiple approaches to delete the database file
       let fileDeleted = false;
-      
+
       // Approach 1: Direct deletion
+      if (!SQLite) {
+        await this.bypassDatabase();
+        return;
+      }
       try {
         await SQLite.deleteDatabaseAsync(this.DATABASE_NAME);
         console.log('🗑️ SQLite Database - Database file deleted successfully');
         fileDeleted = true;
       } catch (deleteError) {
-        console.log('⚠️ SQLite Database - Direct deletion failed, trying alternative approaches');
+        console.log(
+          '⚠️ SQLite Database - Direct deletion failed, trying alternative approaches'
+        );
       }
 
       // Approach 2: If direct deletion failed, try with different database name
@@ -2568,30 +2599,42 @@ class SQLiteDatabaseService implements DatabaseService {
         try {
           // Create a new database with a different name
           const newDbName = `mess_manager_${Date.now()}.db`;
-          console.log(`🔄 SQLite Database - Creating new database: ${newDbName}`);
-          
+          console.log(
+            `🔄 SQLite Database - Creating new database: ${newDbName}`
+          );
+
           // Temporarily change the database name
           const originalName = this.DATABASE_NAME;
           this.DATABASE_NAME = newDbName;
-          
+
           // Try to initialize with new name
           await this.performInitialization();
-          
+
           // If successful, update the name permanently
-          console.log(`✅ SQLite Database - Successfully created new database: ${newDbName}`);
+          console.log(
+            `✅ SQLite Database - Successfully created new database: ${newDbName}`
+          );
           return;
         } catch (newDbError) {
-          console.log('⚠️ SQLite Database - New database creation failed, trying memory database');
-          
+          console.log(
+            '⚠️ SQLite Database - New database creation failed, trying memory database'
+          );
+
           // Approach 3: Use in-memory database as last resort
           try {
             this.DATABASE_NAME = ':memory:';
-            console.log('🔄 SQLite Database - Using in-memory database as fallback');
+            console.log(
+              '🔄 SQLite Database - Using in-memory database as fallback'
+            );
             await this.performInitialization();
-            console.log('✅ SQLite Database - In-memory database initialized successfully');
+            console.log(
+              '✅ SQLite Database - In-memory database initialized successfully'
+            );
             return;
           } catch (memoryError) {
-            console.error('❌ SQLite Database - All emergency reset approaches failed, using bypass mode');
+            console.error(
+              '❌ SQLite Database - All emergency reset approaches failed, using bypass mode'
+            );
             await this.bypassDatabase();
             return;
           }
@@ -2613,13 +2656,15 @@ class SQLiteDatabaseService implements DatabaseService {
 
   // Complete bypass method for when database is completely unusable
   async bypassDatabase(): Promise<void> {
-    console.log('🚨 SQLite Database - Database completely unusable, bypassing...');
-    
+    console.log(
+      '🚨 SQLite Database - Database completely unusable, bypassing...'
+    );
+
     // Set a flag to indicate we're in bypass mode
     this.isInitialized = true;
     this.isInitializing = false;
     this.consecutiveErrors = 0;
-    
+
     // Create a mock database object that returns empty results
     this.db = {
       closeAsync: async () => {},
@@ -2628,8 +2673,10 @@ class SQLiteDatabaseService implements DatabaseService {
       getFirstAsync: async () => null,
       runAsync: async () => ({ lastInsertRowId: 0, changes: 0 }),
     } as any;
-    
-    console.log('⚠️ SQLite Database - Operating in bypass mode - no data persistence');
+
+    console.log(
+      '⚠️ SQLite Database - Operating in bypass mode - no data persistence'
+    );
   }
 
   // Database testing functionality (integrated from sqliteTest.ts)

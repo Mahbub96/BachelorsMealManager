@@ -57,7 +57,6 @@ class DatabaseInitializer {
   }
 
   private async performInitialization(): Promise<void> {
-    const startTime = Date.now();
     let attempt = 0;
 
     while (attempt < this.config.maxRetries) {
@@ -144,12 +143,19 @@ class DatabaseInitializer {
       throw new Error('Database health check failed after initialization');
     }
 
-    // Step 3: Start health monitoring if enabled
+    // Step 3: Start health monitoring if enabled (skip on web)
     if (this.config.enableHealthMonitoring) {
-      console.log(
-        '🔄 DatabaseInitializer - Step 3: Starting health monitoring...'
-      );
-      databaseHealthMonitor.startMonitoring();
+      const { Platform } = await import('react-native');
+      if (Platform.OS !== 'web') {
+        console.log(
+          '🔄 DatabaseInitializer - Step 3: Starting health monitoring...'
+        );
+        await databaseHealthMonitor.startMonitoring();
+      } else {
+        console.log(
+          'ℹ️ DatabaseInitializer - Skipping health monitoring on web platform'
+        );
+      }
     }
 
     // Step 4: Perform test operations
@@ -164,6 +170,15 @@ class DatabaseInitializer {
   }
 
   private async performTestOperations(): Promise<void> {
+    // Skip test operations on web platform since SQLite is not available
+    const { Platform } = await import('react-native');
+    if (Platform.OS === 'web') {
+      console.log(
+        'ℹ️ DatabaseInitializer - Skipping test operations on web platform'
+      );
+      return;
+    }
+
     try {
       // Test basic database operations with correct schema
       const testData = {
@@ -266,6 +281,12 @@ class DatabaseInitializer {
   // Check if database is ready
   async isReady(): Promise<boolean> {
     try {
+      // On web, SQLite is always "ready" (stub implementation)
+      const { Platform } = await import('react-native');
+      if (Platform.OS === 'web') {
+        return true;
+      }
+
       if (!sqliteDatabase['isInitialized']) {
         return false;
       }

@@ -267,7 +267,8 @@ function startServer() {
 
   // Enhanced Health check endpoint
   if (config.enableHealthCheck) {
-    app.get('/health', async (req, res) => {
+    // Shared health check handler
+    const healthCheckHandler = async (req, res) => {
       try {
         const healthCheck = {
           success: true,
@@ -306,7 +307,13 @@ function startServer() {
           error: error.message,
         });
       }
-    });
+    };
+
+    // Public health check endpoint (without /api prefix)
+    app.get('/health', healthCheckHandler);
+
+    // API health check endpoint (with /api prefix) - for client compatibility
+    app.get(`${config.apiPrefix}/health`, healthCheckHandler);
 
     // Detailed health check for monitoring systems
     app.get('/health/detailed', async (req, res) => {

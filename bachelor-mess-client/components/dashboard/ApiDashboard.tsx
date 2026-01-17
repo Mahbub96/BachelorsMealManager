@@ -98,6 +98,13 @@ export const ApiDashboard: React.FC = () => {
   };
 
   const refreshData = async () => {
+    // Clear cache before refreshing to ensure fresh data
+    try {
+      const { default: dashboardService } = await import('@/services/dashboardService');
+      await dashboardService.refreshDashboard();
+    } catch (error) {
+      console.log('⚠️ Could not refresh dashboard service cache:', error);
+    }
     await loadDashboardData();
   };
 

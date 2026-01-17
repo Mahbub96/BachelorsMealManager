@@ -1,0 +1,3747 @@
+{
+  "info": {
+    "_postman_id": "bachelor-mess-api-collection-2024",
+    "name": "Bachelor Mess Manager API",
+    "description": "Complete API documentation for Bachelor Mess Manager Backend. Import this collection to Postman to test all endpoints. Configure BASE_URL variable for your environment (local/cloud).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "bachelor-mess-api"
+  },
+  "item": [
+    {
+      "name": "1. Authentication",
+      "description": "User authentication and authorization endpoints",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/register",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Register a new user account",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"password\": \"password123\",\n  \"phone\": \"+1234567890\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/login",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Authenticate user and get access token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john@example.com\",\n  \"password\": \"password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.data && jsonData.data.token) {",
+                  "        pm.collectionVariables.set('AUTH_TOKEN', jsonData.data.token);",
+                  "        pm.collectionVariables.set('REFRESH_TOKEN', jsonData.data.refreshToken || '');",
+                  "        if (jsonData.data.user && jsonData.data.user.id) {",
+                  "            pm.collectionVariables.set('USER_ID', jsonData.data.user.id);",
+                  "        }",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Current Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/profile",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "profile"
+              ]
+            },
+            "description": "Get current user's profile information"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/profile",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "profile"
+              ]
+            },
+            "description": "Update current user's profile information",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe Updated\",\n  \"email\": \"john@example.com\",\n  \"phone\": \"+1234567890\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/change-password",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "change-password"
+              ]
+            },
+            "description": "Change user's password",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"password123\",\n  \"newPassword\": \"newpassword123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/refresh",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "Get new access token using refresh token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{REFRESH_TOKEN}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Logout User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/logout",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "Logout user and invalidate tokens"
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Token",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/verify",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "verify"
+              ]
+            },
+            "description": "Verify if current token is valid"
+          },
+          "response": []
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/forgot-password",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "forgot-password"
+              ]
+            },
+            "description": "Send password reset email",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/reset-password",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "reset-password"
+              ]
+            },
+            "description": "Reset password using reset token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"reset-token-here\",\n  \"newPassword\": \"newpassword123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Meals",
+      "description": "Meal management endpoints",
+      "item": [
+        {
+          "name": "Submit Daily Meals",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/meals",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "meals"
+              ]
+            },
+            "description": "Submit daily meal entries",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2024-01-15\",\n  \"breakfast\": true,\n  \"lunch\": true,\n  \"dinner\": false,\n  \"notes\": \"Optional notes\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Submit Daily Meals (Alternative)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/meals/submit",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "meals",
+                "submit"
+              ]
+            },
+            "description": "Alternative endpoint for submitting meals",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2024-01-15\",\n  \"breakfast\": true,\n  \"lunch\": true,\n  \"dinner\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get User Meals",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/meals",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "meals"
+              ]
+            },
+            "description": "Get current user's meal entries"
+          },
+          "response": []
+        },
+        {
+          "name": "Get User Meals (Alternative)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/meals/user",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "meals",
+                "user"
+              ]
+            },
+            "description": "Alternative endpoint for getting user meals"
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Meals (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/meals/all",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "meals",
+                "all"
+              ]
+            },
+            "description": "Get all meal entries (admin access required)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Meal by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/meals/:mealId",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "meals",
+                ":mealId"
+              ]
+            },
+            "description": "Get specific meal entry by ID"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Meal Entry",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/meals/:mealId",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "meals",
+                ":mealId"
+              ]
+            },
+            "description": "Update specific meal entry",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"breakfast\": true,\n  \"lunch\": false,\n  \"dinner\": true,\n  \"notes\": \"Updated notes\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Meal Status (Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/meals/:mealId/status",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "meals",
+                ":mealId",
+                "status"
+              ]
+            },
+            "description": "Update meal approval status (admin only)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"approved\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Meal Entry",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/meals/:mealId",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "meals",
+                ":mealId"
+              ]
+            },
+            "description": "Delete specific meal entry"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Meal Statistics Overview (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/meals/stats/overview",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "meals",
+                "stats",
+                "overview"
+              ]
+            },
+            "description": "Get meal statistics overview (admin only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get User Meal Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/meals/stats/user",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "meals",
+                "stats",
+                "user"
+              ]
+            },
+            "description": "Get current user's meal statistics"
+          },
+          "response": []
+        },
+        {
+          "name": "Get User Meal Statistics (Alternative)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/meals/user/stats",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "meals",
+                "user",
+                "stats"
+              ]
+            },
+            "description": "Alternative endpoint for user meal statistics"
+          },
+          "response": []
+        },
+        {
+          "name": "Bulk Approve Meals (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/meals/bulk-approve",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "meals",
+                "bulk-approve"
+              ]
+            },
+            "description": "Approve multiple meals at once (admin only)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mealIds\": [\n    \"id1\",\n    \"id2\",\n    \"id3\"\n  ],\n  \"status\": \"approved\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Bazar",
+      "description": "Bazar (grocery) management endpoints",
+      "item": [
+        {
+          "name": "Submit Bazar Entry",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/bazar",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "bazar"
+              ]
+            },
+            "description": "Submit bazar (grocery) entry with receipt. Note: Use form-data for file upload.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2024-01-15\",\n  \"items\": [\n    {\n      \"name\": \"Rice\",\n      \"quantity\": 5,\n      \"unit\": \"kg\",\n      \"price\": 250\n    }\n  ],\n  \"totalAmount\": 1250,\n  \"description\": \"Monthly groceries\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get User Bazar Entries",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/bazar",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "bazar"
+              ]
+            },
+            "description": "Get current user's bazar entries"
+          },
+          "response": []
+        },
+        {
+          "name": "Get User Bazar Entries (Alternative)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/bazar/user",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "bazar",
+                "user"
+              ]
+            },
+            "description": "Alternative endpoint for getting user bazar entries"
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Bazar Entries (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/bazar/all",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "bazar",
+                "all"
+              ]
+            },
+            "description": "Get all bazar entries (admin access required)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Bazar by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/bazar/:bazarId",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "bazar",
+                ":bazarId"
+              ]
+            },
+            "description": "Get specific bazar entry by ID"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Bazar Entry",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/bazar/:bazarId",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "bazar",
+                ":bazarId"
+              ]
+            },
+            "description": "Update specific bazar entry",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"name\": \"Rice\",\n      \"quantity\": 5,\n      \"unit\": \"kg\",\n      \"price\": 250\n    }\n  ],\n  \"totalAmount\": 1500\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Bazar Status (Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/bazar/:bazarId/status",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "bazar",
+                ":bazarId",
+                "status"
+              ]
+            },
+            "description": "Update bazar approval status (admin only)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"approved\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Bazar Entry",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/bazar/:bazarId",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "bazar",
+                ":bazarId"
+              ]
+            },
+            "description": "Delete specific bazar entry"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Bazar Statistics Overview (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/bazar/stats/overview",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "bazar",
+                "stats",
+                "overview"
+              ]
+            },
+            "description": "Get bazar statistics overview (admin only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get User Bazar Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/bazar/stats/user",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "bazar",
+                "stats",
+                "user"
+              ]
+            },
+            "description": "Get current user's bazar statistics"
+          },
+          "response": []
+        },
+        {
+          "name": "Bulk Approve Bazar Entries (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/bazar/bulk-approve",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "bazar",
+                "bulk-approve"
+              ]
+            },
+            "description": "Approve multiple bazar entries at once (admin only)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bazarIds\": [\n    \"id1\",\n    \"id2\",\n    \"id3\"\n  ],\n  \"status\": \"approved\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Bazar Summary by Category (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/bazar/summary/category",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "bazar",
+                "summary",
+                "category"
+              ]
+            },
+            "description": "Get bazar summary grouped by category (admin only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Bazar Trends (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/bazar/trends",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "bazar",
+                "trends"
+              ]
+            },
+            "description": "Get bazar spending trends (admin only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Admin: Create Bazar for Any User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/bazar/admin/create",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "bazar",
+                "admin",
+                "create"
+              ]
+            },
+            "description": "Admin can create bazar entry for any user",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{USER_ID}}\",\n  \"date\": \"2024-01-15\",\n  \"items\": [\n    {\n      \"name\": \"Rice\",\n      \"quantity\": 5,\n      \"unit\": \"kg\",\n      \"price\": 250\n    }\n  ],\n  \"totalAmount\": 1250\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin: Update Any Bazar Entry",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/bazar/admin/:bazarId",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "bazar",
+                "admin",
+                ":bazarId"
+              ]
+            },
+            "description": "Admin can update any bazar entry",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"name\": \"Rice\",\n      \"quantity\": 5,\n      \"unit\": \"kg\",\n      \"price\": 250\n    }\n  ],\n  \"totalAmount\": 1500\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin: Delete Any Bazar Entry",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/bazar/admin/:bazarId",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "bazar",
+                "admin",
+                ":bazarId"
+              ]
+            },
+            "description": "Admin can delete any bazar entry"
+          },
+          "response": []
+        },
+        {
+          "name": "Admin: Bulk Operations",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/bazar/admin/bulk",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "bazar",
+                "admin",
+                "bulk"
+              ]
+            },
+            "description": "Admin can perform bulk operations on bazar entries",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"operation\": \"approve\",\n  \"bazarIds\": [\n    \"id1\",\n    \"id2\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. Dashboard",
+      "description": "Dashboard and overview endpoints",
+      "item": [
+        {
+          "name": "Get Dashboard Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/dashboard/stats",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "dashboard",
+                "stats"
+              ]
+            },
+            "description": "Get dashboard statistics"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Recent Activities",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/dashboard/activities",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "dashboard",
+                "activities"
+              ]
+            },
+            "description": "Get recent user activities"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Combined Dashboard Data",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/dashboard",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "dashboard"
+              ]
+            },
+            "description": "Get combined dashboard data including stats and activities"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5. Users",
+      "description": "User profile and management endpoints",
+      "item": [
+        {
+          "name": "Get User Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/users/profile",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "profile"
+              ]
+            },
+            "description": "Get current user's profile"
+          },
+          "response": []
+        },
+        {
+          "name": "Update User Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/users/profile",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "profile"
+              ]
+            },
+            "description": "Update current user's profile",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"phone\": \"+1234567890\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get User Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/users/stats/:userId",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "stats",
+                ":userId"
+              ]
+            },
+            "description": "Get statistics for a specific user"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Current User Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/users/stats/current",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "stats",
+                "current"
+              ]
+            },
+            "description": "Get current user's statistics"
+          },
+          "response": []
+        },
+        {
+          "name": "Get User Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/users/dashboard",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "dashboard"
+              ]
+            },
+            "description": "Get current user's dashboard data"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "6. Analytics",
+      "description": "Analytics and reporting endpoints",
+      "item": [
+        {
+          "name": "Get Analytics Data",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/analytics",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "analytics"
+              ]
+            },
+            "description": "Get general analytics data"
+          },
+          "response": []
+        },
+        {
+          "name": "Get User Analytics (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/analytics/user/:userId",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "analytics",
+                "user",
+                ":userId"
+              ]
+            },
+            "description": "Get analytics for specific user (admin access required)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get System Analytics (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/analytics/system",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "analytics",
+                "system"
+              ]
+            },
+            "description": "Get system-wide analytics (admin access required)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "7. Activity",
+      "description": "Activity tracking endpoints",
+      "item": [
+        {
+          "name": "Get Recent Activities",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/activity/recent",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "activity",
+                "recent"
+              ]
+            },
+            "description": "Get recent activities with advanced filtering"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Current Month Meals",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/activity/meals/current-month",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "activity",
+                "meals",
+                "current-month"
+              ]
+            },
+            "description": "Get current month meals with statistics"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Activity Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/activity/stats",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "activity",
+                "stats"
+              ]
+            },
+            "description": "Get activity statistics"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "8. Statistics",
+      "description": "Statistics endpoints",
+      "item": [
+        {
+          "name": "Get Complete Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/statistics/complete",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "statistics",
+                "complete"
+              ]
+            },
+            "description": "Get complete system statistics"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Global Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/statistics/global",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "statistics",
+                "global"
+              ]
+            },
+            "description": "Get global system statistics"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Meal Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/statistics/meals",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "statistics",
+                "meals"
+              ]
+            },
+            "description": "Get meal-related statistics"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Bazar Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/statistics/bazar",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "statistics",
+                "bazar"
+              ]
+            },
+            "description": "Get bazar-related statistics"
+          },
+          "response": []
+        },
+        {
+          "name": "Get User Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/statistics/users",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "statistics",
+                "users"
+              ]
+            },
+            "description": "Get user-related statistics"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Activity Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/statistics/activity",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "statistics",
+                "activity"
+              ]
+            },
+            "description": "Get activity-related statistics"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Monthly Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/statistics/monthly",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "statistics",
+                "monthly"
+              ]
+            },
+            "description": "Get monthly statistics"
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Statistics (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/statistics/refresh",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "statistics",
+                "refresh"
+              ]
+            },
+            "description": "Manually refresh all statistics (admin only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Dashboard Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/statistics/dashboard",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "statistics",
+                "dashboard"
+              ]
+            },
+            "description": "Get combined dashboard statistics"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "9. User Stats",
+      "description": "User-specific statistics endpoints",
+      "item": [
+        {
+          "name": "Get Comprehensive User Dashboard Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/user-stats/dashboard",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "user-stats",
+                "dashboard"
+              ]
+            },
+            "description": "Get comprehensive user dashboard statistics including meals, bazar, and payments"
+          },
+          "response": []
+        },
+        {
+          "name": "Get User Meal Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/user-stats/meals",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "user-stats",
+                "meals"
+              ]
+            },
+            "description": "Get detailed meal statistics for current user"
+          },
+          "response": []
+        },
+        {
+          "name": "Get User Bazar Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/user-stats/bazar",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "user-stats",
+                "bazar"
+              ]
+            },
+            "description": "Get detailed bazar statistics for current user"
+          },
+          "response": []
+        },
+        {
+          "name": "Get User Payment Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/user-stats/payments",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "user-stats",
+                "payments"
+              ]
+            },
+            "description": "Get payment-related statistics for current user"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "10. Super Admin",
+      "description": "Super admin management endpoints",
+      "item": [
+        {
+          "name": "Get System Overview",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/super-admin/overview",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "super-admin",
+                "overview"
+              ]
+            },
+            "description": "Get system overview for super admins"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Detailed Analytics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/super-admin/analytics",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "super-admin",
+                "analytics"
+              ]
+            },
+            "description": "Get detailed system analytics"
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/super-admin/users",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "super-admin",
+                "users"
+              ]
+            },
+            "description": "Get all users with pagination and filters"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Specific User Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/super-admin/users/:userId",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "super-admin",
+                "users",
+                ":userId"
+              ]
+            },
+            "description": "Get detailed information about specific user"
+          },
+          "response": []
+        },
+        {
+          "name": "Update User Role and Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/super-admin/users/:userId",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "super-admin",
+                "users",
+                ":userId"
+              ]
+            },
+            "description": "Update user role and status",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"admin\",\n  \"status\": \"active\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/super-admin/users/:userId",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "super-admin",
+                "users",
+                ":userId"
+              ]
+            },
+            "description": "Delete user account"
+          },
+          "response": []
+        },
+        {
+          "name": "Get System Settings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/super-admin/system/settings",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "super-admin",
+                "system",
+                "settings"
+              ]
+            },
+            "description": "Get system configuration settings"
+          },
+          "response": []
+        },
+        {
+          "name": "Update System Settings",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/super-admin/system/settings",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "super-admin",
+                "system",
+                "settings"
+              ]
+            },
+            "description": "Update system configuration settings",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"setting\": \"value\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get System Logs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/super-admin/system/logs",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "super-admin",
+                "system",
+                "logs"
+              ]
+            },
+            "description": "Get system logs"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Audit Logs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/super-admin/audit/logs",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "super-admin",
+                "audit",
+                "logs"
+              ]
+            },
+            "description": "Get audit logs"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Performance Metrics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/super-admin/performance/metrics",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "super-admin",
+                "performance",
+                "metrics"
+              ]
+            },
+            "description": "Get system performance metrics"
+          },
+          "response": []
+        },
+        {
+          "name": "Create System Backup",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/super-admin/backup/create",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "super-admin",
+                "backup",
+                "create"
+              ]
+            },
+            "description": "Create system backup"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Backup List",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/super-admin/backup/list",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "super-admin",
+                "backup",
+                "list"
+              ]
+            },
+            "description": "Get list of available backups"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Billing Information",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/super-admin/billing/info",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "super-admin",
+                "billing",
+                "info"
+              ]
+            },
+            "description": "Get billing information"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Support Tickets",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/super-admin/support/tickets",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "super-admin",
+                "support",
+                "tickets"
+              ]
+            },
+            "description": "Get support tickets"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "11. UI Config",
+      "description": "UI configuration management endpoints",
+      "item": [
+        {
+          "name": "Get Active UI Configuration",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/ui-config/active",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "ui-config",
+                "active"
+              ]
+            },
+            "description": "Get active UI configuration"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Configuration by Version",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/ui-config/version/:appId/:version",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "ui-config",
+                "version",
+                ":appId",
+                ":version"
+              ]
+            },
+            "description": "Get specific configuration version"
+          },
+          "response": []
+        },
+        {
+          "name": "Create New Configuration (Super Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/ui-config",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "ui-config"
+              ]
+            },
+            "description": "Create new UI configuration",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appId\": \"bachelor-mess\",\n  \"version\": \"1.0.0\",\n  \"config\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Configuration (Super Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/ui-config/:configId",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "ui-config",
+                ":configId"
+              ]
+            },
+            "description": "Update existing configuration",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"config\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Clone Configuration (Super Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/ui-config/:configId/clone",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "ui-config",
+                ":configId",
+                "clone"
+              ]
+            },
+            "description": "Clone existing configuration"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Configuration (Super Admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/ui-config/:configId",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "ui-config",
+                ":configId"
+              ]
+            },
+            "description": "Delete configuration"
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Configurations (Super Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/ui-config",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "ui-config"
+              ]
+            },
+            "description": "Get all configurations"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Configuration History (Super Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/ui-config/:configId/history",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "ui-config",
+                ":configId",
+                "history"
+              ]
+            },
+            "description": "Get configuration version history"
+          },
+          "response": []
+        },
+        {
+          "name": "Validate Configuration (Super Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/ui-config/:configId/validate",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "ui-config",
+                ":configId",
+                "validate"
+              ]
+            },
+            "description": "Validate configuration"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Theme",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/ui-config/theme",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "ui-config",
+                "theme"
+              ]
+            },
+            "description": "Get current theme configuration"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Theme (Super Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/ui-config/:configId/theme",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "ui-config",
+                ":configId",
+                "theme"
+              ]
+            },
+            "description": "Update theme configuration",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"theme\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Feature Flags",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/ui-config/features",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "ui-config",
+                "features"
+              ]
+            },
+            "description": "Get current feature flags"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Feature Flags (Super Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/ui-config/:configId/features",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "ui-config",
+                ":configId",
+                "features"
+              ]
+            },
+            "description": "Update feature flags",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"features\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Toggle Specific Feature (Super Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/ui-config/:configId/features/toggle",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "ui-config",
+                ":configId",
+                "features",
+                "toggle"
+              ]
+            },
+            "description": "Toggle specific feature",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"feature\": \"featureName\",\n  \"enabled\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Navigation",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/ui-config/navigation",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "ui-config",
+                "navigation"
+              ]
+            },
+            "description": "Get navigation configuration"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Navigation (Super Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/ui-config/:configId/navigation",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "ui-config",
+                ":configId",
+                "navigation"
+              ]
+            },
+            "description": "Update navigation configuration",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"navigation\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Component Configuration",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/ui-config/components",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "ui-config",
+                "components"
+              ]
+            },
+            "description": "Get component configuration"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Component Configuration (Super Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/ui-config/:configId/components",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "ui-config",
+                ":configId",
+                "components"
+              ]
+            },
+            "description": "Update component configuration",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"components\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Content",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/ui-config/content",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "ui-config",
+                "content"
+              ]
+            },
+            "description": "Get content configuration"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Content (Super Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/ui-config/:configId/content",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "ui-config",
+                ":configId",
+                "content"
+              ]
+            },
+            "description": "Update content configuration",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Security Settings (Super Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/ui-config/security",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "ui-config",
+                "security"
+              ]
+            },
+            "description": "Get security settings"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Security Settings (Super Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/ui-config/:configId/security",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "ui-config",
+                ":configId",
+                "security"
+              ]
+            },
+            "description": "Update security settings",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"security\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Performance Settings (Super Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/ui-config/performance",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "ui-config",
+                "performance"
+              ]
+            },
+            "description": "Get performance settings"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Performance Settings (Super Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/ui-config/:configId/performance",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "ui-config",
+                ":configId",
+                "performance"
+              ]
+            },
+            "description": "Update performance settings",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"performance\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "12. Monitoring",
+      "description": "System monitoring and health check endpoints",
+      "item": [
+        {
+          "name": "Get System Health Status (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/monitoring/health",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "monitoring",
+                "health"
+              ]
+            },
+            "description": "Get system health status"
+          },
+          "response": []
+        },
+        {
+          "name": "Get System Metrics (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/monitoring/metrics",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "monitoring",
+                "metrics"
+              ]
+            },
+            "description": "Get system performance metrics"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Prometheus Metrics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/monitoring/metrics/prometheus",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "monitoring",
+                "metrics",
+                "prometheus"
+              ]
+            },
+            "description": "Get metrics in Prometheus format"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Database Statistics (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/monitoring/database",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "monitoring",
+                "database"
+              ]
+            },
+            "description": "Get database health and statistics"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Backup Information (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/monitoring/backups",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "monitoring",
+                "backups"
+              ]
+            },
+            "description": "Get backup information and statistics"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Backup (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/monitoring/backups",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "monitoring",
+                "backups"
+              ]
+            },
+            "description": "Create system backup",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"full\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Restore from Backup (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/monitoring/backups/:fileName/restore",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "monitoring",
+                "backups",
+                ":fileName",
+                "restore"
+              ]
+            },
+            "description": "Restore system from backup",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"confirm\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Backup (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/monitoring/backups/:fileName/verify",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "monitoring",
+                "backups",
+                ":fileName",
+                "verify"
+              ]
+            },
+            "description": "Verify backup integrity"
+          },
+          "response": []
+        },
+        {
+          "name": "Get System Configuration (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/monitoring/config",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "monitoring",
+                "config"
+              ]
+            },
+            "description": "Get system configuration (non-sensitive)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get System Logs (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/monitoring/logs",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "monitoring",
+                "logs"
+              ]
+            },
+            "description": "Get system logs"
+          },
+          "response": []
+        },
+        {
+          "name": "Reset Metrics (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/monitoring/metrics/reset",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "monitoring",
+                "metrics",
+                "reset"
+              ]
+            },
+            "description": "Reset performance metrics"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Performance Dashboard (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/monitoring/dashboard",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "monitoring",
+                "dashboard"
+              ]
+            },
+            "description": "Get performance dashboard data"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Real-time System Status (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/monitoring/status",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "monitoring",
+                "status"
+              ]
+            },
+            "description": "Get real-time system status"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "13. Health Check",
+      "description": "Health check and documentation endpoints",
+      "item": [
+        {
+          "name": "Basic Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/health",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "health"
+              ]
+            },
+            "description": "Basic health check endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "Detailed Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/health/detailed",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "health",
+                "detailed"
+              ]
+            },
+            "description": "Detailed health check with system information"
+          },
+          "response": []
+        },
+        {
+          "name": "Get API Documentation",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/docs",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "docs"
+              ]
+            },
+            "description": "Get API documentation overview"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "BASE_URL",
+      "value": "http://localhost:3000",
+      "type": "string",
+      "description": "Base URL for the API. Change this to your cloud URL when testing from cloud."
+    },
+    {
+      "key": "API_PREFIX",
+      "value": "/api",
+      "type": "string"
+    },
+    {
+      "key": "AUTH_TOKEN",
+      "value": "",
+      "type": "string",
+      "description": "JWT token for authenticated requests. Auto-populated after login."
+    },
+    {
+      "key": "REFRESH_TOKEN",
+      "value": "",
+      "type": "string",
+      "description": "Refresh token for getting new access tokens."
+    },
+    {
+      "key": "USER_ID",
+      "value": "",
+      "type": "string",
+      "description": "Current user ID. Auto-populated after login."
+    },
+    {
+      "key": "MEAL_ID",
+      "value": "",
+      "type": "string",
+      "description": "Meal ID for testing meal-specific endpoints."
+    },
+    {
+      "key": "BAZAR_ID",
+      "value": "",
+      "type": "string",
+      "description": "Bazar ID for testing bazar-specific endpoints."
+    }
+  ]
+}

@@ -62,6 +62,7 @@ class NetworkServiceImpl implements NetworkService {
   private lastQuality: NetworkQuality = NetworkQuality.UNREACHABLE;
   private isMonitoring = false;
   private retryInterval: ReturnType<typeof setInterval> | null = null;
+  private netInfoUnsubscribe: (() => void) | null = null;
 
   constructor() {
     this.startMonitoring();
@@ -74,8 +75,8 @@ class NetworkServiceImpl implements NetworkService {
     this.isMonitoring = true;
     console.log('🌐 Starting network monitoring...');
 
-    // Monitor network state changes
-    NetInfo.addEventListener(state => {
+    // Monitor network state changes - store unsubscribe function to prevent memory leak
+    this.netInfoUnsubscribe = NetInfo.addEventListener(state => {
       this.handleNetworkChange(state);
     });
 
@@ -378,6 +379,13 @@ class NetworkServiceImpl implements NetworkService {
   // Cleanup resources
   cleanup(): void {
     this.stopPeriodicRetry();
+    
+    // Unsubscribe from NetInfo to prevent memory leak
+    if (this.netInfoUnsubscribe) {
+      this.netInfoUnsubscribe();
+      this.netInfoUnsubscribe = null;
+    }
+    
     this.listeners = [];
     this.isMonitoring = false;
     console.log('🧹 Network service cleaned up');

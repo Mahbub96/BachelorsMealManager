@@ -1,4 +1,4 @@
-import { API_ENDPOINTS, ApiResponse } from './config';
+import { API_ENDPOINTS, ApiResponse, config as API_CONFIG } from './config';
 import httpClient from './httpClient';
 
 // Type definitions for bazar management
@@ -112,6 +112,10 @@ export interface BazarService {
 class BazarServiceImpl implements BazarService {
   async submitBazar(data: BazarSubmission): Promise<ApiResponse<BazarEntry>> {
     try {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'bazarService.ts:113',message:'submitBazar called',data:{itemsCount:data.items?.length,totalAmount:data.totalAmount,hasDescription:!!data.description,date:data.date,hasReceipt:!!data.receiptImage},timestamp:Date.now(),sessionId:'debug-session',runId:'bazar-submit',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+
       console.log('📝 Bazar Service - Submitting bazar entry:', {
         itemsCount: data.items?.length,
         totalAmount: data.totalAmount,
@@ -150,6 +154,18 @@ class BazarServiceImpl implements BazarService {
         };
       }
 
+      // Get the baseURL from config to verify it's using env config
+      const baseURL = API_CONFIG.apiUrl;
+      const endpoint = API_ENDPOINTS.BAZAR.SUBMIT;
+      const fullUrl = `${baseURL}${endpoint}`;
+
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'bazarService.ts:160',message:'About to submit to API',data:{baseURL,endpoint,fullUrl,hasReceipt:!!data.receiptImage},timestamp:Date.now(),sessionId:'debug-session',runId:'bazar-submit',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+
+      console.log('🌐 Bazar Service - Submitting to:', fullUrl);
+      console.log('🌐 Bazar Service - Base URL from env:', baseURL);
+
       let response: ApiResponse<BazarEntry>;
 
       if (data.receiptImage) {
@@ -162,6 +178,10 @@ class BazarServiceImpl implements BazarService {
           date: data.date,
         };
 
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'bazarService.ts:180',message:'Uploading with receipt',data:{endpoint,additionalData},timestamp:Date.now(),sessionId:'debug-session',runId:'bazar-submit',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
+
         response = await httpClient.uploadFile<BazarEntry>(
           API_ENDPOINTS.BAZAR.SUBMIT,
           data.receiptImage,
@@ -170,13 +190,21 @@ class BazarServiceImpl implements BazarService {
         );
       } else {
         console.log('📤 Bazar Service - Submitting without receipt image');
-        // Upload without file
+        // Upload without file - format data to match backend expectations
         const requestData = {
-          items: data.items,
+          items: data.items.map(item => ({
+            name: item.name.trim(),
+            quantity: item.quantity,
+            price: item.price,
+          })),
           totalAmount: data.totalAmount,
           description: data.description || '',
           date: data.date,
         };
+
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'bazarService.ts:200',message:'Submitting without receipt',data:{endpoint,requestData},timestamp:Date.now(),sessionId:'debug-session',runId:'bazar-submit',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
 
         response = await httpClient.post<BazarEntry>(
           API_ENDPOINTS.BAZAR.SUBMIT,
@@ -184,6 +212,10 @@ class BazarServiceImpl implements BazarService {
           { offlineFallback: true }
         );
       }
+
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'bazarService.ts:210',message:'Submit response received',data:{success:response.success,hasData:!!response.data,error:response.error},timestamp:Date.now(),sessionId:'debug-session',runId:'bazar-submit',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
 
       console.log('📥 Bazar Service - Submit response:', {
         success: response.success,
@@ -568,6 +600,20 @@ class BazarServiceImpl implements BazarService {
       console.log('🗑️ Bazar Service - Clearing bazar cache');
       // Clear all bazar-related cache
       await httpClient.clearCache();
+      
+      // Also clear dashboard cache since bazar entries affect dashboard stats
+      try {
+        const { default: dashboardService } = await import('./dashboardService');
+        await dashboardService.refreshDashboard();
+        console.log('🔄 Bazar Service - Dashboard cache refreshed after bazar submission');
+      } catch (error) {
+        console.log('⚠️ Bazar Service - Could not refresh dashboard cache:', error);
+      }
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'bazarService.ts:598',message:'Bazar cache cleared',data:{cleared:true},timestamp:Date.now(),sessionId:'debug-session',runId:'cache-clear',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
+      
       console.log('✅ Bazar Service - Cache cleared successfully');
     } catch (error) {
       console.error('❌ Bazar Service - Failed to clear bazar cache:', error);

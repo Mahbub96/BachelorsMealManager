@@ -57,9 +57,20 @@ export default function NewBazarScreen() {
     value: string | number
   ) => {
     console.log('✏️ NewBazar - Updating item:', { index, field, value });
-    setItems(prev =>
-      prev.map((item, i) => (i === index ? { ...item, [field]: value } : item))
-    );
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'new-bazar.tsx:54',message:'updateItem called',data:{index,field,value,currentItems:items},timestamp:Date.now(),sessionId:'debug-session',runId:'update-item',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
+
+    setItems(prev => {
+      const updated = prev.map((item, i) => (i === index ? { ...item, [field]: value } : item));
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'new-bazar.tsx:62',message:'Items state updated',data:{updatedItems:updated},timestamp:Date.now(),sessionId:'debug-session',runId:'update-item',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
+      
+      return updated;
+    });
   };
 
   const removeItem = (index: number) => {
@@ -123,8 +134,22 @@ export default function NewBazarScreen() {
   const validateForm = () => {
     console.log('✅ NewBazar - Validating form');
 
-    if (items.some(item => !item.name.trim())) {
-      console.error('❌ NewBazar - Validation failed: Empty item names');
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'new-bazar.tsx:123',message:'validateForm called',data:{itemsCount:items.length,items:items.map(i=>({name:i.name,quantity:i.quantity,price:i.price}))},timestamp:Date.now(),sessionId:'debug-session',runId:'validation',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+
+    const emptyItems = items.filter(item => !item.name.trim());
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'new-bazar.tsx:130',message:'Checking for empty items',data:{emptyItemsCount:emptyItems.length,emptyItems,allItems:items},timestamp:Date.now(),sessionId:'debug-session',runId:'validation',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+
+    if (emptyItems.length > 0) {
+      console.error('❌ NewBazar - Validation failed: Empty item names', {
+        emptyItemsCount: emptyItems.length,
+        emptyItems,
+        allItems: items,
+      });
       Alert.alert('Error', 'All items must have a name');
       return false;
     }
@@ -146,6 +171,10 @@ export default function NewBazarScreen() {
   const handleSubmit = async () => {
     console.log('📝 NewBazar - Submitting bazar entry');
 
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'new-bazar.tsx:171',message:'handleSubmit called',data:{itemsCount:items.length,items:items.map(i=>({name:i.name,quantity:i.quantity,price:i.price})),date,description},timestamp:Date.now(),sessionId:'debug-session',runId:'submit',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
+
     if (!validateForm()) {
       console.log('❌ NewBazar - Form validation failed');
       return;
@@ -153,8 +182,20 @@ export default function NewBazarScreen() {
 
     setLoading(true);
     try {
+      // Filter out any completely empty items (items with no name, no quantity, and price = 0)
+      const validItems = items.filter(
+        item =>
+          item.name.trim() ||
+          item.quantity.trim() ||
+          item.price > 0
+      );
+
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'new-bazar.tsx:186',message:'Filtered items',data:{originalCount:items.length,validItemsCount:validItems.length,validItems},timestamp:Date.now(),sessionId:'debug-session',runId:'submit',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
+
       const bazarData = {
-        items,
+        items: validItems,
         totalAmount: calculateTotal(),
         description: description.trim() || undefined,
         date,

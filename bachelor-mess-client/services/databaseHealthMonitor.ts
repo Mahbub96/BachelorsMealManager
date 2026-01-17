@@ -35,14 +35,24 @@ class DatabaseHealthMonitor {
     averageResponseTime: 0,
   };
   private responseTimes: number[] = [];
+  private lastLoggedState: boolean | null = null; // Track last logged state to reduce logging
+  private isWebPlatform: boolean | null = null; // Cache platform check
 
   constructor(config: Partial<HealthCheckConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
 
-  startMonitoring(): void {
+  async startMonitoring(): Promise<void> {
     if (this.isMonitoring) {
-      console.log('⚠️ DatabaseHealthMonitor - Already monitoring');
+      return; // Silently return if already monitoring
+    }
+
+    // Check if we're on web platform
+    await this.checkPlatform();
+
+    // Skip monitoring on web platform
+    if (this.isWebPlatform) {
+      console.log('ℹ️ DatabaseHealthMonitor - Skipping health monitoring on web platform');
       return;
     }
 
@@ -56,6 +66,20 @@ class DatabaseHealthMonitor {
     this.healthInterval = setInterval(() => {
       this.performHealthCheck();
     }, this.config.checkInterval);
+  }
+
+  private async checkPlatform(): Promise<void> {
+    if (this.isWebPlatform !== null) {
+      return; // Already checked
+    }
+
+    try {
+      const { Platform } = await import('react-native');
+      this.isWebPlatform = Platform.OS === 'web';
+    } catch (error) {
+      // If import fails, assume web
+      this.isWebPlatform = true;
+    }
   }
 
   stopMonitoring(): void {
@@ -73,17 +97,27 @@ class DatabaseHealthMonitor {
   }
 
   private async performHealthCheck(): Promise<void> {
+    // Skip health checks on web platform
+    await this.checkPlatform();
+    if (this.isWebPlatform) {
+      return; // Silently skip on web
+    }
+
     const startTime = Date.now();
     this.status.totalChecks++;
 
     try {
-      console.log('🔍 DatabaseHealthMonitor - Performing health check...');
+      // Only log if state changed (reduce excessive logging)
+      const wasHealthy = this.status.isHealthy;
 
-      // Check if database is initialized
+      // Check if database is initialized - but don't call init() repeatedly
       if (!sqliteDatabase['isInitialized']) {
-        console.log(
-          '🔄 DatabaseHealthMonitor - Database not initialized, attempting initialization...'
-        );
+        // Only log and attempt init once per failure cycle
+        if (this.status.consecutiveFailures === 0) {
+          console.log(
+            '🔄 DatabaseHealthMonitor - Database not initialized, attempting initialization...'
+          );
+        }
         await sqliteDatabase.init();
       }
 
@@ -96,14 +130,19 @@ class DatabaseHealthMonitor {
         const responseTime = Date.now() - startTime;
         this.updateResponseTime(responseTime);
 
-        this.status.isHealthy = true;
+        const isNowHealthy = true;
+        this.status.isHealthy = isNowHealthy;
         this.status.consecutiveFailures = 0;
         this.status.lastCheck = Date.now();
         this.status.lastError = undefined;
 
-        console.log(
-          `✅ DatabaseHealthMonitor - Health check passed (${responseTime}ms)`
-        );
+        // Only log if state changed from unhealthy to healthy
+        if (!wasHealthy || this.lastLoggedState !== isNowHealthy) {
+          console.log(
+            `✅ DatabaseHealthMonitor - Health check passed (${responseTime}ms)`
+          );
+          this.lastLoggedState = isNowHealthy;
+        }
       } else {
         throw new Error('Health check query returned unexpected result');
       }
@@ -111,16 +150,21 @@ class DatabaseHealthMonitor {
       const responseTime = Date.now() - startTime;
       this.updateResponseTime(responseTime);
 
-      this.status.isHealthy = false;
+      const isNowHealthy = false;
+      this.status.isHealthy = isNowHealthy;
       this.status.consecutiveFailures++;
       this.status.lastCheck = Date.now();
       this.status.lastError =
         error instanceof Error ? error.message : 'Unknown error';
 
-      console.error(
-        `❌ DatabaseHealthMonitor - Health check failed (${responseTime}ms):`,
-        this.status.lastError
-      );
+      // Only log errors on state change or first few failures (reduce excessive logging)
+      if (this.lastLoggedState !== isNowHealthy || this.status.consecutiveFailures <= 2) {
+        console.error(
+          `❌ DatabaseHealthMonitor - Health check failed (${responseTime}ms):`,
+          this.status.lastError
+        );
+        this.lastLoggedState = isNowHealthy;
+      }
 
       // Auto-recovery if enabled and too many consecutive failures
       if (
@@ -161,7 +205,7 @@ class DatabaseHealthMonitor {
           console.log(
             '✅ DatabaseHealthMonitor - Graceful recovery successful'
           );
-          this.startMonitoring();
+          await this.startMonitoring();
           return;
         }
       } catch (gracefulError) {
@@ -174,7 +218,7 @@ class DatabaseHealthMonitor {
       try {
         await sqliteDatabase.emergencyReset();
         console.log('✅ DatabaseHealthMonitor - Emergency reset successful');
-        this.startMonitoring();
+        await this.startMonitoring();
         return;
       } catch (emergencyError) {
         console.log(
@@ -188,7 +232,7 @@ class DatabaseHealthMonitor {
         console.log(
           '⚠️ DatabaseHealthMonitor - Using bypass mode - no data persistence'
         );
-        this.startMonitoring();
+        await this.startMonitoring();
         return;
       } catch (bypassError) {
         console.error('❌ DatabaseHealthMonitor - All recovery methods failed');
@@ -198,7 +242,7 @@ class DatabaseHealthMonitor {
       console.error('❌ DatabaseHealthMonitor - Recovery failed:', error);
 
       // Restart monitoring even if recovery failed
-      this.startMonitoring();
+      await this.startMonitoring();
     }
   }
 
