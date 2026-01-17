@@ -1,0 +1,116 @@
+name: Build and Deploy Test Server
+
+on:
+  push:
+    branches:
+      - cicd
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ✅ Step 1: Checkout source code
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # ✅ Step 2: Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+          cache-dependency-path: BachelorMessManagerBackend/package-lock.json
+
+      # ✅ Step 3: Install dependencies
+      - name: Install Dependencies
+        working-directory: BachelorMessManagerBackend
+        run: npm ci
+
+      # ✅ Step 4: Create environment file
+      - name: Create Environment File
+        working-directory: BachelorMessManagerBackend
+        run: |
+          cat > .env << EOF
+          MONGODB_URI=${{ secrets.MONGODB_URI }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET || secrets.JWT_SECRET }}
+          NODE_ENV=production
+          PORT=4000
+          HOST=0.0.0.0
+          API_PREFIX=/api
+          API_VERSION=v1
+          CORS_ORIGIN=${{ secrets.CORS_ORIGIN || '*' }}
+          CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME || '' }}
+          CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY || '' }}
+          CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET || '' }}
+          EOF
+
+      # ✅ Step 5: Prepare deployment package
+      - name: Prepare Deployment Package
+        working-directory: BachelorMessManagerBackend
+        run: |
+          mkdir -p deploy
+          cp -r src server.js package.json package-lock.json scripts deploy/
+          cp .env deploy/.env
+          # Create logs and uploads directories (will be auto-created by app, but good to have)
+          mkdir -p deploy/logs deploy/uploads
+
+      # ✅ Step 6: Deploy built files to VPS
+      - name: Deploy to VPS (Test)
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.IP }}
+          username: ${{ secrets.USER }}
+          key: ${{ secrets.PRIVATE_SSH_VPS }}
+          source: "BachelorMessManagerBackend/deploy/*"
+          target: "/var/www/html/test.mahbub.dev"
+
+      # ✅ Step 7: Install dependencies, run seeder & restart app
+      - name: Run Seeder & Restart Test App on Port 4000
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.IP }}
+          username: ${{ secrets.USER }}
+          key: ${{ secrets.PRIVATE_SSH_VPS }}
+          script: |
+            cd /var/www/html/test.mahbub.dev
+
+            # Load Node
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            nvm use 22
+            export PATH="$NVM_DIR/versions/node/v22.14.0/bin:$PATH"
+
+            # Check versions
+            node -v
+            npm -v
+            pm2 -v || npm install -g pm2
+
+            # Install dependencies
+            npm ci --production=false
+
+            # Run database seeder (if exists)
+            if [ -f scripts/perfect-seeder.js ]; then
+              echo "🚀 Running Perfect Seeder..."
+              node scripts/perfect-seeder.js
+            elif [ -f scripts/seed.js ]; then
+              echo "🚀 Running Seeder..."
+              node scripts/seed.js
+            else
+              echo "⚠️ Seeder file not found, skipping..."
+            fi
+
+            # Create necessary directories if they don't exist
+            mkdir -p logs uploads
+
+            # Restart or start PM2 app on port 4000
+            export PORT=4000
+            export NODE_ENV=production
+            pm2 delete test.mahbub.dev || true
+            pm2 start server.js --name "test.mahbub.dev" --update-env --log-date-format="YYYY-MM-DD HH:mm:ss Z"
+            pm2 save
+            
+            # Show PM2 status
+            pm2 status
+            pm2 logs test.mahbub.dev --lines 20 --nostream
