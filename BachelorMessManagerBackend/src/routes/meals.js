@@ -11,7 +11,7 @@ router.post(
   '/',
   AuthMiddleware.protect(),
   validateMealSubmission,
-  mealController.submitMeals
+  mealController.submitMeals,
 );
 
 // @desc    Submit daily meals (alternative endpoint)

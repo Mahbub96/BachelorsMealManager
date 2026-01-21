@@ -23,8 +23,25 @@ const errorHandler = (err, req, res, next) => {
 
   // Mongoose duplicate key
   if (err.code === 11000) {
-    const field = Object.keys(err.keyValue)[0];
-    const message = `${field} already exists`;
+    const fields = Object.keys(err.keyValue || {});
+    let message = 'Duplicate entry';
+    
+    // Provide better error messages for specific compound indexes
+    if (fields.includes('userId') && fields.includes('date')) {
+      // Meal duplicate - compound unique index on userId + date
+      message = 'Meal entry already exists for this date. You can update your existing entry instead.';
+    } else if (fields.length > 0) {
+      const field = fields[0];
+      // Check if it's a common field that needs better messaging
+      if (field === 'email') {
+        message = 'Email already exists';
+      } else if (field === 'userId') {
+        message = 'Meal entry already exists for this date';
+      } else {
+        message = `${field} already exists`;
+      }
+    }
+    
     error = { message, statusCode: 400 };
   }
 

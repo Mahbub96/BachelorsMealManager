@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useColorScheme } from '@/hooks/useColorScheme';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { Appearance } from 'react-native';
 import {
   ThemeColors,
   LightTheme,
@@ -12,37 +12,91 @@ import {
 // Create the theme context
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
+// Stable fallback theme object to prevent re-renders
+const FALLBACK_THEME: ThemeContextType = {
+  theme: LightTheme,
+  isDark: false,
+  toggleTheme: () => {},
+  setTheme: () => {},
+};
+
 // Theme provider component
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const colorScheme = useColorScheme();
-  const [isDark, setIsDark] = useState(colorScheme === 'dark');
-
-  // Update theme when system color scheme changes
+  // Initialize state based on Appearance API (more stable than useColorScheme hook)
+  const [isDark, setIsDark] = useState(() => {
+    try {
+      return Appearance.getColorScheme() === 'dark';
+    } catch {
+      return false;
+    }
+  });
+  
+  // Listen to appearance changes (but only after initial mount to prevent loops)
+  const isInitialMount = useRef(true);
+  
   useEffect(() => {
-    setIsDark(colorScheme === 'dark');
-  }, [colorScheme]);
+    // Skip on initial mount
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    
+    // Only listen to changes after initial mount
+    const subscription = Appearance.addChangeListener(({ colorScheme }) => {
+      if (colorScheme === 'dark') {
+        setIsDark(true);
+      } else {
+        setIsDark(false);
+      }
+    });
+    
+    return () => subscription.remove();
+  }, []); // Empty deps - only set up listener once
 
-  // Get the current theme
-  const theme = getTheme(isDark);
+  // Get the current theme - memoized to prevent unnecessary re-renders
+  const theme = useMemo(() => {
+    try {
+      return getTheme(isDark);
+    } catch (error) {
+      console.error('Error getting theme:', error);
+      return LightTheme; // Fallback to light theme
+    }
+  }, [isDark]);
 
   // Toggle between light and dark themes
-  const toggleTheme = () => {
-    setIsDark(!isDark);
-  };
+  const toggleTheme = useCallback(() => {
+    setIsDark(prev => !prev);
+  }, []);
 
   // Set specific theme mode
-  const setTheme = (mode: ThemeMode) => {
+  const setTheme = useCallback((mode: ThemeMode) => {
     setIsDark(mode === 'dark');
-  };
+  }, []);
 
-  const value: ThemeContextType = {
-    theme,
-    isDark,
-    toggleTheme,
-    setTheme,
-  };
+  // Memoize the context value to prevent unnecessary re-renders
+  // Only recreate if theme, isDark, or functions actually change
+  const value: ThemeContextType = useMemo(
+    () => {
+      if (!theme) {
+        console.error('Theme is undefined, using LightTheme as fallback');
+        return {
+          theme: LightTheme,
+          isDark: false,
+          toggleTheme,
+          setTheme,
+        };
+      }
+      return {
+        theme,
+        isDark,
+        toggleTheme,
+        setTheme,
+      };
+    },
+    [theme, isDark, toggleTheme, setTheme]
+  );
 
   return (
     <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
@@ -52,8 +106,23 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
 // Custom hook to use theme
 export const useTheme = (): ThemeContextType => {
   const context = useContext(ThemeContext);
+  // Don't throw error - return stable fallback instead to prevent render loops
   if (context === undefined) {
-    throw new Error('useTheme must be used within a ThemeProvider');
+    if (__DEV__) {
+      console.warn('useTheme called outside ThemeProvider, using LightTheme fallback');
+    }
+    return FALLBACK_THEME;
+  }
+  // Ensure theme is always available
+  if (!context.theme) {
+    if (__DEV__) {
+      console.warn('Theme is undefined in context, using LightTheme as fallback');
+    }
+    return {
+      ...context,
+      theme: LightTheme,
+      isDark: false,
+    };
   }
   return context;
 };

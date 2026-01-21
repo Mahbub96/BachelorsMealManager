@@ -49,7 +49,7 @@ class AuthController {
       // Check if user exists
       const user = await User.findByEmail(email).select('+password');
       if (!user) {
-        return sendErrorResponse(res, 404, 'User not found');
+        return sendErrorResponse(res, 401, 'Invalid email or password');
       }
 
       // Check if user is active

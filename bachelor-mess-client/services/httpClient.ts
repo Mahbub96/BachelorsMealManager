@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import authEventEmitter from './authEventEmitter';
 import { config as API_CONFIG, ApiResponse, HTTP_STATUS } from './config';
 import { offlineStorage } from './offlineStorage';
+import logger from '../utils/logger';
 
 // Request configuration interface
 interface RequestConfig {
@@ -41,15 +42,15 @@ class HttpClient {
     };
     
     // Log the configured base URL for debugging
-    console.log('🌐 HttpClient initialized with baseURL:', this.baseURL);
-    console.log('🌐 API_CONFIG.apiUrl:', API_CONFIG.apiUrl);
+    logger.debug('HttpClient initialized with baseURL:', this.baseURL);
+    logger.debug('API_CONFIG.apiUrl:', API_CONFIG.apiUrl);
     
     // Validate that baseURL is not pointing to Metro bundler
     if (this.baseURL.includes(':8081')) {
-      console.error('❌ ERROR: baseURL is pointing to Metro bundler port (8081) instead of backend API!');
-      console.error('❌ Current baseURL:', this.baseURL);
-      console.error('❌ Expected: http://localhost:3000 (or your backend URL)');
-      console.error('❌ Fix: Set EXPO_PUBLIC_API_URL=http://localhost:3000 in .env file');
+      logger.error('ERROR: baseURL is pointing to Metro bundler port (8081) instead of backend API!');
+      logger.error('Current baseURL:', this.baseURL);
+      logger.error('Expected: http://localhost:3000 (or your backend URL)');
+      logger.error('Fix: Set EXPO_PUBLIC_API_URL=http://localhost:3000 in .env file');
     }
   }
 
@@ -68,7 +69,7 @@ class HttpClient {
     try {
       return await AsyncStorage.getItem('auth_token');
     } catch (error) {
-      console.error('Error getting auth token:', error);
+      logger.error('Error getting auth token:', error);
       return null;
     }
   }
@@ -149,7 +150,15 @@ class HttpClient {
           clearTimeout(timeoutId);
 
           if (response.ok) {
-            console.log(`✅ API connectivity check successful via ${healthUrl}`);
+            logger.debug(`API connectivity check successful via ${healthUrl}`);
+            this.isOnlineCache = {
+              status: true,
+              timestamp: Date.now(),
+            };
+            return true;
+          } else if (response.status === 429) {
+            // 429 = Rate limited, but server IS online
+            logger.warn(`API rate limited (429), but server is online`);
             this.isOnlineCache = {
               status: true,
               timestamp: Date.now(),
@@ -166,7 +175,7 @@ class HttpClient {
       }
 
       // All URLs failed
-      console.log('❌ All health check URLs failed:', lastError?.message);
+      logger.error('All health check URLs failed:', lastError?.message);
       this.isOnlineCache = {
         status: false,
         timestamp: Date.now(),
@@ -212,10 +221,17 @@ class HttpClient {
         config.timeout || API_CONFIG.timeout
       );
 
+      // Log the exact request body being sent
+      const requestBody = config.body ? JSON.stringify(config.body) : undefined;
+      if (requestBody && ['POST', 'PUT', 'PATCH'].includes(config.method || 'GET')) {
+        console.log('📤 HTTP Client - Final request body (stringified):', requestBody);
+        console.log('📤 HTTP Client - Final request body (parsed):', config.body);
+      }
+
       const response = await fetch(url, {
         method: config.method,
         headers: config.headers,
-        body: config.body ? JSON.stringify(config.body) : undefined,
+        body: requestBody,
         signal: controller.signal,
       });
 
@@ -259,7 +275,7 @@ class HttpClient {
   }
 
   // Enhanced response handling
-  private async handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
+  private async handleResponse<T>(response: Response, endpoint?: string): Promise<ApiResponse<T>> {
     const contentType = response.headers.get('content-type');
     const isJson = contentType?.includes('application/json');
 
@@ -281,11 +297,26 @@ class HttpClient {
       error.status = response.status;
       error.response = errorData;
 
+      // Check if this is a login/register endpoint (should not trigger session expiration)
+      // Use endpoint parameter or fallback to response.url
+      const checkUrl = endpoint || response.url || '';
+      const isAuthEndpoint = 
+        checkUrl.includes('/auth/login') || 
+        checkUrl.includes('/auth/register') ||
+        checkUrl.includes('/auth/forgot-password') ||
+        checkUrl.includes('/auth/reset-password');
+
       // Handle specific status codes
       switch (response.status) {
         case HTTP_STATUS.UNAUTHORIZED:
-          await this.handleAuthError();
-          throw new Error('Session expired. Please login again.');
+          // Don't trigger session expiration for login/register endpoints
+          // These are expected to return 401 for invalid credentials
+          if (!isAuthEndpoint) {
+            await this.handleAuthError();
+            throw new Error('Session expired. Please login again.');
+          }
+          // For auth endpoints, return the actual error message from backend
+          throw new Error(errorMessage || 'Invalid email or password.');
         case HTTP_STATUS.FORBIDDEN:
           throw new Error('Access denied. Insufficient permissions.');
         case HTTP_STATUS.NOT_FOUND:
@@ -453,12 +484,21 @@ class HttpClient {
       const requestConfig = await this.createRequestConfig(endpoint, config);
       const url = `${this.baseURL}${endpoint}`;
 
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'httpClient.ts:454',message:'Making API request',data:{method:requestConfig.method,endpoint,baseURL:this.baseURL,fullUrl:url},timestamp:Date.now(),sessionId:'debug-session',runId:'api-request',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
-
-      console.log(`🌐 Making ${requestConfig.method} request to: ${url}`);
-      console.log(`🌐 Base URL (from env): ${this.baseURL}`);
+      // Log API request (only in development)
+      logger.apiRequest(requestConfig.method || 'GET', url, requestConfig.body);
+      
+      // Warn if request body contains userId/user_id (should be removed)
+      if (['POST', 'PUT', 'PATCH'].includes(requestConfig.method || 'GET') && requestConfig.body) {
+        const bodyData = typeof requestConfig.body === 'string' 
+          ? JSON.parse(requestConfig.body || '{}') 
+          : requestConfig.body;
+        if (bodyData?.userId || bodyData?.user_id) {
+          logger.warn('HTTP Client - Request body contains userId/user_id (should be removed):', { 
+            hasUserId: !!bodyData.userId, 
+            hasUser_id: !!bodyData.user_id 
+          });
+        }
+      }
 
       // Check if device is online
       const online = await this.isOnline();
@@ -516,8 +556,8 @@ class HttpClient {
       // Make the request with retry logic
       const response = await this.retryRequest(url, requestConfig);
 
-      // Handle the response
-      const result = await this.handleResponse<T>(response);
+      // Handle the response (pass endpoint to check if it's an auth endpoint)
+      const result = await this.handleResponse<T>(response, endpoint);
 
       // Cache successful GET responses
       if (
@@ -559,7 +599,26 @@ class HttpClient {
     data?: any,
     config: Omit<RequestConfig, 'method' | 'body'> = {}
   ): Promise<ApiResponse<T>> {
-    return this.request<T>(endpoint, { ...config, method: 'POST', body: data });
+    // Log incoming data
+    console.log('📤 HTTP Client POST - Incoming data:', JSON.stringify(data, null, 2));
+    console.log('📤 HTTP Client POST - Incoming data (object):', data);
+    
+    // Remove userId/user_id from data if present (for meal submissions)
+    // Backend should use authenticated user ID from JWT token
+    let cleanData = data;
+    if (data && typeof data === 'object' && !Array.isArray(data)) {
+      const { userId, user_id, ...rest } = data;
+      if (userId || user_id) {
+        console.warn('⚠️ HTTP Client - Removing userId/user_id from POST data:', { userId, user_id, endpoint });
+        cleanData = rest;
+      }
+    }
+    
+    // Log cleaned data
+    console.log('📤 HTTP Client POST - Cleaned data being sent:', JSON.stringify(cleanData, null, 2));
+    console.log('📤 HTTP Client POST - Cleaned data (object):', cleanData);
+    
+    return this.request<T>(endpoint, { ...config, method: 'POST', body: cleanData });
   }
 
   async put<T>(

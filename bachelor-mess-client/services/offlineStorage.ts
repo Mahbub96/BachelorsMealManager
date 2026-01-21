@@ -415,7 +415,7 @@ class OfflineStorageService {
       console.log(`🌐 OfflineStorage - Making API call to ${item.endpoint}`);
 
       // Import HTTP client dynamically to avoid circular dependencies
-      const { httpClient } = await import('./httpClient');
+      const httpClient = (await import('./httpClient')).default;
 
       let response;
       switch (item.action) {
@@ -658,7 +658,7 @@ class OfflineStorageService {
       if (this.isOnline) {
         try {
           // Try to submit to API immediately
-          const { httpClient } = await import('./httpClient');
+          const httpClient = (await import('./httpClient')).default;
           const response = await httpClient.post('/api/bazar', formData);
 
           if (response.success) {
@@ -732,7 +732,7 @@ class OfflineStorageService {
       if (this.isOnline) {
         try {
           // Try to submit to API immediately
-          const { httpClient } = await import('./httpClient');
+          const httpClient = (await import('./httpClient')).default;
           const response = await httpClient.post('/api/meals', formData);
 
           if (response.success) {
@@ -806,7 +806,7 @@ class OfflineStorageService {
       if (this.isOnline) {
         try {
           // Try to submit to API immediately
-          const { httpClient } = await import('./httpClient');
+          const httpClient = (await import('./httpClient')).default;
           const response = await httpClient.post('/api/payments', formData);
 
           if (response.success) {
@@ -908,7 +908,7 @@ class OfflineStorageService {
       if (this.isOnline) {
         try {
           // Try to submit to API immediately
-          const { httpClient } = await import('./httpClient');
+          const httpClient = (await import('./httpClient')).default;
           let response;
 
           switch (action) {

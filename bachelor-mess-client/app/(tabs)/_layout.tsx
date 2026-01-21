@@ -21,22 +21,25 @@ export default function TabLayout() {
   );
 
   // Determine which tabs to show based on user role
-  const isAdmin = user?.role === 'admin';
+  // Explicitly check for admin/super_admin roles only - members should never see admin tabs
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
   const isSuperAdmin = user?.role === 'super_admin';
+  const isMember = user?.role === 'member' || (!user?.role || (user?.role !== 'admin' && user?.role !== 'super_admin'));
 
   // Debug logging for troubleshooting
   console.log('🔍 TabLayout Debug:', {
     userRole: user?.role,
     isAdmin,
     isSuperAdmin,
+    isMember,
     userId: user?.id,
     userName: user?.name,
   });
 
   // Force re-render when user role changes
   console.log('🔍 TabLayout - Rendering tabs for role:', user?.role);
-  console.log('🔍 TabLayout - Admin tab visible:', isAdmin);
-  console.log('🔍 TabLayout - Super Admin tab visible:', isSuperAdmin);
+  console.log('🔍 TabLayout - Admin tab visible:', isAdmin && !isMember);
+  console.log('🔍 TabLayout - Super Admin tab visible:', isSuperAdmin && !isMember);
 
   return (
     <Tabs
@@ -130,8 +133,8 @@ export default function TabLayout() {
           ),
         }}
       />
-      {/* Admin tab - only visible to admin users */}
-      {isAdmin && (
+      {/* Admin tab - only visible to admin/super_admin users, NOT members */}
+      {isAdmin && !isMember && (
         <Tabs.Screen
           name='admin'
           options={{
@@ -146,8 +149,8 @@ export default function TabLayout() {
           }}
         />
       )}
-      {/* Super Admin tab - only visible to super admin users */}
-      {isSuperAdmin && (
+      {/* Super Admin tab - only visible to super admin users, NOT members */}
+      {isSuperAdmin && !isMember && (
         <Tabs.Screen
           name='super-admin'
           options={{

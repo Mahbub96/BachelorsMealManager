@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Meal = require('../models/Meal');
 const User = require('../models/User');
 const { config } = require('../config/config');
@@ -13,13 +14,19 @@ class MealController {
   async submitMeals(req, res, next) {
     try {
       const { breakfast, lunch, dinner, date, notes } = req.body;
-      const userId = req.user.id;
+      // Use _id to ensure we get the ObjectId, not the string id
+      // Convert to ObjectId if it's a string to ensure proper matching
+      let userId = req.user._id || req.user.id;
+      if (typeof userId === 'string') {
+        userId = new mongoose.Types.ObjectId(userId);
+      }
 
       console.log('🍽️ Meal submission request:', {
         body: req.body,
-        user: req.user,
+        userEmail: req.user.email,
         userId: userId,
-        userType: typeof userId,
+        userIdType: typeof userId,
+        userIdString: userId.toString(),
       });
 
       // Enhanced validation
@@ -49,42 +56,136 @@ class MealController {
         return sendErrorResponse(res, 400, 'Please select at least one meal');
       }
 
-      // Check if meal entry already exists for this date
-      const existingMeal = await Meal.findOne({
-        userId,
+      // Check if meal entry already exists for THIS USER and this date
+      // Normalize date to start of day in UTC to match how dates are stored
+      // Create start and end of day dates (without mutating mealDate)
+      const startOfDay = new Date(mealDate);
+      startOfDay.setUTCHours(0, 0, 0, 0);
+      const endOfDay = new Date(mealDate);
+      endOfDay.setUTCHours(23, 59, 59, 999);
+      
+      // IMPORTANT: Check for THIS SPECIFIC USER's meal entry for this date
+      // Different users CAN have meals for the same date - only prevent duplicate for same user
+      const query = {
+        userId: userId, // Only check for this specific user
         date: {
-          $gte: new Date(mealDate.setHours(0, 0, 0, 0)),
-          $lt: new Date(mealDate.setHours(23, 59, 59, 999)),
+          $gte: startOfDay,
+          $lte: endOfDay,
         },
+      };
+      
+      // Debug logging to verify query is correct
+      logger.debug('Checking for existing meal', {
+        queryUserId: userId.toString(),
+        queryUserIdType: userId.constructor.name,
+        queryDateRange: {
+          start: startOfDay.toISOString(),
+          end: endOfDay.toISOString(),
+        },
+        userEmail: req.user.email,
       });
+      
+      const existingMeal = await Meal.findOne(query);
 
       if (existingMeal) {
-        return sendErrorResponse(
-          res,
-          400,
-          `Meal entry already exists for ${new Date(mealDate).toLocaleDateString()}. You can update your existing entry instead.`,
-          {
+        // Verify the existing meal belongs to this user (safety check)
+        const existingUserId = existingMeal.userId ? existingMeal.userId.toString() : 'null';
+        const currentUserId = userId.toString();
+        
+        logger.debug('Found existing meal', {
+          existingMealId: existingMeal._id,
+          existingMealUserId: existingUserId,
+          currentUserId: currentUserId,
+          existingMealDate: existingMeal.date,
+          queryDate: mealDate,
+          userIdsMatch: existingUserId === currentUserId,
+        });
+        
+        if (existingUserId !== currentUserId) {
+          logger.warn('Meal duplicate check found meal for different user - this should not happen!', {
+            requestedUserId: currentUserId,
+            foundMealUserId: existingUserId,
+            requestedUserEmail: req.user.email,
             existingMealId: existingMeal._id,
-            existingMealStatus: existingMeal.status,
-            existingMeals: {
-              breakfast: existingMeal.breakfast,
-              lunch: existingMeal.lunch,
-              dinner: existingMeal.dinner,
-            },
-          }
-        );
+          });
+          // If somehow we found a meal for a different user, continue (shouldn't happen)
+          // This indicates a bug in the query or data
+        } else {
+          // This user already has a meal entry for this date - CORRECT BEHAVIOR
+          logger.info(`User ${req.user.email} (${currentUserId}) attempted duplicate meal submission for ${new Date(mealDate).toLocaleDateString()}`);
+          return sendErrorResponse(
+            res,
+            400,
+            `You already have a meal entry for ${new Date(mealDate).toLocaleDateString()}. You can update your existing entry instead.`,
+            {
+              existingMealId: existingMeal._id,
+              existingMealStatus: existingMeal.status,
+              existingMeals: {
+                breakfast: existingMeal.breakfast,
+                lunch: existingMeal.lunch,
+                dinner: existingMeal.dinner,
+              },
+            }
+          );
+        }
+      } else {
+        logger.debug('No existing meal found for this user and date - proceeding with creation', {
+          userId: userId.toString(),
+          userEmail: req.user.email,
+          date: mealDate,
+        });
       }
 
       // Create meal entry with enhanced data
-      const meal = await Meal.create({
-        userId,
-        breakfast: breakfast || false,
-        lunch: lunch || false,
-        dinner: dinner || false,
-        date: mealDate,
-        notes: notes?.trim() || '',
-        status: config.business?.autoApproveMeals ? 'approved' : 'pending',
-      });
+      // Normalize date to start of day in UTC for consistent storage
+      const normalizedDate = new Date(mealDate);
+      normalizedDate.setUTCHours(0, 0, 0, 0);
+      
+      let meal;
+      try {
+        meal = await Meal.create({
+          userId,
+          breakfast: breakfast || false,
+          lunch: lunch || false,
+          dinner: dinner || false,
+          date: normalizedDate,
+          notes: notes?.trim() || '',
+          status: config.business?.autoApproveMeals ? 'approved' : 'pending',
+        });
+      } catch (createError) {
+        // Handle duplicate key error (E11000) as a fallback
+        // This catches race conditions or if the query above missed something
+        if (createError.code === 11000) {
+          // Try to find the existing meal to provide better error message
+          // IMPORTANT: Only check for THIS SPECIFIC USER's meal
+          const duplicateMeal = await Meal.findOne({
+            userId: userId, // Only check for this specific user
+            date: {
+              $gte: startOfDay,
+              $lte: endOfDay,
+            },
+          });
+          
+          if (duplicateMeal) {
+            return sendErrorResponse(
+              res,
+              400,
+              `Meal entry already exists for ${new Date(mealDate).toLocaleDateString()}. You can update your existing entry instead.`,
+              {
+                existingMealId: duplicateMeal._id,
+                existingMealStatus: duplicateMeal.status,
+                existingMeals: {
+                  breakfast: duplicateMeal.breakfast,
+                  lunch: duplicateMeal.lunch,
+                  dinner: duplicateMeal.dinner,
+                },
+              }
+            );
+          }
+        }
+        // Re-throw if it's not a duplicate key error
+        throw createError;
+      }
 
       // Populate user information
       await meal.populate('userId', 'name email');

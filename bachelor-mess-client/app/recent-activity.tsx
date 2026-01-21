@@ -15,10 +15,9 @@ import { useTheme } from '@/context/ThemeContext';
 import { activityService } from '@/services/activityService';
 import { Activity as ActivityItem } from '@/services/activityService';
 
-interface RecentActivityScreenProps {}
-
-export default function RecentActivityScreen({}: RecentActivityScreenProps) {
+export default function RecentActivityScreen() {
   const { theme } = useTheme();
+  
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -79,17 +78,20 @@ export default function RecentActivityScreen({}: RecentActivityScreenProps) {
   };
 
   const getActivityColors = (type: string): [string, string] => {
+    if (!theme || !theme.gradient) {
+      return ['#667eea', '#764ba2']; // Default gradient
+    }
     switch (type) {
       case 'meal':
-        return theme.gradient.success as [string, string];
+        return [theme.gradient.success[0] || '#10b981', theme.gradient.success[1] || '#059669'];
       case 'bazar':
-        return theme.gradient.warning as [string, string];
+        return [theme.gradient.warning[0] || '#f59e0b', theme.gradient.warning[1] || '#d97706'];
       case 'member':
-        return theme.gradient.primary as [string, string];
+        return [theme.gradient.primary[0] || '#667eea', theme.gradient.primary[1] || '#764ba2'];
       case 'payment':
-        return theme.gradient.error as [string, string];
+        return [theme.gradient.error[0] || '#ef4444', theme.gradient.error[1] || '#dc2626'];
       default:
-        return theme.gradient.info as [string, string];
+        return [theme.gradient.info[0] || '#3b82f6', theme.gradient.info[1] || '#1d4ed8'];
     }
   };
 
@@ -109,9 +111,11 @@ export default function RecentActivityScreen({}: RecentActivityScreenProps) {
   };
 
   const getFilteredActivities = () => {
+    if (!Array.isArray(activities)) return [];
     if (filter === 'all') return activities;
 
     return activities.filter(activity => {
+      if (!activity || !activity.title) return false;
       const title = activity.title.toLowerCase();
       switch (filter) {
         case 'meals':

@@ -1,15 +1,15 @@
-import { AuthProvider, useAuth } from '@/context/AuthContext';
-import { ThemeProvider } from '@/context/ThemeContext';
-import { BazarProvider } from '@/context/BazarContext';
 import { AuthGuard } from '@/components/AuthGuard';
-import { Stack, useRouter } from 'expo-router';
+import { AuthProvider } from '@/context/AuthContext';
+import { BazarProvider } from '@/context/BazarContext';
+import { ThemeProvider } from '@/context/ThemeContext';
+import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { useColorScheme } from 'react-native';
+// import { useColorScheme } from 'react-native';
 
 export {
   // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
+  ErrorBoundary
 } from 'expo-router';
 
 export const unstable_settings = {
@@ -21,7 +21,7 @@ export const unstable_settings = {
 SplashScreen.preventAutoHideAsync();
 
 function AppContent() {
-  const { user } = useAuth();
+  // const { user } = useAuth();
 
   return (
     <Stack>
@@ -102,7 +102,7 @@ function AppContent() {
 }
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  // const colorScheme = useColorScheme();
 
   useEffect(() => {
     SplashScreen.hideAsync();

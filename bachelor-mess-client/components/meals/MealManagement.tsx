@@ -9,7 +9,10 @@ import {
   Dimensions,
   TextInput,
   FlatList,
+  Platform,
+  Modal,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 const { width } = Dimensions.get('window');
 import { Ionicons } from '@expo/vector-icons';
@@ -54,6 +57,8 @@ export const MealManagement: React.FC<MealManagementProps> = ({
   });
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const isSmallScreen = screenWidth < 375;
 
   const {
@@ -106,7 +111,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
         breakfast: selectedMeals.breakfast,
         lunch: selectedMeals.lunch,
         dinner: selectedMeals.dinner,
-        date: new Date().toISOString().split('T')[0],
+        date: selectedDate.toISOString().split('T')[0],
         notes: notes.trim(),
       };
 
@@ -117,6 +122,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
         // Reset form
         setSelectedMeals({ breakfast: false, lunch: false, dinner: false });
         setNotes('');
+        setSelectedDate(new Date());
         // Refresh meals
         await refreshMeals();
         // Go back to overview
@@ -430,6 +436,31 @@ export const MealManagement: React.FC<MealManagementProps> = ({
     );
   };
 
+  const handleDateChange = (event: any, date?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
+    
+    if (date) {
+      // Don't allow future dates
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      
+      if (date > today) {
+        Alert.alert('Invalid Date', 'Cannot select future dates');
+        return;
+      }
+      
+      setSelectedDate(date);
+    } else if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
+  };
+
+  const confirmDateSelection = () => {
+    setShowDatePicker(false);
+  };
+
   const renderAddMeal = () => (
     <ScrollView style={styles.scrollView}>
       <LinearGradient colors={['#10b981', '#059669']} style={styles.header}>
@@ -447,6 +478,29 @@ export const MealManagement: React.FC<MealManagementProps> = ({
       </LinearGradient>
 
       <View style={styles.addMealForm}>
+        {/* Date Selection */}
+        <View style={styles.formSection}>
+          <ThemedText style={styles.formSectionTitle}>Date</ThemedText>
+          <TouchableOpacity
+            style={[
+              styles.dateButton,
+              { backgroundColor, borderColor },
+            ]}
+            onPress={() => setShowDatePicker(true)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name='calendar' size={20} color='#667eea' />
+            <ThemedText style={[styles.dateButtonText, { color: textColor }]}>
+              {selectedDate.toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+              })}
+            </ThemedText>
+          </TouchableOpacity>
+        </View>
+
         <View style={styles.formSection}>
           <ThemedText style={styles.formSectionTitle}>Select Meals</ThemedText>
           <View style={styles.mealOptions}>
@@ -560,6 +614,54 @@ export const MealManagement: React.FC<MealManagementProps> = ({
           </ThemedText>
         </TouchableOpacity>
       </View>
+
+      {/* Date Picker Modal */}
+      {Platform.OS === 'ios' ? (
+        <Modal
+          visible={showDatePicker}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowDatePicker(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContent, { backgroundColor }]}>
+              <View style={styles.modalHeader}>
+                <ThemedText style={[styles.modalTitle, { color: textColor }]}>
+                  Select Date
+                </ThemedText>
+                <TouchableOpacity
+                  onPress={confirmDateSelection}
+                  style={styles.closeButton}
+                >
+                  <Ionicons name="checkmark" size={24} color="#667eea" />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.datePickerContainer}>
+                <DateTimePicker
+                  value={selectedDate}
+                  mode="date"
+                  display="spinner"
+                  onChange={handleDateChange}
+                  maximumDate={new Date()}
+                  minimumDate={new Date(2020, 0, 1)}
+                  themeVariant="light"
+                />
+              </View>
+            </View>
+          </View>
+        </Modal>
+      ) : (
+        showDatePicker && (
+          <DateTimePicker
+            value={selectedDate}
+            mode="date"
+            display="default"
+            onChange={handleDateChange}
+            maximumDate={new Date()}
+            minimumDate={new Date(2020, 0, 1)}
+          />
+        )
+      )}
     </ScrollView>
   );
 
@@ -994,5 +1096,53 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  dateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 16,
+  },
+  dateButtonText: {
+    marginLeft: 8,
+    fontSize: 16,
+    flex: 1,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    borderRadius: 16,
+    padding: 20,
+    margin: 20,
+    width: '90%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  datePickerContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

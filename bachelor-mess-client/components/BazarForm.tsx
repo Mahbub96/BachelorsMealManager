@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
@@ -44,6 +45,9 @@ export const BazarForm: React.FC<BazarFormProps> = ({
   const colorScheme = useColorScheme();
   const [loading, setLoading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>(
+    initialDate ? new Date(initialDate) : new Date()
+  );
   const [formData, setFormData] = useState<BazarSubmission>({
     items: [{ name: '', quantity: '', price: 0 }],
     totalAmount: 0,
@@ -52,6 +56,22 @@ export const BazarForm: React.FC<BazarFormProps> = ({
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Sync selectedDate with formData.date when formData.date changes externally (e.g., from initialDate prop)
+  useEffect(() => {
+    if (formData.date) {
+      const dateObj = new Date(formData.date);
+      if (!isNaN(dateObj.getTime())) {
+        const currentSelectedTime = selectedDate.getTime();
+        const newDateTime = dateObj.getTime();
+        // Only update if dates are different (avoid unnecessary updates)
+        if (Math.abs(currentSelectedTime - newDateTime) > 1000) {
+          setSelectedDate(dateObj);
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.date]);
 
   // Responsive design calculations
   const isSmallScreen = screenWidth < 375;
@@ -238,17 +258,43 @@ export const BazarForm: React.FC<BazarFormProps> = ({
     setFormData(prev => ({ ...prev, receiptImage: undefined }));
   };
 
-  const handleDateChange = (event: any, selectedDate?: Date) => {
-    setShowDatePicker(false);
-    if (selectedDate) {
+  const handleDateChange = (event: any, date?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
+    
+    if (date) {
+      // Don't allow future dates
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      
+      if (date > today) {
+        Alert.alert('Invalid Date', 'Cannot select future dates');
+        return;
+      }
+      
+      setSelectedDate(date);
+      const dateString = date.toISOString().split('T')[0];
       setFormData(prev => ({
         ...prev,
-        date: selectedDate.toISOString().split('T')[0],
+        date: dateString,
       }));
+      
+      if (Platform.OS === 'android') {
+        setShowDatePicker(false);
+      }
+    } else if (Platform.OS === 'android') {
+      setShowDatePicker(false);
     }
   };
 
+  const confirmDateSelection = () => {
+    setShowDatePicker(false);
+  };
+
   const openDatePicker = () => {
+    // Set selected date to current form date when opening picker
+    setSelectedDate(new Date(formData.date));
     setShowDatePicker(true);
   };
 
@@ -668,6 +714,53 @@ export const BazarForm: React.FC<BazarFormProps> = ({
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Date Picker Modal */}
+      {Platform.OS === 'ios' ? (
+        <Modal
+          visible={showDatePicker}
+          transparent={true}
+          animationType='slide'
+          onRequestClose={() => setShowDatePicker(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <ThemedText style={styles.modalTitle}>Select Date</ThemedText>
+                <TouchableOpacity
+                  onPress={confirmDateSelection}
+                  style={styles.closeButton}
+                >
+                  <Ionicons name='checkmark' size={24} color='#667eea' />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.datePickerContainer}>
+                <DateTimePicker
+                  value={selectedDate}
+                  mode='date'
+                  display='spinner'
+                  onChange={handleDateChange}
+                  maximumDate={new Date()}
+                  minimumDate={new Date(2020, 0, 1)}
+                  themeVariant='light'
+                />
+              </View>
+            </View>
+          </View>
+        </Modal>
+      ) : (
+        showDatePicker && (
+          <DateTimePicker
+            value={selectedDate}
+            mode='date'
+            display='default'
+            onChange={handleDateChange}
+            maximumDate={new Date()}
+            minimumDate={new Date(2020, 0, 1)}
+          />
+        )
+      )}
     </KeyboardAvoidingView>
   );
 };
@@ -958,5 +1051,43 @@ const styles = StyleSheet.create({
   },
   submitButtonTextSmall: {
     fontSize: 14,
+  },
+  // Modal styles for date picker
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    margin: 20,
+    width: '90%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#1f2937',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  datePickerContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

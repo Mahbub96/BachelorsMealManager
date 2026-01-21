@@ -19,16 +19,18 @@ const connectDB = async () => {
   }
 };
 
-// Sample users data
+// Enhanced sample users with more realistic data
 const sampleUsers = [
   {
-    name: 'Super Admin',
+    name: 'Super Administrator',
     email: 'superadmin@mess.com',
-    password: 'admin123',
+    password: 'SuperAdmin@2024',
     role: 'super_admin',
     phone: '+8801234567890',
     monthlyContribution: 5000,
     paymentStatus: 'paid',
+    totalPaid: 5000,
+    lastPaymentDate: new Date(),
     isSuperAdmin: true,
     superAdminPermissions: [
       'manage_users',
@@ -40,119 +42,266 @@ const sampleUsers = [
       'audit_logs',
       'billing_management',
       'support_management'
-    ]
+    ],
+    paymentHistory: [{
+      amount: 5000,
+      date: new Date(),
+      method: 'bank_transfer',
+      status: 'completed',
+      notes: 'Monthly contribution'
+    }]
   },
   {
-    name: 'Admin User',
+    name: 'Admin Manager',
     email: 'admin@mess.com',
-    password: 'admin123',
+    password: 'Admin@2024',
     role: 'admin',
     phone: '+8801234567891',
     monthlyContribution: 5000,
-    paymentStatus: 'paid'
+    paymentStatus: 'paid',
+    totalPaid: 5000,
+    lastPaymentDate: new Date(),
+    paymentHistory: [{
+      amount: 5000,
+      date: new Date(),
+      method: 'bank_transfer',
+      status: 'completed',
+      notes: 'Monthly contribution'
+    }]
   },
   {
     name: 'John Doe',
     email: 'john@mess.com',
-    password: 'password123',
+    password: 'Password@123',
     role: 'member',
     phone: '+8801234567892',
     monthlyContribution: 5000,
-    paymentStatus: 'paid'
+    paymentStatus: 'paid',
+    totalPaid: 5000,
+    lastPaymentDate: new Date(),
+    paymentHistory: [{
+      amount: 5000,
+      date: new Date(),
+      method: 'cash',
+      status: 'completed',
+      notes: 'Monthly contribution'
+    }]
   },
   {
     name: 'Jane Smith',
     email: 'jane@mess.com',
-    password: 'password123',
+    password: 'Password@123',
     role: 'member',
     phone: '+8801234567893',
     monthlyContribution: 5000,
-    paymentStatus: 'pending'
+    paymentStatus: 'pending',
+    totalPaid: 0,
+    paymentHistory: []
   },
   {
     name: 'Mike Johnson',
     email: 'mike@mess.com',
-    password: 'password123',
+    password: 'Password@123',
     role: 'member',
     phone: '+8801234567894',
     monthlyContribution: 5000,
-    paymentStatus: 'paid'
+    paymentStatus: 'paid',
+    totalPaid: 5000,
+    lastPaymentDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000), // 10 days ago
+    paymentHistory: [{
+      amount: 5000,
+      date: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+      method: 'mobile_banking',
+      status: 'completed',
+      notes: 'Monthly contribution'
+    }]
   },
   {
     name: 'Sarah Wilson',
     email: 'sarah@mess.com',
-    password: 'password123',
+    password: 'Password@123',
     role: 'member',
     phone: '+8801234567895',
     monthlyContribution: 5000,
-    paymentStatus: 'overdue'
+    paymentStatus: 'overdue',
+    totalPaid: 0,
+    paymentHistory: []
+  },
+  {
+    name: 'David Brown',
+    email: 'david@mess.com',
+    password: 'Password@123',
+    role: 'member',
+    phone: '+8801234567896',
+    monthlyContribution: 5000,
+    paymentStatus: 'paid',
+    totalPaid: 10000,
+    lastPaymentDate: new Date(),
+    paymentHistory: [{
+      amount: 5000,
+      date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Last month
+      method: 'bank_transfer',
+      status: 'completed',
+      notes: 'Previous month contribution'
+    }, {
+      amount: 5000,
+      date: new Date(),
+      method: 'bank_transfer',
+      status: 'completed',
+      notes: 'Current month contribution'
+    }]
+  },
+  {
+    name: 'Emily Davis',
+    email: 'emily@mess.com',
+    password: 'Password@123',
+    role: 'member',
+    phone: '+8801234567897',
+    monthlyContribution: 5000,
+    paymentStatus: 'paid',
+    totalPaid: 5000,
+    lastPaymentDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
+    paymentHistory: [{
+      amount: 5000,
+      date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+      method: 'cash',
+      status: 'completed',
+      notes: 'Monthly contribution'
+    }]
   }
 ];
 
-// Sample bazar entries
+// Enhanced bazar entries with realistic data
 const sampleBazarEntries = [
   {
-    userId: null, // Will be set to actual user ID
     items: [
-      { name: 'Rice', quantity: 5, unit: 'kg', price: 200 },
-      { name: 'Lentils', quantity: 2, unit: 'kg', price: 150 },
-      { name: 'Onions', quantity: 1, unit: 'kg', price: 50 }
+      { name: 'Rice (Basmati)', quantity: 10, unit: 'kg', price: 500 },
+      { name: 'Lentils (Masoor Dal)', quantity: 3, unit: 'kg', price: 180 },
+      { name: 'Onions', quantity: 5, unit: 'kg', price: 150 },
+      { name: 'Garlic', quantity: 0.5, unit: 'kg', price: 100 }
     ],
-    totalAmount: 400,
+    totalAmount: 930,
     category: 'groceries',
     status: 'approved',
-    notes: 'Weekly grocery shopping'
+    notes: 'Weekly grocery shopping for the mess',
+    approvedBy: null,
+    approvedAt: new Date(),
+    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) // 2 days ago
   },
   {
-    userId: null,
     items: [
-      { name: 'Chicken', quantity: 2, unit: 'kg', price: 300 },
-      { name: 'Fish', quantity: 1, unit: 'kg', price: 250 },
-      { name: 'Vegetables', quantity: 3, unit: 'kg', price: 100 }
+      { name: 'Beef', quantity: 2, unit: 'kg', price: 400 },
+      { name: 'Fish (Rui)', quantity: 2, unit: 'kg', price: 300 },
+      { name: 'Eggs', quantity: 30, unit: 'pieces', price: 150 }
     ],
-    totalAmount: 650,
+    totalAmount: 1300,
     category: 'meat',
     status: 'approved',
-    notes: 'Protein for the week'
+    notes: 'Protein for the week',
+    approvedBy: null,
+    approvedAt: new Date(),
+    createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000) // 1 day ago
   },
   {
-    userId: null,
     items: [
-      { name: 'Cooking Oil', quantity: 1, unit: 'liter', price: 120 },
-      { name: 'Spices', quantity: 0.5, unit: 'kg', price: 80 },
-      { name: 'Salt', quantity: 1, unit: 'kg', price: 20 }
+      { name: 'Cooking Oil (Soybean)', quantity: 2, unit: 'liter', price: 240 },
+      { name: 'Ghee', quantity: 1, unit: 'kg', price: 200 },
+      { name: 'Turmeric Powder', quantity: 0.2, unit: 'kg', price: 40 },
+      { name: 'Cumin Powder', quantity: 0.1, unit: 'kg', price: 30 },
+      { name: 'Coriander Powder', quantity: 0.1, unit: 'kg', price: 25 },
+      { name: 'Salt', quantity: 2, unit: 'kg', price: 40 }
     ],
-    totalAmount: 220,
+    totalAmount: 575,
     category: 'cooking',
+    status: 'approved',
+    notes: 'Cooking essentials and spices',
+    approvedBy: null,
+    approvedAt: new Date(),
+    createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000) // 3 days ago
+  },
+  {
+    items: [
+      { name: 'Potatoes', quantity: 5, unit: 'kg', price: 100 },
+      { name: 'Tomatoes', quantity: 3, unit: 'kg', price: 90 },
+      { name: 'Green Chili', quantity: 0.5, unit: 'kg', price: 50 },
+      { name: 'Coriander Leaves', quantity: 0.2, unit: 'kg', price: 20 },
+      { name: 'Mint Leaves', quantity: 0.1, unit: 'kg', price: 15 }
+    ],
+    totalAmount: 275,
+    category: 'vegetables',
     status: 'pending',
-    notes: 'Cooking essentials'
+    notes: 'Fresh vegetables for cooking',
+    approvedBy: null,
+    approvedAt: null,
+    createdAt: new Date()
+  },
+  {
+    items: [
+      { name: 'Milk (Fresh)', quantity: 5, unit: 'liter', price: 250 },
+      { name: 'Yogurt', quantity: 2, unit: 'kg', price: 100 },
+      { name: 'Cheese', quantity: 0.5, unit: 'kg', price: 150 },
+      { name: 'Butter', quantity: 0.5, unit: 'kg', price: 120 }
+    ],
+    totalAmount: 620,
+    category: 'dairy',
+    status: 'approved',
+    notes: 'Dairy products for the week',
+    approvedBy: null,
+    approvedAt: new Date(),
+    createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000) // 4 days ago
+  },
+  {
+    items: [
+      { name: 'Bread (White)', quantity: 4, unit: 'loaves', price: 80 },
+      { name: 'Biscuits', quantity: 2, unit: 'packets', price: 60 },
+      { name: 'Tea', quantity: 0.5, unit: 'kg', price: 200 },
+      { name: 'Sugar', quantity: 2, unit: 'kg', price: 80 },
+      { name: 'Coffee', quantity: 0.25, unit: 'kg', price: 150 }
+    ],
+    totalAmount: 570,
+    category: 'beverages',
+    status: 'rejected',
+    notes: 'Breakfast items and beverages',
+    approvedBy: null,
+    approvedAt: new Date(),
+    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000) // 5 days ago
   }
 ];
 
-// Sample meal entries
-const sampleMealEntries = [
-  {
-    userId: null, // Will be set to actual user ID
-    date: new Date(),
-    mealType: 'breakfast',
-    status: 'approved',
-    notes: 'Regular breakfast'
-  },
-  {
-    userId: null,
-    date: new Date(),
-    mealType: 'lunch',
-    status: 'approved',
-    notes: 'Regular lunch'
-  },
-  {
-    userId: null,
-    date: new Date(),
-    mealType: 'dinner',
-    status: 'pending',
-    notes: 'Regular dinner'
+// Enhanced meal entries for the past week
+// Note: One entry per user per date with breakfast/lunch/dinner booleans
+const generateMealEntries = (users) => {
+  const mealEntries = [];
+  const memberUsers = users.filter(user => user.role === 'member');
+  const adminUser = users.find(user => user.role === 'admin');
+  
+  // Generate meals for the past 7 days
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+    // Normalize date to start of day in UTC
+    const normalizedDate = new Date(date);
+    normalizedDate.setUTCHours(0, 0, 0, 0);
+    
+    memberUsers.forEach(user => {
+      // Create one entry per user per date with all meals
+      mealEntries.push({
+        userId: user._id,
+        date: normalizedDate,
+        breakfast: true,
+        lunch: true,
+        dinner: i < 5, // Dinner only for first 5 days
+        status: i < 3 ? 'approved' : (i < 5 ? 'pending' : 'rejected'),
+        notes: `Meals for ${normalizedDate.toLocaleDateString()}`,
+        approvedBy: i < 3 ? adminUser._id : null,
+        approvedAt: i < 3 ? new Date(date) : null,
+        createdAt: new Date(date),
+        updatedAt: new Date(date)
+      });
+    });
   }
-];
+  
+  return mealEntries;
+};
 
 // Seed function
 const seedDatabase = async () => {
@@ -166,9 +315,13 @@ const seedDatabase = async () => {
     await Statistics.deleteMany({});
     console.log('🗑️  Cleared existing data');
 
-    // Create users
+    // Create users (using create() to trigger password hashing middleware)
     console.log('👥 Creating users...');
-    const createdUsers = await User.insertMany(sampleUsers);
+    const createdUsers = [];
+    for (const userData of sampleUsers) {
+      const user = await User.create(userData);
+      createdUsers.push(user);
+    }
     console.log(`✅ Created ${createdUsers.length} users`);
 
     // Get user IDs for sample data
@@ -180,9 +333,7 @@ const seedDatabase = async () => {
     const bazarEntries = sampleBazarEntries.map((entry, index) => ({
       ...entry,
       userId: memberUsers[index % memberUsers.length]._id,
-      approvedBy: adminUser._id,
-      approvedAt: new Date(),
-      createdAt: new Date(),
+      approvedBy: entry.status === 'approved' ? adminUser._id : null,
       updatedAt: new Date()
     }));
     await Bazar.insertMany(bazarEntries);
@@ -190,16 +341,11 @@ const seedDatabase = async () => {
 
     // Create meal entries
     console.log('🍽️  Creating meal entries...');
-    const mealEntries = sampleMealEntries.map((entry, index) => ({
-      ...entry,
-      userId: memberUsers[index % memberUsers.length]._id,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }));
+    const mealEntries = generateMealEntries(createdUsers);
     await Meal.insertMany(mealEntries);
     console.log(`✅ Created ${mealEntries.length} meal entries`);
 
-    // Create initial statistics
+    // Create comprehensive statistics
     console.log('📊 Creating statistics...');
     const stats = new Statistics({
       users: {
@@ -214,13 +360,13 @@ const seedDatabase = async () => {
         totalMeals: mealEntries.length,
         approvedMeals: mealEntries.filter(m => m.status === 'approved').length,
         pendingMeals: mealEntries.filter(m => m.status === 'pending').length,
-        rejectedMeals: 0
+        rejectedMeals: mealEntries.filter(m => m.status === 'rejected').length
       },
       bazar: {
         totalEntries: bazarEntries.length,
         approvedEntries: bazarEntries.filter(b => b.status === 'approved').length,
         pendingEntries: bazarEntries.filter(b => b.status === 'pending').length,
-        rejectedEntries: 0
+        rejectedEntries: bazarEntries.filter(b => b.status === 'rejected').length
       },
       lastUpdated: new Date()
     });
@@ -230,15 +376,21 @@ const seedDatabase = async () => {
     console.log('🎉 Database seeding completed successfully!');
     console.log('\n📋 Created Users:');
     createdUsers.forEach(user => {
-      console.log(`  - ${user.name} (${user.email}) - ${user.role}`);
+      console.log(`  - ${user.name} (${user.email}) - ${user.role} - ${user.paymentStatus}`);
     });
-    console.log('\n🔑 Default Login Credentials:');
-    console.log('  Super Admin: superadmin@mess.com / admin123');
-    console.log('  Admin: admin@mess.com / admin123');
-    console.log('  Members: [email] / password123');
+    console.log('\n🔑 Login Credentials:');
+    console.log('  Super Admin: superadmin@mess.com / SuperAdmin@2024');
+    console.log('  Admin: admin@mess.com / Admin@2024');
+    console.log('  Members: [email] / Password@123');
+    console.log('\n📊 Summary:');
+    console.log(`  - ${createdUsers.length} users created`);
+    console.log(`  - ${bazarEntries.length} bazar entries created`);
+    console.log(`  - ${mealEntries.length} meal entries created`);
+    console.log(`  - Statistics initialized`);
 
   } catch (error) {
     console.error('❌ Seeding failed:', error);
+    process.exit(1);
   } finally {
     mongoose.connection.close();
   }
@@ -248,4 +400,3 @@ const seedDatabase = async () => {
 connectDB().then(() => {
   seedDatabase();
 });
-

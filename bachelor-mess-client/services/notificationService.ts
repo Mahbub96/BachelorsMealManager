@@ -1,8 +1,43 @@
 import { Platform, Alert } from 'react-native';
-import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { ApiResponse } from './config';
 import httpClient from './httpClient';
+
+// Lazy load expo-notifications to avoid errors in Expo Go
+let Notifications: typeof import('expo-notifications') | null = null;
+
+const getNotifications = async () => {
+  if (Notifications) return Notifications;
+  
+  // Check if running in Expo Go (SDK 53+ removed push notifications from Expo Go)
+  try {
+    // Expo Go detection: check if appOwnership is 'expo' or executionEnvironment indicates Expo Go
+    const isExpoGo = 
+      Constants.appOwnership === 'expo' || 
+      (Constants.executionEnvironment && Constants.executionEnvironment !== ExecutionEnvironment.Standalone);
+    
+    if (isExpoGo && __DEV__) {
+      console.log('📱 Expo Go detected - expo-notifications not available in SDK 53+');
+      return null;
+    }
+  } catch {
+    // Constants might not be available, continue with import attempt
+  }
+  
+  try {
+    Notifications = await import('expo-notifications');
+    return Notifications;
+  } catch (error: any) {
+    // Check if error is about Expo Go
+    if (error?.message?.includes('Expo Go') || error?.message?.includes('SDK 53')) {
+      console.log('📱 Expo Go detected via error - expo-notifications not available');
+      return null;
+    }
+    console.log('⚠️ Failed to load expo-notifications:', error);
+    return null;
+  }
+};
 
 // Notification types
 export interface NotificationData {
@@ -67,7 +102,13 @@ class NotificationServiceImpl implements NotificationService {
 
   constructor() {
     // Check if running in Expo Go
-    this.isExpoGo = __DEV__ && !Device.isDevice;
+    try {
+      const isExpoGo = Constants.appOwnership === 'expo';
+      this.isExpoGo = isExpoGo || (__DEV__ && !Device.isDevice);
+    } catch {
+      // Fallback check
+      this.isExpoGo = __DEV__ && !Device.isDevice;
+    }
     if (this.isExpoGo) {
       console.log(
         '📱 Running in Expo Go - Push notifications are not supported'
@@ -95,7 +136,14 @@ class NotificationServiceImpl implements NotificationService {
       }
 
       // Configure notification behavior
-      Notifications.setNotificationHandler({
+      const NotificationsModule = await getNotifications();
+      if (!NotificationsModule) {
+        console.log('⚠️ expo-notifications not available, skipping configuration');
+        this.isInitialized = true;
+        return true;
+      }
+      
+      NotificationsModule.setNotificationHandler({
         handleNotification: async () => ({
           shouldShowAlert: true,
           shouldPlaySound: true,
@@ -120,7 +168,7 @@ class NotificationServiceImpl implements NotificationService {
         // Register token with server
         try {
           await this.registerToken(this.token);
-        } catch (error) {
+        } catch {
           console.log(
             '⚠️ Failed to register token with server, but continuing...'
           );
@@ -151,12 +199,17 @@ class NotificationServiceImpl implements NotificationService {
         return true;
       }
 
+      const NotificationsModule = await getNotifications();
+      if (!NotificationsModule) {
+        return true;
+      }
+
       const { status: existingStatus } =
-        await Notifications.getPermissionsAsync();
+        await NotificationsModule.getPermissionsAsync();
       let finalStatus = existingStatus;
 
       if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
+        const { status } = await NotificationsModule.requestPermissionsAsync();
         finalStatus = status;
       }
 
@@ -191,7 +244,12 @@ class NotificationServiceImpl implements NotificationService {
         return null;
       }
 
-      const token = await Notifications.getExpoPushTokenAsync({
+      const NotificationsModule = await getNotifications();
+      if (!NotificationsModule) {
+        return null;
+      }
+
+      const token = await NotificationsModule.getExpoPushTokenAsync({
         projectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID,
       });
 
@@ -228,7 +286,12 @@ class NotificationServiceImpl implements NotificationService {
         badge: 1,
       };
 
-      await Notifications.scheduleNotificationAsync({
+      const NotificationsModule = await getNotifications();
+      if (!NotificationsModule) {
+        return;
+      }
+
+      await NotificationsModule.scheduleNotificationAsync({
         content: notificationContent,
         trigger: null, // Send immediately
       });
@@ -266,7 +329,12 @@ class NotificationServiceImpl implements NotificationService {
         badge: 1,
       };
 
-      const identifier = await Notifications.scheduleNotificationAsync({
+      const NotificationsModule = await getNotifications();
+      if (!NotificationsModule) {
+        return 'dev-skip';
+      }
+
+      const identifier = await NotificationsModule.scheduleNotificationAsync({
         content: notificationContent,
         trigger: {
           date: date,
@@ -297,7 +365,12 @@ class NotificationServiceImpl implements NotificationService {
         return;
       }
 
-      await Notifications.cancelScheduledNotificationAsync(id);
+      const NotificationsModule = await getNotifications();
+      if (!NotificationsModule) {
+        return;
+      }
+
+      await NotificationsModule.cancelScheduledNotificationAsync(id);
       console.log('✅ Notification cancelled:', id);
     } catch (error) {
       console.error('❌ Error cancelling notification:', error);
@@ -314,7 +387,12 @@ class NotificationServiceImpl implements NotificationService {
         return;
       }
 
-      await Notifications.cancelAllScheduledNotificationsAsync();
+      const NotificationsModule = await getNotifications();
+      if (!NotificationsModule) {
+        return;
+      }
+
+      await NotificationsModule.cancelAllScheduledNotificationsAsync();
       console.log('✅ All notifications cancelled');
     } catch (error) {
       console.error('❌ Error cancelling all notifications:', error);
@@ -433,7 +511,12 @@ class NotificationServiceImpl implements NotificationService {
         return true;
       }
 
-      const { status } = await Notifications.getPermissionsAsync();
+      const NotificationsModule = await getNotifications();
+      if (!NotificationsModule) {
+        return true;
+      }
+
+      const { status } = await NotificationsModule.getPermissionsAsync();
       return status === 'granted';
     } catch (error) {
       console.error('❌ Error checking notification status:', error);
@@ -449,7 +532,12 @@ class NotificationServiceImpl implements NotificationService {
         return 0;
       }
 
-      return await Notifications.getBadgeCountAsync();
+      const NotificationsModule = await getNotifications();
+      if (!NotificationsModule) {
+        return 0;
+      }
+
+      return await NotificationsModule.getBadgeCountAsync();
     } catch (error) {
       console.error('❌ Error getting badge count:', error);
       return 0;
@@ -467,7 +555,12 @@ class NotificationServiceImpl implements NotificationService {
         return;
       }
 
-      await Notifications.setBadgeCountAsync(count);
+      const NotificationsModule = await getNotifications();
+      if (!NotificationsModule) {
+        return;
+      }
+
+      await NotificationsModule.setBadgeCountAsync(count);
     } catch (error) {
       console.error('❌ Error setting badge count:', error);
     }
@@ -481,7 +574,12 @@ class NotificationServiceImpl implements NotificationService {
         return;
       }
 
-      await Notifications.setBadgeCountAsync(0);
+      const NotificationsModule = await getNotifications();
+      if (!NotificationsModule) {
+        return;
+      }
+
+      await NotificationsModule.setBadgeCountAsync(0);
     } catch (error) {
       console.error('❌ Error clearing badge:', error);
     }

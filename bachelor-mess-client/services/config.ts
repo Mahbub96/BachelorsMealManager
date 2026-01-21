@@ -149,6 +149,14 @@ export const API_ENDPOINTS = {
     USER_STATS: '/api/bazar/stats/user',
     BULK_APPROVE: '/api/bazar/bulk-approve',
   },
+  UI_CONFIG: {
+    ACTIVE: '/api/ui-config/active',
+    CREATE: '/api/ui-config',
+    UPDATE: (id: string) => `/api/ui-config/${id}`,
+    DELETE: (id: string) => `/api/ui-config/${id}`,
+    BY_ID: (id: string) => `/api/ui-config/${id}`,
+    ALL: '/api/ui-config',
+  },
   DASHBOARD: {
     HEALTH: '/health', // Public health endpoint
     STATS: '/api/dashboard/stats',

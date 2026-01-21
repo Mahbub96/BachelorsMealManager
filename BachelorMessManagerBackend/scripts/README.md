@@ -8,7 +8,7 @@ This directory contains various database management scripts for the Bachelor Mes
 
 #### `seed.js`
 
-Basic database seeder that creates sample users, bazar entries, and meal entries.
+Comprehensive database seeder with realistic data and proper relationships.
 
 **Usage:**
 
@@ -18,42 +18,18 @@ npm run db:seed
 
 **Creates:**
 
-- 6 sample users (1 super admin, 1 admin, 4 members)
-- Sample bazar entries
-- Sample meal entries
-- Initial statistics
-
-#### `perfect-seeder.js`
-
-Comprehensive seeder with realistic data and proper relationships.
-
-**Usage:**
-
-```bash
-npm run db:seed:perfect
-```
-
-**Creates:**
-
-- 8 users with detailed profiles and payment history
+- 8 users with detailed profiles and payment history (1 super admin, 1 admin, 6 members)
 - 6 bazar entries with various categories and statuses
-- 7 days of meal entries for all members
+- 7 days of meal entries for all members (one entry per user per date)
 - Comprehensive statistics
 
-#### `test-perfect-seeder.js`
+**Features:**
 
-Minimal seeder for testing purposes.
-
-**Usage:**
-
-```bash
-npm run db:seed:test
-```
-
-**Creates:**
-
-- 2 test users (1 admin, 1 member)
-- Minimal data for testing
+- ✅ Passwords are properly hashed (using bcrypt, same as login/signup)
+- ✅ Realistic payment history and statuses
+- ✅ Multiple bazar categories (groceries, meat, vegetables, dairy, beverages, cooking)
+- ✅ Meal entries with proper date normalization
+- ✅ All data relationships properly linked
 
 ### Database Management Scripts
 
@@ -165,24 +141,17 @@ npm run stats:init
 
 ## Default Credentials
 
-After running any seeder, you can use these credentials:
-
-### Perfect Seeder Credentials
+After running the seeder, you can use these credentials:
 
 - **Super Admin:** `superadmin@mess.com` / `SuperAdmin@2024`
 - **Admin:** `admin@mess.com` / `Admin@2024`
-- **Members:** `[email]` / `Password@123`
-
-### Basic Seeder Credentials
-
-- **Super Admin:** `superadmin@mess.com` / `admin123`
-- **Admin:** `admin@mess.com` / `admin123`
-- **Members:** `[email]` / `password123`
-
-### Test Seeder Credentials
-
-- **Admin:** `test@mess.com` / `test123`
-- **Member:** `member@mess.com` / `test123`
+- **Members:** 
+  - `john@mess.com` / `Password@123`
+  - `jane@mess.com` / `Password@123`
+  - `mike@mess.com` / `Password@123`
+  - `sarah@mess.com` / `Password@123`
+  - `david@mess.com` / `Password@123`
+  - `emily@mess.com` / `Password@123`
 
 ## Environment Variables
 
@@ -204,21 +173,18 @@ npm run db:reset
 # 2. Run migrations
 npm run db:migrate
 
-# 3. Seed with perfect data
-npm run db:seed:perfect
+# 3. Seed database
+npm run db:seed
 
-# 4. Initialize statistics
+# 4. Initialize statistics (optional, seeder already creates stats)
 npm run stats:init
 ```
 
 ### Development Workflow
 
 ```bash
-# Quick test setup
-npm run db:seed:test
-
-# Full development data
-npm run db:seed:perfect
+# Seed database with comprehensive data
+npm run db:seed
 
 # Backup before changes
 npm run backup:create
@@ -245,9 +211,7 @@ npm run stats:init
 ```
 scripts/
 ├── README.md              # This file
-├── seed.js                # Basic seeder
-├── perfect-seeder.js      # Comprehensive seeder
-├── test-perfect-seeder.js # Test seeder
+├── seed.js                # Database seeder (comprehensive)
 ├── migrate.js             # Database migrations
 ├── reset.js               # Database reset
 ├── backup.js              # Create backup

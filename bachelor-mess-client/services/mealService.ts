@@ -121,9 +121,26 @@ class MealServiceImpl implements MealService {
         };
       }
 
+      // Remove userId from data if present - backend should use authenticated user's ID from token
+      // This prevents "userId already exists" errors when different users submit meals
+      const { userId, user_id, ...mealData } = data as any;
+      if (userId || user_id) {
+        console.warn('⚠️ Meal Service - Removing userId/user_id from submission data. Backend should use authenticated user ID from token.');
+        console.log('⚠️ Meal Service - Removed fields:', { userId, user_id });
+      }
+
+      // #region agent log
+      const logData = {location:'mealService.ts:131',message:'Submitting meal data',data:{hasUserId:!!userId,hasUser_id:!!user_id,mealDataKeys:Object.keys(mealData),date:mealData.date,breakfast:mealData.breakfast,lunch:mealData.lunch,dinner:mealData.dinner},timestamp:Date.now(),sessionId:'debug-session',runId:'meal-submit',hypothesisId:'D'};
+      try { fetch('http://127.0.0.1:7243/ingest/039fbe99-77d0-456c-8c69-082177214fc6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch(()=>{}); } catch(e){}
+      // #endregion
+
+      // Log the request body being sent to the API
+      console.log('📤 Meal Service - Request body being sent to API:', JSON.stringify(mealData, null, 2));
+      console.log('📤 Meal Service - Request body (object):', mealData);
+
       const response = await httpClient.post<MealEntry>(
         API_ENDPOINTS.MEALS.SUBMIT,
-        data,
+        mealData,
         { offlineFallback: true } // Enable offline fallback
       );
 

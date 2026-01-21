@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
   Alert,
   ActivityIndicator,
   ScrollView,
+  Platform,
   Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
 import mealService, { MealSubmission } from '../services/mealService';
@@ -32,6 +33,9 @@ export const MealForm: React.FC<MealFormProps> = ({
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>(
+    initialDate ? new Date(initialDate) : new Date()
+  );
   const [existingMealWarning, setExistingMealWarning] = useState<string | null>(
     null
   );
@@ -55,6 +59,7 @@ export const MealForm: React.FC<MealFormProps> = ({
   useEffect(() => {
     if (initialDate) {
       checkExistingMeal(initialDate);
+      setSelectedDate(new Date(initialDate));
     }
 
     // Cleanup timeout on unmount
@@ -64,6 +69,22 @@ export const MealForm: React.FC<MealFormProps> = ({
       }
     };
   }, [initialDate]);
+
+  // Sync selectedDate with formData.date when formData.date changes externally (e.g., from initialDate prop)
+  useEffect(() => {
+    if (formData.date) {
+      const dateObj = new Date(formData.date);
+      if (!isNaN(dateObj.getTime())) {
+        const currentSelectedTime = selectedDate.getTime();
+        const newDateTime = dateObj.getTime();
+        // Only update if dates are different (avoid unnecessary updates)
+        if (Math.abs(currentSelectedTime - newDateTime) > 1000) {
+          setSelectedDate(dateObj);
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.date]);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -209,33 +230,6 @@ export const MealForm: React.FC<MealFormProps> = ({
     }
   };
 
-  const handleDateChange = (event: any, selectedDate?: Date) => {
-    setShowDatePicker(false);
-    if (selectedDate) {
-      const dateString = selectedDate.toISOString().split('T')[0];
-      setFormData(prev => ({
-        ...prev,
-        date: dateString,
-      }));
-      // Clear date error if user selects a date
-      if (errors.date) {
-        setErrors(prev => ({ ...prev, date: '' }));
-      }
-
-      // Clear existing timeout
-      if (checkTimeout) {
-        clearTimeout(checkTimeout);
-      }
-
-      // Debounce the existing meal check
-      const timeout = setTimeout(() => {
-        checkExistingMeal(dateString);
-      }, 500); // Wait 500ms after user stops changing date
-
-      setCheckTimeout(timeout);
-    }
-  };
-
   const checkExistingMeal = async (date: string) => {
     // Skip check if currently submitting
     if (isSubmitting) {
@@ -288,8 +282,58 @@ export const MealForm: React.FC<MealFormProps> = ({
   };
 
   const openDatePicker = () => {
+    // Set selected date to current form date when opening picker
+    setSelectedDate(new Date(formData.date));
     setShowDatePicker(true);
   };
+
+  const confirmDateSelection = () => {
+    setShowDatePicker(false);
+  };
+
+  const handleDateChange = (event: any, date?: Date) => {
+    // On Android, close the picker immediately after selection
+    // On iOS, the picker stays open in the modal until user clicks "Done"
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
+
+    if (date) {
+      // Don't allow future dates
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      
+      if (date > today) {
+        Alert.alert('Invalid Date', 'Cannot select future dates');
+        if (Platform.OS === 'android') {
+          return;
+        }
+      } else {
+        setSelectedDate(date);
+        const dateString = date.toISOString().split('T')[0];
+        
+        // Clear date error if user selects a date
+        if (errors.date) {
+          setErrors(prev => ({ ...prev, date: '' }));
+        }
+
+        // Clear existing timeout
+        if (checkTimeout) {
+          clearTimeout(checkTimeout);
+        }
+
+        // Debounce the existing meal check
+        const timeout = setTimeout(() => {
+          checkExistingMeal(dateString);
+        }, 500); // Wait 500ms after user stops changing date
+
+        setCheckTimeout(timeout);
+        
+        setFormData(prev => ({ ...prev, date: dateString }));
+      }
+    }
+  };
+
 
   const getMealIcon = (mealType: 'breakfast' | 'lunch' | 'dinner') => {
     switch (mealType) {
@@ -324,8 +368,9 @@ export const MealForm: React.FC<MealFormProps> = ({
   ];
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <ThemedView style={styles.formContainer}>
+    <View style={styles.container}>
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+        <ThemedView style={styles.formContainer}>
         <View style={styles.header}>
           <ThemedText style={styles.title}>
             {isUpdating ? 'Update Meal Entry' : 'Add Meal Entry'}
@@ -341,20 +386,24 @@ export const MealForm: React.FC<MealFormProps> = ({
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Date</ThemedText>
           <TouchableOpacity
-            style={styles.dateContainer}
+            style={[
+              styles.dateButton,
+              errors.date && styles.inputError,
+            ]}
             onPress={openDatePicker}
             activeOpacity={0.7}
           >
-            <Ionicons name='calendar' size={20} color='#6b7280' />
-            <ThemedText style={styles.dateText}>
-              {new Date(formData.date).toLocaleDateString('en-US', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
+            <Ionicons name='calendar' size={20} color='#667eea' />
+            <ThemedText style={styles.dateButtonText}>
+              {formData.date
+                ? new Date(formData.date).toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })
+                : 'Select Date'}
             </ThemedText>
-            <Ionicons name='chevron-down' size={16} color='#6b7280' />
           </TouchableOpacity>
           {errors.date && (
             <ThemedText style={styles.errorText}>{errors.date}</ThemedText>
@@ -483,91 +532,57 @@ export const MealForm: React.FC<MealFormProps> = ({
             </ThemedText>
           </View>
         )}
-      </ThemedView>
+        </ThemedView>
+      </ScrollView>
 
-      {/* Date Picker Modal */}
-      <Modal
-        visible={showDatePicker}
-        transparent={true}
-        animationType='slide'
-        onRequestClose={() => setShowDatePicker(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <ThemedText style={styles.modalTitle}>Select Date</ThemedText>
-              <TouchableOpacity
-                onPress={() => setShowDatePicker(false)}
-                style={styles.closeButton}
-              >
-                <Ionicons name='close' size={24} color='#6b7280' />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.datePickerContainer}>
-              <TouchableOpacity
-                style={styles.dateOption}
-                onPress={() => {
-                  const today = new Date();
-                  const dateString = today.toISOString().split('T')[0];
-                  setFormData(prev => ({ ...prev, date: dateString }));
-                  setShowDatePicker(false);
-                }}
-              >
-                <Ionicons name='today' size={20} color='#667eea' />
-                <ThemedText style={styles.dateOptionText}>Today</ThemedText>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.dateOption}
-                onPress={() => {
-                  const yesterday = new Date();
-                  yesterday.setDate(yesterday.getDate() - 1);
-                  const dateString = yesterday.toISOString().split('T')[0];
-                  setFormData(prev => ({ ...prev, date: dateString }));
-                  setShowDatePicker(false);
-                }}
-              >
-                <Ionicons name='time' size={20} color='#f59e0b' />
-                <ThemedText style={styles.dateOptionText}>Yesterday</ThemedText>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.dateOption}
-                onPress={() => {
-                  const twoDaysAgo = new Date();
-                  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-                  const dateString = twoDaysAgo.toISOString().split('T')[0];
-                  setFormData(prev => ({ ...prev, date: dateString }));
-                  setShowDatePicker(false);
-                }}
-              >
-                <Ionicons name='calendar' size={20} color='#10b981' />
-                <ThemedText style={styles.dateOptionText}>
-                  2 Days Ago
-                </ThemedText>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.dateOption}
-                onPress={() => {
-                  const threeDaysAgo = new Date();
-                  threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-                  const dateString = threeDaysAgo.toISOString().split('T')[0];
-                  setFormData(prev => ({ ...prev, date: dateString }));
-                  setShowDatePicker(false);
-                }}
-              >
-                <Ionicons name='calendar-outline' size={20} color='#6366f1' />
-                <ThemedText style={styles.dateOptionText}>
-                  3 Days Ago
-                </ThemedText>
-              </TouchableOpacity>
+      {/* Date Picker - iOS uses Modal, Android shows as native dialog */}
+      {Platform.OS === 'ios' ? (
+        <Modal
+          visible={showDatePicker}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowDatePicker(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <ThemedText style={styles.modalTitle}>Select Date</ThemedText>
+                <TouchableOpacity
+                  onPress={confirmDateSelection}
+                  style={styles.closeButton}
+                >
+                  <Ionicons name="checkmark" size={24} color="#667eea" />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.datePickerContainer}>
+                <DateTimePicker
+                  value={selectedDate}
+                  mode="date"
+                  display="spinner"
+                  onChange={handleDateChange}
+                  maximumDate={new Date()}
+                  minimumDate={new Date(2020, 0, 1)}
+                  themeVariant="light"
+                />
+              </View>
             </View>
           </View>
-        </View>
-      </Modal>
-    </ScrollView>
+        </Modal>
+      ) : (
+        showDatePicker && (
+          <DateTimePicker
+            value={selectedDate}
+            mode="date"
+            display="default"
+            onChange={(event, date) => {
+              handleDateChange(event, date);
+            }}
+            maximumDate={new Date()}
+            minimumDate={new Date(2020, 0, 1)}
+          />
+        )
+      )}
+    </View>
   );
 };
 
@@ -610,22 +625,24 @@ const styles = StyleSheet.create({
     color: '#1f2937',
     marginBottom: 12,
   },
-  dateContainer: {
+  dateButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    backgroundColor: '#f8fafc',
-    borderRadius: 12,
+    backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 16,
   },
-  dateText: {
+  dateButtonText: {
+    marginLeft: 8,
     fontSize: 16,
-    color: '#1f2937',
-    marginLeft: 12,
-    fontWeight: '500',
+    color: '#374151',
     flex: 1,
+  },
+  inputError: {
+    borderColor: '#ef4444',
   },
   mealsContainer: {
     flexDirection: 'row',
@@ -806,19 +823,7 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   datePickerContainer: {
-    gap: 12,
-  },
-  dateOption: {
-    flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#f8fafc',
-    borderRadius: 12,
-    gap: 12,
-  },
-  dateOptionText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#1f2937',
+    justifyContent: 'center',
   },
 });

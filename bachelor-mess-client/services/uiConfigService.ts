@@ -1,5 +1,6 @@
 import httpClient from './httpClient';
 import { cacheManager } from './cacheManager';
+import { ApiResponse } from './config';
 
 // Types for UI Configuration
 export interface Theme {
@@ -455,6 +456,116 @@ class UIConfigService {
       totalTabs,
       visibleTabs,
     };
+  }
+
+  // Save/Update UI configuration to backend
+  async saveConfig(configData: Partial<UIConfig>): Promise<ApiResponse<UIConfig>> {
+    try {
+      const response = await httpClient.post<UIConfig>(
+        '/api/ui-config',
+        configData
+      );
+
+      if (response.success && response.data) {
+        // Update local cache
+        this.config = response.data;
+        cacheManager.set(this.cacheKey, {
+          data: this.config,
+          timestamp: Date.now(),
+        });
+
+        // Notify listeners
+        this.notifyListeners(this.config);
+      }
+
+      return response;
+    } catch (error) {
+      console.error('Error saving UI configuration:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to save UI configuration',
+      };
+    }
+  }
+
+  // Update existing UI configuration
+  async updateConfig(
+    configId: string,
+    configData: Partial<UIConfig>
+  ): Promise<ApiResponse<UIConfig>> {
+    try {
+      const response = await httpClient.put<UIConfig>(
+        `/api/ui-config/${configId}`,
+        configData
+      );
+
+      if (response.success && response.data) {
+        // Update local cache if this is the active config
+        if (this.config?._id === configId) {
+          this.config = response.data;
+          cacheManager.set(this.cacheKey, {
+            data: this.config,
+            timestamp: Date.now(),
+          });
+
+          // Notify listeners
+          this.notifyListeners(this.config);
+        }
+      }
+
+      return response;
+    } catch (error) {
+      console.error('Error updating UI configuration:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to update UI configuration',
+      };
+    }
+  }
+
+  // Delete UI configuration
+  async deleteConfig(configId: string): Promise<ApiResponse<{ success: boolean }>> {
+    try {
+      const response = await httpClient.delete<{ success: boolean }>(
+        `/api/ui-config/${configId}`
+      );
+
+      // Clear cache if deleted config was the active one
+      if (this.config?._id === configId) {
+        this.clearCache();
+      }
+
+      return response;
+    } catch (error) {
+      console.error('Error deleting UI configuration:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to delete UI configuration',
+      };
+    }
+  }
+
+  // Get all UI configurations (for admin)
+  async getAllConfigs(
+    appId?: string,
+    environment?: string
+  ): Promise<ApiResponse<UIConfig[]>> {
+    try {
+      const params = new URLSearchParams();
+      if (appId) params.append('appId', appId);
+      if (environment) params.append('environment', environment);
+
+      const queryString = params.toString();
+      const endpoint = `/api/ui-config${queryString ? `?${queryString}` : ''}`;
+
+      return await httpClient.get<UIConfig[]>(endpoint);
+    } catch (error) {
+      console.error('Error fetching all UI configurations:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to fetch UI configurations',
+      };
+    }
   }
 }
 

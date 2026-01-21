@@ -31,8 +31,6 @@
     "health:check": "node healthcheck.js",
     "db:migrate": "node scripts/migrate.js",
     "db:seed": "node scripts/seed.js",
-    "db:seed:perfect": "node scripts/perfect-seeder.js",
-    "db:seed:test": "node scripts/test-perfect-seeder.js",
     "db:reset": "node scripts/reset.js",
     "db:backup": "node scripts/backup.js",
     "db:restore": "node scripts/restore.js",
