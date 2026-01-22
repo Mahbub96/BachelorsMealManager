@@ -65,13 +65,15 @@ const resetDatabase = async () => {
     console.log('💡 Run "npm run db:seed" to populate with sample data');
   } catch (error) {
     console.error('❌ Database reset failed:', error);
+    throw error; // Re-throw to handle in caller
   } finally {
-    mongoose.connection.close();
+    await mongoose.connection.close();
+    console.log('🔌 Database connection closed');
   }
 };
 
 // Confirmation prompt
-const confirmReset = () => {
+const confirmReset = async () => {
   const readline = require('readline');
   const rl = readline.createInterface({
     input: process.stdin,
@@ -79,12 +81,18 @@ const confirmReset = () => {
   });
 
   rl.question(
-    'Are you sure you want to reset the database? This action cannot be undone. (yes/no): ',
-    answer => {
+    '⚠️  WARNING: This will delete ALL data from the database!\nAre you sure you want to reset the database? This action cannot be undone. (yes/no): ',
+    async answer => {
       if (answer.toLowerCase() === 'yes' || answer.toLowerCase() === 'y') {
-        connectDB().then(() => {
-          resetDatabase();
-        });
+        try {
+          await connectDB();
+          await resetDatabase();
+          console.log('✅ Reset process completed');
+          process.exit(0);
+        } catch (error) {
+          console.error('❌ Reset process failed:', error);
+          process.exit(1);
+        }
       } else {
         console.log('❌ Database reset cancelled');
         process.exit(0);

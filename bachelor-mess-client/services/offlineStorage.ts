@@ -1061,11 +1061,18 @@ class OfflineStorageService {
       const requestId = `request_${Date.now()}_${Math.random()
         .toString(36)
         .substr(2, 9)}`;
+      // Minimal fix: Store method and headers in data for retry
+      const requestData = {
+        ...request.data,
+        _method: request.method,
+        _headers: request.headers,
+      };
+      
       const syncItem = {
         id: requestId,
         action: 'CREATE',
         endpoint: request.endpoint,
-        data: JSON.stringify(request.data),
+        data: requestData, // Don't stringify here - addToSyncQueue handles it
         timestamp: Date.now(),
         retryCount: 0,
       };

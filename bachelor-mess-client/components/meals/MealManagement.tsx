@@ -63,6 +63,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
 
   const {
     meals,
+    mealStats,
     loading,
     error,
     loadMeals,
@@ -185,7 +186,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
             >
               <Ionicons name='fast-food' size={28} color='#fff' />
               <ThemedText style={styles.statValue}>
-                {meals?.length || 0}
+                {mealStats?.totalMeals || meals?.length || 0}
               </ThemedText>
               <ThemedText style={styles.statLabel}>Total Meals</ThemedText>
             </LinearGradient>

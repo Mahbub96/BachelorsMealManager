@@ -953,10 +953,33 @@ class HttpClient {
           const url = `${this.baseURL}${request.endpoint}`;
           console.log(`🔄 Retrying offline request to: ${url}`);
 
+          // Minimal fix: Extract method and headers from data if stored
+          let method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' = 'POST';
+          let headers: Record<string, string> = {};
+          let requestBody = request.data;
+          
+          if (request.data && typeof request.data === 'object' && request.data._method) {
+            method = request.data._method;
+            headers = request.data._headers || {};
+            const { _method, _headers, ...cleanData } = request.data;
+            requestBody = cleanData;
+          } else if (request.action) {
+            // Fallback: map action to method
+            method = request.action === 'UPDATE' ? 'PUT' : request.action === 'DELETE' ? 'DELETE' : 'POST';
+          }
+
+          // Reconstruct headers with auth token
+          const token = await this.getAuthToken();
+          const finalHeaders = {
+            ...this.defaultHeaders,
+            ...(token && { Authorization: `Bearer ${token}` }),
+            ...headers,
+          };
+
           const response = await this.retryRequest(url, {
-            method: request.method as any,
-            body: request.data,
-            headers: request.headers,
+            method: method,
+            body: requestBody,
+            headers: finalHeaders,
             timeout: API_CONFIG.timeout,
             retries: 1, // Only retry once for offline requests
           });

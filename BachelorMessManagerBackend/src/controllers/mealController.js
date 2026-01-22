@@ -10,24 +10,18 @@ const {
 } = require('../utils/responseHandler');
 
 class MealController {
+
   // Submit daily meals
   async submitMeals(req, res, next) {
     try {
       const { breakfast, lunch, dinner, date, notes } = req.body;
       // Use _id to ensure we get the ObjectId, not the string id
       // Convert to ObjectId if it's a string to ensure proper matching
+      // SECURITY: Always use authenticated user's ID from token, never from request body
       let userId = req.user._id || req.user.id;
       if (typeof userId === 'string') {
         userId = new mongoose.Types.ObjectId(userId);
       }
-
-      console.log('🍽️ Meal submission request:', {
-        body: req.body,
-        userEmail: req.user.email,
-        userId: userId,
-        userIdType: typeof userId,
-        userIdString: userId.toString(),
-      });
 
       // Enhanced validation
       if (!date) {
@@ -36,19 +30,9 @@ class MealController {
 
       // Validate date format and ensure it's not in the future
       const mealDate = new Date(date);
-      const today = new Date();
-      today.setHours(23, 59, 59, 999); // End of today
 
       if (isNaN(mealDate.getTime())) {
         return sendErrorResponse(res, 400, 'Invalid date format');
-      }
-
-      if (mealDate > today) {
-        return sendErrorResponse(
-          res,
-          400,
-          'Cannot submit meals for future dates'
-        );
       }
 
       // Check if at least one meal is selected
@@ -66,6 +50,7 @@ class MealController {
       
       // IMPORTANT: Check for THIS SPECIFIC USER's meal entry for this date
       // Different users CAN have meals for the same date - only prevent duplicate for same user
+
       const query = {
         userId: userId, // Only check for this specific user
         date: {
@@ -74,49 +59,22 @@ class MealController {
         },
       };
       
-      // Debug logging to verify query is correct
-      logger.debug('Checking for existing meal', {
-        queryUserId: userId.toString(),
-        queryUserIdType: userId.constructor.name,
-        queryDateRange: {
-          start: startOfDay.toISOString(),
-          end: endOfDay.toISOString(),
-        },
-        userEmail: req.user.email,
-      });
-      
       const existingMeal = await Meal.findOne(query);
 
       if (existingMeal) {
         // Verify the existing meal belongs to this user (safety check)
         const existingUserId = existingMeal.userId ? existingMeal.userId.toString() : 'null';
         const currentUserId = userId.toString();
-        
-        logger.debug('Found existing meal', {
-          existingMealId: existingMeal._id,
-          existingMealUserId: existingUserId,
-          currentUserId: currentUserId,
-          existingMealDate: existingMeal.date,
-          queryDate: mealDate,
-          userIdsMatch: existingUserId === currentUserId,
-        });
-        
         if (existingUserId !== currentUserId) {
-          logger.warn('Meal duplicate check found meal for different user - this should not happen!', {
-            requestedUserId: currentUserId,
-            foundMealUserId: existingUserId,
-            requestedUserEmail: req.user.email,
-            existingMealId: existingMeal._id,
-          });
           // If somehow we found a meal for a different user, continue (shouldn't happen)
           // This indicates a bug in the query or data
         } else {
           // This user already has a meal entry for this date - CORRECT BEHAVIOR
-          logger.info(`User ${req.user.email} (${currentUserId}) attempted duplicate meal submission for ${new Date(mealDate).toLocaleDateString()}`);
+          logger.info(`User ${req.user.email} attempted duplicate meal submission for ${new Date(mealDate).toLocaleDateString()}`);
           return sendErrorResponse(
             res,
             400,
-            `You already have a meal entry for ${new Date(mealDate).toLocaleDateString()}. You can update your existing entry instead.`,
+            `You already have a meal entry for ${new Date(mealDate).toLocaleDateString()}. Use PUT /api/meals/${existingMeal._id} to update your existing entry. Each user can only create or update their meal once per day.`,
             {
               existingMealId: existingMeal._id,
               existingMealStatus: existingMeal.status,
@@ -125,15 +83,10 @@ class MealController {
                 lunch: existingMeal.lunch,
                 dinner: existingMeal.dinner,
               },
-            }
+              updateEndpoint: `/api/meals/${existingMeal._id}`,
+            },
           );
         }
-      } else {
-        logger.debug('No existing meal found for this user and date - proceeding with creation', {
-          userId: userId.toString(),
-          userEmail: req.user.email,
-          date: mealDate,
-        });
       }
 
       // Create meal entry with enhanced data
@@ -221,11 +174,15 @@ class MealController {
   // Get user meals
   async getUserMeals(req, res, next) {
     try {
-      const userId = req.user.id;
+      // Convert userId to ObjectId for proper matching
+      let userId = req.user._id || req.user.id;
+      if (typeof userId === 'string') {
+        userId = new mongoose.Types.ObjectId(userId);
+      }
       const { startDate, endDate, status, limit = 10, page = 1 } = req.query;
 
-      // Build query
-      const query = { userId };
+      // Build query - userId is now ObjectId, will automatically exclude null
+      const query = { userId: userId };
 
       if (startDate && endDate) {
         query.date = {
@@ -241,13 +198,14 @@ class MealController {
       // Calculate pagination
       const skip = (parseInt(page) - 1) * parseInt(limit);
 
-      // Get meals with pagination
+      // Get meals with pagination - use lean() for better performance
       const meals = await Meal.find(query)
         .populate('userId', 'name email')
         .populate('approvedBy', 'name')
         .sort({ date: -1 })
         .skip(skip)
-        .limit(parseInt(limit));
+        .limit(parseInt(limit))
+        .lean();
 
       // Get total count
       const total = await Meal.countDocuments(query);
@@ -304,13 +262,14 @@ class MealController {
       // Calculate pagination
       const skip = (parseInt(page) - 1) * parseInt(limit);
 
-      // Get meals with pagination
+      // Get meals with pagination - use lean() for better performance and batch populate
       const meals = await Meal.find(query)
         .populate('userId', 'name email')
         .populate('approvedBy', 'name')
         .sort({ date: -1, createdAt: -1 })
         .skip(skip)
-        .limit(parseInt(limit));
+        .limit(parseInt(limit))
+        .lean();
 
       // Get total count
       const total = await Meal.countDocuments(query);
@@ -398,36 +357,48 @@ class MealController {
   // Get user meal statistics
   async getUserMealStats(req, res, next) {
     try {
-      const userId = req.user.id;
+      // Convert userId to ObjectId for proper matching
+      let userId = req.user._id || req.user.id;
+      if (typeof userId === 'string') {
+        userId = new mongoose.Types.ObjectId(userId);
+      }
       const { startDate, endDate } = req.query;
 
-      console.log('🍽️ getUserMealStats called with userId:', userId);
-
-      // Build query
-      const query = { userId: userId };
+      // Build filters for Meal.getStats
+      // If no date range provided, default to current month (1st to today)
+      let filters = { userId: userId };
 
       if (startDate && endDate) {
-        query.date = {
-          $gte: new Date(startDate),
-          $lte: new Date(endDate),
-        };
+        filters.startDate = new Date(startDate);
+        filters.endDate = new Date(endDate);
+      } else {
+        // Default to current month: from 1st of current month to current date
+        const currentDate = new Date();
+        const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+        const todayEndOfDay = new Date(
+          currentDate.getFullYear(),
+          currentDate.getMonth(),
+          currentDate.getDate(),
+          23,
+          59,
+          59,
+          999,
+        );
+        filters.startDate = firstDayOfMonth;
+        filters.endDate = todayEndOfDay;
       }
 
-      console.log('🔍 Query:', query);
-
       // Get user statistics using the existing getStats method
-      const stats = await Meal.getStats(query);
-
-      console.log('📊 Stats result:', stats);
+      const stats = await Meal.getStats(filters);
 
       return sendSuccessResponse(
         res,
         200,
         'User meal statistics retrieved successfully',
-        stats
+        stats,
       );
     } catch (error) {
-      console.error('❌ Error in getUserMealStats:', error);
+      logger.error('Error in getUserMealStats:', error);
       next(error);
     }
   }
@@ -475,13 +446,42 @@ class MealController {
         return sendErrorResponse(res, 403, 'Access denied');
       }
 
-      // Only allow updates if meal is pending
+      // Only allow updates if meal is pending (unless admin)
       if (meal.status !== 'pending' && req.user.role !== 'admin') {
         return sendErrorResponse(
           res,
           400,
           'Cannot update approved or rejected meals'
         );
+      }
+
+      // Prevent multiple updates per day: check if meal was already updated
+      // Each user can only update their meal once per day
+      if (req.user.role !== 'admin') {
+        const mealDate = new Date(meal.date);
+        const createdAt = new Date(meal.createdAt);
+        const updatedAt = new Date(meal.updatedAt);
+
+        // Normalize dates to start of day for comparison
+        const mealDateNormalized = new Date(mealDate);
+        mealDateNormalized.setUTCHours(0, 0, 0, 0);
+        const updatedAtNormalized = new Date(updatedAt);
+        updatedAtNormalized.setUTCHours(0, 0, 0, 0);
+
+        // Check if updatedAt is significantly different from createdAt (more than 2 seconds)
+        // This indicates the meal was already updated (not just created)
+        const timeDiff = Math.abs(updatedAt.getTime() - createdAt.getTime());
+        const wasUpdated = timeDiff > 2000; // 2 second buffer for save operations
+
+        // If meal was updated and the update happened on the same day as the meal date,
+        // prevent further updates for that day
+        if (wasUpdated && updatedAtNormalized.getTime() === mealDateNormalized.getTime()) {
+          return sendErrorResponse(
+            res,
+            400,
+            `You have already updated your meal for ${new Date(mealDate).toLocaleDateString()}. Each user can only update their meal once per day.`,
+          );
+        }
       }
 
       // Update meal
@@ -502,7 +502,7 @@ class MealController {
         res,
         200,
         'Meal updated successfully',
-        updatedMeal
+        updatedMeal,
       );
     } catch (error) {
       next(error);

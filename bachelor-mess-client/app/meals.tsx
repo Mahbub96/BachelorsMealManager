@@ -116,7 +116,10 @@ export default function MealsScreen() {
 
     const stats = currentMonthMeals.reduce(
       (acc, meal) => {
-        acc.totalMeals++;
+        // Count individual meals (breakfast + lunch + dinner), not just entries
+        const mealsInEntry = (meal.breakfast ? 1 : 0) + (meal.lunch ? 1 : 0) + (meal.dinner ? 1 : 0);
+        acc.totalMeals += mealsInEntry;
+        
         if (meal.breakfast) acc.totalBreakfast++;
         if (meal.lunch) acc.totalLunch++;
         if (meal.dinner) acc.totalDinner++;

@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "bachelor-mess-api-collection-2024",
     "name": "Bachelor Mess Manager API",
-    "description": "Complete API documentation for Bachelor Mess Manager Backend. Import this collection to Postman to test all endpoints. Configure BASE_URL variable for your environment (local/cloud).",
+    "description": "Complete API documentation for Bachelor Mess Manager Backend. Import this collection to Postman to test all endpoints. Configure BASE_URL variable for your environment (local/cloud).\n\n**Key Features:**\n- User authentication and authorization\n- Meal management (one entry per user per day, can be updated once)\n- Bazar (grocery) management with admin controls\n- Comprehensive user statistics (dashboard, meals, bazar, payments)\n- Activity tracking and analytics\n- Admin and super-admin endpoints\n\n**Important Notes:**\n- All meal statistics now correctly count individual meals (breakfast + lunch + dinner), not just entries\n- User can submit one meal entry per day; updates are allowed once per day\n- Use /api/user-stats/dashboard for comprehensive dashboard statistics\n- Use /api/user-stats/meals for detailed meal statistics\n- Authentication token is auto-populated after login",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "bachelor-mess-api"
   },
@@ -396,7 +396,7 @@
                 "meals"
               ]
             },
-            "description": "Submit daily meal entries",
+            "description": "Submit daily meal entries. Note: Each user can only create one meal entry per day. If an entry already exists for the date, you must use the PUT /api/meals/:mealId endpoint to update it. Users can update their meal entry once per day.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"date\": \"2024-01-15\",\n  \"breakfast\": true,\n  \"lunch\": true,\n  \"dinner\": false,\n  \"notes\": \"Optional notes\"\n}",
@@ -2004,7 +2004,7 @@
                 "dashboard"
               ]
             },
-            "description": "Get comprehensive user dashboard statistics including meals, bazar, and payments"
+            "description": "Get comprehensive user dashboard statistics including meals, bazar, and payments. Returns total meals count (sum of breakfast + lunch + dinner), not just entry count."
           },
           "response": []
         },
@@ -2030,7 +2030,7 @@
                 "meals"
               ]
             },
-            "description": "Get detailed meal statistics for current user"
+            "description": "Get detailed meal statistics for current user. Returns totalMeals as sum of individual meals (breakfast + lunch + dinner), not just entry count."
           },
           "response": []
         },

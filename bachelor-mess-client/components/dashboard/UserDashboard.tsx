@@ -76,13 +76,13 @@ export const UserDashboard: React.FC = () => {
 
       if (response.success && response.data) {
         // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'UserDashboard.tsx:87',message:'Setting dashboard data',data:{meals:response.data.meals,bazar:response.data.bazar,payments:response.data.payments,mealsTotal:response.data.meals?.total,bazarTotal:response.data.bazar?.totalAmount,fullData:JSON.stringify(response.data)},timestamp:Date.now(),sessionId:'debug-session',runId:'dashboard',hypothesisId:'C'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'UserDashboard.tsx:87',message:'Setting dashboard data',data:{meals:response.data.meals,bazar:response.data.bazar,currentMealRate:response.data.currentMealRate,mealsTotal:response.data.meals?.total,bazarTotal:response.data.bazar?.totalAmount,fullData:JSON.stringify(response.data)},timestamp:Date.now(),sessionId:'debug-session',runId:'dashboard',hypothesisId:'C'})}).catch(()=>{});
         // #endregion
         
         console.log('📊 Dashboard Data Received:', {
           meals: response.data.meals,
           bazar: response.data.bazar,
-          payments: response.data.payments,
+          currentMealRate: response.data.currentMealRate,
         });
         setDashboardData(response.data);
         console.log('✅ Dashboard data loaded successfully');
@@ -200,8 +200,11 @@ export const UserDashboard: React.FC = () => {
       case 'Avg/Day':
         router.push('/(tabs)/meals');
         break;
-      case 'Payment Status':
-        Alert.alert('Payment Details', 'Payment management coming soon!');
+      case 'Meal Rate':
+        Alert.alert(
+          'Current Meal Rate',
+          `Your current meal rate is calculated as: Total Meals ÷ Total Bazar Amount (for this month)`,
+        );
         break;
       default:
         break;
@@ -254,7 +257,7 @@ export const UserDashboard: React.FC = () => {
   });
   
   // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'UserDashboard.tsx:248',message:'Stats data analysis',data:{hasStats:!!stats,hasDashboardData:!!dashboardData,hasUserStats:!!userStats,statsBazar:stats?.bazar,statsMeals:stats?.meals,statsPayments:stats?.payments,bazarTotalAmount:stats?.bazar?.totalAmount,mealsTotal:stats?.meals?.total,fullStats:JSON.stringify(stats)},timestamp:Date.now(),sessionId:'debug-session',runId:'dashboard',hypothesisId:'C'})}).catch(()=>{});
+  fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'UserDashboard.tsx:248',message:'Stats data analysis',data:{hasStats:!!stats,hasDashboardData:!!dashboardData,hasUserStats:!!userStats,statsBazar:stats?.bazar,statsMeals:stats?.meals,currentMealRate:stats?.currentMealRate,bazarTotalAmount:stats?.bazar?.totalAmount,mealsTotal:stats?.meals?.total,fullStats:JSON.stringify(stats)},timestamp:Date.now(),sessionId:'debug-session',runId:'dashboard',hypothesisId:'C'})}).catch(()=>{});
   // #endregion
 
   // Prepare stats for StatsGrid - using real API data with click handlers
@@ -306,24 +309,21 @@ export const UserDashboard: React.FC = () => {
           onPress: () => handleStatCardClick('Avg/Day'),
         },
         {
-          title: 'Payment Status',
-          value: stats.payments?.paymentStatus
-            ? stats.payments.paymentStatus.toUpperCase()
-            : 'N/A',
-          icon: 'card',
-          colors:
-            stats.payments?.paymentStatus === 'paid'
-              ? (theme.gradient.success as [string, string])
-              : stats.payments?.paymentStatus === 'overdue'
-              ? (theme.gradient.error as [string, string])
-              : (theme.gradient.warning as [string, string]),
-          change:
-            stats.payments?.totalPaid !== undefined &&
-            stats.payments?.monthlyContribution !== undefined
-              ? `৳${stats.payments.totalPaid.toLocaleString()} / ৳${stats.payments.monthlyContribution.toLocaleString()}`
+          title: 'Meal Rate',
+          value:
+            stats.currentMealRate?.rate !== undefined
+              ? stats.currentMealRate.rate.toFixed(3)
               : 'N/A',
-          period: 'monthly',
-          onPress: () => handleStatCardClick('Payment Status'),
+          icon: 'calculator',
+          colors: theme.gradient.warning as [string, string],
+          trend: stats.currentMealRate?.rate > 0 ? 'up' : 'neutral',
+          change:
+            stats.currentMealRate?.totalMeals !== undefined &&
+            stats.currentMealRate?.totalBazarAmount !== undefined
+              ? `${stats.currentMealRate.totalMeals} meals / ৳${stats.currentMealRate.totalBazarAmount.toLocaleString()}`
+              : 'N/A',
+          period: 'this month',
+          onPress: () => handleStatCardClick('Meal Rate'),
         },
       ]
     : [
@@ -359,13 +359,13 @@ export const UserDashboard: React.FC = () => {
           onPress: () => handleStatCardClick('Avg/Day'),
         },
         {
-          title: 'Payment Status',
+          title: 'Meal Rate',
           value: 'N/A',
-          icon: 'card',
+          icon: 'calculator',
           colors: theme.gradient.warning as [string, string],
           change: 'Login required',
-          period: 'monthly',
-          onPress: () => handleStatCardClick('Payment Status'),
+          period: 'this month',
+          onPress: () => handleStatCardClick('Meal Rate'),
         },
       ];
 

@@ -188,18 +188,38 @@ mealSchema.statics.getStats = async function (filters = {}) {
       matchStage.date = { $lte: new Date(filters.endDate) };
     }
   }
-  if (filters.userId)
-    matchStage.userId = new mongoose.Types.ObjectId(filters.userId);
+  if (filters.userId) {
+    // Convert to ObjectId if it's a string, otherwise use as-is
+    matchStage.userId = filters.userId instanceof mongoose.Types.ObjectId
+      ? filters.userId
+      : new mongoose.Types.ObjectId(filters.userId);
+  }
 
   const stats = await this.aggregate([
     { $match: matchStage },
     {
+      // First, add a computed field for meals per entry
+      $addFields: {
+        mealsPerEntry: {
+          $add: [
+            { $cond: ['$breakfast', 1, 0] },
+            { $cond: ['$lunch', 1, 0] },
+            { $cond: ['$dinner', 1, 0] },
+          ],
+        },
+      },
+    },
+    {
       $group: {
         _id: null,
+        // Count each meal type separately
         totalBreakfast: { $sum: { $cond: ['$breakfast', 1, 0] } },
         totalLunch: { $sum: { $cond: ['$lunch', 1, 0] } },
         totalDinner: { $sum: { $cond: ['$dinner', 1, 0] } },
-        totalMeals: { $sum: 1 },
+        // Sum mealsPerEntry to get total individual meals
+        // Example: 1 entry with breakfast=true, lunch=true, dinner=true = 3 meals
+        totalMeals: { $sum: '$mealsPerEntry' },
+        // Count meal entries (documents), not individual meals
         pendingCount: {
           $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] },
         },
@@ -209,6 +229,7 @@ mealSchema.statics.getStats = async function (filters = {}) {
         rejectedCount: {
           $sum: { $cond: [{ $eq: ['$status', 'rejected'] }, 1, 0] },
         },
+        // totalEntries = number of meal entry documents (one per day per user)
         totalEntries: { $sum: 1 },
       },
     },

@@ -19,11 +19,10 @@ export interface UserDashboardStats {
     totalEntries: number;
     averageAmount: number;
   };
-  payments: {
-    monthlyContribution: number;
-    lastPaymentDate: string | null;
-    paymentStatus: 'paid' | 'pending' | 'overdue';
-    totalPaid: number;
+  currentMealRate: {
+    rate: number;
+    totalMeals: number;
+    totalBazarAmount: number;
   };
   overview: {
     totalActivities: number;
@@ -37,7 +36,7 @@ export interface UserStatsService {
   getUserMealStats: () => Promise<ApiResponse<UserDashboardStats['meals']>>;
   getUserBazarStats: () => Promise<ApiResponse<UserDashboardStats['bazar']>>;
   getUserPaymentStats: () => Promise<
-    ApiResponse<UserDashboardStats['payments']>
+    ApiResponse<UserDashboardStats['currentMealRate']>
   >;
   getUserDashboard: () => Promise<ApiResponse<any>>;
 }
@@ -52,6 +51,9 @@ class UserStatsServiceImpl implements UserStatsService {
       fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'userStatsService.ts:46',message:'getUserDashboardStats called',data:{baseURL:API_CONFIG.apiUrl,endpoint:API_ENDPOINTS.USER_STATS.DASHBOARD},timestamp:Date.now(),sessionId:'debug-session',runId:'dashboard',hypothesisId:'B'})}).catch(()=>{});
       // #endregion
 
+      // Clear cache first, then fetch fresh data
+      await httpClient.clearCache();
+      
       // Disable cache to ensure fresh data (cache was causing stale zeros)
       const response = await httpClient.get<UserDashboardStats>(
         API_ENDPOINTS.USER_STATS.DASHBOARD,
@@ -73,7 +75,7 @@ class UserStatsServiceImpl implements UserStatsService {
       
       // #region agent log
       if (response.data) {
-        fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'userStatsService.ts:70',message:'Detailed response data analysis',data:{meals:response.data.meals,bazar:response.data.bazar,payments:response.data.payments,mealsTotal:response.data.meals?.total,bazarTotal:response.data.bazar?.totalAmount},timestamp:Date.now(),sessionId:'debug-session',runId:'dashboard',hypothesisId:'B'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'userStatsService.ts:70',message:'Detailed response data analysis',data:{meals:response.data.meals,bazar:response.data.bazar,currentMealRate:response.data.currentMealRate,mealsTotal:response.data.meals?.total,bazarTotal:response.data.bazar?.totalAmount},timestamp:Date.now(),sessionId:'debug-session',runId:'dashboard',hypothesisId:'B'})}).catch(()=>{});
       }
       // #endregion
 
@@ -201,44 +203,28 @@ class UserStatsServiceImpl implements UserStatsService {
   }
 
   async getUserPaymentStats(): Promise<
-    ApiResponse<UserDashboardStats['payments']>
+    ApiResponse<UserDashboardStats['currentMealRate']>
   > {
     try {
-      console.log('💰 Fetching user payment stats...');
-      console.log('🔗 Endpoint:', API_ENDPOINTS.USER_STATS.PAYMENTS);
-
-      const response = await httpClient.get<UserDashboardStats['payments']>(
-        API_ENDPOINTS.USER_STATS.PAYMENTS,
-        {
-          cache: true,
-          cacheKey: 'user_payment_stats',
-          offlineFallback: false,
-          retries: 3,
-          timeout: 10000,
-        }
-      );
-
-      console.log('📡 Payment Stats Response:', response);
-
-      if (!response.success) {
-        const appError = errorHandler.handleApiResponse(
-          response,
-          'User Payment Stats'
-        );
-        console.error('❌ Failed to fetch payment stats:', appError?.message);
-
+      console.log('💰 Fetching user current meal rate...');
+      // Use dashboard endpoint to get current meal rate
+      const dashboardResponse = await this.getUserDashboardStats();
+      
+      if (!dashboardResponse.success || !dashboardResponse.data) {
         return {
           success: false,
-          error: appError?.message || 'Failed to fetch payment statistics',
+          error: dashboardResponse.error || 'Failed to fetch current meal rate',
         };
       }
 
-      console.log('✅ User payment stats fetched successfully');
-      return response;
+      return {
+        success: true,
+        data: dashboardResponse.data.currentMealRate,
+      };
     } catch (error) {
       console.error('💥 Exception in getUserPaymentStats:', error);
-      const appError = errorHandler.handleError(error, 'User Payment Stats');
-      console.error('❌ Error fetching payment stats:', appError.message);
+      const appError = errorHandler.handleError(error, 'Current Meal Rate');
+      console.error('❌ Error fetching current meal rate:', appError.message);
 
       return {
         success: false,

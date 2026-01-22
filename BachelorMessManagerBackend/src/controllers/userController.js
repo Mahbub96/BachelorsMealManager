@@ -105,7 +105,7 @@ class UserController {
   }
 
   // Get user dashboard data
-  async getUserDashboard(req, res, next) {
+  getUserDashboard = async (req, res, next) => {
     try {
       const userId = req.user.id;
 
@@ -151,20 +151,52 @@ class UserController {
     }
   }
 
-  // Get meal statistics for user
+  // Get meal statistics for user (current month to current day)
   async getMealStats(userId) {
     try {
-      const totalMeals = await Meal.countDocuments({ userId });
-      const approvedMeals = await Meal.countDocuments({
+      // Get start of current month
+      const now = new Date();
+      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+      // All meal queries only within this month
+      const baseQuery = { 
         userId,
+        date: { $gte: firstDayOfMonth, $lte: today }
+      };
+
+      
+      const allMeals = await Meal.find(baseQuery);
+
+      const mealSummary = {
+        lunchCount: 0,
+        dinnerCount: 0,
+        breakfastCount: 0,
+        totalCount: function() {
+          return this.lunchCount + this.dinnerCount + this.breakfastCount;
+        }
+      };
+
+
+      allMeals.forEach(meal => {
+        
+        if (meal.lunch)  mealSummary.lunchCount++;
+        if (meal.dinner)   mealSummary.dinnerCount++;
+        if (meal.breakfast)   mealSummary.breakfastCount++;
+      });
+
+      const totalMeals = mealSummary.totalCount();
+      
+      const approvedMeals = await Meal.countDocuments({
+        ...baseQuery,
         status: 'approved',
       });
       const pendingMeals = await Meal.countDocuments({
-        userId,
+        ...baseQuery,
         status: 'pending',
       });
       const rejectedMeals = await Meal.countDocuments({
-        userId,
+        ...baseQuery,
         status: 'rejected',
       });
 
@@ -172,20 +204,16 @@ class UserController {
       const efficiency =
         totalMeals > 0 ? Math.round((approvedMeals / totalMeals) * 100) : 0;
 
-      // Calculate average meals per day
-      const user = await User.findById(userId);
-      const joinDate = user?.createdAt || new Date();
-      const daysSinceJoin = Math.ceil(
-        (new Date() - joinDate) / (1000 * 60 * 60 * 24)
-      );
+      // Calculate average meals per day (in current month up to today)
+      const currentDay = now.getDate(); // e.g., 1-31
       const averagePerDay =
-        daysSinceJoin > 0 ? (totalMeals / daysSinceJoin).toFixed(1) : 0;
+        currentDay > 0 ? (totalMeals / currentDay).toFixed(1) : 0;
 
-      // Get days since last meal
-      const lastMeal = await Meal.findOne({ userId }).sort({ date: -1 });
+      // Get days since last meal (relative to this month)
+      const lastMeal = await Meal.findOne(baseQuery).sort({ date: -1 });
       const daysSinceLastMeal = lastMeal
         ? Math.ceil(
-            (new Date() - new Date(lastMeal.date)) / (1000 * 60 * 60 * 24)
+            (now - new Date(lastMeal.date)) / (1000 * 60 * 60 * 24)
           )
         : 0;
 
@@ -212,10 +240,81 @@ class UserController {
     }
   }
 
-  // Get bazar statistics for user
+    // Get All meal statistics for user
+    async getAllMealsStats(userId) {
+      try {
+        const totalMeals = await Meal.countDocuments({ userId });
+        const approvedMeals = await Meal.countDocuments({
+          userId,
+          status: 'approved',
+        });
+        const pendingMeals = await Meal.countDocuments({
+          userId,
+          status: 'pending',
+        });
+        const rejectedMeals = await Meal.countDocuments({
+          userId,
+          status: 'rejected',
+        });
+  
+        // Calculate efficiency percentage
+        const efficiency =
+          totalMeals > 0 ? Math.round((approvedMeals / totalMeals) * 100) : 0;
+  
+        // Calculate average meals per day
+        const user = await User.findById(userId);
+        const joinDate = user?.createdAt || new Date();
+        const daysSinceJoin = Math.ceil(
+          (new Date() - joinDate) / (1000 * 60 * 60 * 24)
+        );
+        const averagePerDay =
+          daysSinceJoin > 0 ? (totalMeals / daysSinceJoin).toFixed(1) : 0;
+  
+        // Get days since last meal
+        const lastMeal = await Meal.findOne({ userId }).sort({ date: -1 });
+        const daysSinceLastMeal = lastMeal
+          ? Math.ceil(
+              (new Date() - new Date(lastMeal.date)) / (1000 * 60 * 60 * 24)
+            )
+          : 0;
+  
+        return {
+          total: totalMeals,
+          approved: approvedMeals,
+          pending: pendingMeals,
+          rejected: rejectedMeals,
+          efficiency: efficiency,
+          averagePerDay: parseFloat(averagePerDay),
+          daysSinceLastMeal: daysSinceLastMeal,
+        };
+      } catch (error) {
+        logger.error('Error getting meal stats:', error);
+        return {
+          total: 0,
+          approved: 0,
+          pending: 0,
+          rejected: 0,
+          efficiency: 0,
+          averagePerDay: 0,
+          daysSinceLastMeal: 0,
+        };
+      }
+    }
+
+  // Get bazar statistics for user for current month up to current date
   async getBazarStats(userId) {
     try {
-      const bazarEntries = await Bazar.find({ userId });
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+      // Find bazar entries for this user, from start of month to now
+      const bazarEntries = await Bazar.find({
+        userId,
+        createdAt: {
+          $gte: startOfMonth,
+          $lte: now,
+        },
+      });
 
       const totalAmount = bazarEntries.reduce(
         (sum, entry) => sum + entry.totalAmount,
@@ -251,15 +350,57 @@ class UserController {
     }
   }
 
+    // Get bazar statistics for user
+    async getAllBazarStats(userId) {
+      try {
+        const bazarEntries = await Bazar.find({ userId });
+  
+        const totalAmount = bazarEntries.reduce(
+          (sum, entry) => sum + entry.totalAmount,
+          0
+        );
+        const pendingAmount = bazarEntries
+          .filter(entry => entry.status === 'pending')
+          .reduce((sum, entry) => sum + entry.totalAmount, 0);
+        const approvedAmount = bazarEntries
+          .filter(entry => entry.status === 'approved')
+          .reduce((sum, entry) => sum + entry.totalAmount, 0);
+  
+        const totalEntries = bazarEntries.length;
+        const averageAmount =
+          totalEntries > 0 ? (totalAmount / totalEntries).toFixed(0) : 0;
+  
+        return {
+          totalAmount: totalAmount,
+          pendingAmount: pendingAmount,
+          approvedAmount: approvedAmount,
+          totalEntries: totalEntries,
+          averageAmount: parseFloat(averageAmount),
+        };
+      } catch (error) {
+        logger.error('Error getting bazar stats:', error);
+        return {
+          totalAmount: 0,
+          pendingAmount: 0,
+          approvedAmount: 0,
+          totalEntries: 0,
+          averageAmount: 0,
+        };
+      }
+    }
+
   // Get payment statistics for user
   async getPaymentStats(userId) {
     try {
-      // For now, we'll use mock data since we don't have a Payment model
-      // In a real implementation, you'd query the Payment collection
-      const monthlyContribution = 5000; // This would come from user settings or system config
+
+      const now = new Date();
+      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+      const user = await User.findById(userId);
 
       // Get last bazar entry date as proxy for last payment
-      const lastBazarEntry = await Bazar.findOne({ userId }).sort({
+      const lastBazarEntry = await Bazar.findOne({ userId, createdAt: { $gte: firstDayOfMonth, $lte: today } }).sort({
         createdAt: -1,
       });
       const lastPaymentDate = lastBazarEntry
@@ -267,15 +408,16 @@ class UserController {
         : null;
 
       // Calculate payment status based on bazar entries
-      const bazarEntries = await Bazar.find({ userId });
+      const bazarEntries = await Bazar.find({ userId, createdAt: { $gte: firstDayOfMonth, $lte: today } });
       const totalPaid = bazarEntries
         .filter(entry => entry.status === 'approved')
         .reduce((sum, entry) => sum + entry.totalAmount, 0);
 
       let paymentStatus = 'pending';
+      const monthlyContribution = user.monthlyContribution;
       if (totalPaid >= monthlyContribution) {
         paymentStatus = 'paid';
-      } else if (new Date().getDate() > 15) {
+      } else if (now.getDate() > 15) {
         paymentStatus = 'overdue';
       }
 
@@ -295,6 +437,51 @@ class UserController {
       };
     }
   }
+
+    // Get All payment statistics for user
+    async getAllPaymentStats(userId) {
+      try {
+        // For now, we'll use mock data since we don't have a Payment model
+        // In a real implementation, you'd query the Payment collection
+        const monthlyContribution = 5000; // This would come from user settings or system config
+  
+        // Get last bazar entry date as proxy for last payment
+        const lastBazarEntry = await Bazar.findOne({ userId }).sort({
+          createdAt: -1,
+        });
+        const lastPaymentDate = lastBazarEntry
+          ? lastBazarEntry.createdAt.toISOString().split('T')[0]
+          : null;
+  
+        // Calculate payment status based on bazar entries
+        const bazarEntries = await Bazar.find({ userId });
+        const totalPaid = bazarEntries
+          .filter(entry => entry.status === 'approved')
+          .reduce((sum, entry) => sum + entry.totalAmount, 0);
+  
+        let paymentStatus = 'pending';
+        if (totalPaid >= monthlyContribution) {
+          paymentStatus = 'paid';
+        } else if (new Date().getDate() > 15) {
+          paymentStatus = 'overdue';
+        }
+  
+        return {
+          monthlyContribution: monthlyContribution,
+          lastPaymentDate: lastPaymentDate,
+          paymentStatus: paymentStatus,
+          totalPaid: totalPaid,
+        };
+      } catch (error) {
+        logger.error('Error getting payment stats:', error);
+        return {
+          monthlyContribution: 0,
+          lastPaymentDate: null,
+          paymentStatus: 'pending',
+          totalPaid: 0,
+        };
+      }
+    }
 
   // Get overview statistics for user
   async getOverviewStats(userId) {
@@ -355,6 +542,7 @@ class UserController {
 
       // Get monthly bazar data
       const monthlyBazarData = await this.getMonthlyBazarData(userId);
+
 
       return {
         stats: stats,

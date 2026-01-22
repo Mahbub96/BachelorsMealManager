@@ -19,7 +19,11 @@ export const MealAnalytics: React.FC<MealAnalyticsProps> = ({
 }) => {
   // Calculate additional analytics
   const calculateAnalytics = () => {
-    const totalMeals = meals.length;
+    // Count individual meals (breakfast + lunch + dinner), not just entries
+    const totalMeals = meals.reduce((sum, meal) => {
+      return sum + (meal.breakfast ? 1 : 0) + (meal.lunch ? 1 : 0) + (meal.dinner ? 1 : 0);
+    }, 0);
+    const totalEntries = meals.length; // Number of meal entry documents
     const pendingMeals = meals.filter(m => m.status === 'pending').length;
     const approvedMeals = meals.filter(m => m.status === 'approved').length;
     const rejectedMeals = meals.filter(m => m.status === 'rejected').length;
@@ -29,8 +33,8 @@ export const MealAnalytics: React.FC<MealAnalyticsProps> = ({
     const dinnerCount = meals.filter(m => m.dinner).length;
 
     const avgMealsPerDay =
-      totalMeals > 0
-        ? (breakfastCount + lunchCount + dinnerCount) / totalMeals
+      totalEntries > 0
+        ? totalMeals / totalEntries
         : 0;
 
     return {

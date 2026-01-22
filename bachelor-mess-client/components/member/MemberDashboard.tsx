@@ -13,6 +13,7 @@ import { ThemedView } from '../ThemedView';
 import { ThemedText } from '../ThemedText';
 import { useAuth } from '../../context/AuthContext';
 import { EnhancedMealManagement } from '../meals/EnhancedMealManagement';
+import { mealService } from '../../services/mealService';
 
 interface MemberDashboardProps {
   onNavigate?: (screen: string) => void;
@@ -48,18 +49,47 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
 
   const loadMemberStats = async () => {
     try {
-      // Simulate API call for member stats
-      const stats: MemberStats = {
-        totalMeals: 89,
-        thisWeek: 12,
-        thisMonth: 45,
-        pendingMeals: 3,
-        approvedMeals: 86,
-        averagePerDay: 2.1,
-      };
-      setMemberStats(stats);
+      // Fetch real meal statistics from API
+      const response = await mealService.getUserMealStats();
+      
+      if (response.success && response.data) {
+        const data = response.data;
+        // Calculate average per day (assuming last 30 days, or use totalEntries)
+        const totalEntries = data.totalEntries || 0;
+        const averagePerDay = totalEntries > 0 ? (data.totalMeals || 0) / 30 : 0;
+        
+        const stats: MemberStats = {
+          totalMeals: data.totalMeals || 0,
+          thisWeek: 0, // TODO: Calculate from date range if needed
+          thisMonth: data.approvedCount || 0, // Using approved count as this month
+          pendingMeals: data.pendingCount || 0,
+          approvedMeals: data.approvedCount || 0,
+          averagePerDay: averagePerDay,
+        };
+        setMemberStats(stats);
+      } else {
+        console.error('Failed to load member stats:', response.error);
+        // Set defaults on error
+        setMemberStats({
+          totalMeals: 0,
+          thisWeek: 0,
+          thisMonth: 0,
+          pendingMeals: 0,
+          approvedMeals: 0,
+          averagePerDay: 0,
+        });
+      }
     } catch (error) {
       console.error('Error loading member stats:', error);
+      // Set defaults on error
+      setMemberStats({
+        totalMeals: 0,
+        thisWeek: 0,
+        thisMonth: 0,
+        pendingMeals: 0,
+        approvedMeals: 0,
+        averagePerDay: 0,
+      });
     }
   };
 

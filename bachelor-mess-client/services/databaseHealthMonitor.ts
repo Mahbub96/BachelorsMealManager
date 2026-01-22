@@ -110,15 +110,25 @@ class DatabaseHealthMonitor {
       // Only log if state changed (reduce excessive logging)
       const wasHealthy = this.status.isHealthy;
 
-      // Check if database is initialized - but don't call init() repeatedly
-      if (!sqliteDatabase['isInitialized']) {
-        // Only log and attempt init once per failure cycle
-        if (this.status.consecutiveFailures === 0) {
-          console.log(
-            '🔄 DatabaseHealthMonitor - Database not initialized, attempting initialization...'
-          );
+      // PERFECT FIX: Check if database is initialized - don't call init() repeatedly
+      // Only initialize if not initialized, not initializing, and not too many failures
+      if (!sqliteDatabase['isInitialized'] && !sqliteDatabase['isInitializing']) {
+        // Only attempt init on first failure or after recovery cooldown
+        if (this.status.consecutiveFailures === 0 || this.status.consecutiveFailures >= 5) {
+          const timeSinceLastCheck = Date.now() - (this.status.lastCheck || 0);
+          // Only init if enough time has passed (prevent rapid reinit)
+          if (timeSinceLastCheck > 10000 || this.status.consecutiveFailures === 0) {
+            console.log(
+              '🔄 DatabaseHealthMonitor - Database not initialized, attempting initialization...'
+            );
+            try {
+              await sqliteDatabase.init();
+            } catch (initError) {
+              // Don't throw, let health check fail naturally
+              console.error('❌ DatabaseHealthMonitor - Init failed:', initError);
+            }
+          }
         }
-        await sqliteDatabase.init();
       }
 
       // Perform a simple query to test database health
