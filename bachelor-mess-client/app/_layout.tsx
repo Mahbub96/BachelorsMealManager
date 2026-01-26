@@ -5,7 +5,10 @@ import { ThemeProvider } from '@/context/ThemeContext';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { LogBox } from 'react-native';
 // import { useColorScheme } from 'react-native';
+
+LogBox.ignoreAllLogs(true);
 
 export {
   // Catch any errors thrown by the Layout component.
