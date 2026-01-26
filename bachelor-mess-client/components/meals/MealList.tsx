@@ -22,6 +22,7 @@ interface MealListProps {
   loading?: boolean;
   error?: string | null;
   onRetry?: () => void;
+  filters?: { status?: string };
 }
 
 export const MealList: React.FC<MealListProps> = ({
@@ -39,6 +40,7 @@ export const MealList: React.FC<MealListProps> = ({
   loading = false,
   error = null,
   onRetry,
+  filters,
 }) => {
   const renderMealItem = ({ item }: { item: MealEntry }) => (
     <View style={styles.mealCardContainer}>
@@ -75,11 +77,32 @@ export const MealList: React.FC<MealListProps> = ({
   }
 
   if (meals.length === 0) {
+    // Different messages based on context
+    const emptyTitle = isAdmin
+      ? filters?.status === 'pending'
+        ? 'No Pending Meals'
+        : filters?.status === 'approved'
+        ? 'No Approved Meals'
+        : filters?.status === 'rejected'
+        ? 'No Rejected Meals'
+        : 'No Meals Found'
+      : 'No meals found';
+    
+    const emptyMessage = isAdmin
+      ? filters?.status === 'pending'
+        ? 'All meals have been reviewed. No pending approvals at this time.'
+        : filters?.status === 'approved'
+        ? 'No approved meals match your current filters.'
+        : filters?.status === 'rejected'
+        ? 'No rejected meals found.'
+        : 'There are no meals to display. Try adjusting your filters.'
+      : 'There are no meals to display. Add a new meal to get started.';
+
     return (
       <MealEmptyState
-        title='No meals found'
-        message='There are no meals to display. Add a new meal to get started.'
-        icon='fast-food-outline'
+        title={emptyTitle}
+        message={emptyMessage}
+        icon={isAdmin && filters?.status === 'pending' ? 'checkmark-circle-outline' : 'fast-food-outline'}
       />
     );
   }
@@ -104,7 +127,9 @@ const styles = StyleSheet.create({
   },
   mealCardContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     paddingHorizontal: 16,
+    marginBottom: 8,
+    paddingTop: 2,
   },
 });

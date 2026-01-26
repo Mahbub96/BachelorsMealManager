@@ -17,6 +17,7 @@ export interface DashboardStats {
   monthlyBudget: number;
   budgetUsed: number;
   lastUpdated: string;
+  mealRate: number;
 }
 
 export interface Activity {
@@ -179,7 +180,7 @@ class DashboardServiceImpl implements DashboardService {
       }>(API_ENDPOINTS.DASHBOARD.HEALTH);
 
       if (response.success) {
-        console.log('✅ Dashboard Service - Health check successful');
+        console.log('✅ Dashboard Service - Health check successful',response.data);
       } else {
         console.error(
           '❌ Dashboard Service - Health check failed:',
@@ -199,15 +200,11 @@ class DashboardServiceImpl implements DashboardService {
   }
 
   async getStats(): Promise<ApiResponse<DashboardStats>> {
-    // Initialize dashboard data system
-    try {
-      await offlineStorage.initializeDashboardData();
-    } catch (error) {
-      console.error(
-        '❌ Dashboard Service - Failed to initialize dashboard data:',
-        error
-      );
-    }
+    // Initialize dashboard data system (non-blocking)
+    // This is called silently in the background and won't block the app
+    offlineStorage.initializeDashboardData().catch(() => {
+      // Silently handle - initialization is non-critical
+    });
 
     return offlineStorage
       .getDataWithOfflineFallback(
@@ -219,7 +216,7 @@ class DashboardServiceImpl implements DashboardService {
           );
 
           if (response.success && response.data) {
-            console.log('✅ Dashboard Service - Stats fetched successfully');
+            console.log('✅ Dashboard Service - Stats fetched successfully',response.data);
             // Store offline data for future use
             await offlineStorage.setOfflineData(
               'dashboard_stats',

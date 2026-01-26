@@ -713,8 +713,21 @@ class SQLiteDatabaseService implements DatabaseService {
         // Release any pending locks
         this.releaseLock();
 
-        // Commit any pending transactions
-        await this.db.execAsync('COMMIT');
+        // Check if there's an active transaction before committing
+        // SQLite doesn't have a direct way to check, so we'll try-catch the commit
+        try {
+          // Only commit if there's actually a transaction active
+          // We'll catch the error if there's no transaction
+          await this.db.execAsync('COMMIT');
+        } catch (commitError: any) {
+          // Ignore "no transaction is active" errors - this is expected if no transaction was started
+          const errorMessage = commitError?.message || String(commitError);
+          if (!errorMessage.includes('no transaction is active') && 
+              !errorMessage.includes('cannot commit')) {
+            // Only log if it's a different error
+            console.log('⚠️ SQLite Database - Commit error (non-critical):', errorMessage);
+          }
+        }
 
         await this.db.closeAsync();
         console.log('🔒 SQLite Database - Closed successfully');
@@ -2184,6 +2197,12 @@ class SQLiteDatabaseService implements DatabaseService {
   async executeQuery(query: string, params?: any[]): Promise<any> {
     try {
       await this.ensureConnection();
+      
+      // Double-check database is available after ensureConnection
+      if (!this.db || typeof this.db.getAllAsync !== 'function') {
+        throw new Error('Database connection is not available');
+      }
+      
       await this.acquireLock();
       this.updateActivity();
 
@@ -2193,7 +2212,11 @@ class SQLiteDatabaseService implements DatabaseService {
       }
 
       const result = await this.executeWithRetry(async () => {
-        return await this.db!.getAllAsync(query, params || []);
+        // Check again before executing query
+        if (!this.db || typeof this.db.getAllAsync !== 'function') {
+          throw new Error('Database connection lost during query execution');
+        }
+        return await this.db.getAllAsync(query, params || []);
       }, 'execute custom query');
 
       console.log(

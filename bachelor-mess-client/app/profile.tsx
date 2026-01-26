@@ -235,7 +235,7 @@ export default function ProfileScreen() {
           // Create real activity based on API data
           const realActivity = [];
           
-          if (meals.lastMealDate) {
+          if (meals?.lastMealDate) {
             realActivity.push({
               type: 'meal',
               action: `Last meal submitted ${meals.daysSinceLastMeal || 0} days ago`,
@@ -244,7 +244,7 @@ export default function ProfileScreen() {
             });
           }
 
-          if (bazar.totalEntries > 0) {
+          if (bazar?.totalEntries > 0) {
             realActivity.push({
               type: 'bazar',
               action: `Total bazar entries: ${bazar.totalEntries} (৳${bazar.totalAmount})`,
@@ -253,7 +253,9 @@ export default function ProfileScreen() {
             });
           }
 
-          if (payments.lastPaymentDate) {
+
+          
+          if (payments?.lastPaymentDate) {
             realActivity.push({
               type: 'payment',
               action: `Last payment: ৳${payments.monthlyContribution}`,

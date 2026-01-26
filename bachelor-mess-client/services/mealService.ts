@@ -124,19 +124,6 @@ class MealServiceImpl implements MealService {
       // Remove userId from data if present - backend should use authenticated user's ID from token
       // This prevents "userId already exists" errors when different users submit meals
       const { userId, user_id, ...mealData } = data as any;
-      if (userId || user_id) {
-        console.warn('⚠️ Meal Service - Removing userId/user_id from submission data. Backend should use authenticated user ID from token.');
-        console.log('⚠️ Meal Service - Removed fields:', { userId, user_id });
-      }
-
-      // #region agent log
-      const logData = {location:'mealService.ts:131',message:'Submitting meal data',data:{hasUserId:!!userId,hasUser_id:!!user_id,mealDataKeys:Object.keys(mealData),date:mealData.date,breakfast:mealData.breakfast,lunch:mealData.lunch,dinner:mealData.dinner},timestamp:Date.now(),sessionId:'debug-session',runId:'meal-submit',hypothesisId:'D'};
-      try { fetch('http://127.0.0.1:7243/ingest/039fbe99-77d0-456c-8c69-082177214fc6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch(()=>{}); } catch(e){}
-      // #endregion
-
-      // Log the request body being sent to the API
-      console.log('📤 Meal Service - Request body being sent to API:', JSON.stringify(mealData, null, 2));
-      console.log('📤 Meal Service - Request body (object):', mealData);
 
       const response = await httpClient.post<MealEntry>(
         API_ENDPOINTS.MEALS.SUBMIT,
@@ -162,57 +149,25 @@ class MealServiceImpl implements MealService {
     filters: MealFilters = {}
   ): Promise<ApiResponse<MealResponse>> {
     try {
-      console.log(
-        '🍽️ Meal Service - getUserMeals called with filters:',
-        filters
-      );
       const queryParams = this.buildQueryParams(filters);
       const endpoint = `${API_ENDPOINTS.MEALS.USER}${queryParams}`;
-      console.log('🔗 Meal Service - Making request to endpoint:', endpoint);
 
       const response = await httpClient.get<MealResponse>(endpoint, {
         cache: true,
         cacheKey: `user_meals_${JSON.stringify(filters)}`,
       });
 
-      console.log('🍽️ Meal Service - Raw response:', {
-        success: response.success,
-        hasData: !!response.data,
-        dataType: typeof response.data,
-        error: response.error,
-      });
-
       // Transform the response to match expected structure
       if (response.success && response.data) {
         const meals = response.data.meals || response.data;
 
-        console.log('🍽️ Meal Service - Meals before transform:', {
-          count: Array.isArray(meals) ? meals.length : 'not array',
-          type: typeof meals,
-          sample: Array.isArray(meals) && meals.length > 0 ? meals[0] : null,
-        });
-
         // Transform _id to id for each meal
         const transformedMeals = Array.isArray(meals)
-          ? meals.map((meal: any) => {
-              const transformed = {
-                ...meal,
-                id: meal._id || meal.id,
-              };
-              console.log('🍽️ Meal Service - Transformed meal:', {
-                originalId: meal._id,
-                newId: transformed.id,
-                status: meal.status,
-                date: meal.date,
-              });
-              return transformed;
-            })
+          ? meals.map((meal: any) => ({
+              ...meal,
+              id: meal._id || meal.id,
+            }))
           : meals;
-
-        console.log('🍽️ Meal Service - Final transformed data:', {
-          count: transformedMeals?.length || 0,
-          success: true,
-        });
 
         return {
           ...response,
@@ -228,10 +183,8 @@ class MealServiceImpl implements MealService {
         } as unknown as ApiResponse<MealResponse>;
       }
 
-      console.log('❌ Meal Service - Response not successful:', response);
       return response;
     } catch (error) {
-      console.error('❌ Error fetching user meals:', error);
       return {
         success: false,
         error:
@@ -251,6 +204,43 @@ class MealServiceImpl implements MealService {
         cache: true,
         cacheKey: `all_meals_${JSON.stringify(filters)}`,
       });
+
+      // Transform the response to match expected structure
+      if (response.success && response.data) {
+        // Handle both { meals, pagination } structure and direct array
+        let meals: MealEntry[] = [];
+        let pagination: MealPagination | null = null;
+
+        if (Array.isArray(response.data)) {
+          meals = response.data as MealEntry[];
+        } else if (response.data.meals && Array.isArray(response.data.meals)) {
+          meals = response.data.meals as MealEntry[];
+          pagination = response.data.pagination as MealPagination | null;
+        } else {
+          meals = [];
+        }
+
+        // Transform _id to id for each meal
+        const transformedMeals: MealEntry[] = meals.map((meal: any) => ({
+          ...meal,
+          id: meal._id || meal.id,
+        }));
+
+        return {
+          ...response,
+          data: {
+            meals: transformedMeals,
+            pagination:
+              pagination ||
+              (response.data.pagination || {
+                page: 1,
+                limit: filters.limit || 20,
+                total: transformedMeals.length,
+                pages: 1,
+              }),
+          },
+        } as unknown as ApiResponse<MealResponse>;
+      }
 
       return response;
     } catch (error) {
@@ -363,10 +353,9 @@ class MealServiceImpl implements MealService {
     filters: MealFilters = {}
   ): Promise<ApiResponse<MealStats>> {
     try {
-      console.log('🍽️ Fetching user meal stats with filters:', filters);
       const queryParams = this.buildQueryParams(filters);
       const endpoint = `${API_ENDPOINTS.MEALS.USER_STATS}${queryParams}`;
-      console.log('🔗 Endpoint:', endpoint);
+
 
       // Clear cache for meal stats to ensure fresh data
       await httpClient.clearCache();
@@ -375,10 +364,8 @@ class MealServiceImpl implements MealService {
         cache: false, // Disable caching for meal stats
       });
 
-      console.log('📊 Meal stats response:', response);
       return response;
     } catch (error) {
-      console.error('❌ Error fetching meal stats:', error);
       return {
         success: false,
         error:
@@ -457,65 +444,8 @@ class MealServiceImpl implements MealService {
     try {
       // Clear all meal-related cache
       await httpClient.clearCache();
-      console.log('🗑️ Meal cache cleared');
     } catch (error) {
-      console.error('❌ Error clearing meal cache:', error);
-    }
-  }
-
-  // Force refresh meal data
-  async forceRefreshUserMeals(
-    filters: MealFilters = {}
-  ): Promise<ApiResponse<MealResponse>> {
-    try {
-      // Clear cache first
-      await this.clearMealCache();
-
-      console.log('🍽️ Force refreshing user meals with filters:', filters);
-      const queryParams = this.buildQueryParams(filters);
-      const endpoint = `${API_ENDPOINTS.MEALS.USER}${queryParams}`;
-      console.log('🔗 Endpoint:', endpoint);
-
-      const response = await httpClient.get<{
-        meals: MealEntry[];
-        pagination: MealPagination;
-      }>(endpoint, {
-        cache: false, // Disable caching for force refresh
-      });
-
-      console.log('📊 User meals response:', response);
-
-      // Transform the response to match expected structure
-      if (response.success && response.data) {
-        const meals = response.data.meals || response.data;
-
-        // Transform _id to id for each meal
-        const transformedMeals = Array.isArray(meals)
-          ? meals.map((meal: any) => ({
-              ...meal,
-              id: meal._id || meal.id,
-            }))
-          : meals;
-
-        return {
-          ...response,
-          data: {
-            ...response.data,
-            meals: transformedMeals,
-          },
-        } as unknown as ApiResponse<MealResponse>;
-      }
-
-      return response;
-    } catch (error) {
-      console.error('❌ Force refresh failed:', error);
-      return {
-        success: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to refresh user meals',
-      };
+      // Silently fail cache clearing
     }
   }
 

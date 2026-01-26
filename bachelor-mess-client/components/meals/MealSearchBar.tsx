@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../context/ThemeContext';
 
 interface MealSearchBarProps {
   value: string;
@@ -13,12 +14,31 @@ export const MealSearchBar: React.FC<MealSearchBarProps> = ({
   onChangeText,
   placeholder = 'Search meals...',
 }) => {
+  const { theme } = useTheme();
+
   return (
-    <View style={styles.searchContainer}>
-      <Ionicons name='search' size={20} color='#6b7280' />
+    <View
+      style={[
+        styles.searchContainer,
+        {
+          backgroundColor: theme.input?.background || theme.surface || '#f3f4f6',
+        },
+      ]}
+    >
+      <Ionicons
+        name='search'
+        size={20}
+        color={theme.text.secondary || '#6b7280'}
+      />
       <TextInput
-        style={styles.searchInput}
+        style={[
+          styles.searchInput,
+          {
+            color: theme.input?.text || theme.text.primary,
+          },
+        ]}
         placeholder={placeholder}
+        placeholderTextColor={theme.input?.placeholder || theme.text.secondary}
         value={value}
         onChangeText={onChangeText}
       />
@@ -30,7 +50,6 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f3f4f6',
     borderRadius: 12,
     paddingHorizontal: 16,
     margin: 16,

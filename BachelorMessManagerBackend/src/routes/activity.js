@@ -36,4 +36,15 @@ router.get(
   activityController.getActivityStats
 );
 
+/**
+ * @route   GET /api/activity/:id
+ * @desc    Get activity by ID (supports meal, bazar, or user activities)
+ * @access  Private
+ */
+router.get(
+  '/:id',
+  AuthMiddleware.protect(),
+  activityController.getActivityById
+);
+
 module.exports = router;

@@ -142,6 +142,12 @@ const userSchema = new mongoose.Schema(
       type: String,
       maxlength: [500, 'Notes cannot exceed 500 characters'],
     },
+    // Track which admin created this user
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
   },
   {
     timestamps: true,

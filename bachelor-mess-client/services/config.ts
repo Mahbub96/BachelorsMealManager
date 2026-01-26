@@ -5,51 +5,32 @@ const getApiUrl = (): string => {
   // Use environment variable for API URL (highest priority)
   const envUrl = process.env.EXPO_PUBLIC_API_URL;
 
-  console.log('🔧 Environment check:');
-  console.log('🔧 EXPO_PUBLIC_API_URL:', envUrl || 'Not set');
-  console.log('🔧 NODE_ENV:', process.env.NODE_ENV);
-  console.log('🔧 __DEV__:', __DEV__);
-  console.log('🔧 Platform:', Platform.OS);
-
   // If environment variable is set, use it (remove trailing /api if present, we add it in endpoints)
   if (envUrl) {
     // Remove trailing slash and /api if present
     const cleanUrl = envUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
-    console.log('✅ Using environment API URL:', cleanUrl);
     return cleanUrl;
   }
 
   // Development fallback - platform-specific defaults
   if (__DEV__) {
-    console.warn(
-      '⚠️  EXPO_PUBLIC_API_URL not set. Using development defaults. Create .env file with EXPO_PUBLIC_API_URL for custom configuration.'
-    );
-    
     // Use localhost for web platform (browser) - works with local backend
     if (Platform.OS === 'web') {
-      const devUrl = 'http://localhost:3000';
-      console.log('🔧 Using development URL for web:', devUrl);
-      return devUrl;
+      return 'http://localhost:3000';
     }
 
     // For Android emulator, use 10.0.2.2 (maps to host's localhost)
     if (Platform.OS === 'android') {
-      const devUrl = 'http://10.0.2.2:3000';
-      console.log('🔧 Using development URL for Android:', devUrl);
-      return devUrl;
+      return 'http://10.0.2.2:3000';
     }
 
     // For iOS simulator, use localhost
     if (Platform.OS === 'ios') {
-      const devUrl = 'http://localhost:3000';
-      console.log('🔧 Using development URL for iOS:', devUrl);
-      return devUrl;
+      return 'http://localhost:3000';
     }
 
     // Fallback for other platforms
-    const devUrl = 'http://localhost:3000';
-    console.log('🔧 Using default development URL:', devUrl);
-    return devUrl;
+    return 'http://localhost:3000';
   }
 
   // Production should always use environment variable
@@ -70,14 +51,6 @@ export const config = {
 if (!config.apiUrl) {
   throw new Error('API URL is not configured');
 }
-
-console.log('🔧 Final config:', {
-  apiUrl: config.apiUrl,
-  timeout: config.timeout,
-  maxRetries: config.maxRetries,
-  retryDelay: config.retryDelay,
-  cacheDuration: config.cacheDuration,
-});
 
 // API Response interface
 export interface ApiResponse<T = any> {
@@ -122,17 +95,18 @@ export const API_ENDPOINTS = {
     BY_ID: (id: string) => `/api/users/${id}`,
     UPDATE: (id: string) => `/api/users/${id}`,
     DELETE: (id: string) => `/api/users/${id}`,
+    RESET_PASSWORD: (id: string) => `/api/users/${id}/reset-password`,
     STATS: (id: string) => `/api/users/${id}/stats`,
   },
   MEALS: {
-    SUBMIT: '/api/meals/submit',
-    USER: '/api/meals/user',
-    ALL: '/api/meals',
+    SUBMIT: '/api/meals',
+    USER: '/api/meals',
+    ALL: '/api/meals/all',
     STATUS: (id: string) => `/api/meals/${id}/status`,
     UPDATE: (id: string) => `/api/meals/${id}`,
     DELETE: (id: string) => `/api/meals/${id}`,
     STATS: '/api/meals/stats/overview',
-    USER_STATS: '/api/meals/user/stats',
+    USER_STATS: '/api/meals/stats/user',
     BY_ID: (id: string) => `/api/meals/${id}`,
     BULK_APPROVE: '/api/meals/bulk-approve',
   },

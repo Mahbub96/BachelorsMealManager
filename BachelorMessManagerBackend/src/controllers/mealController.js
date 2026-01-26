@@ -47,7 +47,7 @@ class MealController {
       startOfDay.setUTCHours(0, 0, 0, 0);
       const endOfDay = new Date(mealDate);
       endOfDay.setUTCHours(23, 59, 59, 999);
-      
+
       // IMPORTANT: Check for THIS SPECIFIC USER's meal entry for this date
       // Different users CAN have meals for the same date - only prevent duplicate for same user
 
@@ -58,7 +58,7 @@ class MealController {
           $lte: endOfDay,
         },
       };
-      
+
       const existingMeal = await Meal.findOne(query);
 
       if (existingMeal) {
@@ -93,7 +93,7 @@ class MealController {
       // Normalize date to start of day in UTC for consistent storage
       const normalizedDate = new Date(mealDate);
       normalizedDate.setUTCHours(0, 0, 0, 0);
-      
+
       let meal;
       try {
         meal = await Meal.create({
@@ -118,7 +118,7 @@ class MealController {
               $lte: endOfDay,
             },
           });
-          
+
           if (duplicateMeal) {
             return sendErrorResponse(
               res,

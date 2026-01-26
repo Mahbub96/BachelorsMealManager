@@ -164,7 +164,6 @@ router.get('/dashboard', protect, async (req, res) => {
         ? bazarData.totalAmount / finalTotalMeals
         : 0;
 
-    console.log('statsFromModel:158', currentMealRate, statsFromModel, bazarData.totalAmount);
     const dashboardStats = {
       meals: {
         total: finalTotalMeals, // Use directly from Meal.getStats to ensure accuracy - same as /api/meals/user/stats

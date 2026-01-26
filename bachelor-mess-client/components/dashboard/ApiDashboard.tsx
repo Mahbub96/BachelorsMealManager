@@ -133,6 +133,15 @@ export const ApiDashboard: React.FC = () => {
     }
 
     const stats = dashboardData.stats;
+
+    console.log("Total meals and bazar are ", stats.totalMeals, stats)
+    
+    // Calculate meal rate: totalBazarAmount / totalMeals
+    const mealRate =
+      stats.totalMeals > 0 && stats.monthlyExpense > 0
+        ? stats.monthlyExpense / stats.totalMeals
+        : 0;
+
     return [
       {
         title: 'Total Members',
@@ -168,13 +177,13 @@ export const ApiDashboard: React.FC = () => {
         },
       },
       {
-        title: 'Average Meals',
-        value: safeString(stats.averageMeals || 0),
-        icon: 'trending-up',
+        title: 'Meal Rate',
+        value: mealRate > 0 ? `৳${mealRate.toFixed(2)}` : 'N/A',
+        icon: 'calculator',
         gradient: theme.gradient.primary as [string, string],
         details: {
-          change: '0',
-          period: 'per day',
+          change: stats.totalMeals > 0 ? `${stats.totalMeals} meals` : '0',
+          period: 'cost per meal',
           trend: 'up' as const,
         },
       },

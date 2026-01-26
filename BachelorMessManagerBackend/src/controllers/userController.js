@@ -105,7 +105,7 @@ class UserController {
   }
 
   // Get user dashboard data
-  getUserDashboard = async (req, res, next) => {
+  async getUserDashboard(req, res, next) {
     try {
       const userId = req.user.id;
 
@@ -160,33 +160,33 @@ class UserController {
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
       // All meal queries only within this month
-      const baseQuery = { 
+      const baseQuery = {
         userId,
         date: { $gte: firstDayOfMonth, $lte: today }
       };
 
-      
+
       const allMeals = await Meal.find(baseQuery);
 
       const mealSummary = {
         lunchCount: 0,
         dinnerCount: 0,
         breakfastCount: 0,
-        totalCount: function() {
+        totalCount: function () {
           return this.lunchCount + this.dinnerCount + this.breakfastCount;
         }
       };
 
 
       allMeals.forEach(meal => {
-        
-        if (meal.lunch)  mealSummary.lunchCount++;
-        if (meal.dinner)   mealSummary.dinnerCount++;
-        if (meal.breakfast)   mealSummary.breakfastCount++;
+
+        if (meal.lunch) mealSummary.lunchCount++;
+        if (meal.dinner) mealSummary.dinnerCount++;
+        if (meal.breakfast) mealSummary.breakfastCount++;
       });
 
       const totalMeals = mealSummary.totalCount();
-      
+
       const approvedMeals = await Meal.countDocuments({
         ...baseQuery,
         status: 'approved',
@@ -213,8 +213,8 @@ class UserController {
       const lastMeal = await Meal.findOne(baseQuery).sort({ date: -1 });
       const daysSinceLastMeal = lastMeal
         ? Math.ceil(
-            (now - new Date(lastMeal.date)) / (1000 * 60 * 60 * 24)
-          )
+          (now - new Date(lastMeal.date)) / (1000 * 60 * 60 * 24)
+        )
         : 0;
 
       return {
@@ -240,66 +240,66 @@ class UserController {
     }
   }
 
-    // Get All meal statistics for user
-    async getAllMealsStats(userId) {
-      try {
-        const totalMeals = await Meal.countDocuments({ userId });
-        const approvedMeals = await Meal.countDocuments({
-          userId,
-          status: 'approved',
-        });
-        const pendingMeals = await Meal.countDocuments({
-          userId,
-          status: 'pending',
-        });
-        const rejectedMeals = await Meal.countDocuments({
-          userId,
-          status: 'rejected',
-        });
-  
-        // Calculate efficiency percentage
-        const efficiency =
-          totalMeals > 0 ? Math.round((approvedMeals / totalMeals) * 100) : 0;
-  
-        // Calculate average meals per day
-        const user = await User.findById(userId);
-        const joinDate = user?.createdAt || new Date();
-        const daysSinceJoin = Math.ceil(
-          (new Date() - joinDate) / (1000 * 60 * 60 * 24)
-        );
-        const averagePerDay =
-          daysSinceJoin > 0 ? (totalMeals / daysSinceJoin).toFixed(1) : 0;
-  
-        // Get days since last meal
-        const lastMeal = await Meal.findOne({ userId }).sort({ date: -1 });
-        const daysSinceLastMeal = lastMeal
-          ? Math.ceil(
-              (new Date() - new Date(lastMeal.date)) / (1000 * 60 * 60 * 24)
-            )
-          : 0;
-  
-        return {
-          total: totalMeals,
-          approved: approvedMeals,
-          pending: pendingMeals,
-          rejected: rejectedMeals,
-          efficiency: efficiency,
-          averagePerDay: parseFloat(averagePerDay),
-          daysSinceLastMeal: daysSinceLastMeal,
-        };
-      } catch (error) {
-        logger.error('Error getting meal stats:', error);
-        return {
-          total: 0,
-          approved: 0,
-          pending: 0,
-          rejected: 0,
-          efficiency: 0,
-          averagePerDay: 0,
-          daysSinceLastMeal: 0,
-        };
-      }
+  // Get All meal statistics for user
+  async getAllMealsStats(userId) {
+    try {
+      const totalMeals = await Meal.countDocuments({ userId });
+      const approvedMeals = await Meal.countDocuments({
+        userId,
+        status: 'approved',
+      });
+      const pendingMeals = await Meal.countDocuments({
+        userId,
+        status: 'pending',
+      });
+      const rejectedMeals = await Meal.countDocuments({
+        userId,
+        status: 'rejected',
+      });
+
+      // Calculate efficiency percentage
+      const efficiency =
+        totalMeals > 0 ? Math.round((approvedMeals / totalMeals) * 100) : 0;
+
+      // Calculate average meals per day
+      const user = await User.findById(userId);
+      const joinDate = user?.createdAt || new Date();
+      const daysSinceJoin = Math.ceil(
+        (new Date() - joinDate) / (1000 * 60 * 60 * 24)
+      );
+      const averagePerDay =
+        daysSinceJoin > 0 ? (totalMeals / daysSinceJoin).toFixed(1) : 0;
+
+      // Get days since last meal
+      const lastMeal = await Meal.findOne({ userId }).sort({ date: -1 });
+      const daysSinceLastMeal = lastMeal
+        ? Math.ceil(
+          (new Date() - new Date(lastMeal.date)) / (1000 * 60 * 60 * 24)
+        )
+        : 0;
+
+      return {
+        total: totalMeals,
+        approved: approvedMeals,
+        pending: pendingMeals,
+        rejected: rejectedMeals,
+        efficiency: efficiency,
+        averagePerDay: parseFloat(averagePerDay),
+        daysSinceLastMeal: daysSinceLastMeal,
+      };
+    } catch (error) {
+      logger.error('Error getting meal stats:', error);
+      return {
+        total: 0,
+        approved: 0,
+        pending: 0,
+        rejected: 0,
+        efficiency: 0,
+        averagePerDay: 0,
+        daysSinceLastMeal: 0,
+      };
     }
+  }
 
   // Get bazar statistics for user for current month up to current date
   async getBazarStats(userId) {
@@ -350,44 +350,44 @@ class UserController {
     }
   }
 
-    // Get bazar statistics for user
-    async getAllBazarStats(userId) {
-      try {
-        const bazarEntries = await Bazar.find({ userId });
-  
-        const totalAmount = bazarEntries.reduce(
-          (sum, entry) => sum + entry.totalAmount,
-          0
-        );
-        const pendingAmount = bazarEntries
-          .filter(entry => entry.status === 'pending')
-          .reduce((sum, entry) => sum + entry.totalAmount, 0);
-        const approvedAmount = bazarEntries
-          .filter(entry => entry.status === 'approved')
-          .reduce((sum, entry) => sum + entry.totalAmount, 0);
-  
-        const totalEntries = bazarEntries.length;
-        const averageAmount =
-          totalEntries > 0 ? (totalAmount / totalEntries).toFixed(0) : 0;
-  
-        return {
-          totalAmount: totalAmount,
-          pendingAmount: pendingAmount,
-          approvedAmount: approvedAmount,
-          totalEntries: totalEntries,
-          averageAmount: parseFloat(averageAmount),
-        };
-      } catch (error) {
-        logger.error('Error getting bazar stats:', error);
-        return {
-          totalAmount: 0,
-          pendingAmount: 0,
-          approvedAmount: 0,
-          totalEntries: 0,
-          averageAmount: 0,
-        };
-      }
+  // Get bazar statistics for user
+  async getAllBazarStats(userId) {
+    try {
+      const bazarEntries = await Bazar.find({ userId });
+
+      const totalAmount = bazarEntries.reduce(
+        (sum, entry) => sum + entry.totalAmount,
+        0
+      );
+      const pendingAmount = bazarEntries
+        .filter(entry => entry.status === 'pending')
+        .reduce((sum, entry) => sum + entry.totalAmount, 0);
+      const approvedAmount = bazarEntries
+        .filter(entry => entry.status === 'approved')
+        .reduce((sum, entry) => sum + entry.totalAmount, 0);
+
+      const totalEntries = bazarEntries.length;
+      const averageAmount =
+        totalEntries > 0 ? (totalAmount / totalEntries).toFixed(0) : 0;
+
+      return {
+        totalAmount: totalAmount,
+        pendingAmount: pendingAmount,
+        approvedAmount: approvedAmount,
+        totalEntries: totalEntries,
+        averageAmount: parseFloat(averageAmount),
+      };
+    } catch (error) {
+      logger.error('Error getting bazar stats:', error);
+      return {
+        totalAmount: 0,
+        pendingAmount: 0,
+        approvedAmount: 0,
+        totalEntries: 0,
+        averageAmount: 0,
+      };
     }
+  }
 
   // Get payment statistics for user
   async getPaymentStats(userId) {
@@ -438,50 +438,50 @@ class UserController {
     }
   }
 
-    // Get All payment statistics for user
-    async getAllPaymentStats(userId) {
-      try {
-        // For now, we'll use mock data since we don't have a Payment model
-        // In a real implementation, you'd query the Payment collection
-        const monthlyContribution = 5000; // This would come from user settings or system config
-  
-        // Get last bazar entry date as proxy for last payment
-        const lastBazarEntry = await Bazar.findOne({ userId }).sort({
-          createdAt: -1,
-        });
-        const lastPaymentDate = lastBazarEntry
-          ? lastBazarEntry.createdAt.toISOString().split('T')[0]
-          : null;
-  
-        // Calculate payment status based on bazar entries
-        const bazarEntries = await Bazar.find({ userId });
-        const totalPaid = bazarEntries
-          .filter(entry => entry.status === 'approved')
-          .reduce((sum, entry) => sum + entry.totalAmount, 0);
-  
-        let paymentStatus = 'pending';
-        if (totalPaid >= monthlyContribution) {
-          paymentStatus = 'paid';
-        } else if (new Date().getDate() > 15) {
-          paymentStatus = 'overdue';
-        }
-  
-        return {
-          monthlyContribution: monthlyContribution,
-          lastPaymentDate: lastPaymentDate,
-          paymentStatus: paymentStatus,
-          totalPaid: totalPaid,
-        };
-      } catch (error) {
-        logger.error('Error getting payment stats:', error);
-        return {
-          monthlyContribution: 0,
-          lastPaymentDate: null,
-          paymentStatus: 'pending',
-          totalPaid: 0,
-        };
+  // Get All payment statistics for user
+  async getAllPaymentStats(userId) {
+    try {
+      // For now, we'll use mock data since we don't have a Payment model
+      // In a real implementation, you'd query the Payment collection
+      const monthlyContribution = 5000; // This would come from user settings or system config
+
+      // Get last bazar entry date as proxy for last payment
+      const lastBazarEntry = await Bazar.findOne({ userId }).sort({
+        createdAt: -1,
+      });
+      const lastPaymentDate = lastBazarEntry
+        ? lastBazarEntry.createdAt.toISOString().split('T')[0]
+        : null;
+
+      // Calculate payment status based on bazar entries
+      const bazarEntries = await Bazar.find({ userId });
+      const totalPaid = bazarEntries
+        .filter(entry => entry.status === 'approved')
+        .reduce((sum, entry) => sum + entry.totalAmount, 0);
+
+      let paymentStatus = 'pending';
+      if (totalPaid >= monthlyContribution) {
+        paymentStatus = 'paid';
+      } else if (new Date().getDate() > 15) {
+        paymentStatus = 'overdue';
       }
+
+      return {
+        monthlyContribution: monthlyContribution,
+        lastPaymentDate: lastPaymentDate,
+        paymentStatus: paymentStatus,
+        totalPaid: totalPaid,
+      };
+    } catch (error) {
+      logger.error('Error getting payment stats:', error);
+      return {
+        monthlyContribution: 0,
+        lastPaymentDate: null,
+        paymentStatus: 'pending',
+        totalPaid: 0,
+      };
     }
+  }
 
   // Get overview statistics for user
   async getOverviewStats(userId) {
@@ -732,6 +732,293 @@ class UserController {
       return `${Math.floor(diffInSeconds / 86400)}d ago`;
 
     return date.toLocaleDateString();
+  }
+
+  // Create user (for admins)
+  async createUser(req, res, next) {
+    try {
+      const { name, email, password, phone, role = 'member' } = req.body;
+      const currentUser = req.user;
+
+      // Only admins and super admins can create users
+      if (currentUser.role !== 'admin' && currentUser.role !== 'super_admin') {
+        return sendErrorResponse(res, 403, 'Access denied. Admin privileges required.');
+      }
+
+      // Admins can only create members, super admins can create any role
+      if (currentUser.role === 'admin' && role !== 'member') {
+        return sendErrorResponse(res, 403, 'Admins can only create members.');
+      }
+
+      // Check if user already exists
+      const existingUser = await User.findByEmail(email);
+      if (existingUser) {
+        return sendErrorResponse(res, 400, 'User with this email already exists');
+      }
+
+      // Create user
+      const user = await User.create({
+        name,
+        email,
+        password,
+        phone,
+        role,
+        createdBy: currentUser._id, // Track which admin created this user
+      });
+
+      logger.info(`User created by ${currentUser.email}: ${user.email}`);
+
+      const userResponse = await User.findById(user._id).select('-password');
+
+      return sendSuccessResponse(
+        res,
+        201,
+        'User created successfully',
+        userResponse
+      );
+    } catch (error) {
+      logger.error('Error in createUser:', error);
+      next(error);
+    }
+  }
+
+  // Get all users (for admins)
+  async getAllUsers(req, res, next) {
+    try {
+      const currentUser = req.user;
+      const { role, status, search, page = 1, limit = 20 } = req.query;
+
+      // Only admins and super admins can list users
+      if (currentUser.role !== 'admin' && currentUser.role !== 'super_admin') {
+        return sendErrorResponse(res, 403, 'Access denied. Admin privileges required.');
+      }
+
+      // Build query
+      let query = {};
+
+      // Local admins can only see users they created, super admins can see all
+      if (currentUser.role === 'admin') {
+        query.createdBy = currentUser._id;
+      }
+      // Super admin can see all users (no createdBy filter)
+
+      // Apply filters
+      if (role) query.role = role;
+      if (status) query.status = status;
+      if (search) {
+        query.$or = [
+          { name: { $regex: search, $options: 'i' } },
+          { email: { $regex: search, $options: 'i' } },
+        ];
+      }
+
+      // Pagination
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+
+      // Get users and total count
+      const [users, total] = await Promise.all([
+        User.find(query)
+          .select('-password')
+          .populate('createdBy', 'name email')
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(parseInt(limit)),
+        User.countDocuments(query),
+      ]);
+
+      return sendSuccessResponse(
+        res,
+        200,
+        'Users retrieved successfully',
+        {
+          users,
+          pagination: {
+            page: parseInt(page),
+            limit: parseInt(limit),
+            total,
+            pages: Math.ceil(total / parseInt(limit)),
+          },
+        }
+      );
+    } catch (error) {
+      logger.error('Error in getAllUsers:', error);
+      next(error);
+    }
+  }
+
+  // Update user (for admins)
+  async updateUser(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { name, email, phone, role, status } = req.body;
+      const currentUser = req.user;
+
+      // Only admins and super admins can update users
+      if (currentUser.role !== 'admin' && currentUser.role !== 'super_admin') {
+        return sendErrorResponse(res, 403, 'Access denied. Admin privileges required.');
+      }
+
+      // Find the user to update
+      const user = await User.findById(id);
+      if (!user) {
+        return sendErrorResponse(res, 404, 'User not found');
+      }
+
+      // Admins can only update users they created, super admins can update any user
+      if (currentUser.role === 'admin' && user.createdBy?.toString() !== currentUser._id.toString()) {
+        return sendErrorResponse(res, 403, 'You can only update users you created.');
+      }
+
+      // Admins can only change role to member, super admins can change to any role
+      if (role && currentUser.role === 'admin' && role !== 'member') {
+        return sendErrorResponse(res, 403, 'Admins can only set role to member.');
+      }
+
+      // Prevent updating email to an existing email
+      if (email && email !== user.email) {
+        const existingUser = await User.findByEmail(email);
+        if (existingUser && existingUser._id.toString() !== id) {
+          return sendErrorResponse(res, 400, 'User with this email already exists');
+        }
+      }
+
+      // Update fields
+      if (name !== undefined) user.name = name;
+      if (email !== undefined) user.email = email;
+      if (phone !== undefined) user.phone = phone;
+      if (role !== undefined) user.role = role;
+      if (status !== undefined) user.status = status;
+
+      await user.save();
+
+      const updatedUser = await User.findById(id).select('-password');
+
+      return sendSuccessResponse(
+        res,
+        200,
+        'User updated successfully',
+        updatedUser
+      );
+    } catch (error) {
+      logger.error('Error in updateUser:', error);
+      next(error);
+    }
+  }
+
+  // Delete user (for admins)
+  async deleteUser(req, res, next) {
+    try {
+      const { id } = req.params;
+      const currentUser = req.user;
+
+      // Only admins and super admins can delete users
+      if (currentUser.role !== 'admin' && currentUser.role !== 'super_admin') {
+        return sendErrorResponse(res, 403, 'Access denied. Admin privileges required.');
+      }
+
+      // Prevent self-deletion
+      if (id === currentUser.id) {
+        return sendErrorResponse(res, 400, 'You cannot delete your own account');
+      }
+
+      // Find the user to delete
+      const user = await User.findById(id);
+      if (!user) {
+        return sendErrorResponse(res, 404, 'User not found');
+      }
+
+      // Admins can only delete users they created, super admins can delete any user
+      if (currentUser.role === 'admin' && user.createdBy?.toString() !== currentUser._id.toString()) {
+        return sendErrorResponse(res, 403, 'You can only delete users you created.');
+      }
+
+      // Delete the user
+      await User.findByIdAndDelete(id);
+
+      return sendSuccessResponse(
+        res,
+        200,
+        'User deleted successfully',
+        { id }
+      );
+    } catch (error) {
+      logger.error('Error in deleteUser:', error);
+      next(error);
+    }
+  }
+
+  // Reset user password (for admins)
+  async resetUserPassword(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { newPassword } = req.body;
+      const currentUser = req.user;
+
+      // Only admins and super admins can reset passwords (redundant check for defense in depth)
+      if (currentUser.role !== 'admin' && currentUser.role !== 'super_admin') {
+        return sendErrorResponse(res, 403, 'Access denied. Admin privileges required.');
+      }
+
+      // Validate new password
+      if (!newPassword || typeof newPassword !== 'string') {
+        return sendErrorResponse(res, 400, 'New password is required and must be a string');
+      }
+
+      if (newPassword.length < 6) {
+        return sendErrorResponse(res, 400, 'Password must be at least 6 characters long');
+      }
+
+      if (newPassword.length > 128) {
+        return sendErrorResponse(res, 400, 'Password must be less than 128 characters');
+      }
+
+      // Find the user
+      const user = await User.findById(id).select('+password');
+      if (!user) {
+        return sendErrorResponse(res, 404, 'User not found');
+      }
+
+      // Prevent resetting password for inactive users (they should be activated first)
+      if (user.status !== 'active') {
+        return sendErrorResponse(res, 400, 'Cannot reset password for inactive users. Please activate the user first.');
+      }
+
+      // Prevent self-password reset (admins should use regular password change)
+      const currentUserId = currentUser._id ? currentUser._id.toString() : currentUser.id;
+      if (id === currentUserId) {
+        return sendErrorResponse(res, 400, 'You cannot reset your own password using this endpoint. Use the profile settings instead.');
+      }
+
+      // Admins can only reset passwords for users they created, super admins can reset any user
+      if (currentUser.role === 'admin' && user.createdBy?.toString() !== currentUser._id.toString()) {
+        return sendErrorResponse(res, 403, 'You can only reset passwords for users you created.');
+      }
+
+      // Prevent resetting password for super_admin users (only super admins can reset super admin passwords)
+      if (user.role === 'super_admin' && currentUser.role !== 'super_admin') {
+        return sendErrorResponse(res, 403, 'Only super admins can reset passwords for super admin users.');
+      }
+
+      // Set new password (will be hashed by pre-save middleware)
+      user.password = newPassword;
+      // Clear any existing password reset tokens
+      user.passwordResetToken = undefined;
+      user.passwordResetExpires = undefined;
+      // passwordChangedAt will be set automatically by pre-save middleware
+      await user.save();
+
+      logger.info(`Password reset by admin ${currentUser.email} (${currentUser.role}) for user: ${user.email} (${user.role})`);
+
+      return sendSuccessResponse(
+        res,
+        200,
+        'Password reset successfully',
+        { id: user._id, email: user.email }
+      );
+    } catch (error) {
+      logger.error('Error in resetUserPassword:', error);
+      next(error);
+    }
   }
 }
 

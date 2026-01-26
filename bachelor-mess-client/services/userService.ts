@@ -60,6 +60,7 @@ export interface UserService {
     data: UpdateUserData
   ) => Promise<ApiResponse<User>>;
   deleteUser: (userId: string) => Promise<ApiResponse<{ message: string }>>;
+  resetUserPassword: (userId: string, newPassword: string) => Promise<ApiResponse<{ id: string; email: string }>>;
   getUserStats: (
     userId: string,
     filters?: { startDate?: string; endDate?: string }
@@ -76,14 +77,43 @@ class UserServiceImpl implements UserService {
   async getAllUsers(filters: UserFilters = {}): Promise<ApiResponse<User[]>> {
     try {
       const queryParams = this.buildQueryParams(filters);
+      // Use ALL endpoint instead of PROFILE endpoint to get all users
       const endpoint = `${API_ENDPOINTS.USERS.ALL}${queryParams}`;
 
-      const response = await httpClient.get<User[]>(endpoint, {
+      const response = await httpClient.get<{ users: User[]; pagination?: any }>(endpoint, {
         cache: true,
         cacheKey: `all_users_${JSON.stringify(filters)}`,
       });
 
-      return response;
+      // Backend returns { users, pagination }, extract users array
+      if (response.success && response.data) {
+        const data = response.data as any;
+        let users: any[] = [];
+        
+        // Handle different response structures
+        if (Array.isArray(data)) {
+          // Direct array response
+          users = data;
+        } else if (data.users && Array.isArray(data.users)) {
+          // Nested { users: [...], pagination: {...} } format
+          users = data.users;
+        }
+
+        // Transform _id to id for each user (MongoDB returns _id)
+        const transformedUsers = users.map((user: any) => ({
+          ...user,
+          id: user._id || user.id,
+        }));
+
+        return { ...response, data: transformedUsers };
+      }
+
+      // If we get here, something went wrong
+      if (!response.success) {
+        console.error('UserService - getAllUsers failed:', response.error);
+      }
+
+      return response as ApiResponse<User[]>;
     } catch (error) {
       return {
         success: false,
@@ -102,6 +132,18 @@ class UserServiceImpl implements UserService {
         }
       );
 
+      // Transform _id to id if needed
+      if (response.success && response.data) {
+        const user = response.data as any;
+        return {
+          ...response,
+          data: {
+            ...user,
+            id: user._id || user.id,
+          },
+        };
+      }
+
       return response;
     } catch (error) {
       return {
@@ -116,18 +158,107 @@ class UserServiceImpl implements UserService {
 
   async createUser(data: CreateUserData): Promise<ApiResponse<User>> {
     try {
-      const response = await httpClient.post<User>(
-        API_ENDPOINTS.USERS.CREATE,
-        data
-      );
-
-      // Clear cache after successful creation
-      if (response.success) {
-        await this.clearUserCache();
+      // Import offlineStorage and sqliteDatabase dynamically to avoid circular dependencies
+      const { offlineStorage } = await import('./offlineStorage');
+      const sqliteDatabase = (await import('./sqliteDatabase')).default;
+      
+      // Generate unique ID for offline storage
+      const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const userDataWithId = { ...data, id: userId };
+      
+      // Always save to SQLite first (offline-first approach)
+      try {
+        await sqliteDatabase.saveUserData(userDataWithId);
+      } catch (sqliteError) {
+        // Continue even if SQLite save fails - API might still work
       }
 
-      return response;
+      // Check if online before attempting API call
+      const isOnline = offlineStorage.isNetworkAvailable();
+
+      // Try to submit to API immediately if online
+      if (isOnline) {
+        try {
+          const response = await httpClient.post<User>(
+            API_ENDPOINTS.USERS.CREATE,
+            data
+          );
+
+          if (response.success && response.data) {
+            // Successfully created - clear cache and remove from SQLite
+            await this.clearUserCache();
+            
+            // Transform _id to id if needed
+            const user = response.data as any;
+            const transformedUser = {
+              ...user,
+              id: user._id || user.id,
+            };
+            
+            // Remove from SQLite since it's now synced
+            try {
+              await sqliteDatabase.deleteData('user_data', userId);
+            } catch (deleteError) {
+              // Non-critical - continue
+            }
+            
+            return { ...response, data: transformedUser };
+          } else {
+            // API returned error - add to sync queue for retry
+            try {
+              await offlineStorage.addToSyncQueue({
+                action: 'CREATE',
+                endpoint: API_ENDPOINTS.USERS.CREATE,
+                data: userDataWithId,
+              });
+            } catch (queueError) {
+              // Continue even if queue fails
+            }
+            
+            // Return success since data is saved locally
+            return {
+              success: true,
+              data: userDataWithId as any,
+            };
+          }
+        } catch (apiError) {
+          // Network error or API failure - add to sync queue
+          try {
+            await offlineStorage.addToSyncQueue({
+              action: 'CREATE',
+              endpoint: API_ENDPOINTS.USERS.CREATE,
+              data: userDataWithId,
+            });
+          } catch (queueError) {
+            // Continue even if queue fails
+          }
+          
+          // Return success since data is saved locally
+          return {
+            success: true,
+            data: userDataWithId as any,
+          };
+        }
+      } else {
+        // Offline - add to sync queue
+        try {
+          await offlineStorage.addToSyncQueue({
+            action: 'CREATE',
+            endpoint: API_ENDPOINTS.USERS.CREATE,
+            data: userDataWithId,
+          });
+        } catch (queueError) {
+          // Continue even if queue fails
+        }
+        
+        // Return success since data is saved locally
+        return {
+          success: true,
+          data: userDataWithId as any,
+        };
+      }
     } catch (error) {
+      console.error('❌ UserService - createUser error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to create user',
@@ -148,6 +279,18 @@ class UserServiceImpl implements UserService {
       // Clear cache after successful update
       if (response.success) {
         await this.clearUserCache();
+        
+        // Transform _id to id if needed
+        if (response.data) {
+          const user = response.data as any;
+          return {
+            ...response,
+            data: {
+              ...user,
+              id: user._id || user.id,
+            },
+          };
+        }
       }
 
       return response;
@@ -165,16 +308,54 @@ class UserServiceImpl implements UserService {
         API_ENDPOINTS.USERS.DELETE(userId)
       );
 
-      // Clear cache after successful deletion
-      if (response.success) {
+      // Clear cache after deletion (success or not found - both mean user is gone)
+      if (response.success || response.error?.includes('not found') || response.error?.includes('404')) {
         await this.clearUserCache();
       }
+
+      // If user not found, treat it as success (user already deleted)
+      if (response.error?.includes('not found') || response.error?.includes('404')) {
+        return {
+          success: true,
+          data: { message: 'User not found (may have been already deleted)' },
+        };
+      }
+
+      return response;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete user';
+      
+      // If it's a "not found" error, clear cache and return success
+      if (errorMessage.includes('not found') || errorMessage.includes('404')) {
+        await this.clearUserCache();
+        return {
+          success: true,
+          data: { message: 'User not found (may have been already deleted)' },
+        };
+      }
+
+      return {
+        success: false,
+        error: errorMessage,
+      };
+    }
+  }
+
+  async resetUserPassword(
+    userId: string,
+    newPassword: string
+  ): Promise<ApiResponse<{ id: string; email: string }>> {
+    try {
+      const response = await httpClient.post<{ id: string; email: string }>(
+        API_ENDPOINTS.USERS.RESET_PASSWORD(userId),
+        { newPassword }
+      );
 
       return response;
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to delete user',
+        error: error instanceof Error ? error.message : 'Failed to reset password',
       };
     }
   }
@@ -333,13 +514,11 @@ class UserServiceImpl implements UserService {
     return queryString ? `?${queryString}` : '';
   }
 
-  private async clearUserCache(): Promise<void> {
+  async clearUserCache(): Promise<void> {
     try {
-      // Clear all user-related cache
       await httpClient.clearCache();
-      console.log('User cache cleared');
     } catch (error) {
-      console.error('Error clearing user cache:', error);
+      console.error('UserService - Error clearing cache:', error);
     }
   }
 

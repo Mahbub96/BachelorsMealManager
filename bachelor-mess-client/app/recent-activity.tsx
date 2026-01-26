@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   StyleSheet,
@@ -6,7 +6,10 @@ import {
   RefreshControl,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
+  StatusBar,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -16,7 +19,40 @@ import { activityService } from '@/services/activityService';
 import { Activity as ActivityItem } from '@/services/activityService';
 
 export default function RecentActivityScreen() {
-  const { theme } = useTheme();
+  const themeContext = useTheme();
+  const theme = themeContext?.theme;
+  const insets = useSafeAreaInsets();
+  
+  // Safe fallback values
+  const safeTheme = useMemo(() => {
+    if (!theme) {
+      return {
+        background: '#ffffff',
+        surface: '#f8fafc',
+        primary: '#667eea',
+        cardBackground: '#ffffff',
+        border: {
+          primary: '#e5e7eb',
+          secondary: '#e5e7eb',
+        },
+        text: {
+          primary: '#11181C',
+          secondary: '#687076',
+          tertiary: '#9ca3af',
+          inverse: '#ffffff',
+        },
+        gradient: {
+          primary: ['#667eea', '#764ba2'],
+          secondary: ['#f59e0b', '#d97706'],
+          success: ['#10b981', '#059669'],
+          warning: ['#f59e0b', '#d97706'],
+          error: ['#ef4444', '#dc2626'],
+          info: ['#3b82f6', '#1d4ed8'],
+        },
+      };
+    }
+    return theme;
+  }, [theme]);
   
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,7 +78,7 @@ export default function RecentActivityScreen() {
           response.data.activities?.length || 0
         );
         console.log('📋 First activity:', response.data.activities?.[0]);
-        setActivities(response.data.activities);
+        setActivities(response.data.activities || []);
       } else {
         console.log('❌ No activities data:', response.error);
         console.log('❌ Response details:', response);
@@ -64,34 +100,71 @@ export default function RecentActivityScreen() {
   };
 
   const handleActivityPress = (activity: ActivityItem) => {
-    // Navigate to activity details based on type
-    if (activity.title.toLowerCase().includes('meal')) {
-      router.push('/activity-details');
-    } else if (activity.title.toLowerCase().includes('bazar')) {
-      router.push('/bazar-details');
-    } else if (activity.title.toLowerCase().includes('payment')) {
-      router.push('/activity-details');
+    if (!activity || !activity.id) {
+      console.warn('⚠️ Activity or activity ID is missing');
+      return;
+    }
+    
+    // Navigate to activity details based on type, passing the activity ID
+    const activityId = activity.id;
+    const titleLower = (activity.title || '').toLowerCase();
+    
+    if (titleLower.includes('bazar')) {
+      router.push({
+        pathname: '/bazar-details',
+        params: { id: activityId },
+      });
+    } else if (titleLower.includes('meal') || titleLower.includes('payment')) {
+      router.push({
+        pathname: '/activity-details',
+        params: { id: activityId },
+      });
     } else {
       // Default to activity details
-      router.push('/activity-details');
+      router.push({
+        pathname: '/activity-details',
+        params: { id: activityId },
+      });
     }
   };
 
   const getActivityColors = (type: string): [string, string] => {
-    if (!theme || !theme.gradient) {
+    const gradient = safeTheme?.gradient;
+    if (!gradient) {
       return ['#667eea', '#764ba2']; // Default gradient
     }
-    switch (type) {
-      case 'meal':
-        return [theme.gradient.success[0] || '#10b981', theme.gradient.success[1] || '#059669'];
-      case 'bazar':
-        return [theme.gradient.warning[0] || '#f59e0b', theme.gradient.warning[1] || '#d97706'];
-      case 'member':
-        return [theme.gradient.primary[0] || '#667eea', theme.gradient.primary[1] || '#764ba2'];
-      case 'payment':
-        return [theme.gradient.error[0] || '#ef4444', theme.gradient.error[1] || '#dc2626'];
-      default:
-        return [theme.gradient.info[0] || '#3b82f6', theme.gradient.info[1] || '#1d4ed8'];
+    
+    try {
+      switch (type) {
+        case 'meal':
+          return [
+            gradient.success?.[0] || '#10b981',
+            gradient.success?.[1] || '#059669'
+          ];
+        case 'bazar':
+          return [
+            gradient.warning?.[0] || '#f59e0b',
+            gradient.warning?.[1] || '#d97706'
+          ];
+        case 'member':
+          return [
+            gradient.primary?.[0] || '#667eea',
+            gradient.primary?.[1] || '#764ba2'
+          ];
+        case 'payment':
+          return [
+            gradient.error?.[0] || '#ef4444',
+            gradient.error?.[1] || '#dc2626'
+          ];
+        default:
+          return [
+            gradient.info?.[0] || '#3b82f6',
+            gradient.info?.[1] || '#1d4ed8'
+          ];
+      }
+    } catch (error) {
+      console.error('Error getting activity colors:', error);
+      return ['#667eea', '#764ba2']; // Default gradient
     }
   };
 
@@ -145,86 +218,112 @@ export default function RecentActivityScreen() {
   }: {
     item: ActivityItem;
     index: number;
-  }) => (
-    <TouchableOpacity
-      style={[
-        styles.activityItem,
-        {
-          backgroundColor: theme.cardBackground,
-          borderColor: theme.border.secondary,
-        },
-        index === activities.length - 1 && styles.lastActivityItem,
-      ]}
-      onPress={() => handleActivityPress(item)}
-    >
-      <View style={styles.activityIcon}>
-        <LinearGradient
-          colors={getActivityColors(item.type)}
-          style={styles.activityIconGradient}
-        >
-          <Ionicons
-            name={getActivityIcon(item.type) as any}
-            size={16}
-            color={theme.text.inverse}
-          />
-        </LinearGradient>
-      </View>
-
-      <View style={styles.activityContent}>
-        <ThemedText style={styles.activityTitle}>{item.title}</ThemedText>
-        <ThemedText style={styles.activityDescription}>
-          {item.description}
-        </ThemedText>
-        <View style={styles.activityMeta}>
-          <ThemedText style={styles.activityTime}>{item.time}</ThemedText>
-          {item.amount && (
-            <ThemedText style={styles.activityAmount}>
-              ৳{item.amount}
-            </ThemedText>
-          )}
+  }) => {
+    if (!item) return null;
+    
+    const filteredActivities = getFilteredActivities();
+    const isLast = index === filteredActivities.length - 1;
+    
+    return (
+      <TouchableOpacity
+        style={[
+          styles.activityItem,
+          {
+            backgroundColor: safeTheme?.cardBackground || '#ffffff',
+            borderColor: safeTheme?.border?.secondary || '#e5e7eb',
+          },
+          isLast && styles.lastActivityItem,
+        ]}
+        onPress={() => handleActivityPress(item)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.activityIcon}>
+          <LinearGradient
+            colors={getActivityColors(item.type || '')}
+            style={styles.activityIconGradient}
+          >
+            <Ionicons
+              name={getActivityIcon(item.type || '') as any}
+              size={16}
+              color={safeTheme?.text?.inverse || '#ffffff'}
+            />
+          </LinearGradient>
         </View>
-      </View>
-    </TouchableOpacity>
-  );
+
+        <View style={styles.activityContent}>
+          <ThemedText style={styles.activityTitle}>
+            {item.title || 'Untitled Activity'}
+          </ThemedText>
+          <ThemedText style={styles.activityDescription}>
+            {item.description || ''}
+          </ThemedText>
+          <View style={styles.activityMeta}>
+            <ThemedText style={styles.activityTime}>
+              {item.time || ''}
+            </ThemedText>
+            {item.amount !== undefined && item.amount !== null && (
+              <ThemedText style={styles.activityAmount}>
+                ৳{item.amount.toLocaleString()}
+              </ThemedText>
+            )}
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   const renderFilterButton = (
     filterType: 'all' | 'meals' | 'bazar' | 'payments',
     label: string,
     icon: string
-  ) => (
-    <TouchableOpacity
-      style={[
-        styles.filterButton,
-        {
-          backgroundColor:
-            filter === filterType ? theme.primary : theme.surface,
-          borderColor: theme.border.primary,
-        },
-      ]}
-      onPress={() => setFilter(filterType)}
-    >
-      <Ionicons
-        name={icon as any}
-        size={16}
-        color={filter === filterType ? theme.text.inverse : theme.text.primary}
-      />
-      <ThemedText
+  ) => {
+    const isActive = filter === filterType;
+    return (
+      <TouchableOpacity
         style={[
-          styles.filterButtonText,
+          styles.filterButton,
           {
-            color:
-              filter === filterType ? theme.text.inverse : theme.text.primary,
+            backgroundColor: isActive
+              ? safeTheme?.primary || '#667eea'
+              : safeTheme?.surface || '#f8fafc',
+            borderColor: safeTheme?.border?.primary || '#e5e7eb',
           },
         ]}
+        onPress={() => setFilter(filterType)}
+        activeOpacity={0.7}
       >
-        {label}
-      </ThemedText>
-    </TouchableOpacity>
-  );
+        <Ionicons
+          name={icon as any}
+          size={16}
+          color={
+            isActive
+              ? safeTheme?.text?.inverse || '#ffffff'
+              : safeTheme?.text?.primary || '#11181C'
+          }
+        />
+        <ThemedText
+          style={[
+            styles.filterButtonText,
+            {
+              color: isActive
+                ? safeTheme?.text?.inverse || '#ffffff'
+                : safeTheme?.text?.primary || '#11181C',
+            },
+          ]}
+        >
+          {label}
+        </ThemedText>
+      </TouchableOpacity>
+    );
+  };
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <Ionicons name='time-outline' size={64} color={theme.text.tertiary} />
+      <Ionicons
+        name='time-outline'
+        size={64}
+        color={safeTheme?.text?.tertiary || '#9ca3af'}
+      />
       <ThemedText style={styles.emptyTitle}>No Activities Found</ThemedText>
       <ThemedText style={styles.emptyDescription}>
         {filter === 'all'
@@ -234,19 +333,74 @@ export default function RecentActivityScreen() {
     </View>
   );
 
+  if (loading && activities.length === 0) {
+    return (
+      <SafeAreaView
+        edges={['top', 'left', 'right']}
+        style={[
+          styles.container,
+          styles.centerContent,
+          { backgroundColor: safeTheme?.background || '#ffffff' },
+        ]}
+      >
+        <StatusBar
+          barStyle='dark-content'
+          backgroundColor='transparent'
+          translucent={false}
+        />
+        <ActivityIndicator
+          size="large"
+          color={safeTheme?.primary || '#667eea'}
+        />
+        <ThemedText style={styles.loadingText}>Loading activities...</ThemedText>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <SafeAreaView
+      edges={['top', 'left', 'right']}
+      style={[
+        styles.container,
+        { backgroundColor: safeTheme?.background || '#ffffff' },
+      ]}
+    >
+      <StatusBar
+        barStyle='dark-content'
+        backgroundColor={safeTheme?.background || '#ffffff'}
+        translucent={false}
+      />
       {/* Header */}
-      <View style={styles.header}>
+      <View
+        style={[
+          styles.header,
+          {
+            borderBottomColor: safeTheme?.border?.secondary || '#e5e7eb',
+          },
+        ]}
+      >
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
+          activeOpacity={0.7}
         >
-          <Ionicons name='arrow-back' size={24} color={theme.text.primary} />
+          <Ionicons
+            name='arrow-back'
+            size={24}
+            color={safeTheme?.text?.primary || '#11181C'}
+          />
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Recent Activities</ThemedText>
-        <TouchableOpacity style={styles.refreshButton} onPress={onRefresh}>
-          <Ionicons name='refresh' size={24} color={theme.text.primary} />
+        <TouchableOpacity
+          style={styles.refreshButton}
+          onPress={onRefresh}
+          activeOpacity={0.7}
+        >
+          <Ionicons
+            name='refresh'
+            size={24}
+            color={safeTheme?.text?.primary || '#11181C'}
+          />
         </TouchableOpacity>
       </View>
 
@@ -262,21 +416,24 @@ export default function RecentActivityScreen() {
       <FlatList
         data={getFilteredActivities()}
         renderItem={renderActivityItem}
-        keyExtractor={item => item.id}
+        keyExtractor={(item, index) => item?.id || `activity-${index}`}
         style={styles.list}
         contentContainerStyle={styles.listContent}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={[theme.primary]}
-            tintColor={theme.primary}
+            colors={[safeTheme?.primary || '#667eea']}
+            tintColor={safeTheme?.primary || '#667eea'}
           />
         }
         ListEmptyComponent={renderEmptyState}
         showsVerticalScrollIndicator={false}
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={10}
+        windowSize={10}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -284,12 +441,22 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    opacity: 0.7,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 12,
+    paddingBottom: 12,
     borderBottomWidth: 1,
   },
   backButton: {

@@ -57,32 +57,49 @@ export const useMealManagement = (): UseMealManagementReturn => {
         // Prevent excessive API calls - only fetch if forced or if last fetch was more than 30 seconds ago
         const now = Date.now();
         if (!forceRefresh && now - lastFetchTime < 30000) {
-          console.log('🍽️ Skipping meal fetch - too recent');
           return;
         }
 
         setLoading(true);
         setError(null);
 
-        const response = await mealService.getUserMeals(filters);
+        // Use getAllMeals for admins, getUserMeals for regular users
+        const response = isAdmin
+          ? await mealService.getAllMeals(filters)
+          : await mealService.getUserMeals(filters);
 
         if (response.success && response.data) {
-          const mealsData = response.data.meals || response.data;
-          setMeals(Array.isArray(mealsData) ? mealsData : []);
+          // Handle both response structures: { meals, pagination } or direct array
+          let mealsData: MealEntry[] = [];
+          if (Array.isArray(response.data)) {
+            mealsData = response.data as MealEntry[];
+          } else if (response.data.meals && Array.isArray(response.data.meals)) {
+            mealsData = response.data.meals as MealEntry[];
+          } else if (response.data && typeof response.data === 'object') {
+            // Fallback: try to extract meals from any structure
+            mealsData = (response.data as any).meals || [];
+          }
+
+          // Ensure all meals have id field (transform _id to id if needed)
+          const transformedMeals: MealEntry[] = mealsData.map((meal: any) => ({
+            ...meal,
+            id: meal.id || meal._id || String(meal._id),
+          }));
+
+          setMeals(transformedMeals);
           setLastFetchTime(now);
         } else {
-          setError(response.message || 'Failed to load meals');
+          setError(response.message || response.error || 'Failed to load meals');
           setMeals([]);
         }
-      } catch (error) {
-        console.error('Error loading meals:', error);
-        setError('Failed to load meals. Please try again.');
-        setMeals([]);
-      } finally {
+        } catch (error) {
+          setError('Failed to load meals. Please try again.');
+          setMeals([]);
+        } finally {
         setLoading(false);
       }
     },
-    [filters, lastFetchTime]
+    [filters, lastFetchTime, isAdmin]
   );
 
   const loadMealStats = useCallback(
@@ -92,7 +109,6 @@ export const useMealManagement = (): UseMealManagementReturn => {
         const now = Date.now();
         if (!forceRefresh && now - lastFetchTime < 60000) {
           // 1 minute cache for stats
-          console.log('📊 Skipping stats fetch - too recent');
           return;
         }
 
@@ -102,7 +118,7 @@ export const useMealManagement = (): UseMealManagementReturn => {
           setLastFetchTime(now);
         }
       } catch (error) {
-        console.error('Error loading meal stats:', error);
+        // Silently handle stats loading errors
       }
     },
     [lastFetchTime]
@@ -151,7 +167,6 @@ export const useMealManagement = (): UseMealManagementReturn => {
           );
         }
       } catch (error) {
-        console.error('Error updating meal status:', error);
         Alert.alert('Error', 'Failed to update meal status');
       }
     },
@@ -181,7 +196,6 @@ export const useMealManagement = (): UseMealManagementReturn => {
                 );
               }
             } catch (error) {
-              console.error('Error deleting meal:', error);
               Alert.alert('Error', 'Failed to delete meal');
             }
           },
@@ -210,7 +224,8 @@ export const useMealManagement = (): UseMealManagementReturn => {
       ]);
     };
     initialLoad();
-  }, []); // Empty dependency array to run only once
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency array to run only once - loadMeals and loadMealStats are stable
 
   // Computed values
   const hasMeals = meals.length > 0;

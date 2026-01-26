@@ -64,14 +64,8 @@ export const MealManagement: React.FC<MealManagementProps> = ({
   const {
     meals,
     mealStats,
-    loading,
-    error,
-    loadMeals,
     refreshMeals,
     handleMealPress,
-    handleStatusUpdate,
-    handleDeleteMeal,
-    handleEditMeal,
   } = useMealManagement();
 
   const handleRefresh = async () => {
@@ -136,7 +130,6 @@ export const MealManagement: React.FC<MealManagementProps> = ({
       }
     } catch (error) {
       Alert.alert('Error', 'An unexpected error occurred');
-      console.error('Meal submission error:', error);
     } finally {
       setSubmitting(false);
     }

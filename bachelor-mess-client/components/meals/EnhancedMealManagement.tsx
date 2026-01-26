@@ -1,6 +1,9 @@
-import React, { useState, useCallback } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import React, { useState, useCallback, useMemo } from 'react';
+import { View, StyleSheet, Alert, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedView } from '../ThemedView';
+import { ThemedText } from '../ThemedText';
 import { MealHeader } from './MealHeader';
 import { MealTabNavigation } from './MealTabNavigation';
 import { MealSearchBar } from './MealSearchBar';
@@ -15,7 +18,102 @@ import { AddMealButton } from './AddMealButton';
 import { MealAnalytics } from './MealAnalytics';
 import { useMealManagement } from '../../hooks/useMealManagement';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { MealEntry } from '../../services/mealService';
+
+// Pending Meals Banner Component
+const PendingMealsBanner: React.FC<{
+  count: number;
+  onApproveAll: () => void;
+}> = ({ count, onApproveAll }) => {
+  const { theme } = useTheme();
+
+  return (
+    <View
+      style={[
+        {
+          marginHorizontal: 16,
+          marginTop: 12,
+          marginBottom: 8,
+          borderRadius: 12,
+          borderWidth: 2,
+          padding: 16,
+          backgroundColor: theme.surface || '#fef3c7',
+          borderColor: theme.status.warning || '#f59e0b',
+          shadowColor: '#f59e0b',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.15,
+          shadowRadius: 8,
+          elevation: 4,
+        },
+      ]}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 12 }}>
+          <Ionicons
+            name='time-outline'
+            size={24}
+            color={theme.status.warning || '#f59e0b'}
+          />
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <ThemedText
+              style={[
+                {
+                  fontSize: 16,
+                  fontWeight: '700',
+                  marginBottom: 4,
+                  color: theme.text.primary || '#1f2937',
+                },
+              ]}
+            >
+              {count} Meal{count !== 1 ? 's' : ''} Pending Approval
+            </ThemedText>
+            <ThemedText
+              style={[
+                {
+                  fontSize: 12,
+                  color: theme.text.secondary || '#6b7280',
+                },
+              ]}
+            >
+              Review and approve meal submissions
+            </ThemedText>
+          </View>
+        </View>
+        <TouchableOpacity
+          style={{
+            borderRadius: 10,
+            overflow: 'hidden',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.2,
+            shadowRadius: 4,
+            elevation: 3,
+          }}
+          onPress={onApproveAll}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={(theme.gradient?.success || ['#10b981', '#059669']) as [string, string]}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              paddingHorizontal: 16,
+              paddingVertical: 10,
+              gap: 6,
+            }}
+          >
+            <Ionicons name='checkmark-circle' size={18} color='#fff' />
+            <ThemedText style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>
+              Approve All
+            </ThemedText>
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+};
 
 interface EnhancedMealManagementProps {
   userRole?: 'admin' | 'member' | 'super_admin';
@@ -133,9 +231,11 @@ export const EnhancedMealManagement: React.FC<EnhancedMealManagementProps> = ({
         setCurrentView('analytics');
       } else {
         setCurrentView('meals');
+        const statusFilter =
+          tab === 'overview' ? undefined : (tab === 'pending' ? 'pending' : tab === 'approved' ? 'approved' : tab === 'rejected' ? 'rejected' : undefined);
         updateFilters({
           ...filters,
-          status: tab === 'overview' ? undefined : (tab as any),
+          status: statusFilter,
         });
       }
     },
@@ -149,22 +249,52 @@ export const EnhancedMealManagement: React.FC<EnhancedMealManagementProps> = ({
     []
   );
 
-  // Search functionality
-  const filteredMeals = meals.filter(meal => {
-    if (!searchQuery) return true;
+  // Filter meals by status and search
+  const filteredMeals = useMemo(() => {
+    let filtered = meals;
 
-    const searchLower = searchQuery.toLowerCase();
-    const mealTypes = [];
-    if (meal.breakfast) mealTypes.push('breakfast');
-    if (meal.lunch) mealTypes.push('lunch');
-    if (meal.dinner) mealTypes.push('dinner');
+    // Filter by status based on active tab
+    const activeStatus = currentView === 'analytics' ? undefined : filters.status;
 
-    return (
-      mealTypes.some(type => type.includes(searchLower)) ||
-      meal.notes?.toLowerCase().includes(searchLower) ||
-      meal.status.toLowerCase().includes(searchLower)
-    );
-  });
+    if (activeStatus && activeStatus !== undefined) {
+      filtered = filtered.filter(meal => meal.status === activeStatus);
+    }
+
+    // Apply search filter
+    if (searchQuery) {
+      const searchLower = searchQuery.toLowerCase();
+      filtered = filtered.filter(meal => {
+        const mealTypes = [];
+        if (meal.breakfast) mealTypes.push('breakfast');
+        if (meal.lunch) mealTypes.push('lunch');
+        if (meal.dinner) mealTypes.push('dinner');
+
+        const userName =
+          typeof meal.userId === 'object'
+            ? meal.userId.name || meal.userId.email || ''
+            : '';
+
+        return (
+          mealTypes.some(type => type.includes(searchLower)) ||
+          meal.notes?.toLowerCase().includes(searchLower) ||
+          meal.status.toLowerCase().includes(searchLower) ||
+          userName.toLowerCase().includes(searchLower)
+        );
+      });
+    }
+
+    // Apply date range filter
+    if (dateRange.start && dateRange.end) {
+      filtered = filtered.filter(meal => {
+        const mealDate = new Date(meal.date);
+        const startDate = new Date(dateRange.start);
+        const endDate = new Date(dateRange.end);
+        return mealDate >= startDate && mealDate <= endDate;
+      });
+    }
+
+    return filtered;
+  }, [meals, filters.status, searchQuery, dateRange, currentView]);
 
   // Header configurations
   const getHeaderConfig = () => {
@@ -246,9 +376,10 @@ export const EnhancedMealManagement: React.FC<EnhancedMealManagementProps> = ({
         activeTab={
           currentView === 'analytics'
             ? 'analytics'
-            : filters.status || 'overview'
+            : (filters.status as string) || 'overview'
         }
         onTabPress={handleTabPress}
+        pendingCount={pendingMealsCount}
       />
 
       {currentView === 'analytics' ? (
@@ -259,6 +390,22 @@ export const EnhancedMealManagement: React.FC<EnhancedMealManagementProps> = ({
         />
       ) : (
         <>
+          {/* Pending Meals Summary Banner */}
+          {filters.status === 'pending' && pendingMealsCount > 0 && (
+            <PendingMealsBanner
+              count={pendingMealsCount}
+              onApproveAll={() => {
+                const pendingMealIds = filteredMeals
+                  .filter(m => m.status === 'pending')
+                  .map(m => m.id);
+                if (pendingMealIds.length > 0) {
+                  setSelectedMeals(pendingMealIds);
+                  handleBulkAction('approve');
+                }
+              }}
+            />
+          )}
+
           <MealAdvancedFilters
             isExpanded={showAdvancedFilters}
             onToggle={() => setShowAdvancedFilters(!showAdvancedFilters)}
@@ -287,6 +434,7 @@ export const EnhancedMealManagement: React.FC<EnhancedMealManagementProps> = ({
             showUserInfo={true}
             refreshing={refreshing}
             onRefresh={refreshMeals}
+            filters={filters}
           />
         </>
       )}
@@ -340,5 +488,62 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+  },
+  pendingBanner: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 8,
+    borderRadius: 12,
+    borderWidth: 2,
+    padding: 16,
+    shadowColor: '#f59e0b',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  pendingBannerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  pendingBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 12,
+  },
+  pendingBannerText: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  pendingBannerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  pendingBannerSubtitle: {
+    fontSize: 12,
+  },
+  approveAllButton: {
+    borderRadius: 10,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  approveAllButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 6,
+  },
+  approveAllButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#fff',
   },
 });

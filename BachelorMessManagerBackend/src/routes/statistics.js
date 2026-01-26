@@ -16,22 +16,19 @@ router.get('/complete', AuthMiddleware.protect(), async (req, res) => {
 
     const stats = await StatisticsService.getStatistics(filters.forceUpdate);
 
-    if (!stats.success) {
-      return res.status(500).json({
-        success: false,
-        error: stats.error || 'Failed to fetch statistics',
-      });
-    }
-
+    // StatisticsService.getStatistics() returns formatted stats directly, not { success, data }
+    // Wrap it in the expected response format
     res.json({
       success: true,
-      data: stats.data,
+      data: stats,
+      message: 'Complete statistics retrieved successfully',
     });
   } catch (error) {
     logger.error('Error fetching complete statistics:', error);
     res.status(500).json({
       success: false,
-      error: 'Internal server error',
+      error: error.message || 'Internal server error',
+      message: 'Failed to fetch complete statistics',
     });
   }
 });

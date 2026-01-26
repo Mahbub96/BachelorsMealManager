@@ -13,6 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedView } from '../ThemedView';
 import { ThemedText } from '../ThemedText';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import userService from '../../services/userService';
 import { User } from '../../services/authService';
 
@@ -35,6 +36,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
   onNavigate,
 }) => {
   const { user } = useAuth();
+  const { theme } = useTheme();
   const [systemStats, setSystemStats] = useState<SystemStats>({
     totalUsers: 0,
     totalAdmins: 0,
@@ -98,15 +100,15 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
   const getHealthColor = (health: string) => {
     switch (health) {
       case 'excellent':
-        return '#10b981';
+        return theme.status.success;
       case 'good':
-        return '#3b82f6';
+        return theme.status.info;
       case 'warning':
-        return '#f59e0b';
+        return theme.status.warning;
       case 'critical':
-        return '#ef4444';
+        return theme.status.error;
       default:
-        return '#6b7280';
+        return theme.text.tertiary;
     }
   };
 
@@ -164,7 +166,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
     return (
       <ThemedView style={styles.accessDeniedContainer}>
         <LinearGradient
-          colors={['#667eea', '#764ba2']}
+          colors={theme.gradient.primary}
           style={styles.accessDeniedGradient}
         >
           <Ionicons name='shield-checkmark' size={80} color='#fff' />
@@ -187,7 +189,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
       }
     >
       {/* Header */}
-      <LinearGradient colors={['#667eea', '#764ba2']} style={styles.header}>
+      <LinearGradient colors={theme.gradient.primary} style={styles.header}>
         <View style={styles.headerContent}>
           <View style={styles.headerIconContainer}>
             <Ionicons name='shield-checkmark' size={40} color='#fff' />
@@ -232,7 +234,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
       <View style={styles.statsGrid}>
         <View style={styles.statCard}>
           <LinearGradient
-            colors={['#10b981', '#059669']}
+            colors={theme.gradient.success}
             style={styles.statGradient}
           >
             <Ionicons name='people' size={28} color='#fff' />
@@ -245,7 +247,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
 
         <View style={styles.statCard}>
           <LinearGradient
-            colors={['#3b82f6', '#1d4ed8']}
+            colors={theme.gradient.info}
             style={styles.statGradient}
           >
             <Ionicons name='shield' size={28} color='#fff' />
@@ -258,7 +260,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
 
         <View style={styles.statCard}>
           <LinearGradient
-            colors={['#f59e0b', '#d97706']}
+            colors={theme.gradient.warning}
             style={styles.statGradient}
           >
             <Ionicons name='time' size={28} color='#fff' />
@@ -271,7 +273,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
 
         <View style={styles.statCard}>
           <LinearGradient
-            colors={['#8b5cf6', '#7c3aed']}
+            colors={theme.gradient.secondary}
             style={styles.statGradient}
           >
             <Ionicons name='checkmark-circle' size={28} color='#fff' />
@@ -292,7 +294,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
             onPress={() => setActiveTab('users')}
           >
             <LinearGradient
-              colors={['#10b981', '#059669']}
+              colors={theme.gradient.success}
               style={styles.actionGradient}
             >
               <Ionicons name='people-circle' size={36} color='#fff' />
@@ -308,7 +310,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
             onPress={() => handleSystemAction('backup')}
           >
             <LinearGradient
-              colors={['#f59e0b', '#d97706']}
+              colors={theme.gradient.warning}
               style={styles.actionGradient}
             >
               <Ionicons name='cloud-download' size={36} color='#fff' />
@@ -324,7 +326,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
             onPress={() => setActiveTab('system')}
           >
             <LinearGradient
-              colors={['#8b5cf6', '#7c3aed']}
+              colors={theme.gradient.secondary}
               style={styles.actionGradient}
             >
               <Ionicons name='settings' size={36} color='#fff' />
@@ -342,7 +344,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
             onPress={() => handleSystemAction('analytics')}
           >
             <LinearGradient
-              colors={['#ec4899', '#be185d']}
+              colors={theme.gradient.primary}
               style={styles.actionGradient}
             >
               <Ionicons name='analytics' size={36} color='#fff' />
@@ -360,16 +362,16 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
         <ThemedText style={styles.sectionTitle}>Recent Users</ThemedText>
         <View style={styles.usersList}>
           {recentUsers.slice(0, 3).map((user, index) => (
-            <View key={user.id || index} style={styles.userCard}>
+            <View key={user.id || index} style={[styles.userCard, { backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }]}>
               <View style={styles.userInfo}>
-                <View style={styles.userAvatar}>
-                  <Ionicons name='person' size={24} color='#6b7280' />
+                <View style={[styles.userAvatar, { backgroundColor: theme.primary + '20' }]}>
+                  <Ionicons name='person' size={24} color={theme.icon.secondary} />
                 </View>
                 <View style={styles.userDetails}>
                   <ThemedText style={styles.userName}>{user.name}</ThemedText>
-                  <ThemedText style={styles.userEmail}>{user.email}</ThemedText>
+                  <ThemedText style={[styles.userEmail, { color: theme.text.secondary }]}>{user.email}</ThemedText>
                   <View style={styles.userRole}>
-                    <ThemedText style={styles.roleText}>{user.role}</ThemedText>
+                    <ThemedText style={[styles.roleText, { color: theme.text.tertiary }]}>{user.role}</ThemedText>
                   </View>
                 </View>
               </View>
@@ -378,13 +380,13 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
                   style={styles.actionButton}
                   onPress={() => handleUserAction('edit', user.id || '')}
                 >
-                  <Ionicons name='create' size={20} color='#3b82f6' />
+                  <Ionicons name='create' size={20} color={theme.status.info} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.actionButton, styles.deleteButton]}
                   onPress={() => handleUserAction('delete', user.id || '')}
                 >
-                  <Ionicons name='trash' size={20} color='#ef4444' />
+                  <Ionicons name='trash' size={20} color={theme.status.error} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -401,7 +403,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
             onPress={() => handleSystemAction('restart')}
           >
             <LinearGradient
-              colors={['#f59e0b', '#d97706']}
+              colors={theme.gradient.warning}
               style={styles.systemActionGradient}
             >
               <Ionicons name='refresh' size={24} color='#fff' />
@@ -416,7 +418,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
             onPress={() => handleSystemAction('maintenance')}
           >
             <LinearGradient
-              colors={['#8b5cf6', '#7c3aed']}
+              colors={theme.gradient.secondary}
               style={styles.systemActionGradient}
             >
               <Ionicons name='construct' size={24} color='#fff' />
@@ -451,22 +453,23 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
   return (
     <ThemedView style={styles.container}>
       {/* Tab Navigation */}
-      <View style={styles.tabNavigation}>
+      <View style={[styles.tabNavigation, { backgroundColor: theme.tab.background, borderBottomColor: theme.tab.border }]}>
         <TouchableOpacity
           style={[
             styles.tabButton,
-            activeTab === 'overview' && styles.activeTab,
+            activeTab === 'overview' && [styles.activeTab, { backgroundColor: theme.surface }],
           ]}
           onPress={() => setActiveTab('overview')}
         >
           <Ionicons
             name='grid'
             size={20}
-            color={activeTab === 'overview' ? '#667eea' : '#6b7280'}
+            color={activeTab === 'overview' ? theme.tab.active : theme.tab.inactive}
           />
           <ThemedText
             style={[
               styles.tabText,
+              { color: activeTab === 'overview' ? theme.tab.active : theme.tab.inactive },
               activeTab === 'overview' && styles.activeTabText,
             ]}
           >
@@ -475,17 +478,18 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.tabButton, activeTab === 'users' && styles.activeTab]}
+          style={[styles.tabButton, activeTab === 'users' && [styles.activeTab, { backgroundColor: theme.surface }]]}
           onPress={() => setActiveTab('users')}
         >
           <Ionicons
             name='people'
             size={20}
-            color={activeTab === 'users' ? '#667eea' : '#6b7280'}
+            color={activeTab === 'users' ? theme.tab.active : theme.tab.inactive}
           />
           <ThemedText
             style={[
               styles.tabText,
+              { color: activeTab === 'users' ? theme.tab.active : theme.tab.inactive },
               activeTab === 'users' && styles.activeTabText,
             ]}
           >
@@ -494,17 +498,18 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.tabButton, activeTab === 'system' && styles.activeTab]}
+          style={[styles.tabButton, activeTab === 'system' && [styles.activeTab, { backgroundColor: theme.surface }]]}
           onPress={() => setActiveTab('system')}
         >
           <Ionicons
             name='settings'
             size={20}
-            color={activeTab === 'system' ? '#667eea' : '#6b7280'}
+            color={activeTab === 'system' ? theme.tab.active : theme.tab.inactive}
           />
           <ThemedText
             style={[
               styles.tabText,
+              { color: activeTab === 'system' ? theme.tab.active : theme.tab.inactive },
               activeTab === 'system' && styles.activeTabText,
             ]}
           >

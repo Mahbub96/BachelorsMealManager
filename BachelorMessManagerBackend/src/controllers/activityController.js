@@ -216,11 +216,11 @@ class ActivityController {
       const stats = statsResponse.success
         ? statsResponse.data
         : {
-            total: 0,
-            byType: { meals: 0, bazar: 0, members: 0 },
-            byStatus: { pending: 0, approved: 0, rejected: 0 },
-            recent: { today: 0, week: 0, month: 0 },
-          };
+          total: 0,
+          byType: { meals: 0, bazar: 0, members: 0 },
+          byStatus: { pending: 0, approved: 0, rejected: 0 },
+          recent: { today: 0, week: 0, month: 0 },
+        };
 
       return sendSuccessResponse(
         res,
@@ -459,6 +459,169 @@ class ActivityController {
       );
     } catch (error) {
       logger.error('Error getting current month meals:', error);
+      next(error);
+    }
+  }
+
+  async getActivityById(req, res, next) {
+    try {
+      const { id } = req.params;
+      const userId = req.user.id;
+      const isAdmin = req.user.role === 'admin' || req.user.role === 'super_admin';
+
+      // Helper function to get time ago
+      const getTimeAgo = date => {
+        const now = new Date();
+        const diffInSeconds = Math.floor((now - new Date(date)) / 1000);
+
+        if (diffInSeconds < 60) {
+          return `${diffInSeconds} seconds ago`;
+        } else if (diffInSeconds < 3600) {
+          const minutes = Math.floor(diffInSeconds / 60);
+          return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+        } else if (diffInSeconds < 86400) {
+          const hours = Math.floor(diffInSeconds / 3600);
+          return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+        } else if (diffInSeconds < 2592000) {
+          const days = Math.floor(diffInSeconds / 86400);
+          return `${days} day${days > 1 ? 's' : ''} ago`;
+        } else if (diffInSeconds < 31536000) {
+          const months = Math.floor(diffInSeconds / 2592000);
+          return `${months} month${months > 1 ? 's' : ''} ago`;
+        } else {
+          const years = Math.floor(diffInSeconds / 31536000);
+          return `${years} year${years > 1 ? 's' : ''} ago`;
+        }
+      };
+
+      // Try to find as meal
+      const meal = await Meal.findById(id)
+        .populate('userId', 'name email')
+        .populate('approvedBy', 'name');
+
+      if (meal) {
+        // Check access permission
+        if (!isAdmin && meal.userId._id.toString() !== userId) {
+          return sendErrorResponse(res, 403, 'Access denied');
+        }
+
+        const mealTypes = [];
+        if (meal.breakfast) mealTypes.push('Breakfast');
+        if (meal.lunch) mealTypes.push('Lunch');
+        if (meal.dinner) mealTypes.push('Dinner');
+
+        const activity = {
+          id: meal._id.toString(),
+          type: 'meal',
+          title:
+            mealTypes.length > 0
+              ? `${mealTypes.join(', ')} Added`
+              : 'Meal Entry',
+          description: `${meal.userId?.name || 'Unknown'} recorded ${mealTypes.join(', ').toLowerCase()} for ${new Date(meal.date).toLocaleDateString()}`,
+          time: getTimeAgo(meal.createdAt),
+          priority: meal.status === 'pending' ? 'medium' : 'low',
+          amount: 0,
+          user: meal.userId?.name || 'Unknown',
+          icon: 'restaurant',
+          status: meal.status,
+          date: meal.date,
+          approvedBy: meal.approvedBy?.name,
+          approvedAt: meal.approvedAt,
+          notes: meal.notes,
+          breakfast: meal.breakfast,
+          lunch: meal.lunch,
+          dinner: meal.dinner,
+          userId: meal.userId?._id,
+          createdAt: meal.createdAt,
+          updatedAt: meal.updatedAt,
+        };
+
+        return sendSuccessResponse(
+          res,
+          200,
+          'Activity retrieved successfully',
+          activity
+        );
+      }
+
+      // Try to find as bazar
+      const bazar = await Bazar.findById(id)
+        .populate('userId', 'name email')
+        .populate('approvedBy', 'name');
+
+      if (bazar) {
+        // Check access permission
+        if (!isAdmin && bazar.userId._id.toString() !== userId) {
+          return sendErrorResponse(res, 403, 'Access denied');
+        }
+
+        const activity = {
+          id: bazar._id.toString(),
+          type: 'bazar',
+          title: 'Bazar Entry Added',
+          description: `${bazar.userId?.name || 'Unknown'} submitted bazar entry with ${bazar.items?.length || 0} items for ৳${bazar.totalAmount?.toLocaleString() || 0}`,
+          time: getTimeAgo(bazar.createdAt),
+          priority: bazar.status === 'pending' ? 'medium' : 'low',
+          amount: bazar.totalAmount,
+          user: bazar.userId?.name || 'Unknown',
+          icon: 'cart',
+          status: bazar.status,
+          date: bazar.date,
+          approvedBy: bazar.approvedBy?.name,
+          approvedAt: bazar.approvedAt,
+          items: bazar.items,
+          totalAmount: bazar.totalAmount,
+          bazarDescription: bazar.description,
+          userId: bazar.userId?._id,
+          createdAt: bazar.createdAt,
+          updatedAt: bazar.updatedAt,
+        };
+
+        return sendSuccessResponse(
+          res,
+          200,
+          'Activity retrieved successfully',
+          activity
+        );
+      }
+
+      // Try to find as user (member registration) - admin only
+      if (isAdmin) {
+        const user = await User.findById(id);
+
+        if (user) {
+          const activity = {
+            id: user._id.toString(),
+            type: 'member',
+            title: 'New Member Joined',
+            description: `${user.name} joined the mess`,
+            time: getTimeAgo(user.createdAt),
+            priority: 'low',
+            amount: 0,
+            user: user.name,
+            icon: 'person',
+            status: user.status || 'active',
+            date: user.createdAt,
+            email: user.email,
+            role: user.role,
+            phone: user.phone,
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt,
+          };
+
+          return sendSuccessResponse(
+            res,
+            200,
+            'Activity retrieved successfully',
+            activity
+          );
+        }
+      }
+
+      // Activity not found
+      return sendErrorResponse(res, 404, 'Activity not found');
+    } catch (error) {
+      logger.error('Error getting activity by ID:', error);
       next(error);
     }
   }

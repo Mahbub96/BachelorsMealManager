@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -7,17 +7,26 @@ import {
   Alert,
   RefreshControl,
   Dimensions,
+  ActivityIndicator,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedView } from '../ThemedView';
 import { ThemedText } from '../ThemedText';
 import { useAuth } from '../../context/AuthContext';
-import { useMealManagement } from '../../hooks/useMealManagement';
+import { useTheme } from '../../context/ThemeContext';
 import { EnhancedMealManagement } from '../meals/EnhancedMealManagement';
+import dashboardService from '../../services/dashboardService';
+import statisticsService from '../../services/statisticsService';
+import { useUsers } from '../../hooks/useUsers';
+import userService, { User, CreateUserData, UpdateUserData } from '../../services/userService';
+import { MemberFormModal } from './MemberFormModal';
+import { MemberViewModal } from './MemberViewModal';
 
 interface AdminDashboardProps {
-  onNavigate?: (screen: string) => void;
+  // Props can be extended in the future if needed
 }
 
 interface AdminStats {
@@ -26,40 +35,152 @@ interface AdminStats {
   approvedMeals: number;
   totalMembers: number;
   todayMeals: number;
-  weeklyAverage: number;
+  mealRate: number;
+  totalBazarAmount: number;
 }
 
 const { width } = Dimensions.get('window');
 
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({
-  onNavigate,
-}) => {
+export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   const { user } = useAuth();
+  const { theme } = useTheme();
   const [adminStats, setAdminStats] = useState<AdminStats>({
     totalMeals: 0,
     pendingApprovals: 0,
     approvedMeals: 0,
     totalMembers: 0,
     todayMeals: 0,
-    weeklyAverage: 0,
+    mealRate: 0,
+    totalBazarAmount: 0,
   });
   const [activeTab, setActiveTab] = useState<'overview' | 'meals' | 'members'>(
     'overview'
   );
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showMemberModal, setShowMemberModal] = useState(false);
+  const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
+  const [editingMember, setEditingMember] = useState<User | null>(null);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [viewingMember, setViewingMember] = useState<User | null>(null);
+  const [members, setMembers] = useState<User[]>([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+  const [submittingMember, setSubmittingMember] = useState(false);
+  const [deletingMemberId, setDeletingMemberId] = useState<string | null>(null);
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
+  const [resettingPasswordFor, setResettingPasswordFor] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [resettingPassword, setResettingPassword] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const { createUser } = useUsers();
+  const isMountedRef = useRef(true);
+
+  const loadAdminStats = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Fetch dashboard stats and complete statistics in parallel
+      const [dashboardResponse, statisticsResponse] = await Promise.all([
+        dashboardService.getStats(),
+        statisticsService.getCompleteStatistics(),
+      ]);
+
+      if (!dashboardResponse.success || !dashboardResponse.data) {
+        throw new Error(dashboardResponse.error || 'Failed to load dashboard stats');
+      }
+
+      const stats = dashboardResponse.data;
+      const completeStats = statisticsResponse.success ? statisticsResponse.data : null;
+
+      // Calculate meal rate: totalBazarAmount / totalMeals
+      const mealRate =
+        stats.totalMeals > 0 && stats.totalBazarAmount > 0
+          ? stats.totalBazarAmount / stats.totalMeals
+          : 0;
+
+      // Get today's meals count from monthly statistics
+      const todayMeals = completeStats?.monthly?.currentMonth?.meals?.total || 0;
+
+      // Get approved meals from statistics
+      const approvedMeals = completeStats?.meals?.approvedMeals || 
+        (stats.totalMeals - stats.pendingMeals);
+
+      setAdminStats({
+        totalMeals: stats.totalMeals || 0,
+        pendingApprovals: stats.pendingMeals || 0,
+        approvedMeals: approvedMeals,
+        totalMembers: stats.totalMembers || 0,
+        todayMeals: todayMeals,
+        mealRate: mealRate,
+        totalBazarAmount: stats.totalBazarAmount || 0,
+      });
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load admin statistics';
+      setError(errorMessage);
+      // Error loading stats - non-critical
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadMembers = async (forceRefresh = false) => {
+    try {
+      setLoadingMembers(true);
+      setError(null); // Clear previous errors
+      
+      // Clear cache if force refresh is requested
+      if (forceRefresh) {
+        try {
+          await userService.clearUserCache();
+        } catch {
+          // Continue even if cache clear fails
+        }
+      }
+      
+      const response = await userService.getAllUsers({ role: 'member' });
+      
+      if (response.success && response.data) {
+        const membersList = Array.isArray(response.data) ? response.data : [];
+        setMembers(membersList);
+      } else {
+        const errorMsg = response.error || 'Failed to load members';
+        setError(errorMsg);
+        setMembers([]);
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load members';
+      console.error('AdminDashboard - Error loading members:', err);
+      setError(errorMessage);
+      setMembers([]);
+    } finally {
+      setLoadingMembers(false);
+    }
+  };
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (user?.role === 'admin' || user?.role === 'super_admin') {
       loadAdminStats();
+      if (activeTab === 'members') {
+        loadMembers();
+      }
     }
-  }, [user?.role]);
+  }, [user?.role, activeTab]);
 
-  // Access control - only admin and super admin can see this
+  // Access control
   if (user?.role !== 'admin' && user?.role !== 'super_admin') {
     return (
       <ThemedView style={styles.accessDeniedContainer}>
         <LinearGradient
-          colors={['#3b82f6', '#1d4ed8']}
+          colors={theme.gradient.info}
           style={styles.accessDeniedGradient}
         >
           <Ionicons name='shield' size={80} color='#fff' />
@@ -74,26 +195,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     );
   }
 
-  const loadAdminStats = async () => {
-    try {
-      // Simulate API call for admin stats
-      const stats: AdminStats = {
-        totalMeals: 342,
-        pendingApprovals: 18,
-        approvedMeals: 324,
-        totalMembers: 45,
-        todayMeals: 12,
-        weeklyAverage: 48,
-      };
-      setAdminStats(stats);
-    } catch (error) {
-      console.error('Error loading admin stats:', error);
-    }
-  };
-
   const handleRefresh = async () => {
     setRefreshing(true);
-    await loadAdminStats();
+    // Clear cache before refreshing to get latest data
+    try {
+      await userService.clearUserCache();
+    } catch {
+      // Continue even if cache clear fails
+    }
+    await Promise.all([loadAdminStats(), loadMembers()]);
     setRefreshing(false);
   };
 
@@ -107,26 +217,70 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             { text: 'Cancel', style: 'cancel' },
             {
               text: 'Approve All',
-              onPress: () => console.log('Approve all meals'),
+              onPress: () => {},
             },
           ]
         );
         break;
       case 'export-data':
         Alert.alert('Export Data', 'Exporting meal data...', [
-          { text: 'OK', onPress: () => console.log('Export data') },
+          { text: 'OK', onPress: () => {} },
         ]);
         break;
       case 'send-notification':
         Alert.alert('Send Notification', 'Send notification to all members?', [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Send', onPress: () => console.log('Send notification') },
+          { text: 'Send', onPress: () => {} },
         ]);
         break;
     }
   };
 
-  const renderOverview = () => (
+  // Memoized stat cards to prevent unnecessary re-renders
+  const statCards = useMemo(
+    () => [
+      {
+        icon: 'fast-food' as const,
+        value: adminStats.totalMeals,
+        label: 'Total Meals',
+        colors: theme.gradient.success as [string, string],
+      },
+      {
+        icon: 'time' as const,
+        value: adminStats.pendingApprovals,
+        label: 'Pending',
+        colors: theme.gradient.warning as [string, string],
+      },
+      {
+        icon: 'checkmark-circle' as const,
+        value: adminStats.approvedMeals,
+        label: 'Approved',
+        colors: theme.gradient.secondary as [string, string],
+      },
+      {
+        icon: 'people' as const,
+        value: adminStats.totalMembers,
+        label: 'Members',
+        colors: theme.gradient.info as [string, string],
+      },
+      {
+        icon: 'calculator' as const,
+        value: adminStats.mealRate > 0 ? `৳${adminStats.mealRate.toFixed(2)}` : 'N/A',
+        label: 'Meal Rate',
+        colors: theme.gradient.warning as [string, string],
+      },
+      {
+        icon: 'calendar' as const,
+        value: adminStats.todayMeals,
+        label: 'Today Meals',
+        colors: theme.gradient.success as [string, string],
+      },
+    ],
+    [adminStats, theme]
+  );
+
+  const renderOverview = () => {
+    return (
     <ScrollView
       style={styles.scrollView}
       refreshControl={
@@ -134,7 +288,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       }
     >
       {/* Header */}
-      <LinearGradient colors={['#3b82f6', '#1d4ed8']} style={styles.header}>
+      <LinearGradient colors={theme.gradient.info} style={styles.header}>
         <View style={styles.headerContent}>
           <View style={styles.headerIconContainer}>
             <Ionicons name='shield' size={40} color='#fff' />
@@ -148,217 +302,160 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </View>
       </LinearGradient>
 
-      {/* Quick Stats */}
-      <View style={styles.statsGrid}>
-        <View style={styles.statCard}>
-          <LinearGradient
-            colors={['#10b981', '#059669']}
-            style={styles.statGradient}
-          >
-            <Ionicons name='fast-food' size={28} color='#fff' />
-            <ThemedText style={styles.statValue}>
-              {adminStats.totalMeals}
-            </ThemedText>
-            <ThemedText style={styles.statLabel}>Total Meals</ThemedText>
-          </LinearGradient>
+      {/* Loading State */}
+      {loading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.status.info} />
+          <ThemedText style={[styles.loadingText, { color: theme.text.secondary }]}>Loading statistics...</ThemedText>
         </View>
+      )}
 
-        <View style={styles.statCard}>
-          <LinearGradient
-            colors={['#f59e0b', '#d97706']}
-            style={styles.statGradient}
-          >
-            <Ionicons name='time' size={28} color='#fff' />
-            <ThemedText style={styles.statValue}>
-              {adminStats.pendingApprovals}
-            </ThemedText>
-            <ThemedText style={styles.statLabel}>Pending</ThemedText>
-          </LinearGradient>
-        </View>
-
-        <View style={styles.statCard}>
-          <LinearGradient
-            colors={['#8b5cf6', '#7c3aed']}
-            style={styles.statGradient}
-          >
-            <Ionicons name='checkmark-circle' size={28} color='#fff' />
-            <ThemedText style={styles.statValue}>
-              {adminStats.approvedMeals}
-            </ThemedText>
-            <ThemedText style={styles.statLabel}>Approved</ThemedText>
-          </LinearGradient>
-        </View>
-
-        <View style={styles.statCard}>
-          <LinearGradient
-            colors={['#06b6d4', '#0891b2']}
-            style={styles.statGradient}
-          >
-            <Ionicons name='people' size={28} color='#fff' />
-            <ThemedText style={styles.statValue}>
-              {adminStats.totalMembers}
-            </ThemedText>
-            <ThemedText style={styles.statLabel}>Members</ThemedText>
-          </LinearGradient>
-        </View>
-      </View>
-
-      {/* Quick Actions */}
-      <View style={styles.section}>
-        <ThemedText style={styles.sectionTitle}>Quick Actions</ThemedText>
-        <View style={styles.actionsGrid}>
+      {/* Error State */}
+      {error && !loading && (
+        <View style={styles.errorContainer}>
+          <Ionicons name='alert-circle' size={48} color={theme.status.error} />
+          <ThemedText style={[styles.errorText, { color: theme.status.error }]}>{error}</ThemedText>
           <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => handleQuickAction('approve-all')}
+            style={[styles.retryButton, { backgroundColor: theme.button.primary.background }]}
+            onPress={loadAdminStats}
           >
-            <LinearGradient
-              colors={['#10b981', '#059669']}
-              style={styles.actionGradient}
-            >
-              <Ionicons name='checkmark-circle' size={36} color='#fff' />
-              <ThemedText style={styles.actionTitle}>Approve All</ThemedText>
-              <ThemedText style={styles.actionSubtitle}>
-                Approve pending meals
-              </ThemedText>
-            </LinearGradient>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => handleQuickAction('export-data')}
-          >
-            <LinearGradient
-              colors={['#f59e0b', '#d97706']}
-              style={styles.actionGradient}
-            >
-              <Ionicons name='download' size={36} color='#fff' />
-              <ThemedText style={styles.actionTitle}>Export Data</ThemedText>
-              <ThemedText style={styles.actionSubtitle}>
-                Export meal reports
-              </ThemedText>
-            </LinearGradient>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => handleQuickAction('send-notification')}
-          >
-            <LinearGradient
-              colors={['#ec4899', '#be185d']}
-              style={styles.actionGradient}
-            >
-              <Ionicons name='notifications' size={36} color='#fff' />
-              <ThemedText style={styles.actionTitle}>
-                Send Notification
-              </ThemedText>
-              <ThemedText style={styles.actionSubtitle}>
-                Notify all members
-              </ThemedText>
-            </LinearGradient>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => setActiveTab('meals')}
-          >
-            <LinearGradient
-              colors={['#8b5cf6', '#7c3aed']}
-              style={styles.actionGradient}
-            >
-              <Ionicons name='fast-food' size={36} color='#fff' />
-              <ThemedText style={styles.actionTitle}>Manage Meals</ThemedText>
-              <ThemedText style={styles.actionSubtitle}>
-                View all meals
-              </ThemedText>
-            </LinearGradient>
+            <ThemedText style={[styles.retryButtonText, { color: theme.button.primary.text }]}>Retry</ThemedText>
           </TouchableOpacity>
         </View>
-      </View>
+      )}
 
-      {/* Today's Summary */}
-      <View style={styles.section}>
-        <ThemedText style={styles.sectionTitle}>
-          Today&apos;s Summary
-        </ThemedText>
-        <View style={styles.summaryCard}>
-          <LinearGradient
-            colors={['#f8fafc', '#f1f5f9']}
-            style={styles.summaryGradient}
-          >
-            <View style={styles.summaryRow}>
-              <View style={styles.summaryItem}>
-                <Ionicons name='sunny' size={24} color='#f59e0b' />
-                <ThemedText style={styles.summaryLabel}>Breakfast</ThemedText>
-                <ThemedText style={styles.summaryValue}>8 meals</ThemedText>
+      {/* Stats Grid */}
+      {!loading && !error && (
+        <>
+          <View style={styles.statsGrid}>
+            {statCards.map((card, index) => (
+              <View key={index} style={styles.statCard}>
+                <LinearGradient
+                  colors={card.colors}
+                  style={styles.statGradient}
+                >
+                  <Ionicons name={card.icon} size={28} color='#fff' />
+                  <ThemedText style={styles.statValue}>
+                    {card.value}
+                  </ThemedText>
+                  <ThemedText style={styles.statLabel}>{card.label}</ThemedText>
+                </LinearGradient>
               </View>
-              <View style={styles.summaryItem}>
-                <Ionicons name='partly-sunny' size={24} color='#f97316' />
-                <ThemedText style={styles.summaryLabel}>Lunch</ThemedText>
-                <ThemedText style={styles.summaryValue}>12 meals</ThemedText>
-              </View>
-              <View style={styles.summaryItem}>
-                <Ionicons name='moon' size={24} color='#8b5cf6' />
-                <ThemedText style={styles.summaryLabel}>Dinner</ThemedText>
-                <ThemedText style={styles.summaryValue}>10 meals</ThemedText>
-              </View>
-            </View>
-            <View style={styles.summaryTotal}>
-              <ThemedText style={styles.summaryTotalLabel}>
-                Total Today
-              </ThemedText>
-              <ThemedText style={styles.summaryTotalValue}>
-                {adminStats.todayMeals} meals
-              </ThemedText>
-            </View>
-          </LinearGradient>
-        </View>
-      </View>
+            ))}
+          </View>
 
-      {/* Recent Activity */}
-      <View style={styles.section}>
-        <ThemedText style={styles.sectionTitle}>Recent Activity</ThemedText>
-        <View style={styles.activityList}>
-          <View style={styles.activityItem}>
-            <View style={styles.activityIcon}>
-              <Ionicons name='checkmark-circle' size={20} color='#10b981' />
-            </View>
-            <View style={styles.activityContent}>
-              <ThemedText style={styles.activityTitle}>
-                Meal approved by John Doe
-              </ThemedText>
-              <ThemedText style={styles.activityTime}>2 minutes ago</ThemedText>
+          {/* Quick Actions */}
+          <View style={styles.section}>
+            <ThemedText style={styles.sectionTitle}>Quick Actions</ThemedText>
+            <View style={styles.actionsGrid}>
+              <TouchableOpacity
+                style={styles.actionCard}
+                onPress={() => handleQuickAction('approve-all')}
+              >
+                <LinearGradient
+                  colors={theme.gradient.success}
+                  style={styles.actionGradient}
+                >
+                  <Ionicons name='checkmark-circle' size={36} color='#fff' />
+                  <ThemedText style={styles.actionTitle}>Approve All</ThemedText>
+                  <ThemedText style={styles.actionSubtitle}>
+                    Approve pending meals
+                  </ThemedText>
+                </LinearGradient>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.actionCard}
+                onPress={() => handleQuickAction('export-data')}
+              >
+                <LinearGradient
+                  colors={theme.gradient.warning}
+                  style={styles.actionGradient}
+                >
+                  <Ionicons name='download' size={36} color='#fff' />
+                  <ThemedText style={styles.actionTitle}>Export Data</ThemedText>
+                  <ThemedText style={styles.actionSubtitle}>
+                    Export meal reports
+                  </ThemedText>
+                </LinearGradient>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.actionCard}
+                onPress={() => handleQuickAction('send-notification')}
+              >
+                <LinearGradient
+                  colors={theme.gradient.primary}
+                  style={styles.actionGradient}
+                >
+                  <Ionicons name='notifications' size={36} color='#fff' />
+                  <ThemedText style={styles.actionTitle}>
+                    Send Notification
+                  </ThemedText>
+                  <ThemedText style={styles.actionSubtitle}>
+                    Notify all members
+                  </ThemedText>
+                </LinearGradient>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.actionCard}
+                onPress={() => setActiveTab('meals')}
+              >
+                <LinearGradient
+                  colors={theme.gradient.secondary}
+                  style={styles.actionGradient}
+                >
+                  <Ionicons name='fast-food' size={36} color='#fff' />
+                  <ThemedText style={styles.actionTitle}>Manage Meals</ThemedText>
+                  <ThemedText style={styles.actionSubtitle}>
+                    View all meals
+                  </ThemedText>
+                </LinearGradient>
+              </TouchableOpacity>
             </View>
           </View>
 
-          <View style={styles.activityItem}>
-            <View style={styles.activityIcon}>
-              <Ionicons name='add-circle' size={20} color='#3b82f6' />
-            </View>
-            <View style={styles.activityContent}>
-              <ThemedText style={styles.activityTitle}>
-                New meal submitted by Jane Smith
-              </ThemedText>
-              <ThemedText style={styles.activityTime}>
-                15 minutes ago
-              </ThemedText>
+          {/* Today's Summary */}
+          <View style={styles.section}>
+            <ThemedText style={styles.sectionTitle}>
+              Today&apos;s Summary
+            </ThemedText>
+            <View style={[styles.summaryCard, { backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, borderWidth: 1 }]}>
+              <View style={styles.summaryGradient}>
+                <View style={styles.summaryRow}>
+                  <View style={styles.summaryItem}>
+                    <Ionicons name='sunny' size={24} color={theme.status.warning} />
+                    <ThemedText style={[styles.summaryLabel, { color: theme.text.secondary }]}>Breakfast</ThemedText>
+                    <ThemedText style={styles.summaryValue}>-</ThemedText>
+                  </View>
+                  <View style={styles.summaryItem}>
+                    <Ionicons name='partly-sunny' size={24} color={theme.status.warning} />
+                    <ThemedText style={[styles.summaryLabel, { color: theme.text.secondary }]}>Lunch</ThemedText>
+                    <ThemedText style={styles.summaryValue}>-</ThemedText>
+                  </View>
+                  <View style={styles.summaryItem}>
+                    <Ionicons name='moon' size={24} color={theme.primary} />
+                    <ThemedText style={[styles.summaryLabel, { color: theme.text.secondary }]}>Dinner</ThemedText>
+                    <ThemedText style={styles.summaryValue}>-</ThemedText>
+                  </View>
+                </View>
+                <View style={[styles.summaryTotal, { borderTopColor: theme.border.secondary }]}>
+                  <ThemedText style={styles.summaryTotalLabel}>
+                    Total Today
+                  </ThemedText>
+                  <ThemedText style={[styles.summaryTotalValue, { color: theme.primary }]}>
+                    {adminStats.todayMeals} meals
+                  </ThemedText>
+                </View>
+              </View>
             </View>
           </View>
-
-          <View style={styles.activityItem}>
-            <View style={styles.activityIcon}>
-              <Ionicons name='person-add' size={20} color='#8b5cf6' />
-            </View>
-            <View style={styles.activityContent}>
-              <ThemedText style={styles.activityTitle}>
-                New member registered: Mike Johnson
-              </ThemedText>
-              <ThemedText style={styles.activityTime}>1 hour ago</ThemedText>
-            </View>
-          </View>
-        </View>
-      </View>
+        </>
+      )}
     </ScrollView>
-  );
+    );
+  };
 
   const renderMeals = () => (
     <View style={styles.tabContent}>
@@ -370,34 +467,437 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     </View>
   );
 
+
+  const handleOpenAddModal = () => {
+    setModalMode('add');
+    setEditingMember(null);
+    setShowMemberModal(true);
+  };
+
+  const handleOpenEditModal = (member: User) => {
+    setModalMode('edit');
+    setEditingMember(member);
+    setShowMemberModal(true);
+  };
+
+  const handleOpenViewModal = (member: User) => {
+    setViewingMember(member);
+    setShowViewModal(true);
+  };
+
+  const handleCloseViewModal = () => {
+    setShowViewModal(false);
+    setViewingMember(null);
+  };
+
+  const handleEditFromView = () => {
+    if (viewingMember) {
+      setShowViewModal(false);
+      handleOpenEditModal(viewingMember);
+    }
+  };
+
+  const handleCloseModal = () => {
+    if (!submittingMember) {
+      setShowMemberModal(false);
+      setEditingMember(null);
+    }
+  };
+
+  const handleSubmitMember = async (data: CreateUserData | UpdateUserData) => {
+    if (!isMountedRef.current) return;
+
+    setSubmittingMember(true);
+    try {
+      if (modalMode === 'add') {
+        // Clean data - remove empty phone
+        const cleanedData: CreateUserData = {
+          name: data.name!.trim(),
+          email: data.email!.trim().toLowerCase(),
+          password: (data as CreateUserData).password!,
+          role: 'member',
+          ...(data.phone?.trim() && { phone: data.phone.trim() }),
+        };
+
+        const success = await createUser(cleanedData);
+        
+        if (!isMountedRef.current) return;
+
+        if (success) {
+          setShowMemberModal(false);
+          setEditingMember(null);
+          
+          // Refresh data
+          setTimeout(async () => {
+            if (isMountedRef.current) {
+              try {
+                await Promise.all([loadMembers(true), loadAdminStats()]);
+              } catch {
+                // Don't show error to user
+              }
+            }
+          }, 100);
+        }
+      } else {
+        // Edit mode
+        if (!editingMember) return;
+
+        const response = await userService.updateUser(editingMember.id, data as UpdateUserData);
+
+        if (response.success) {
+          Alert.alert('Success', 'Member updated successfully');
+          setShowMemberModal(false);
+          setEditingMember(null);
+          
+          // Refresh members list
+          setTimeout(() => {
+            if (isMountedRef.current) {
+              loadMembers(true);
+            }
+          }, 100);
+        } else {
+          Alert.alert('Error', response.error || 'Failed to update member');
+        }
+      }
+    } catch (err) {
+      if (!isMountedRef.current) return;
+      
+      const errorMessage = err instanceof Error 
+        ? err.message 
+        : `Failed to ${modalMode === 'add' ? 'create' : 'update'} member. Please try again.`;
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setSubmittingMember(false);
+    }
+  };
+
+  const handleDeleteMember = (memberId: string) => {
+    Alert.alert(
+      'Delete Member',
+      'Are you sure you want to delete this member? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            if (!isMountedRef.current) return;
+
+            setDeletingMemberId(memberId);
+            try {
+              const response = await userService.deleteUser(memberId);
+
+              if (response.success) {
+                Alert.alert('Success', 'Member deleted successfully');
+                
+                // Refresh members list immediately
+                if (isMountedRef.current) {
+                  loadMembers(true);
+                }
+              } else {
+                // Handle specific error cases
+                if (response.error?.includes('not found') || response.error?.includes('404')) {
+                  // User already deleted or doesn't exist - refresh list to sync
+                  Alert.alert('Info', 'Member not found. Refreshing list...');
+                  if (isMountedRef.current) {
+                    loadMembers(true);
+                  }
+                } else {
+                  Alert.alert('Error', response.error || 'Failed to delete member');
+                }
+              }
+            } catch (err) {
+              const errorMessage = err instanceof Error ? err.message : 'Failed to delete member. Please try again.';
+              
+              // If it's a "not found" error, refresh the list
+              if (errorMessage.includes('not found') || errorMessage.includes('404')) {
+                Alert.alert('Info', 'Member not found. Refreshing list...');
+                if (isMountedRef.current) {
+                  loadMembers(true);
+                }
+              } else {
+                Alert.alert('Error', errorMessage);
+              }
+            } finally {
+              setDeletingMemberId(null);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleResetPassword = (memberId: string) => {
+    setResettingPasswordFor(memberId);
+    setNewPassword('');
+    setShowResetPassword(false);
+    setShowResetPasswordModal(true);
+  };
+
+  const handleConfirmResetPassword = async () => {
+    if (!newPassword || newPassword.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters long');
+      return;
+    }
+
+    if (!resettingPasswordFor || !isMountedRef.current) return;
+
+    setResettingPassword(true);
+    try {
+      const response = await userService.resetUserPassword(resettingPasswordFor, newPassword);
+
+      if (response.success) {
+        Alert.alert('Success', 'Password reset successfully');
+        setShowResetPasswordModal(false);
+        setNewPassword('');
+        setResettingPasswordFor(null);
+        setShowResetPassword(false);
+      } else {
+        Alert.alert('Error', response.error || 'Failed to reset password');
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to reset password. Please try again.';
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setResettingPassword(false);
+    }
+  };
+
+  const handleCancelResetPassword = () => {
+    setShowResetPasswordModal(false);
+    setNewPassword('');
+    setResettingPasswordFor(null);
+    setShowResetPassword(false);
+  };
+
   const renderMembers = () => (
     <View style={styles.tabContent}>
-      <ThemedText style={styles.tabTitle}>Member Management</ThemedText>
-      <ThemedText style={styles.tabSubtitle}>
-        View and manage all members
-      </ThemedText>
+      <View style={styles.membersHeader}>
+        <View>
+          <ThemedText style={styles.tabTitle}>Member Management</ThemedText>
+          <ThemedText style={[styles.tabSubtitle, { color: theme.text.secondary }]}>
+            {user?.role === 'super_admin' 
+              ? 'View and manage all members' 
+              : 'View and manage your members'}
+          </ThemedText>
+        </View>
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={handleOpenAddModal}
+        >
+          <LinearGradient
+            colors={theme.gradient.success}
+            style={styles.addButtonGradient}
+          >
+            <Ionicons name='add' size={24} color='#fff' />
+            <ThemedText style={styles.addButtonText}>Add Member</ThemedText>
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
+
+      {loadingMembers ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.status.info} />
+          <ThemedText style={[styles.loadingText, { color: theme.text.secondary }]}>Loading members...</ThemedText>
+        </View>
+      ) : members.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Ionicons name='people-outline' size={64} color={theme.icon.secondary} />
+          <ThemedText style={[styles.emptyText, { color: theme.text.secondary }]}>No members found</ThemedText>
+          <ThemedText style={[styles.emptySubtext, { color: theme.text.tertiary }]}>
+            Click "Add Member" to create your first member
+          </ThemedText>
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.membersList}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={loadMembers} />
+          }
+        >
+          {members.map((member) => (
+            <TouchableOpacity
+              key={member.id}
+              style={[styles.memberCard, { backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }]}
+              onPress={() => handleOpenViewModal(member)}
+              activeOpacity={0.7}
+              disabled={submittingMember || deletingMemberId !== null}
+            >
+              <View style={styles.memberInfo}>
+                <View style={[styles.memberAvatar, { backgroundColor: theme.primary + '20' }]}>
+                  <Ionicons name='person' size={24} color={theme.primary} />
+                </View>
+                <View style={styles.memberDetails}>
+                  <ThemedText style={styles.memberName}>{member.name}</ThemedText>
+                  <ThemedText style={[styles.memberEmail, { color: theme.text.secondary }]}>{member.email}</ThemedText>
+                  {member.phone && (
+                    <ThemedText style={[styles.memberPhone, { color: theme.text.tertiary }]}>{member.phone}</ThemedText>
+                  )}
+                  <View style={styles.memberStatus}>
+                    <View
+                      style={[
+                        styles.statusDot,
+                        member.status === 'active'
+                          ? { backgroundColor: theme.status.success }
+                          : { backgroundColor: theme.status.error },
+                      ]}
+                    />
+                    <ThemedText style={[styles.statusText, { color: theme.text.secondary }]}>
+                      {member.status}
+                    </ThemedText>
+                  </View>
+                </View>
+                <View style={styles.memberActions}>
+                  <TouchableOpacity
+                    onPress={() => handleOpenEditModal(member)}
+                    style={[styles.actionButton, styles.editButton, { backgroundColor: theme.primary + '20' }]}
+                    disabled={submittingMember || deletingMemberId !== null}
+                  >
+                    <Ionicons name='pencil' size={18} color={theme.primary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleDeleteMember(member.id)}
+                    style={[styles.actionButton, styles.deleteButton, { backgroundColor: theme.status.error + '20' }]}
+                    disabled={submittingMember || deletingMemberId !== null || deletingMemberId === member.id}
+                  >
+                    {deletingMemberId === member.id ? (
+                      <ActivityIndicator size="small" color={theme.status.error} />
+                    ) : (
+                      <Ionicons name='trash' size={18} color={theme.status.error} />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
+
+      {/* Unified Member Form Modal */}
+      <MemberFormModal
+        visible={showMemberModal}
+        mode={modalMode}
+        member={editingMember}
+        onClose={handleCloseModal}
+        onSubmit={handleSubmitMember}
+        loading={submittingMember}
+      />
+
+      {/* Member View Modal */}
+      <MemberViewModal
+        visible={showViewModal}
+        member={viewingMember}
+        onClose={handleCloseViewModal}
+        onEdit={handleEditFromView}
+        onResetPassword={handleResetPassword}
+      />
+
+      {/* Reset Password Modal */}
+      <Modal
+        visible={showResetPasswordModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={handleCancelResetPassword}
+      >
+        <View style={styles.resetPasswordModalOverlay}>
+          <View style={[styles.resetPasswordModalContent, { backgroundColor: theme.modal }]}>
+            <View style={[styles.resetPasswordModalHeader, { borderBottomColor: theme.border.secondary }]}>
+              <ThemedText style={styles.resetPasswordModalTitle}>Reset Password</ThemedText>
+              <TouchableOpacity onPress={handleCancelResetPassword}>
+                <Ionicons name='close' size={24} color={theme.icon.secondary} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.resetPasswordModalBody}>
+              <ThemedText style={[styles.resetPasswordModalText, { color: theme.text.secondary }]}>
+                Enter a new password for this member (minimum 6 characters):
+              </ThemedText>
+              <View style={styles.resetPasswordInputContainer}>
+                <TextInput
+                  style={[styles.resetPasswordInput, { 
+                    backgroundColor: theme.input.background,
+                    borderColor: theme.input.border,
+                    color: theme.input.text,
+                  }]}
+                  placeholder="New password (min 6 characters)"
+                  placeholderTextColor={theme.text.tertiary}
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  secureTextEntry={!showResetPassword}
+                  autoFocus
+                  maxLength={128}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                <TouchableOpacity
+                  style={styles.resetPasswordEyeButton}
+                  onPress={() => setShowResetPassword(!showResetPassword)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name={showResetPassword ? 'eye-off' : 'eye'}
+                    size={20}
+                    color={theme.text.secondary}
+                  />
+                </TouchableOpacity>
+              </View>
+              {newPassword.length > 0 && newPassword.length < 6 && (
+                <ThemedText style={[styles.passwordErrorText, { color: theme.status.error }]}>
+                  Password must be at least 6 characters
+                </ThemedText>
+              )}
+            </View>
+
+            <View style={[styles.resetPasswordModalFooter, { borderTopColor: theme.border.secondary }]}>
+              <TouchableOpacity
+                style={[styles.resetPasswordCancelButton, { borderColor: theme.border.secondary }]}
+                onPress={handleCancelResetPassword}
+                disabled={resettingPassword}
+              >
+                <ThemedText style={[styles.resetPasswordCancelText, { color: theme.text.secondary }]}>
+                  Cancel
+                </ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.resetPasswordConfirmButton, { backgroundColor: theme.status.warning }]}
+                onPress={handleConfirmResetPassword}
+                disabled={resettingPassword || !newPassword || newPassword.length < 6}
+              >
+                {resettingPassword ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <ThemedText style={styles.resetPasswordConfirmText}>
+                    Reset Password
+                  </ThemedText>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 
   return (
     <ThemedView style={styles.container}>
       {/* Tab Navigation */}
-      <View style={styles.tabNavigation}>
+      <View style={[styles.tabNavigation, { backgroundColor: theme.tab.background, borderBottomColor: theme.tab.border }]}>
         <TouchableOpacity
           style={[
             styles.tabButton,
-            activeTab === 'overview' && styles.activeTab,
+            activeTab === 'overview' && [styles.activeTab, { backgroundColor: theme.surface }],
           ]}
           onPress={() => setActiveTab('overview')}
         >
           <Ionicons
             name='grid'
             size={20}
-            color={activeTab === 'overview' ? '#3b82f6' : '#6b7280'}
+            color={activeTab === 'overview' ? theme.tab.active : theme.tab.inactive}
           />
           <ThemedText
             style={[
               styles.tabText,
+              { color: activeTab === 'overview' ? theme.tab.active : theme.tab.inactive },
               activeTab === 'overview' && styles.activeTabText,
             ]}
           >
@@ -406,17 +906,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.tabButton, activeTab === 'meals' && styles.activeTab]}
+          style={[styles.tabButton, activeTab === 'meals' && [styles.activeTab, { backgroundColor: theme.surface }]]}
           onPress={() => setActiveTab('meals')}
         >
           <Ionicons
             name='fast-food'
             size={20}
-            color={activeTab === 'meals' ? '#3b82f6' : '#6b7280'}
+            color={activeTab === 'meals' ? theme.tab.active : theme.tab.inactive}
           />
           <ThemedText
             style={[
               styles.tabText,
+              { color: activeTab === 'meals' ? theme.tab.active : theme.tab.inactive },
               activeTab === 'meals' && styles.activeTabText,
             ]}
           >
@@ -427,18 +928,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         <TouchableOpacity
           style={[
             styles.tabButton,
-            activeTab === 'members' && styles.activeTab,
+            activeTab === 'members' && [styles.activeTab, { backgroundColor: theme.surface }],
           ]}
           onPress={() => setActiveTab('members')}
         >
           <Ionicons
             name='people'
             size={20}
-            color={activeTab === 'members' ? '#3b82f6' : '#6b7280'}
+            color={activeTab === 'members' ? theme.tab.active : theme.tab.inactive}
           />
           <ThemedText
             style={[
               styles.tabText,
+              { color: activeTab === 'members' ? theme.tab.active : theme.tab.inactive },
               activeTab === 'members' && styles.activeTabText,
             ]}
           >
@@ -486,11 +988,9 @@ const styles = StyleSheet.create({
   },
   tabNavigation: {
     flexDirection: 'row',
-    backgroundColor: '#f8fafc',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
   },
   tabButton: {
     flex: 1,
@@ -501,7 +1001,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   activeTab: {
-    backgroundColor: '#fff',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -512,10 +1011,8 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 14,
     fontWeight: '500',
-    color: '#6b7280',
   },
   activeTabText: {
-    color: '#3b82f6',
     fontWeight: '600',
   },
   tabContent: {
@@ -529,7 +1026,6 @@ const styles = StyleSheet.create({
   },
   tabSubtitle: {
     fontSize: 16,
-    color: '#6b7280',
     marginBottom: 20,
   },
   scrollView: {
@@ -566,6 +1062,32 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#fff',
     opacity: 0.9,
+  },
+  loadingContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+  },
+  errorContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  errorText: {
+    marginTop: 16,
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 20,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    fontWeight: '600',
   },
   statsGrid: {
     flexDirection: 'row',
@@ -649,7 +1171,6 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 14,
-    color: '#6b7280',
     marginTop: 8,
     marginBottom: 4,
   },
@@ -663,7 +1184,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 15,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
   },
   summaryTotalLabel: {
     fontSize: 16,
@@ -672,38 +1192,201 @@ const styles = StyleSheet.create({
   summaryTotalValue: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#3b82f6',
   },
-  activityList: {
-    marginTop: 10,
+  membersHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
   },
-  activityItem: {
+  addButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  addButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8fafc',
-    padding: 15,
-    borderRadius: 12,
-    marginBottom: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 8,
   },
-  activityIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f3f4f6',
+  addButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  membersList: {
+    flex: 1,
+  },
+  memberCard: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  memberInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  memberActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginLeft: 12,
+  },
+  actionButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  editButton: {
+    // Styled via backgroundColor in component
+  },
+  deleteButton: {
+    // Styled via backgroundColor in component
+  },
+  memberAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
-  activityContent: {
+  memberDetails: {
     flex: 1,
   },
-  activityTitle: {
-    fontSize: 14,
-    fontWeight: '500',
+  memberName: {
+    fontSize: 16,
+    fontWeight: '600',
     marginBottom: 4,
   },
-  activityTime: {
+  memberEmail: {
+    fontSize: 14,
+    marginBottom: 2,
+  },
+  memberPhone: {
     fontSize: 12,
-    color: '#6b7280',
+    marginBottom: 4,
+  },
+  memberStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  statusText: {
+    fontSize: 12,
+    textTransform: 'capitalize',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 16,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: 'center',
+    paddingHorizontal: 40,
+  },
+  resetPasswordModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  resetPasswordModalContent: {
+    width: '90%',
+    maxWidth: 400,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  resetPasswordModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+  },
+  resetPasswordModalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  resetPasswordModalBody: {
+    padding: 20,
+  },
+  resetPasswordModalText: {
+    fontSize: 14,
+    marginBottom: 16,
+  },
+  resetPasswordInputContainer: {
+    position: 'relative',
+    marginTop: 8,
+  },
+  resetPasswordInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    paddingRight: 45,
+    fontSize: 16,
+  },
+  resetPasswordEyeButton: {
+    position: 'absolute',
+    right: 12,
+    top: 12,
+    padding: 4,
+    zIndex: 1,
+  },
+  passwordErrorText: {
+    fontSize: 12,
+    marginTop: 8,
+  },
+  resetPasswordModalFooter: {
+    flexDirection: 'row',
+    padding: 20,
+    borderTopWidth: 1,
+    gap: 12,
+  },
+  resetPasswordCancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  resetPasswordCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  resetPasswordConfirmButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  resetPasswordConfirmText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

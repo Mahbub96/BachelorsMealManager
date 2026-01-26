@@ -83,12 +83,33 @@ logger.stream = {
  * Uniform API Logging Functions
  */
 
+// Helper to sanitize sensitive data from objects
+const sanitizeSensitiveData = (obj) => {
+  if (!obj || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(sanitizeSensitiveData);
+  
+  const sensitiveKeys = ['password', 'newPassword', 'currentPassword', 'confirmPassword', 'token', 'auth_token', 'refreshToken', 'passwordResetToken'];
+  const sanitized = { ...obj };
+  
+  for (const key of sensitiveKeys) {
+    if (key in sanitized) {
+      sanitized[key] = '***REDACTED***';
+    }
+  }
+  
+  return sanitized;
+};
+
 /**
  * Log API request
  * @param {Object} req - Express request object
  * @param {Object} options - Additional options
  */
 const logApiRequest = (req, options = {}) => {
+  const body = options.logBody ? sanitizeSensitiveData(req.body) : '***';
+  const query = options.logQuery ? sanitizeSensitiveData(req.query) : '***';
+  const params = options.logParams ? sanitizeSensitiveData(req.params) : '***';
+  
   const logData = {
     method: req.method,
     url: req.originalUrl,
@@ -96,9 +117,9 @@ const logApiRequest = (req, options = {}) => {
     userAgent: req.get('User-Agent'),
     userId: req.user?.id || null,
     requestId: req.headers['x-request-id'] || options.requestId,
-    body: options.logBody ? req.body : '***',
-    query: options.logQuery ? req.query : '***',
-    params: options.logParams ? req.params : '***',
+    body,
+    query,
+    params,
     headers: options.logHeaders ? req.headers : '***',
   };
 

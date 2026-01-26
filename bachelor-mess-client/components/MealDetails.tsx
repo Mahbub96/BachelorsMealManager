@@ -9,7 +9,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from './ThemedText';
-import { ThemedView } from './ThemedView';
+import { useTheme } from '../context/ThemeContext';
 import { MealEntry } from '../services/mealService';
 import mealService from '../services/mealService';
 
@@ -28,6 +28,8 @@ export const MealDetails: React.FC<MealDetailsProps> = ({
   onDelete,
   isAdmin = false,
 }) => {
+  const { theme, isDark } = useTheme();
+
   const handleStatusUpdate = async (status: 'approved' | 'rejected') => {
     try {
       const response = await mealService.updateMealStatus(meal.id, { status });
@@ -61,13 +63,13 @@ export const MealDetails: React.FC<MealDetailsProps> = ({
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending':
-        return '#f59e0b';
+        return theme.status?.warning || theme.gradient?.warning?.[0] || '#f59e0b';
       case 'approved':
-        return '#10b981';
+        return theme.status?.success || theme.gradient?.success?.[0] || '#10b981';
       case 'rejected':
-        return '#ef4444';
+        return theme.status?.error || theme.gradient?.error?.[0] || '#ef4444';
       default:
-        return '#6b7280';
+        return theme.text.secondary || '#6b7280';
     }
   };
 
@@ -90,30 +92,83 @@ export const MealDetails: React.FC<MealDetailsProps> = ({
   if (meal.dinner) mealTypes.push('Dinner');
 
   return (
-    <ThemedView style={styles.container}>
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: theme.background || theme.surface || (isDark ? '#111827' : '#f8fafc'),
+        },
+      ]}
+    >
+      <ScrollView
+        style={[
+          styles.content,
+          {
+            backgroundColor: theme.background || theme.surface || (isDark ? '#111827' : '#f8fafc'),
+          },
+        ]}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          backgroundColor: 'transparent',
+        }}
+      >
         {/* Header */}
-        <View style={styles.header}>
+        <View
+          style={[
+            styles.header,
+            {
+              backgroundColor: theme.cardBackground || theme.surface || '#fff',
+              borderBottomColor: theme.border?.secondary || theme.border?.primary || '#e5e7eb',
+            },
+          ]}
+        >
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <Ionicons name='close' size={24} color='#6b7280' />
+            <Ionicons
+              name='close'
+              size={24}
+              color={theme.text.secondary || '#6b7280'}
+            />
           </TouchableOpacity>
-          <ThemedText style={styles.title}>Meal Details</ThemedText>
-          <View style={styles.placeholder} />
+          <ThemedText
+            style={[styles.title, { color: theme.text.primary || '#1f2937' }]}
+          >
+            Meal Details
+          </ThemedText>
+          <View style={styles.placeholder} />related issues 
         </View>
 
         {/* Meal Card */}
-        <View style={styles.mealCard}>
-          <LinearGradient
-            colors={['#fff', '#f8fafc']}
-            style={styles.mealCardGradient}
+        <View
+          style={[
+            styles.mealCard,
+            { shadowColor: theme.cardShadow || '#000' },
+          ]}
+        >
+          <View
+            style={[
+              styles.mealCardGradient,
+              {
+                backgroundColor: theme.cardBackground || theme.surface || '#fff',
+              },
+            ]}
           >
             {/* Date and Status */}
             <View style={styles.mealHeader}>
               <View style={styles.mealInfo}>
-                <ThemedText style={styles.mealDate}>
+                <ThemedText
+                  style={[
+                    styles.mealDate,
+                    { color: theme.text.primary || '#1f2937' },
+                  ]}
+                >
                   {mealService.formatMealDate(meal.date)}
                 </ThemedText>
-                <ThemedText style={styles.mealTime}>
+                <ThemedText
+                  style={[
+                    styles.mealTime,
+                    { color: theme.text.secondary || '#6b7280' },
+                  ]}
+                >
                   {new Date(meal.createdAt).toLocaleTimeString()}
                 </ThemedText>
               </View>
@@ -138,37 +193,64 @@ export const MealDetails: React.FC<MealDetailsProps> = ({
 
             {/* Meal Types */}
             <View style={styles.mealTypesSection}>
-              <ThemedText style={styles.sectionTitle}>
+              <ThemedText
+                style={[
+                  styles.sectionTitle,
+                  { color: theme.text.primary || '#1f2937' },
+                ]}
+              >
                 Meals Selected
               </ThemedText>
               <View style={styles.mealTypesContainer}>
                 {mealTypes.length > 0 ? (
-                  mealTypes.map((mealType, index) => (
-                    <View key={index} style={styles.mealTypeItem}>
-                      <Ionicons
-                        name={
-                          mealService.getMealIcon(
-                            mealType.toLowerCase() as
-                              | 'breakfast'
-                              | 'lunch'
-                              | 'dinner'
-                          ) as any
-                        }
-                        size={20}
-                        color={mealService.getMealColor(
-                          mealType.toLowerCase() as
-                            | 'breakfast'
-                            | 'lunch'
-                            | 'dinner'
-                        )}
-                      />
-                      <ThemedText style={styles.mealTypeText}>
-                        {mealType}
-                      </ThemedText>
-                    </View>
-                  ))
+                  mealTypes.map((mealType, index) => {
+                    const mealColor = mealService.getMealColor(
+                      mealType.toLowerCase() as
+                        | 'breakfast'
+                        | 'lunch'
+                        | 'dinner'
+                    );
+                    return (
+                      <View
+                        key={index}
+                        style={[
+                          styles.mealTypeItem,
+                          {
+                            backgroundColor:
+                              theme.surface || theme.cardBackground || '#f8fafc',
+                          },
+                        ]}
+                      >
+                        <Ionicons
+                          name={
+                            mealService.getMealIcon(
+                              mealType.toLowerCase() as
+                                | 'breakfast'
+                                | 'lunch'
+                                | 'dinner'
+                            ) as any
+                          }
+                          size={20}
+                          color={mealColor}
+                        />
+                        <ThemedText
+                          style={[
+                            styles.mealTypeText,
+                            { color: theme.text.primary || '#1f2937' },
+                          ]}
+                        >
+                          {mealType}
+                        </ThemedText>
+                      </View>
+                    );
+                  })
                 ) : (
-                  <ThemedText style={styles.noMealsText}>
+                  <ThemedText
+                    style={[
+                      styles.noMealsText,
+                      { color: theme.text.secondary || '#6b7280' },
+                    ]}
+                  >
                     No meals selected
                   </ThemedText>
                 )}
@@ -178,14 +260,36 @@ export const MealDetails: React.FC<MealDetailsProps> = ({
             {/* Notes */}
             {meal.notes && (
               <View style={styles.notesSection}>
-                <ThemedText style={styles.sectionTitle}>Notes</ThemedText>
-                <View style={styles.notesContainer}>
+                <ThemedText
+                  style={[
+                    styles.sectionTitle,
+                    { color: theme.text.primary || '#1f2937' },
+                  ]}
+                >
+                  Notes
+                </ThemedText>
+                <View
+                  style={[
+                    styles.notesContainer,
+                    {
+                      backgroundColor:
+                        theme.surface || theme.cardBackground || '#f8fafc',
+                    },
+                  ]}
+                >
                   <Ionicons
                     name='chatbubble-outline'
                     size={16}
-                    color='#6b7280'
+                    color={theme.text.secondary || '#6b7280'}
                   />
-                  <ThemedText style={styles.notesText}>{meal.notes}</ThemedText>
+                  <ThemedText
+                    style={[
+                      styles.notesText,
+                      { color: theme.text.secondary || '#6b7280' },
+                    ]}
+                  >
+                    {meal.notes}
+                  </ThemedText>
                 </View>
               </View>
             )}
@@ -193,12 +297,26 @@ export const MealDetails: React.FC<MealDetailsProps> = ({
             {/* Approval Info */}
             {meal.approvedBy && (
               <View style={styles.approvalSection}>
-                <ThemedText style={styles.sectionTitle}>
+                <ThemedText
+                  style={[
+                    styles.sectionTitle,
+                    { color: theme.text.primary || '#1f2937' },
+                  ]}
+                >
                   Approval Information
                 </ThemedText>
                 <View style={styles.approvalContainer}>
-                  <Ionicons name='person' size={16} color='#6b7280' />
-                  <ThemedText style={styles.approvalText}>
+                  <Ionicons
+                    name='person'
+                    size={16}
+                    color={theme.text.secondary || '#6b7280'}
+                  />
+                  <ThemedText
+                    style={[
+                      styles.approvalText,
+                      { color: theme.text.secondary || '#6b7280' },
+                    ]}
+                  >
                     Approved by:{' '}
                     {typeof meal.approvedBy === 'string'
                       ? meal.approvedBy
@@ -207,8 +325,17 @@ export const MealDetails: React.FC<MealDetailsProps> = ({
                 </View>
                 {meal.approvedAt && (
                   <View style={styles.approvalContainer}>
-                    <Ionicons name='time' size={16} color='#6b7280' />
-                    <ThemedText style={styles.approvalText}>
+                    <Ionicons
+                      name='time'
+                      size={16}
+                      color={theme.text.secondary || '#6b7280'}
+                    />
+                    <ThemedText
+                      style={[
+                        styles.approvalText,
+                        { color: theme.text.secondary || '#6b7280' },
+                      ]}
+                    >
                       Approved at: {new Date(meal.approvedAt).toLocaleString()}
                     </ThemedText>
                   </View>
@@ -218,15 +345,31 @@ export const MealDetails: React.FC<MealDetailsProps> = ({
 
             {/* Total Meals */}
             <View style={styles.totalSection}>
-              <ThemedText style={styles.sectionTitle}>Summary</ThemedText>
+              <ThemedText
+                style={[
+                  styles.sectionTitle,
+                  { color: theme.text.primary || '#1f2937' },
+                ]}
+              >
+                Summary
+              </ThemedText>
               <View style={styles.totalContainer}>
-                <Ionicons name='fast-food' size={20} color='#667eea' />
-                <ThemedText style={styles.totalText}>
+                <Ionicons
+                  name='fast-food'
+                  size={20}
+                  color={theme.primary || theme.gradient?.primary?.[0] || '#667eea'}
+                />
+                <ThemedText
+                  style={[
+                    styles.totalText,
+                    { color: theme.text.primary || '#1f2937' },
+                  ]}
+                >
                   Total Meals: {meal.totalMeals || mealTypes.length}
                 </ThemedText>
               </View>
             </View>
-          </LinearGradient>
+          </View>
         </View>
 
         {/* Action Buttons */}
@@ -234,51 +377,95 @@ export const MealDetails: React.FC<MealDetailsProps> = ({
           {isAdmin && meal.status === 'pending' && (
             <>
               <TouchableOpacity
-                style={[styles.actionButton, styles.approveButton]}
+                style={styles.actionButton}
                 onPress={() => handleStatusUpdate('approved')}
+                activeOpacity={0.8}
               >
-                <Ionicons name='checkmark' size={20} color='#fff' />
-                <ThemedText style={styles.actionButtonText}>Approve</ThemedText>
+                <LinearGradient
+                  colors={
+                    (theme.gradient?.success || ['#10b981', '#059669']) as [
+                      string,
+                      string
+                    ]
+                  }
+                  style={styles.actionButtonGradient}
+                >
+                  <Ionicons name='checkmark' size={20} color='#fff' />
+                  <ThemedText style={styles.actionButtonText}>Approve</ThemedText>
+                </LinearGradient>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.actionButton, styles.rejectButton]}
+                style={styles.actionButton}
                 onPress={() => handleStatusUpdate('rejected')}
+                activeOpacity={0.8}
               >
-                <Ionicons name='close' size={20} color='#fff' />
-                <ThemedText style={styles.actionButtonText}>Reject</ThemedText>
+                <LinearGradient
+                  colors={
+                    (theme.gradient?.error || ['#ef4444', '#dc2626']) as [
+                      string,
+                      string
+                    ]
+                  }
+                  style={styles.actionButtonGradient}
+                >
+                  <Ionicons name='close' size={20} color='#fff' />
+                  <ThemedText style={styles.actionButtonText}>Reject</ThemedText>
+                </LinearGradient>
               </TouchableOpacity>
             </>
           )}
 
           {onEdit && (
             <TouchableOpacity
-              style={[styles.actionButton, styles.editButton]}
+              style={styles.actionButton}
               onPress={onEdit}
+              activeOpacity={0.8}
             >
-              <Ionicons name='create' size={20} color='#fff' />
-              <ThemedText style={styles.actionButtonText}>Edit</ThemedText>
+              <LinearGradient
+                colors={
+                  (theme.gradient?.primary || ['#667eea', '#764ba2']) as [
+                    string,
+                    string
+                  ]
+                }
+                style={styles.actionButtonGradient}
+              >
+                <Ionicons name='create' size={20} color='#fff' />
+                <ThemedText style={styles.actionButtonText}>Edit</ThemedText>
+              </LinearGradient>
             </TouchableOpacity>
           )}
 
           {onDelete && (
             <TouchableOpacity
-              style={[styles.actionButton, styles.deleteButton]}
+              style={styles.actionButton}
               onPress={handleDelete}
+              activeOpacity={0.8}
             >
-              <Ionicons name='trash' size={20} color='#fff' />
-              <ThemedText style={styles.actionButtonText}>Delete</ThemedText>
+              <LinearGradient
+                colors={
+                  (theme.gradient?.error || ['#6b7280', '#4b5563']) as [
+                    string,
+                    string
+                  ]
+                }
+                style={styles.actionButtonGradient}
+              >
+                <Ionicons name='trash' size={20} color='#fff' />
+                <ThemedText style={styles.actionButtonText}>Delete</ThemedText>
+              </LinearGradient>
             </TouchableOpacity>
           )}
         </View>
       </ScrollView>
-    </ThemedView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    // backgroundColor will be set dynamically via theme
   },
   content: {
     flex: 1,
@@ -290,9 +477,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 20,
-    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
   },
   closeButton: {
     padding: 8,
@@ -300,7 +485,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1f2937',
   },
   placeholder: {
     width: 40,
@@ -309,7 +493,6 @@ const styles = StyleSheet.create({
     margin: 16,
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -330,12 +513,10 @@ const styles = StyleSheet.create({
   mealDate: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#1f2937',
     marginBottom: 4,
   },
   mealTime: {
     fontSize: 14,
-    color: '#6b7280',
   },
   statusContainer: {
     marginLeft: 12,
@@ -359,7 +540,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1f2937',
     marginBottom: 12,
   },
   mealTypesContainer: {
@@ -372,18 +552,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: '#f8fafc',
     borderRadius: 8,
     gap: 8,
   },
   mealTypeText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#1f2937',
   },
   noMealsText: {
     fontSize: 14,
-    color: '#6b7280',
     fontStyle: 'italic',
   },
   notesSection: {
@@ -393,13 +570,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     padding: 12,
-    backgroundColor: '#f8fafc',
     borderRadius: 8,
     gap: 8,
   },
   notesText: {
     fontSize: 14,
-    color: '#6b7280',
     flex: 1,
   },
   approvalSection: {
@@ -413,7 +588,6 @@ const styles = StyleSheet.create({
   },
   approvalText: {
     fontSize: 14,
-    color: '#6b7280',
   },
   totalSection: {
     marginBottom: 20,
@@ -427,7 +601,6 @@ const styles = StyleSheet.create({
   totalText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1f2937',
   },
   actionsContainer: {
     flexDirection: 'row',
@@ -437,25 +610,16 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  actionButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 12,
     gap: 8,
-  },
-  approveButton: {
-    backgroundColor: '#10b981',
-  },
-  rejectButton: {
-    backgroundColor: '#ef4444',
-  },
-  editButton: {
-    backgroundColor: '#667eea',
-  },
-  deleteButton: {
-    backgroundColor: '#6b7280',
   },
   actionButtonText: {
     fontSize: 14,

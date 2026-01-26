@@ -3,6 +3,7 @@ import { View, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '../ThemedText';
+import { useTheme } from '../../context/ThemeContext';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -27,8 +28,8 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
   title,
   description,
   icon,
-  iconColor = '#fff',
-  iconBackgroundColor = '#667eea',
+  iconColor,
+  iconBackgroundColor,
   timestamp,
   amount,
   status = 'info',
@@ -39,18 +40,23 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
   showAmount = true,
   showTimestamp = true,
 }) => {
+  const { theme } = useTheme();
+
   const getStatusColor = (status: string): string => {
     switch (status) {
       case 'success':
-        return '#10b981';
+        return theme.status?.success || theme.gradient?.success?.[0] || '#10b981';
       case 'warning':
-        return '#f59e0b';
+        return theme.status?.warning || theme.gradient?.warning?.[0] || '#f59e0b';
       case 'error':
-        return '#ef4444';
+        return theme.status?.error || theme.gradient?.error?.[0] || '#ef4444';
       default:
-        return '#667eea';
+        return theme.primary || theme.gradient?.primary?.[0] || '#667eea';
     }
   };
+
+  const defaultIconColor = iconColor || '#fff';
+  const defaultIconBg = iconBackgroundColor || theme.primary || theme.gradient?.primary?.[0] || '#667eea';
 
   const getStatusIcon = (status: string): string => {
     switch (status) {
@@ -85,6 +91,10 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
         styles.card,
         styles.compactCard,
         isSmallScreen && styles.compactCardSmall,
+        {
+          backgroundColor: theme.cardBackground || theme.surface || '#fff',
+          shadowColor: theme.cardShadow || '#000',
+        },
       ]}
       onPress={onPress}
       activeOpacity={onPress ? 0.7 : 1}
@@ -94,13 +104,13 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
           <View
             style={[
               styles.iconContainer,
-              { backgroundColor: iconBackgroundColor },
+              { backgroundColor: defaultIconBg },
             ]}
           >
             <Ionicons
               name={icon as any}
               size={isSmallScreen ? 16 : 18}
-              color={iconColor}
+              color={defaultIconColor}
             />
           </View>
         )}
@@ -109,6 +119,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
             style={[
               styles.compactTitle,
               isSmallScreen && styles.compactTitleSmall,
+              { color: theme.text.primary || '#1f2937' },
             ]}
           >
             {title}
@@ -118,6 +129,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
               style={[
                 styles.compactDescription,
                 isSmallScreen && styles.compactDescriptionSmall,
+                { color: theme.text.secondary || '#6b7280' },
               ]}
             >
               {description}
@@ -128,6 +140,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
               style={[
                 styles.compactTimestamp,
                 isSmallScreen && styles.compactTimestampSmall,
+                { color: theme.text.tertiary || '#9ca3af' },
               ]}
             >
               {formatTimestamp(timestamp)}
@@ -140,6 +153,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
               style={[
                 styles.amountText,
                 isSmallScreen && styles.amountTextSmall,
+                { color: theme.status?.success || theme.gradient?.success?.[0] || '#10b981' },
               ]}
             >
               {amount}
@@ -156,6 +170,10 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
         styles.card,
         styles.detailedCard,
         isSmallScreen && styles.detailedCardSmall,
+        {
+          backgroundColor: theme.cardBackground || theme.surface || '#fff',
+          shadowColor: theme.cardShadow || '#000',
+        },
       ]}
       onPress={onPress}
       activeOpacity={onPress ? 0.7 : 1}
@@ -166,13 +184,13 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
             <View
               style={[
                 styles.iconContainer,
-                { backgroundColor: iconBackgroundColor },
+                { backgroundColor: defaultIconBg },
               ]}
             >
               <Ionicons
                 name={icon as any}
                 size={isSmallScreen ? 20 : 24}
-                color={iconColor}
+                color={defaultIconColor}
               />
             </View>
           )}
@@ -181,6 +199,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
               style={[
                 styles.detailedTitle,
                 isSmallScreen && styles.detailedTitleSmall,
+                { color: theme.text.primary || '#1f2937' },
               ]}
             >
               {title}
@@ -190,6 +209,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
                 style={[
                   styles.detailedDescription,
                   isSmallScreen && styles.detailedDescriptionSmall,
+                  { color: theme.text.secondary || '#6b7280' },
                 ]}
               >
                 {description}
@@ -202,6 +222,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
                 style={[
                   styles.amountText,
                   isSmallScreen && styles.amountTextSmall,
+                  { color: theme.status?.success || theme.gradient?.success?.[0] || '#10b981' },
                 ]}
               >
                 {amount}
@@ -228,6 +249,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
               style={[
                 styles.detailedTimestamp,
                 isSmallScreen && styles.detailedTimestampSmall,
+                { color: theme.text.tertiary || '#9ca3af' },
               ]}
             >
               {formatTimestamp(timestamp)}
@@ -244,6 +266,10 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
         styles.card,
         styles.defaultCard,
         isSmallScreen && styles.defaultCardSmall,
+        {
+          backgroundColor: theme.cardBackground || theme.surface || '#fff',
+          shadowColor: theme.cardShadow || '#000',
+        },
       ]}
       onPress={onPress}
       activeOpacity={onPress ? 0.7 : 1}
@@ -254,13 +280,13 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
             <View
               style={[
                 styles.iconContainer,
-                { backgroundColor: iconBackgroundColor },
+                { backgroundColor: defaultIconBg },
               ]}
             >
               <Ionicons
                 name={icon as any}
                 size={isSmallScreen ? 20 : 24}
-                color={iconColor}
+                color={defaultIconColor}
               />
             </View>
           )}
@@ -269,6 +295,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
               style={[
                 styles.defaultTitle,
                 isSmallScreen && styles.defaultTitleSmall,
+                { color: theme.text.primary || '#1f2937' },
               ]}
             >
               {title}
@@ -278,6 +305,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
                 style={[
                   styles.defaultDescription,
                   isSmallScreen && styles.defaultDescriptionSmall,
+                  { color: theme.text.secondary || '#6b7280' },
                 ]}
               >
                 {description}
@@ -290,6 +318,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
                 style={[
                   styles.amountText,
                   isSmallScreen && styles.amountTextSmall,
+                  { color: theme.status?.success || theme.gradient?.success?.[0] || '#10b981' },
                 ]}
               >
                 {amount}
@@ -316,6 +345,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
               style={[
                 styles.defaultTimestamp,
                 isSmallScreen && styles.defaultTimestampSmall,
+                { color: theme.text.tertiary || '#9ca3af' },
               ]}
             >
               {formatTimestamp(timestamp)}
@@ -339,11 +369,9 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
 const styles = StyleSheet.create({
   // Base card styles
   card: {
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
     marginBottom: 8,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -368,7 +396,6 @@ const styles = StyleSheet.create({
   compactTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1f2937',
     marginBottom: 2,
   },
   compactTitleSmall: {
@@ -376,7 +403,6 @@ const styles = StyleSheet.create({
   },
   compactDescription: {
     fontSize: 12,
-    color: '#6b7280',
     lineHeight: 16,
   },
   compactDescriptionSmall: {
@@ -385,7 +411,6 @@ const styles = StyleSheet.create({
   },
   compactTimestamp: {
     fontSize: 10,
-    color: '#9ca3af',
     marginTop: 2,
   },
   compactTimestampSmall: {
@@ -417,7 +442,6 @@ const styles = StyleSheet.create({
   defaultTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1f2937',
     marginBottom: 4,
   },
   defaultTitleSmall: {
@@ -425,7 +449,6 @@ const styles = StyleSheet.create({
   },
   defaultDescription: {
     fontSize: 14,
-    color: '#6b7280',
     lineHeight: 18,
   },
   defaultDescriptionSmall: {
@@ -441,7 +464,6 @@ const styles = StyleSheet.create({
   },
   defaultTimestamp: {
     fontSize: 12,
-    color: '#9ca3af',
   },
   defaultTimestampSmall: {
     fontSize: 10,
@@ -469,7 +491,6 @@ const styles = StyleSheet.create({
   detailedTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1f2937',
     marginBottom: 4,
   },
   detailedTitleSmall: {
@@ -477,7 +498,6 @@ const styles = StyleSheet.create({
   },
   detailedDescription: {
     fontSize: 14,
-    color: '#6b7280',
     lineHeight: 18,
   },
   detailedDescriptionSmall: {
@@ -493,7 +513,6 @@ const styles = StyleSheet.create({
   },
   detailedTimestamp: {
     fontSize: 12,
-    color: '#9ca3af',
   },
   detailedTimestampSmall: {
     fontSize: 10,
@@ -517,7 +536,6 @@ const styles = StyleSheet.create({
   amountText: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#10b981',
   },
   amountTextSmall: {
     fontSize: 12,

@@ -191,7 +191,7 @@ const databaseLogger = (options = {}) => {
     };
     
     // Intercept findByIdAndUpdate method
-    mongoose.Model.findByIdAndUpdate = function(id, update, options) {
+    mongoose.Model.findByIdAndUpdate = function(id, update, mongooseOptions) {
       const startTime = Date.now();
       const model = this;
       
@@ -205,7 +205,7 @@ const databaseLogger = (options = {}) => {
           requestId: req.requestId,
           userId: req.user?.id || null,
           duration,
-          logData: options.logData === true,
+          logData: options?.logData === true,
         });
         
         return result;
@@ -226,7 +226,7 @@ const databaseLogger = (options = {}) => {
     };
     
     // Intercept findByIdAndDelete method
-    mongoose.Model.findByIdAndDelete = function(id, options) {
+    mongoose.Model.findByIdAndDelete = function(id, mongooseOptions) {
       const startTime = Date.now();
       const model = this;
       
@@ -239,7 +239,7 @@ const databaseLogger = (options = {}) => {
           requestId: req.requestId,
           userId: req.user?.id || null,
           duration,
-          logData: options.logData === true,
+          logData: options?.logData === true,
         });
         
         return result;

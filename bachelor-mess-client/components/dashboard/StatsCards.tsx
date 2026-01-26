@@ -23,6 +23,12 @@ export const StatsCards: React.FC<StatsCardsProps> = ({
     return `৳${amount.toLocaleString()}`;
   };
 
+  // Calculate meal rate: totalBazarAmount / totalMeals
+  const mealRate =
+    data?.stats?.totalMeals > 0 && data?.stats?.totalBazarAmount > 0
+      ? data.stats.totalBazarAmount / data.stats.totalMeals
+      : 0;
+
   const stats = [
     {
       title: 'Total Members',
@@ -42,11 +48,12 @@ export const StatsCards: React.FC<StatsCardsProps> = ({
       gradient: theme.gradient.warning,
     },
     {
-      title: 'Average Meals',
-      value: data?.stats?.averageMeals || 0,
-      unit: 'per day',
+      title: 'Meal Rate',
+      value: mealRate,
+      unit: 'per meal',
       color: theme.status.success,
-      icon: 'fast-food',
+      icon: 'calculator',
+      formatter: (val: number) => val > 0 ? `৳${val.toFixed(2)}` : 'N/A',
       gradient: theme.gradient.success,
     },
     {

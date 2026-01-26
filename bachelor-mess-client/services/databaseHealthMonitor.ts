@@ -132,6 +132,11 @@ class DatabaseHealthMonitor {
       }
 
       // Perform a simple query to test database health
+      // First check if database is available
+      if (!sqliteDatabase['db'] || typeof sqliteDatabase['db']?.getAllAsync !== 'function') {
+        throw new Error('Database connection is not available');
+      }
+      
       const testQuery = 'SELECT 1';
       const result = await sqliteDatabase.executeQuery(testQuery);
 

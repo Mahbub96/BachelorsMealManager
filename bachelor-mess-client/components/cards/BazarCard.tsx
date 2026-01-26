@@ -58,9 +58,23 @@ export const BazarCard: React.FC<BazarCardProps> = memo(
     // Validate bazar data
     if (!bazar || !bazar.id) {
       console.warn('⚠️ Invalid bazar data:', bazar);
+      const { theme } = useTheme();
       return (
-        <View style={styles.errorCard}>
-          <ThemedText style={styles.errorText}>Invalid bazar data</ThemedText>
+        <View
+          style={[
+            styles.errorCard,
+            {
+              backgroundColor:
+                (theme.status?.error || '#ef4444') + '20',
+              borderColor: theme.status?.error || '#ef4444',
+            },
+          ]}
+        >
+          <ThemedText
+            style={[styles.errorText, { color: theme.status?.error || '#dc2626' }]}
+          >
+            Invalid bazar data
+          </ThemedText>
         </View>
       );
     }
@@ -68,26 +82,30 @@ export const BazarCard: React.FC<BazarCardProps> = memo(
     const getStatusColor = (status: string) => {
       switch (status) {
         case 'approved':
-          return '#10b981';
+          return theme.status?.success || theme.gradient?.success?.[0] || '#10b981';
         case 'pending':
-          return '#f59e0b';
+          return theme.status?.warning || theme.gradient?.warning?.[0] || '#f59e0b';
         case 'rejected':
-          return '#ef4444';
+          return theme.status?.error || theme.gradient?.error?.[0] || '#ef4444';
         default:
-          return theme.text.tertiary;
+          return theme.text.tertiary || '#9ca3af';
       }
     };
 
     const getStatusBgColor = (status: string) => {
+      const successColor = theme.status?.success || theme.gradient?.success?.[0] || '#10b981';
+      const warningColor = theme.status?.warning || theme.gradient?.warning?.[0] || '#f59e0b';
+      const errorColor = theme.status?.error || theme.gradient?.error?.[0] || '#ef4444';
+      
       switch (status) {
         case 'approved':
-          return '#ecfdf5';
+          return successColor + '20';
         case 'pending':
-          return '#fef3c7';
+          return warningColor + '20';
         case 'rejected':
-          return '#fef2f2';
+          return errorColor + '20';
         default:
-          return theme.cardBackground;
+          return theme.cardBackground || theme.surface || '#f8fafc';
       }
     };
 
@@ -154,14 +172,13 @@ export const BazarCard: React.FC<BazarCardProps> = memo(
         onPress={() => onPress?.(bazar)}
         activeOpacity={0.8}
       >
-        <LinearGradient
-          colors={['#ffffff', '#fafafa']}
+        <View
           style={[
             styles.cardGradient,
             isCompact && styles.cardGradientCompact,
             {
-              backgroundColor: theme.cardBackground,
-              borderColor: theme.cardBorder,
+              backgroundColor: theme.cardBackground || theme.surface || '#fff',
+              borderColor: theme.cardBorder || theme.border?.secondary || '#e5e7eb',
             },
           ]}
         >
@@ -326,7 +343,7 @@ export const BazarCard: React.FC<BazarCardProps> = memo(
               </TouchableOpacity>
             </View>
           )}
-        </LinearGradient>
+        </View>
       </TouchableOpacity>
     );
   }
@@ -501,13 +518,10 @@ const styles = StyleSheet.create({
   errorCard: {
     padding: 16,
     borderRadius: 12,
-    backgroundColor: '#fef2f2',
     borderWidth: 1,
-    borderColor: '#fecaca',
   },
   errorText: {
     fontSize: 14,
-    color: '#dc2626',
     textAlign: 'center',
   },
 });

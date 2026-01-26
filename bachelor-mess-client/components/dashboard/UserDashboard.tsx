@@ -509,7 +509,7 @@ export const UserDashboard: React.FC = () => {
     return (
       <ThemedView style={styles.container}>
         <DashboardHeader
-          title='Your Dashboard'
+          title={user ? `Welcome back, ${user.name}` : 'Your Dashboard'}
           subtitle="Here's your personal overview"
           icon='person'
         />
@@ -530,7 +530,7 @@ export const UserDashboard: React.FC = () => {
     return (
       <ThemedView style={styles.container}>
         <DashboardHeader
-          title='Your Dashboard'
+          title={user ? `Welcome back, ${user.name}` : 'Your Dashboard'}
           subtitle="Here's your personal overview"
           icon='person'
         />
@@ -572,7 +572,7 @@ export const UserDashboard: React.FC = () => {
     return (
       <ThemedView style={styles.container}>
         <DashboardHeader
-          title='Your Dashboard'
+          title={user ? `Welcome back, ${user.name}` : 'Your Dashboard'}  
           subtitle="Here's your personal overview"
           icon='person'
         />
@@ -595,7 +595,7 @@ export const UserDashboard: React.FC = () => {
   return (
     <ThemedView style={styles.container}>
       <DashboardHeader
-        title='Your Dashboard'
+        title={user ? `Welcome back, ${user.name}` : 'Your Dashboard'}  
         subtitle="Here's your personal overview"
         icon='person'
         userGreeting={userGreeting}

@@ -14,25 +14,10 @@ router.post(
   mealController.submitMeals,
 );
 
-// @desc    Submit daily meals (alternative endpoint)
-// @route   POST /api/meals/submit
-// @access  Private
-router.post(
-  '/submit',
-  AuthMiddleware.protect(),
-  validateMealSubmission,
-  mealController.submitMeals
-);
-
 // @desc    Get user meals
 // @route   GET /api/meals
 // @access  Private
 router.get('/', AuthMiddleware.protect(), mealController.getUserMeals);
-
-// @desc    Get user meals (alternative endpoint)
-// @route   GET /api/meals/user
-// @access  Private
-router.get('/user', AuthMiddleware.protect(), mealController.getUserMeals);
 
 // @desc    Get all meals (admin only)
 // @route   GET /api/meals/all
@@ -84,15 +69,6 @@ router.get(
 // @access  Private
 router.get(
   '/stats/user',
-  AuthMiddleware.protect(),
-  mealController.getUserMealStats
-);
-
-// @desc    Get user meal statistics (alternative endpoint)
-// @route   GET /api/meals/user/stats
-// @access  Private
-router.get(
-  '/user/stats',
   AuthMiddleware.protect(),
   mealController.getUserMealStats
 );

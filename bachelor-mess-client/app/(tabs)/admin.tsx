@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 import { ThemedView } from '../../components/ThemedView';
 import { AdminDashboard } from '../../components/admin/AdminDashboard';
+import { ErrorBoundary } from '../../components/ErrorBoundary';
 import { useAuth } from '../../context/AuthContext';
 import { useThemeColor } from '@/hooks/useThemeColor';
 
@@ -11,14 +12,8 @@ export default function AdminScreen() {
   // Theme colors
   const textColor = useThemeColor({}, 'text');
 
-  const handleNavigate = (screen: string) => {
-    // Handle navigation to different admin screens
-    console.log('Navigate to:', screen);
-    // You can implement navigation logic here
-  };
-
   // Add access control for admin users only
-  if (!user || user.role !== 'admin') {
+  if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
     return (
       <ThemedView style={styles.container}>
         <View style={styles.errorContainer}>
@@ -31,9 +26,11 @@ export default function AdminScreen() {
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <AdminDashboard onNavigate={handleNavigate} />
-    </ThemedView>
+    <ErrorBoundary>
+      <ThemedView style={styles.container}>
+        <AdminDashboard />
+      </ThemedView>
+    </ErrorBoundary>
   );
 }
 

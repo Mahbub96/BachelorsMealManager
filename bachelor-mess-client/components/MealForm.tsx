@@ -247,13 +247,6 @@ export const MealForm: React.FC<MealFormProps> = ({
         limit: 1,
       });
 
-      console.log(
-        '🔍 Checking existing meal for date:',
-        formattedDate,
-        'Response:',
-        response
-      );
-
       if (
         response.success &&
         response.data &&
@@ -267,15 +260,12 @@ export const MealForm: React.FC<MealFormProps> = ({
             formattedDate
           ).toLocaleDateString()}. Submitting will update your existing entry.`
         );
-        console.log('⚠️ Found existing meal:', existingMeal);
       } else {
         setExistingMealId(null);
         setExistingMealWarning(null);
-        console.log('✅ No existing meal found for date:', formattedDate);
       }
     } catch (error) {
       // Silently fail - this is just a warning check
-      console.log('❌ Error checking existing meal:', error);
       setExistingMealId(null);
       setExistingMealWarning(null);
     }

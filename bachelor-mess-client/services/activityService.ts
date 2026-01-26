@@ -348,7 +348,7 @@ class ActivityService {
       console.log('📄 Fetching activity details...', { id });
 
       const response = await httpClient.get<Activity>(
-        `${API_ENDPOINTS.ACTIVITY.BY_ID}/${id}`,
+        API_ENDPOINTS.ACTIVITY.BY_ID(id),
         {
           cache: true,
           cacheKey: `activity_${id}`,
