@@ -27,11 +27,12 @@
         "resourceClass": "m-medium"
       },
       "android": {
-        "buildType": "app-bundle"
+        "buildType": "apk"
       },
       "env": {
         "EXPO_PUBLIC_ENV": "production",
-        "EXPO_PUBLIC_DEBUG_ENABLED": "false"
+        "EXPO_PUBLIC_DEBUG_ENABLED": "false",
+        "EXPO_PUBLIC_API_URL": "https://mess.mahbub.dev"
       }
     }
   },
