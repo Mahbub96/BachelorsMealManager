@@ -9,7 +9,12 @@ class Logger {
   private isDevelopment: boolean;
 
   constructor() {
-    this.isDevelopment = __DEV__ || process.env.NODE_ENV === 'development';
+    const debugDisabled = process.env.EXPO_PUBLIC_DEBUG_ENABLED === 'false';
+    const isProdEnv = process.env.EXPO_PUBLIC_ENV === 'production';
+    this.isDevelopment =
+      !debugDisabled &&
+      !isProdEnv &&
+      (__DEV__ || process.env.NODE_ENV === 'development');
   }
 
   /**
@@ -65,11 +70,13 @@ class Logger {
   }
 
   /**
-   * Log warning (always logged, but sanitized in production)
+   * Log warning (only in development to avoid GUI overlay in production)
    */
   warn(message: string, ...args: any[]): void {
-    const sanitizedArgs = args.map(arg => this.sanitize(arg));
-    console.warn(message, ...sanitizedArgs);
+    if (this.isDevelopment) {
+      const sanitizedArgs = args.map(arg => this.sanitize(arg));
+      console.warn(message, ...sanitizedArgs);
+    }
   }
 
   /**

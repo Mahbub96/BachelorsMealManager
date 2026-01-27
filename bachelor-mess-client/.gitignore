@@ -12,7 +12,8 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-package-lock.json
+# Keep package-lock.json committed so EAS Build has a lockfile (npm install is reproducible)
+# package-lock.json
 yarn.lock
 pnpm-lock.yaml
 

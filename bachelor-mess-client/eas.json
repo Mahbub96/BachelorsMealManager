@@ -1,6 +1,7 @@
 {
   "cli": {
-    "version": ">= 7.0.0"
+    "version": ">= 7.0.0",
+    "appVersionSource": "local"
   },
   "build": {
     "development": {
@@ -23,16 +24,25 @@
       }
     },
     "production": {
+      "node": "20.19.4",
       "ios": {
-        "resourceClass": "m-medium"
+        "resourceClass": "m-medium",
+        "image": "latest"
       },
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "image": "latest"
       },
       "env": {
+        "EXPO_PUBLIC_API_URL": "https://mess.mahbub.dev",
         "EXPO_PUBLIC_ENV": "production",
+        "EXPO_PUBLIC_DEV_MODE": "false",
         "EXPO_PUBLIC_DEBUG_ENABLED": "false",
-        "EXPO_PUBLIC_API_URL": "https://mess.mahbub.dev"
+        "EXPO_PUBLIC_ENABLE_DEBUG_MENU": "false",
+        "EXPO_PUBLIC_ENABLE_NETWORK_LOGGING": "false",
+        "EXPO_PUBLIC_ENABLE_API_LOGGING": "false",
+        "EXPO_PUBLIC_ENABLE_REACT_DEVTOOLS": "false",
+        "EXPO_PUBLIC_ENABLE_METRO_LOGGING": "false"
       }
     }
   },

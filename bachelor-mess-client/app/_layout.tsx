@@ -8,6 +8,7 @@ import { useEffect } from 'react';
 import { LogBox } from 'react-native';
 // import { useColorScheme } from 'react-native';
 
+// Suppress all debug/warning overlays in GUI (production + dev)
 LogBox.ignoreAllLogs(true);
 
 export {

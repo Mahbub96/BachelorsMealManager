@@ -76,7 +76,7 @@ export const UserDashboard: React.FC = () => {
 
       if (response.success && response.data) {
         // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'UserDashboard.tsx:87',message:'Setting dashboard data',data:{meals:response.data.meals,bazar:response.data.bazar,currentMealRate:response.data.currentMealRate,mealsTotal:response.data.meals?.total,bazarTotal:response.data.bazar?.totalAmount,fullData:JSON.stringify(response.data)},timestamp:Date.now(),sessionId:'debug-session',runId:'dashboard',hypothesisId:'C'})}).catch(()=>{});
+        __DEV__ && fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'UserDashboard.tsx:87',message:'Setting dashboard data',data:{meals:response.data.meals,bazar:response.data.bazar,currentMealRate:response.data.currentMealRate,mealsTotal:response.data.meals?.total,bazarTotal:response.data.bazar?.totalAmount,fullData:JSON.stringify(response.data)},timestamp:Date.now(),sessionId:'debug-session',runId:'dashboard',hypothesisId:'C'})}).catch(()=>{});
         // #endregion
         
         console.log('📊 Dashboard Data Received:', {
@@ -257,7 +257,7 @@ export const UserDashboard: React.FC = () => {
   });
   
   // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'UserDashboard.tsx:248',message:'Stats data analysis',data:{hasStats:!!stats,hasDashboardData:!!dashboardData,hasUserStats:!!userStats,statsBazar:stats?.bazar,statsMeals:stats?.meals,currentMealRate:stats?.currentMealRate,bazarTotalAmount:stats?.bazar?.totalAmount,mealsTotal:stats?.meals?.total,fullStats:JSON.stringify(stats)},timestamp:Date.now(),sessionId:'debug-session',runId:'dashboard',hypothesisId:'C'})}).catch(()=>{});
+  __DEV__ && fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'UserDashboard.tsx:248',message:'Stats data analysis',data:{hasStats:!!stats,hasDashboardData:!!dashboardData,hasUserStats:!!userStats,statsBazar:stats?.bazar,statsMeals:stats?.meals,currentMealRate:stats?.currentMealRate,bazarTotalAmount:stats?.bazar?.totalAmount,mealsTotal:stats?.meals?.total,fullStats:JSON.stringify(stats)},timestamp:Date.now(),sessionId:'debug-session',runId:'dashboard',hypothesisId:'C'})}).catch(()=>{});
   // #endregion
 
   // Prepare stats for StatsGrid - using real API data with click handlers

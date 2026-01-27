@@ -59,14 +59,14 @@ export default function NewBazarScreen() {
     console.log('✏️ NewBazar - Updating item:', { index, field, value });
     
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'new-bazar.tsx:54',message:'updateItem called',data:{index,field,value,currentItems:items},timestamp:Date.now(),sessionId:'debug-session',runId:'update-item',hypothesisId:'B'})}).catch(()=>{});
+    __DEV__ && fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'new-bazar.tsx:54',message:'updateItem called',data:{index,field,value,currentItems:items},timestamp:Date.now(),sessionId:'debug-session',runId:'update-item',hypothesisId:'B'})}).catch(()=>{});
     // #endregion
 
     setItems(prev => {
       const updated = prev.map((item, i) => (i === index ? { ...item, [field]: value } : item));
       
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'new-bazar.tsx:62',message:'Items state updated',data:{updatedItems:updated},timestamp:Date.now(),sessionId:'debug-session',runId:'update-item',hypothesisId:'B'})}).catch(()=>{});
+      __DEV__ && fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'new-bazar.tsx:62',message:'Items state updated',data:{updatedItems:updated},timestamp:Date.now(),sessionId:'debug-session',runId:'update-item',hypothesisId:'B'})}).catch(()=>{});
       // #endregion
       
       return updated;
@@ -135,13 +135,13 @@ export default function NewBazarScreen() {
     console.log('✅ NewBazar - Validating form');
 
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'new-bazar.tsx:123',message:'validateForm called',data:{itemsCount:items.length,items:items.map(i=>({name:i.name,quantity:i.quantity,price:i.price}))},timestamp:Date.now(),sessionId:'debug-session',runId:'validation',hypothesisId:'A'})}).catch(()=>{});
+    __DEV__ && fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'new-bazar.tsx:123',message:'validateForm called',data:{itemsCount:items.length,items:items.map(i=>({name:i.name,quantity:i.quantity,price:i.price}))},timestamp:Date.now(),sessionId:'debug-session',runId:'validation',hypothesisId:'A'})}).catch(()=>{});
     // #endregion
 
     const emptyItems = items.filter(item => !item.name.trim());
     
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'new-bazar.tsx:130',message:'Checking for empty items',data:{emptyItemsCount:emptyItems.length,emptyItems,allItems:items},timestamp:Date.now(),sessionId:'debug-session',runId:'validation',hypothesisId:'A'})}).catch(()=>{});
+    __DEV__ && fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'new-bazar.tsx:130',message:'Checking for empty items',data:{emptyItemsCount:emptyItems.length,emptyItems,allItems:items},timestamp:Date.now(),sessionId:'debug-session',runId:'validation',hypothesisId:'A'})}).catch(()=>{});
     // #endregion
 
     if (emptyItems.length > 0) {
@@ -172,7 +172,7 @@ export default function NewBazarScreen() {
     console.log('📝 NewBazar - Submitting bazar entry');
 
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'new-bazar.tsx:171',message:'handleSubmit called',data:{itemsCount:items.length,items:items.map(i=>({name:i.name,quantity:i.quantity,price:i.price})),date,description},timestamp:Date.now(),sessionId:'debug-session',runId:'submit',hypothesisId:'C'})}).catch(()=>{});
+    __DEV__ && fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'new-bazar.tsx:171',message:'handleSubmit called',data:{itemsCount:items.length,items:items.map(i=>({name:i.name,quantity:i.quantity,price:i.price})),date,description},timestamp:Date.now(),sessionId:'debug-session',runId:'submit',hypothesisId:'C'})}).catch(()=>{});
     // #endregion
 
     if (!validateForm()) {
@@ -191,7 +191,7 @@ export default function NewBazarScreen() {
       );
 
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'new-bazar.tsx:186',message:'Filtered items',data:{originalCount:items.length,validItemsCount:validItems.length,validItems},timestamp:Date.now(),sessionId:'debug-session',runId:'submit',hypothesisId:'C'})}).catch(()=>{});
+      __DEV__ && fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'new-bazar.tsx:186',message:'Filtered items',data:{originalCount:items.length,validItemsCount:validItems.length,validItems},timestamp:Date.now(),sessionId:'debug-session',runId:'submit',hypothesisId:'C'})}).catch(()=>{});
       // #endregion
 
       const bazarData = {

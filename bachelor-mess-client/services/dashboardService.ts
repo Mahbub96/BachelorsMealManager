@@ -322,7 +322,7 @@ class DashboardServiceImpl implements DashboardService {
     const cacheKey = `dashboard_combined_${JSON.stringify(filters)}`;
 
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboardService.ts:322',message:'getCombinedData called',data:{filters,baseURL:API_CONFIG.apiUrl,endpoint:API_ENDPOINTS.DASHBOARD.COMBINED},timestamp:Date.now(),sessionId:'debug-session',runId:'dashboard',hypothesisId:'A'})}).catch(()=>{});
+    __DEV__ && fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboardService.ts:322',message:'getCombinedData called',data:{filters,baseURL:API_CONFIG.apiUrl,endpoint:API_ENDPOINTS.DASHBOARD.COMBINED},timestamp:Date.now(),sessionId:'debug-session',runId:'dashboard',hypothesisId:'A'})}).catch(()=>{});
     // #endregion
 
     return offlineStorage
@@ -337,7 +337,7 @@ class DashboardServiceImpl implements DashboardService {
           const fullUrl = `${API_CONFIG.apiUrl}${endpoint}`;
 
           // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboardService.ts:335',message:'About to fetch combined data',data:{baseURL:API_CONFIG.apiUrl,endpoint,fullUrl},timestamp:Date.now(),sessionId:'debug-session',runId:'dashboard',hypothesisId:'A'})}).catch(()=>{});
+          __DEV__ && fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboardService.ts:335',message:'About to fetch combined data',data:{baseURL:API_CONFIG.apiUrl,endpoint,fullUrl},timestamp:Date.now(),sessionId:'debug-session',runId:'dashboard',hypothesisId:'A'})}).catch(()=>{});
           // #endregion
 
           const response = await httpClient.get(
@@ -345,7 +345,7 @@ class DashboardServiceImpl implements DashboardService {
           );
 
           // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboardService.ts:345',message:'Combined data response received',data:{success:response.success,hasData:!!response.data,error:response.error,dataKeys:response.data?Object.keys(response.data):[],stats:response.data?.stats,bazarAmount:response.data?.stats?.totalBazarAmount},timestamp:Date.now(),sessionId:'debug-session',runId:'dashboard',hypothesisId:'A'})}).catch(()=>{});
+          __DEV__ && fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboardService.ts:345',message:'Combined data response received',data:{success:response.success,hasData:!!response.data,error:response.error,dataKeys:response.data?Object.keys(response.data):[],stats:response.data?.stats,bazarAmount:response.data?.stats?.totalBazarAmount},timestamp:Date.now(),sessionId:'debug-session',runId:'dashboard',hypothesisId:'A'})}).catch(()=>{});
           // #endregion
 
           if (response.success && response.data) {
