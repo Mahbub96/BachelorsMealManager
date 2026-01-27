@@ -179,7 +179,7 @@ class UIConfigService {
 
   // Get active UI configuration
   async getActiveConfig(
-    appId: string = 'bachelor-mess-manager',
+    appId: string = 'bachelor-flat-manager',
     environment: string = 'development'
   ): Promise<UIConfig> {
     try {

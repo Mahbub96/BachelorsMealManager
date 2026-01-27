@@ -28,7 +28,7 @@ interface QuickActionsProps {
 export const QuickActions: React.FC<QuickActionsProps> = ({
   actions,
   title = 'Quick Actions',
-  subtitle = 'Manage your mess efficiently',
+  subtitle = 'Manage your flat efficiently',
   isSmallScreen = false,
   columns = 2,
 }) => {

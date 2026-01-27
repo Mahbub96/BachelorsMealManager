@@ -31,7 +31,7 @@ interface RecentActivityProps {
 export const RecentActivity: React.FC<RecentActivityProps> = ({
   activities,
   title = 'Recent Activity',
-  subtitle = 'Latest updates from your mess',
+  subtitle = 'Latest updates from your flat',
   showViewAll = true,
   onViewAll,
   isSmallScreen = false,

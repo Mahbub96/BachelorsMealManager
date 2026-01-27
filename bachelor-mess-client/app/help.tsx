@@ -12,7 +12,7 @@ export default function HelpScreen() {
       subtitle: "Learn how to use the app",
       icon: "play-circle",
       description:
-        "Basic guide to get you started with the mess management app.",
+        "Basic guide to get you started with the Bachelor Flat Manager app.",
     },
     {
       id: "meals",
@@ -49,7 +49,7 @@ export default function HelpScreen() {
     {
       id: "email",
       title: "Email Support",
-      subtitle: "support@bachelormess.com",
+      subtitle: "support@mahbub.dev",
       icon: "mail",
       action: "email",
     },

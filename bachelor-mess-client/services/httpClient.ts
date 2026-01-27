@@ -142,7 +142,7 @@ class HttpClient {
             method: 'GET',
             headers: {
               'Content-Type': 'application/json',
-              'User-Agent': 'MessManager/1.0',
+              'User-Agent': 'BachelorFlatManager/1.0',
             },
             signal: controller.signal,
           });

@@ -136,7 +136,7 @@ export default function SignupScreen() {
               Create Account
             </ThemedText>
             <ThemedText style={modernStyles.subtitle}>
-              Join our mess management community
+              Join our flat management community
             </ThemedText>
 
             <View style={modernStyles.inputWrapper}>

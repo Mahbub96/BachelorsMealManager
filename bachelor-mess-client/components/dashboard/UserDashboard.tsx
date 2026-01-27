@@ -587,7 +587,7 @@ export const UserDashboard: React.FC = () => {
         <QuickActions
           actions={quickActions}
           title='Quick Actions'
-          subtitle='Manage your mess efficiently'
+          subtitle='Manage your flat efficiently'
           columns={2}
           isSmallScreen={false}
         />
@@ -605,7 +605,7 @@ export const UserDashboard: React.FC = () => {
           <RecentActivity
             activities={recentActivities}
             title='Recent Activity'
-            subtitle='Latest updates from your mess'
+            subtitle='Latest updates from your flat'
             showViewAll={true}
             maxItems={3}
             isSmallScreen={false}

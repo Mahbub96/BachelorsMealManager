@@ -324,7 +324,7 @@ export const ApiDashboard: React.FC = () => {
         {/* Header Section */}
         <DashboardHeader
           title='Admin Dashboard'
-          subtitle='Manage your mess operations'
+          subtitle='Manage your flat operations'
           icon='analytics'
           colors={['#667eea', '#764ba2']}
         />

@@ -167,7 +167,7 @@ export const AuthAvatar: React.FC<AuthAvatarProps> = ({
     {
       id: 'admin-dashboard',
       title: 'Admin Dashboard',
-      subtitle: 'Manage mess operations',
+      subtitle: 'Manage flat operations',
       icon: 'shield-outline',
       color: '#ef4444',
       onPress: () => {

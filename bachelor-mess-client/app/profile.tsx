@@ -76,11 +76,11 @@ export default function ProfileScreen() {
     },
   ];
 
-  const messMenuItems = [
+  const flatMenuItems = [
     {
-      id: 'mess-info',
-      title: 'Mess Information',
-      subtitle: 'View mess details, rules, and policies',
+      id: 'flat-info',
+      title: 'Flat Information',
+      subtitle: 'View flat details, rules, and policies',
       icon: 'home',
       action: 'navigate',
       color: '#10b981',
@@ -112,7 +112,7 @@ export default function ProfileScreen() {
     {
       id: 'roommates',
       title: 'Roommate Directory',
-      subtitle: 'View and contact your mess mates',
+      subtitle: 'View and contact your flat mates',
       icon: 'people',
       action: 'navigate',
       color: '#ec4899',
@@ -358,10 +358,10 @@ export default function ProfileScreen() {
         case 'privacy':
           Alert.alert('Coming Soon', 'Privacy settings will be available soon');
           break;
-        case 'mess-info':
+        case 'flat-info':
           Alert.alert(
             'Coming Soon',
-            'Mess information screen will be available soon'
+            'Flat information screen will be available soon'
           );
           break;
         case 'payments':
@@ -420,8 +420,8 @@ export default function ProfileScreen() {
           break;
         case 'about':
           Alert.alert(
-            'About Bachelor Mess Manager',
-            'Version 1.0.0\n\nA comprehensive mess management solution for bachelor students.\n\nFeatures:\n• Meal Management\n• Expense Tracking\n• Payment History\n• Analytics & Reports\n• Roommate Directory\n• Budget Management'
+            'About Bachelor Flat Manager',
+            'Version 1.0.0\n\nA comprehensive flat management solution for bachelor students.\n\nFeatures:\n• Meal Management\n• Expense Tracking\n• Payment History\n• Analytics & Reports\n• Roommate Directory\n• Budget Management'
           );
           break;
       }
@@ -564,8 +564,8 @@ export default function ProfileScreen() {
           {/* Account Section */}
           {renderMenuSection('Account Management', accountMenuItems)}
 
-          {/* Mess Management Section */}
-          {renderMenuSection('Mess Management', messMenuItems)}
+          {/* Flat Management Section */}
+          {renderMenuSection('Flat Management', flatMenuItems)}
 
           {/* Analytics Section */}
           {renderMenuSection('Analytics & Reports', analyticsMenuItems)}
@@ -600,7 +600,7 @@ export default function ProfileScreen() {
 
           <View style={styles.footer}>
             <ThemedText style={styles.footerText}>
-              Bachelor Mess Manager v1.0.0
+              Bachelor Flat Manager v1.0.0
             </ThemedText>
             <ThemedText style={styles.footerSubtext}>
               Built with ❤️ for bachelor students

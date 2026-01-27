@@ -1,5 +1,5 @@
 /**
- * Comprehensive Theme System for Mess Manager Application
+ * Comprehensive Theme System for Bachelor Flat Manager
  *
  * This theme system covers all possible UI cases including:
  * - Light and Dark modes

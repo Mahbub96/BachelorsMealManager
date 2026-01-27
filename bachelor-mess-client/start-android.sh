@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Bachelor Mess Client - Android Quick Start Script
-echo "🚀 Starting Bachelor Mess Client for Android..."
+# Bachelor Flat Manager - Android Quick Start Script
+echo "🚀 Starting Bachelor Flat Manager for Android..."
 
 # Set Java environment
 export JAVA_HOME=/opt/homebrew/Cellar/openjdk@17/17.0.16/libexec/openjdk.jdk/Contents/Home

@@ -234,7 +234,7 @@ export default function SettingsScreen() {
       subtitle: 'Version 1.0.0',
       icon: 'information-circle',
       type: 'navigate',
-      onPress: () => Alert.alert('About', 'Bachelor Mess Manager v1.0.0'),
+      onPress: () => Alert.alert('About', 'Bachelor Flat Manager v1.0.0'),
     },
     {
       id: 'reset',

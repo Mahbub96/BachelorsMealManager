@@ -47,7 +47,7 @@ export default function NotificationsScreen() {
       <View style={styles.header}>
         <ThemedText style={styles.title}>Notifications</ThemedText>
         <ThemedText style={styles.subtitle}>
-          Stay updated with mess activities
+          Stay updated with flat activities
         </ThemedText>
       </View>
 

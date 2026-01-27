@@ -1,4 +1,4 @@
-// Design System for Mess Manager Application
+// Design System for Bachelor Flat Manager
 // This file contains all design tokens and utilities for consistent styling
 
 export const COLORS = {
