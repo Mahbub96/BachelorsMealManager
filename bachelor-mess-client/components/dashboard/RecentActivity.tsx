@@ -1,5 +1,6 @@
 import { useTheme } from '@/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
+import type { IconName } from '@/constants/IconTypes';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React from 'react';
@@ -105,7 +106,7 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
                 style={styles.activityIconGradient}
               >
                 <Ionicons
-                  name={activity.icon as any}
+                  name={activity.icon as IconName}
                   size={isSmallScreen ? 14 : 16}
                   color={theme.text.inverse}
                 />

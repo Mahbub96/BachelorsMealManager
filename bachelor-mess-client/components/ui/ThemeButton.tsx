@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { TouchableOpacity, StyleSheet, ActivityIndicator, type StyleProp, type ViewStyle, type TextStyle } from 'react-native';
 import { ThemedText } from '../ThemedText';
 import { useTheme } from '@/context/ThemeContext';
 
@@ -10,8 +10,8 @@ interface ThemeButtonProps {
   size?: 'small' | 'medium' | 'large';
   loading?: boolean;
   disabled?: boolean;
-  style?: any;
-  textStyle?: any;
+  style?: StyleProp<ViewStyle>;
+  textStyle?: StyleProp<TextStyle>;
 }
 
 export const ThemeButton: React.FC<ThemeButtonProps> = ({

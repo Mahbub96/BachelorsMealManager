@@ -31,6 +31,15 @@ allprojects {
     mavenCentral()
     maven { url 'https://www.jitpack.io' }
   }
+  // Suppress Java/Kotlin deprecation warnings from dependencies (expo-dev-launcher, expo)
+  afterEvaluate { p ->
+    p.tasks.withType(JavaCompile).configureEach {
+      options.compilerArgs << "-Xlint:-deprecation"
+    }
+    p.tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+      kotlinOptions { freeCompilerArgs += "-Xsuppress-deprecation-warnings" }
+    }
+  }
 }
 
 apply plugin: "expo-root-project"

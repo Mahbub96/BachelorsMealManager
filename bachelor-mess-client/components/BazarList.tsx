@@ -7,22 +7,16 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
-  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { ThemedText } from './ThemedText';
-import { ThemedView } from './ThemedView';
 import { BazarCard } from './cards/BazarCard';
 import bazarService, {
   BazarEntry,
   BazarFilters,
 } from '../services/bazarService';
-import { useAuth } from '../context/AuthContext';
-import { optimizeList, bazarOptimizations } from '../utils/performance';
-
-const { width: screenWidth } = Dimensions.get('window');
+import { bazarOptimizations } from '../utils/performance';
 
 interface BazarListProps {
   filters?: BazarFilters;
@@ -75,20 +69,8 @@ export const BazarList: React.FC<BazarListProps> = ({
     displayError,
   });
 
-  const isSmallScreen = screenWidth < 375;
-
   // Memoize filters to prevent infinite loops
-  const memoizedFilters = useMemo(
-    () => filters,
-    [
-      filters.startDate,
-      filters.endDate,
-      filters.status,
-      filters.userId,
-      filters.limit,
-      filters.page,
-    ]
-  );
+  const memoizedFilters = useMemo(() => filters, [filters]);
 
   // Memoize the data array to prevent unnecessary re-renders
   const memoizedData = useMemo(
@@ -97,52 +79,9 @@ export const BazarList: React.FC<BazarListProps> = ({
   );
 
   // Use optimized key extractor
-  const keyExtractor = useCallback(bazarOptimizations.keyExtractor, []);
-
-  // Memoize render item function to prevent unnecessary re-renders
-  const renderBazarItem = useCallback(
-    ({ item: bazar }: { item: BazarEntry }) => {
-      try {
-        // Validate bazar data
-        if (!bazar || !bazar.id) {
-          return (
-            <View style={styles.errorCard}>
-              <ThemedText style={styles.errorText}>
-                Invalid bazar item
-              </ThemedText>
-            </View>
-          );
-        }
-
-        return (
-          <BazarCard
-            bazar={{
-              id: bazar.id,
-              items: bazar.items || [],
-              totalAmount: bazar.totalAmount || 0,
-              date: bazar.date || new Date().toISOString(),
-              status: bazar.status || 'pending',
-              userId: bazar.userId || 'Unknown',
-              description: bazar.description || '',
-            }}
-            onPress={handleBazarPress}
-            onStatusUpdate={handleStatusUpdate}
-            onDelete={handleDelete}
-            showActions={isAdmin}
-            isAdmin={isAdmin}
-          />
-        );
-      } catch (error) {
-        return (
-          <View style={styles.errorCard}>
-            <ThemedText style={styles.errorText}>
-              Failed to load bazar item
-            </ThemedText>
-          </View>
-        );
-      }
-    },
-    [isAdmin]
+  const keyExtractor = useCallback(
+    (item: BazarEntry) => bazarOptimizations.keyExtractor(item),
+    []
   );
 
   const loadBazarEntries = useCallback(
@@ -165,26 +104,19 @@ export const BazarList: React.FC<BazarListProps> = ({
         });
 
         if (response.success && response.data) {
-          let entries: any[] = response.data as any[];
-
-          // Handle nested response structure from backend
-          if (
-            response.data &&
-            typeof response.data === 'object' &&
-            'bazarEntries' in response.data
-          ) {
-            entries = response.data.bazarEntries as any[];
-          } else if (Array.isArray(response.data)) {
-            entries = response.data;
-          }
-
-          // Ensure entries is an array
-          if (!Array.isArray(entries)) {
+          let entries: BazarEntry[];
+          const data = response.data as BazarEntry[] | { bazarEntries?: BazarEntry[] };
+          if (typeof data === 'object' && data !== null && 'bazarEntries' in data && !Array.isArray(data)) {
+            entries = Array.isArray(data.bazarEntries) ? data.bazarEntries : [];
+          } else if (Array.isArray(data)) {
+            entries = data;
+          } else {
             entries = [];
           }
 
-          // Transform _id to id for each entry
-          const transformedEntries = entries.map(entry => ({
+          // Transform _id to id for each entry (API may return _id)
+          type EntryWithId = BazarEntry & { _id?: string };
+          const transformedEntries = (entries as EntryWithId[]).map(entry => ({
             ...entry,
             id: entry._id || entry.id,
           }));
@@ -198,11 +130,11 @@ export const BazarList: React.FC<BazarListProps> = ({
             response.error
           );
         }
-      } catch (error) {
+      } catch (err) {
         const errorMessage =
-          error instanceof Error ? error.message : 'Unknown error';
+          err instanceof Error ? err.message : 'Unknown error';
         setError(errorMessage);
-        console.error('❌ BazarList - Error loading entries:', error);
+        console.error('❌ BazarList - Error loading entries:', err);
       } finally {
         setLoading(false);
       }
@@ -312,6 +244,52 @@ export const BazarList: React.FC<BazarListProps> = ({
       );
     },
     [loadBazarEntries, onDelete]
+  );
+
+  // Memoize render item function to prevent unnecessary re-renders
+  const renderBazarItem = useCallback(
+    ({ item: bazar }: { item: BazarEntry }) => {
+      try {
+        // Validate bazar data
+        if (!bazar || !bazar.id) {
+          return (
+            <View style={styles.errorCard}>
+              <ThemedText style={styles.errorText}>
+                Invalid bazar item
+              </ThemedText>
+            </View>
+          );
+        }
+
+        return (
+          <BazarCard
+            bazar={{
+              id: bazar.id,
+              items: bazar.items || [],
+              totalAmount: bazar.totalAmount || 0,
+              date: bazar.date || new Date().toISOString(),
+              status: bazar.status || 'pending',
+              userId: bazar.userId || 'Unknown',
+              description: bazar.description || '',
+            }}
+            onPress={handleBazarPress}
+            onStatusUpdate={handleStatusUpdate}
+            onDelete={handleDelete}
+            showActions={isAdmin}
+            isAdmin={isAdmin}
+          />
+        );
+      } catch {
+        return (
+          <View style={styles.errorCard}>
+            <ThemedText style={styles.errorText}>
+              Failed to load bazar item
+            </ThemedText>
+          </View>
+        );
+      }
+    },
+    [isAdmin, handleBazarPress, handleStatusUpdate, handleDelete]
   );
 
   const handleRefresh = useCallback(async () => {

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import type { IconName } from '@/constants/IconTypes';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '../ThemedText';
 import { useTheme } from '../../context/ThemeContext';
@@ -68,14 +69,14 @@ export const BazarAddButton: React.FC<BazarAddButtonProps> = ({
           colors={theme.gradient.primary as [string, string]}
           style={styles.addButtonGradient}
         >
-          <Ionicons name={icon as any} size={24} color={getIconColor()} />
+          <Ionicons name={icon as IconName} size={24} color={getIconColor()} />
           <ThemedText style={[styles.addButtonText, { color: getTextColor() }]}>
             {title}
           </ThemedText>
         </LinearGradient>
       ) : (
         <View style={styles.buttonContent}>
-          <Ionicons name={icon as any} size={24} color={getIconColor()} />
+          <Ionicons name={icon as IconName} size={24} color={getIconColor()} />
           <ThemedText style={[styles.addButtonText, { color: getTextColor() }]}>
             {title}
           </ThemedText>

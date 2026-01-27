@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ThemedView } from '../ThemedView';
 import { useAuth } from '../../context/AuthContext';
@@ -10,9 +10,8 @@ import { BazarStatistics } from './BazarStatistics';
 import { BazarListSection } from './BazarListSection';
 import { BazarFilters } from './BazarFilters';
 import { BazarSearchBar } from './BazarSearchBar';
-import { BazarEmptyState } from './BazarEmptyState';
-import { BazarLoadingState } from './BazarLoadingState';
 import { BazarErrorState } from './BazarErrorState';
+import type { BazarEntry, BazarFilters as BazarFiltersType } from '../../services/bazarService';
 
 interface BazarManagementProps {
   showFilters?: boolean;
@@ -21,11 +20,11 @@ interface BazarManagementProps {
   showAddButton?: boolean;
   title?: string;
   subtitle?: string;
-  onBazarPress?: (bazar: any) => void;
+  onBazarPress?: (bazar: BazarEntry) => void;
   onShowAllPress?: () => void;
   onAddPress?: () => void;
-  customFilters?: any;
-  customBazarEntries?: any[];
+  customFilters?: BazarFiltersType;
+  customBazarEntries?: BazarEntry[];
   customLoading?: boolean;
   customError?: string | null;
 }
@@ -73,7 +72,7 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
     }
   };
 
-  const handleBazarPress = (bazar: any) => {
+  const handleBazarPress = (bazar: BazarEntry) => {
     console.log('🎯 Bazar pressed:', bazar);
     onBazarPress?.(bazar);
   };
@@ -83,7 +82,7 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
     refreshData();
   };
 
-  const handleFilterChange = (newFilters: any) => {
+  const handleFilterChange = (newFilters: BazarFiltersType) => {
     updateFilters(newFilters);
     console.log('🔍 Filters changed:', newFilters);
   };

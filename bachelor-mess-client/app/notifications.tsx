@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Ionicons } from '@expo/vector-icons';
+import type { IconName } from '@/constants/IconTypes';
 import { StyleSheet, View } from 'react-native';
 
 export default function NotificationsScreen() {
@@ -55,7 +56,7 @@ export default function NotificationsScreen() {
           <View key={notification.id} style={styles.notificationItem}>
             <View style={styles.iconContainer}>
               <Ionicons
-                name={getIcon(notification.type) as any}
+                name={getIcon(notification.type) as IconName}
                 size={24}
                 color='#667eea'
               />

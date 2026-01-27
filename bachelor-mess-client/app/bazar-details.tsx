@@ -9,17 +9,15 @@ import {
   Modal,
   TextInput,
   FlatList,
-  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import type { IconName } from '@/constants/IconTypes';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import bazarService, { BazarEntry, BazarItem } from '@/services/bazarService';
 import { useAuth } from '@/context/AuthContext';
-
-const { width: screenWidth } = Dimensions.get('window');
 
 export default function BazarDetailsScreen() {
   const params = useLocalSearchParams();
@@ -38,6 +36,7 @@ export default function BazarDetailsScreen() {
     if (bazarId) {
       loadBazarDetails();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load when bazarId changes
   }, [bazarId]);
 
   const loadBazarDetails = async () => {
@@ -417,7 +416,7 @@ export default function BazarDetailsScreen() {
         >
           <View style={styles.statusHeader}>
             <Ionicons
-              name={getStatusIcon(bazar.status) as any}
+              name={getStatusIcon(bazar.status) as IconName}
               size={28}
               color={getStatusColor(bazar.status)}
             />

@@ -4,9 +4,9 @@ import {
   StyleSheet,
   ActivityIndicator,
   TouchableOpacity,
-  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import type { IconName } from '@/constants/IconTypes';
 import { ThemedText } from '../ThemedText';
 import { useTheme } from '../../context/ThemeContext';
 import { useBazar } from '../../context/BazarContext';
@@ -27,8 +27,6 @@ interface BazarStatisticsProps {
   onPress?: () => void;
   compact?: boolean; // New prop for compact mode
 }
-
-const { width } = Dimensions.get('window');
 
 export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
   stats,
@@ -54,16 +52,17 @@ export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
     if (!entriesToUse || entriesToUse.length === 0) return null;
 
     try {
-      const totalAmount = entriesToUse.reduce(
-        (sum: number, entry: any) => sum + (Number(entry.totalAmount) || 0),
+      type Entry = { totalAmount?: number; status?: string };
+      const totalAmount = (entriesToUse as Entry[]).reduce(
+        (sum: number, entry: Entry) => sum + (Number(entry.totalAmount) || 0),
         0
       );
       const totalEntries = entriesToUse.length;
-      const pendingEntries = entriesToUse.filter(
-        (entry: any) => entry.status === 'pending'
+      const pendingEntries = (entriesToUse as Entry[]).filter(
+        (entry: Entry) => entry.status === 'pending'
       ).length;
-      const approvedEntries = entriesToUse.filter(
-        (entry: any) => entry.status === 'approved'
+      const approvedEntries = (entriesToUse as Entry[]).filter(
+        (entry: Entry) => entry.status === 'approved'
       ).length;
       const averageAmount = totalEntries > 0 ? totalAmount / totalEntries : 0;
 
@@ -74,8 +73,8 @@ export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
         approvedAmount: approvedEntries,
         averageAmount,
       };
-    } catch (error) {
-      console.error('💥 Error calculating fallback stats:', error);
+    } catch (err) {
+      console.error('💥 Error calculating fallback stats:', err);
       return null;
     }
   };
@@ -272,7 +271,7 @@ export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
                 >
                   <View style={styles.compactStatIcon}>
                     <Ionicons
-                      name={item.icon as any}
+                      name={item.icon as IconName}
                       size={16}
                       color={item.color}
                     />
@@ -352,7 +351,7 @@ export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
                 >
                   <View style={styles.statIconContainer}>
                     <Ionicons
-                      name={item.icon as any}
+                      name={item.icon as IconName}
                       size={20}
                       color={item.color}
                     />
@@ -397,7 +396,7 @@ export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
                 >
                   <View style={styles.statIconContainer}>
                     <Ionicons
-                      name={item.icon as any}
+                      name={item.icon as IconName}
                       size={20}
                       color={item.color}
                     />

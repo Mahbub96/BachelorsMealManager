@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/context/AuthContext';
 
 interface LogoutButtonProps {
-  style?: any;
+  style?: Record<string, unknown>;
 }
 
 export const LogoutButton: React.FC<LogoutButtonProps> = ({ style }) => {

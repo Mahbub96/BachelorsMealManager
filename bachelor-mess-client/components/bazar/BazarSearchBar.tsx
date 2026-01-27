@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { ThemedText } from '../ThemedText';
 import { useTheme } from '../../context/ThemeContext';
 
 interface BazarSearchBarProps {

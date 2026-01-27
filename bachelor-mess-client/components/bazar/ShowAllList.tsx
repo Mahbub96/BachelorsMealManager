@@ -18,7 +18,7 @@ interface ShowAllListProps<T> {
   onRefresh?: () => void;
 }
 
-export const ShowAllList = <T extends any>({
+export const ShowAllList = <T extends unknown>({
   title,
   items,
   renderItem,
@@ -97,7 +97,7 @@ export const ShowAllList = <T extends any>({
           </ThemedText>
         </View>
         <View style={styles.errorContainer}>
-          <ThemedText style={[styles.errorText, { color: theme.text.error }]}>
+          <ThemedText style={[styles.errorText, { color: theme.status?.error ?? theme.text.primary }]}>
             {error}
           </ThemedText>
         </View>

@@ -2,6 +2,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { ProfileCard } from '@/components/ProfileCard';
 import { Ionicons } from '@expo/vector-icons';
+import type { IconName } from '@/constants/IconTypes';
 import {
   Pressable,
   StyleSheet,
@@ -17,15 +18,14 @@ import { useState, useCallback, useEffect } from 'react';
 import { useUsers } from '@/hooks/useUsers';
 import { useMeals } from '@/hooks/useMeals';
 import { useBazar } from '@/hooks/useBazar';
-import { LinearGradient } from 'expo-linear-gradient';
 import authService from '@/services/authService';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const router = useRouter();
-  const { getProfile, loading: profileLoading } = useUsers();
-  const { getMealStats, getUserMeals } = useMeals();
-  const { getBazarStats } = useBazar();
+  const { getProfile } = useUsers();
+  useMeals();
+  useBazar();
 
   const [refreshing, setRefreshing] = useState(false);
   const [userStats, setUserStats] = useState({
@@ -38,7 +38,7 @@ export default function ProfileScreen() {
     averageDailyMeals: 0,
     averageBazarAmount: 0,
   });
-  const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const [recentActivity, setRecentActivity] = useState<{ icon?: string; action?: string; date?: string; id?: string; type?: string; title?: string }[]>([]);
   const [showAdvancedStats, setShowAdvancedStats] = useState(false);
 
   const accountMenuItems = [
@@ -216,7 +216,7 @@ export default function ProfileScreen() {
         const statsData = await userStatsResponse.json();
         
         if (statsData.success && statsData.data) {
-          const { meals, bazar, payments, overview } = statsData.data;
+          const { meals, bazar, payments } = statsData.data;
           
           // Calculate real statistics from API data
           const realStats = {
@@ -312,18 +312,18 @@ export default function ProfileScreen() {
   }, [loadUserData]);
 
   useEffect(() => {
-    // Only load on initial mount, not on every loadUserData change
     const initialLoad = async () => {
       try {
         await loadUserData();
-      } catch (error) {
-        console.error('Error loading user data:', error);
+      } catch (err) {
+        console.error('Error loading user data:', err);
       }
     };
     initialLoad();
-  }, []); // Empty dependency array to run only once
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once on mount
+  }, []);
 
-  const handleMenuPress = (item: any) => {
+  const handleMenuPress = (item: { id?: string; action?: string; path?: string }) => {
     if (item.action === 'logout') {
       Alert.alert('Logout', 'Are you sure you want to logout?', [
         {
@@ -428,7 +428,7 @@ export default function ProfileScreen() {
     }
   };
 
-  const renderMenuSection = (title: string, items: any[]) => (
+  const renderMenuSection = (title: string, items: { id: string; title: string; subtitle?: string; icon: string; action?: string; path?: string; color?: string }[]) => (
     <View style={styles.menuSection}>
       <ThemedText style={styles.sectionTitle}>{title}</ThemedText>
       {items.map(item => (
@@ -441,7 +441,7 @@ export default function ProfileScreen() {
             <View
               style={[styles.menuIcon, { backgroundColor: item.color + '20' }]}
             >
-              <Ionicons name={item.icon as any} size={20} color={item.color} />
+              <Ionicons name={item.icon as IconName} size={20} color={item.color} />
             </View>
             <View style={styles.menuContent}>
               <ThemedText style={styles.menuTitle}>{item.title}</ThemedText>
@@ -515,7 +515,7 @@ export default function ProfileScreen() {
       {recentActivity.map((activity, index) => (
         <View key={index} style={styles.activityItem}>
           <View style={styles.activityIcon}>
-            <Ionicons name={activity.icon as any} size={16} color='#667eea' />
+            <Ionicons name={activity.icon as IconName} size={16} color='#667eea' />
           </View>
           <View style={styles.activityContent}>
             <ThemedText style={styles.activityText}>

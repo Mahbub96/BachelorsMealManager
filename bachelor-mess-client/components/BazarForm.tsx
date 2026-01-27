@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
   Alert,
@@ -14,19 +13,18 @@ import {
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import type { IconName } from '@/constants/IconTypes';
 import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import { ThemedText } from './ThemedText';
-import { ThemedView } from './ThemedView';
 import bazarService, {
   BazarSubmission,
   BazarItem,
 } from '../services/bazarService';
-import { useAuth } from '../context/AuthContext';
 import { useColorScheme } from '../hooks/useColorScheme';
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+const { width: screenWidth } = Dimensions.get('window');
 
 interface BazarFormProps {
   onSuccess?: () => void;
@@ -41,8 +39,8 @@ export const BazarForm: React.FC<BazarFormProps> = ({
   initialDate,
   showCancel = true,
 }) => {
-  const { user } = useAuth();
-  const colorScheme = useColorScheme();
+  useAuth();
+  useColorScheme();
   const [loading, setLoading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(
@@ -258,7 +256,7 @@ export const BazarForm: React.FC<BazarFormProps> = ({
     setFormData(prev => ({ ...prev, receiptImage: undefined }));
   };
 
-  const handleDateChange = (event: any, date?: Date) => {
+  const handleDateChange = (_event: unknown, date?: Date) => {
     if (Platform.OS === 'android') {
       setShowDatePicker(false);
     }
@@ -420,7 +418,7 @@ export const BazarForm: React.FC<BazarFormProps> = ({
               <View style={styles.itemHeader}>
                 <View style={styles.itemIcon}>
                   <Ionicons
-                    name={getItemIcon(index) as any}
+                    name={getItemIcon(index) as IconName}
                     size={isSmallScreen ? 16 : 20}
                     color={getItemColor(index)}
                   />

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import type { IconName } from '@/constants/IconTypes';
 import { ThemedText } from '../ThemedText';
 
 interface MealHeaderProps {
@@ -23,7 +24,7 @@ export const MealHeader: React.FC<MealHeaderProps> = ({
         <ThemedText style={styles.headerTitle}>{title}</ThemedText>
         <ThemedText style={styles.headerSubtitle}>{subtitle}</ThemedText>
       </View>
-      <Ionicons name={icon as any} size={32} color='#fff' />
+      <Ionicons name={icon as IconName} size={32} color='#fff' />
     </LinearGradient>
   );
 };

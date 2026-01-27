@@ -8,9 +8,8 @@ import { DetailPageTemplate } from "@/components/DetailPageTemplate";
 import { ThemedText } from "@/components/ThemedText";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
-import { Dimensions, StyleSheet, TouchableOpacity, View } from "react-native";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
 
-const { width: screenWidth } = Dimensions.get("window");
 
 
 
@@ -98,23 +97,23 @@ export default function BarDetailsPage() {
     { key: "year", label: "Year" },
   ];
 
-  const handleCardPress = (type: string, data: any) => {
+  const handleCardPress = (type: string, data: Record<string, unknown>) => {
     switch (type) {
       case "performance":
         router.push({
-          pathname: "/bar-details" as any,
+          pathname: "/bar-details",
           params: { type: "performance", data: JSON.stringify(data) },
         });
         break;
       case "competitor":
         router.push({
-          pathname: "/bar-details" as any,
-          params: { competitor: data.name, value: data.value.toString() },
+          pathname: "/bar-details",
+          params: { competitor: (data.name as string), value: (data.value as number).toString() },
         });
         break;
       case "market":
         router.push({
-          pathname: "/bar-details" as any,
+          pathname: "/bar-details",
           params: {
             industryGrowth: comparisonData.yearOverYear.toString(),
             marketSize: comparisonData.industryAverage.toString(),
@@ -123,11 +122,11 @@ export default function BarDetailsPage() {
         break;
       case "forecast":
         router.push({
-          pathname: "/bar-details" as any,
+          pathname: "/bar-details",
           params: {
-            current: data.value.toString(),
-            forecast: data.forecast.toString(),
-            trend: data.trend,
+            current: (data.value as number).toString(),
+            forecast: (data.forecast as number).toString(),
+            trend: data.trend as string,
           },
         });
         break;
@@ -349,7 +348,7 @@ export default function BarDetailsPage() {
           color: "#e5e7eb",
         }))}
         onPress={() =>
-          handleCardPress("competitor", comparisonData.competitors)
+          handleCardPress("competitor", { competitors: comparisonData.competitors })
         }
       />
 

@@ -1,5 +1,6 @@
 import { useTheme } from '@/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
+import type { IconName } from '@/constants/IconTypes';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { Dimensions, StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -56,7 +57,7 @@ export const StatsGrid: React.FC<StatsGridProps> = ({
           <LinearGradient colors={stat.colors} style={styles.statGradient}>
             <View style={styles.statHeader}>
               <Ionicons
-                name={stat.icon as any}
+                name={stat.icon as IconName}
                 size={isSmallScreen ? 20 : 24}
                 color={theme.text.inverse}
               />

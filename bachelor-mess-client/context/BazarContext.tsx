@@ -1,14 +1,14 @@
 import React, {
   createContext,
-  useContext,
-  useState,
-  useEffect,
-  useCallback,
   ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
 } from 'react';
-import { useAuth } from './AuthContext';
-import userStatsService from '../services/userStatsService';
 import bazarService from '../services/bazarService';
+import userStatsService from '../services/userStatsService';
+import { useAuth } from './AuthContext';
 
 interface BazarStats {
   totalAmount: number;
@@ -47,7 +47,7 @@ interface BazarEntry {
         id: string;
       };
   date: string;
-  items: Array<{ name: string; quantity: string; price: number }>;
+  items: { name: string; quantity: string; price: number }[];
   totalAmount: number;
   description?: string;
   receiptImage?: string;
@@ -128,18 +128,15 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
 
       if (response.success && response.data) {
         console.log('✅ Bazar stats loaded successfully:', response.data);
+        const data = response.data as Record<string, unknown>;
         console.log('🔍 Raw API response structure:', {
-          keys: Object.keys(response.data),
-          values: response.data,
-          types: Object.keys(response.data).map(key => ({
-            key,
-            type: typeof (response.data as any)[key],
-            value: (response.data as any)[key],
-          })),
+          keys: Object.keys(data),
+          values: data,
+          types: Object.keys(data).map(key => ({ key, type: typeof data[key], value: data[key] })),
         });
 
         // Transform backend data to match our interface with better error handling
-        const backendStats = response.data as any;
+        const backendStats = data as Partial<BackendBazarStats & { pendingAmount?: number; approvedAmount?: number }>;
 
         // Validate and transform the data with fallbacks
         const transformedStats: BazarStats = {
@@ -181,7 +178,7 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
       console.log('🛒 Loading bazar entries...');
 
       // Convert UI filters to API filters
-      const apiFilters: any = {};
+      const apiFilters: Record<string, string> = {};
 
       if (filters.status && filters.status !== 'all') {
         apiFilters.status = filters.status;
@@ -219,19 +216,13 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
         console.log('✅ Bazar entries loaded successfully:', response.data);
 
         // Handle nested response structure from backend
-        let entries: any[] = [];
-        if (
-          response.data &&
-          typeof response.data === 'object' &&
-          'bazarEntries' in response.data
-        ) {
-          entries = response.data.bazarEntries as any[];
-        } else if (Array.isArray(response.data)) {
-          entries = response.data;
-        }
+        type BazarResponse = BazarEntry[] | { bazarEntries: BazarEntry[] };
+        const data = response.data as BazarResponse;
+        let entries: BazarEntry[] = Array.isArray(data) ? data : (data && 'bazarEntries' in data ? (data.bazarEntries ?? []) : []);
 
-        // Transform _id to id for each entry
-        const transformedEntries = entries.map(entry => ({
+        // Transform _id to id for each entry (API may return _id)
+        type EntryWithId = BazarEntry & { _id?: string };
+        const transformedEntries = (entries as EntryWithId[]).map((entry) => ({
           ...entry,
           id: entry._id || entry.id,
         }));

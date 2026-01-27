@@ -2,13 +2,13 @@ import React from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import type { IconName } from '@/constants/IconTypes';
 import { ThemedText } from '../ThemedText';
-import { MealStats } from './MealStats';
 import { MealEntry } from '../../services/mealService';
 
 interface MealAnalyticsProps {
   meals: MealEntry[];
-  mealStats: any;
+  mealStats: Record<string, unknown>;
   userRole: 'admin' | 'member' | 'super_admin';
 }
 
@@ -60,7 +60,7 @@ export const MealAnalytics: React.FC<MealAnalyticsProps> = ({
   ) => (
     <View style={styles.statCard}>
       <LinearGradient colors={colors} style={styles.statGradient}>
-        <Ionicons name={icon as any} size={24} color='#fff' />
+        <Ionicons name={icon as IconName} size={24} color='#fff' />
         <ThemedText style={styles.statValue}>{value}</ThemedText>
         <ThemedText style={styles.statTitle}>{title}</ThemedText>
         {subtitle && (

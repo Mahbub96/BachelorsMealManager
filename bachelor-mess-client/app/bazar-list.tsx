@@ -12,7 +12,6 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ThemedView } from '../components/ThemedView';
 import { ThemedText } from '../components/ThemedText';
 import { BazarCard } from '../components/cards/BazarCard';
 import { BazarFilters } from '../components/bazar/BazarFilters';
@@ -23,9 +22,9 @@ import { useBazar } from '../context/BazarContext';
 import { useTheme } from '../context/ThemeContext';
 import { BazarEntry } from '../services/bazarService';
 
-interface BazarListScreenProps {}
+type BazarListScreenProps = Record<string, never>;
 
-export default function BazarListScreen({}: BazarListScreenProps) {
+export default function BazarListScreen(_props: BazarListScreenProps) {
   const router = useRouter();
   const { theme } = useTheme();
   const { user } = useAuth();
@@ -34,7 +33,6 @@ export default function BazarListScreen({}: BazarListScreenProps) {
     bazarStats,
     filters,
     searchQuery,
-    loadingEntries,
     loadingStats,
     entriesError,
     statsError,
@@ -51,8 +49,8 @@ export default function BazarListScreen({}: BazarListScreenProps) {
   const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
 
   useEffect(() => {
-    // Load data when component mounts
     refreshData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once on mount
   }, []);
 
   const handleRefresh = async () => {
@@ -102,7 +100,7 @@ export default function BazarListScreen({}: BazarListScreenProps) {
     );
   };
 
-  const handleFilterChange = (newFilters: any) => {
+  const handleFilterChange = (newFilters: Record<string, unknown>) => {
     updateFilters(newFilters);
     console.log('🔍 Filters changed:', newFilters);
   };

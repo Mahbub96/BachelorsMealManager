@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import type { IconName } from '@/constants/IconTypes';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '../ThemedText';
 
@@ -49,7 +50,7 @@ export const ActionCard: React.FC<ActionCardProps> = ({
         <View style={styles.compactContent}>
           <View style={styles.iconContainer}>
             <Ionicons
-              name={icon as any}
+              name={icon as IconName}
               size={isSmallScreen ? 32 : 36}
               color={iconColor}
             />
@@ -98,7 +99,7 @@ export const ActionCard: React.FC<ActionCardProps> = ({
         <View style={styles.detailedHeader}>
           <View style={styles.iconContainer}>
             <Ionicons
-              name={icon as any}
+              name={icon as IconName}
               size={isSmallScreen ? 28 : 32}
               color={iconColor}
             />
@@ -150,7 +151,7 @@ export const ActionCard: React.FC<ActionCardProps> = ({
         <View style={styles.defaultHeader}>
           <View style={styles.iconContainer}>
             <Ionicons
-              name={icon as any}
+              name={icon as IconName}
               size={isSmallScreen ? 28 : 32}
               color={iconColor}
             />

@@ -4,16 +4,11 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  Dimensions,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
   View,
 } from "react-native";
-
-const { width: screenWidth } = Dimensions.get("window");
-
-
 
 export default function PieDetailsPage() {
   const router = useRouter();

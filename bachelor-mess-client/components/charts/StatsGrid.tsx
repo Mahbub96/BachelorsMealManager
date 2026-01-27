@@ -1,20 +1,19 @@
 import React from 'react';
-import { View, Pressable, StyleSheet, Dimensions } from 'react-native';
+import { View, Pressable, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import type { IconName } from '@/constants/IconTypes';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '../ThemedText';
 import { useTheme } from '@/context/ThemeContext';
 import { BaseChart, BaseChartProps } from './BaseChart';
-
-const { width: screenWidth } = Dimensions.get('window');
 
 export interface StatItem {
   title: string;
   value: string;
   icon: string;
   gradient: readonly [string, string];
-  details?: any;
+  details?: Record<string, unknown>;
 }
 
 export interface StatsGridProps extends Omit<BaseChartProps, 'children'> {
@@ -67,7 +66,7 @@ export const StatsGrid: React.FC<StatsGridProps> = ({
         <View style={styles.cardContent}>
           <View style={styles.iconContainer}>
             <Ionicons
-              name={stat.icon as any}
+              name={stat.icon as IconName}
               size={24}
               color={theme.text.inverse}
             />

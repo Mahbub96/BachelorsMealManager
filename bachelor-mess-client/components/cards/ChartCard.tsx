@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import type { IconName } from '@/constants/IconTypes';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '../ThemedText';
 
@@ -56,7 +57,7 @@ export const ChartCard: React.FC<ChartCardProps> = ({
           <View style={styles.compactHeader}>
             {showIcon && icon && (
               <Ionicons
-                name={icon as any}
+                name={icon as IconName}
                 size={isSmallScreen ? 16 : 18}
                 color={iconColor}
               />
@@ -130,7 +131,7 @@ export const ChartCard: React.FC<ChartCardProps> = ({
               {showIcon && icon && (
                 <View style={styles.iconContainer}>
                   <Ionicons
-                    name={icon as any}
+                    name={icon as IconName}
                     size={isSmallScreen ? 20 : 24}
                     color={iconColor}
                   />
@@ -206,7 +207,7 @@ export const ChartCard: React.FC<ChartCardProps> = ({
               {showIcon && icon && (
                 <View style={styles.iconContainer}>
                   <Ionicons
-                    name={icon as any}
+                    name={icon as IconName}
                     size={isSmallScreen ? 20 : 24}
                     color={iconColor}
                   />

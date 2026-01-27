@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import type { IconName } from '@/constants/IconTypes';
 import { ThemedText } from '../ThemedText';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -21,7 +22,7 @@ export const MealEmptyState: React.FC<MealEmptyStateProps> = ({
     <View style={[styles.container, { backgroundColor: theme.background || '#ffffff' }]}>
       <View style={[styles.iconContainer, { backgroundColor: theme.surface || '#f8fafc' }]}>
         <Ionicons
-          name={icon as any}
+          name={icon as IconName}
           size={64}
           color={theme.text.tertiary || '#9ca3af'}
         />
@@ -42,6 +43,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 32,
+  },
+  iconContainer: {
+    padding: 24,
+    borderRadius: 48,
+    marginBottom: 16,
   },
   title: {
     fontSize: 20,

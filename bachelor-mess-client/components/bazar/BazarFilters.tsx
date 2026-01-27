@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import type { IconName } from '@/constants/IconTypes';
 import { ThemedText } from '../ThemedText';
 import { useTheme } from '../../context/ThemeContext';
 
+type BazarFiltersState = {
+  status?: 'all' | 'pending' | 'approved' | 'rejected';
+  dateRange?: 'all' | 'today' | 'week' | 'month';
+  sortBy?: 'date' | 'amount' | 'status';
+};
+
 interface BazarFiltersProps {
-  filters: {
-    status?: 'all' | 'pending' | 'approved' | 'rejected';
-    dateRange?: 'all' | 'today' | 'week' | 'month';
-    sortBy?: 'date' | 'amount' | 'status';
-  };
-  onFilterChange: (filters: any) => void;
+  filters: BazarFiltersState;
+  onFilterChange: (filters: BazarFiltersState) => void;
   showFilters?: boolean;
   onToggleFilters?: () => void;
 }
@@ -51,7 +54,7 @@ export const BazarFilters: React.FC<BazarFiltersProps> = ({
   };
 
   const renderFilterChip = (
-    options: Array<{ key: string; label: string; icon: string }>,
+    options: { key: string; label: string; icon: string }[],
     currentValue: string,
     type: string
   ) => (
@@ -73,7 +76,7 @@ export const BazarFilters: React.FC<BazarFiltersProps> = ({
           activeOpacity={0.7}
         >
           <Ionicons
-            name={option.icon as any}
+            name={option.icon as IconName}
             size={14}
             color={
               currentValue === option.key

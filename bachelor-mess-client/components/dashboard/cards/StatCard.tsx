@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import type { IconName } from '@/constants/IconTypes';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '../../ThemedText';
 import { useTheme } from '@/context/ThemeContext';
@@ -67,7 +68,7 @@ export const StatCard: React.FC<StatCardProps> = ({
         <View style={styles.content}>
           <View style={styles.iconContainer}>
             <Ionicons
-              name={icon as any}
+              name={icon as IconName}
               size={compact ? 20 : 24}
               color={theme.text.inverse}
             />
@@ -90,7 +91,7 @@ export const StatCard: React.FC<StatCardProps> = ({
           {trend && (
             <View style={styles.trendContainer}>
               <Ionicons
-                name={getTrendIcon(trend) as any}
+                name={getTrendIcon(trend) as IconName}
                 size={compact ? 12 : 16}
                 color={getTrendColor(trend)}
               />

@@ -1,8 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import logger from '../utils/logger';
 import authEventEmitter from './authEventEmitter';
 import { config as API_CONFIG, ApiResponse, HTTP_STATUS } from './config';
 import { offlineStorage } from './offlineStorage';
-import logger from '../utils/logger';
 
 // Request configuration interface
 interface RequestConfig {
@@ -305,8 +305,11 @@ class HttpClient {
             await this.handleAuthError();
             throw new Error('Session expired. Please login again.');
           }
-          // For auth endpoints, return the actual error message from backend
-          throw new Error(errorMessage || 'Invalid email or password.');
+          // For auth endpoints, return failure instead of throwing so we don't log as ERROR
+          return {
+            success: false,
+            error: errorMessage || 'Invalid email or password.',
+          } as ApiResponse<T>;
         case HTTP_STATUS.FORBIDDEN:
           throw new Error('Access denied. Insufficient permissions.');
         case HTTP_STATUS.NOT_FOUND:
@@ -332,22 +335,24 @@ class HttpClient {
     }
 
     const text = await response.text();
-    return { success: true, data: text as any };
+    return { success: true, data: text } as ApiResponse<T>;
   }
 
   // Enhanced error handling
-  private handleResponseError(error: any): ApiResponse<any> {
-    logger.error('HTTP Client Error:', error);
+  private handleResponseError(error: unknown): ApiResponse<never> {
+    const err = error as { name?: string; message?: string; response?: { status?: number; data?: { message?: string } }; code?: string };
+    const msg = error instanceof Error ? error.message : (err?.message ?? 'Unknown error');
+    logger.error('HTTP Client Error:', msg);
 
-    if (error.name === 'AbortError') {
+    if (err?.name === 'AbortError') {
       return {
         success: false,
         error: 'Request timeout. Please check your connection and try again.',
       };
     }
 
-    if (error.response) {
-      const { status, data } = error.response;
+    if (err?.response) {
+      const { status, data } = err.response;
 
       switch (status) {
         case 401:
@@ -380,7 +385,7 @@ class HttpClient {
       }
     }
 
-    if (error.code === 'NETWORK_ERROR') {
+    if (err?.code === 'NETWORK_ERROR') {
       return {
         success: false,
         error: 'Network error. Please check your internet connection.',
@@ -389,7 +394,7 @@ class HttpClient {
 
     return {
       success: false,
-      error: error.message || 'An unexpected error occurred.',
+      error: msg,
     };
   }
 
@@ -557,19 +562,17 @@ class HttpClient {
 
   async post<T>(
     endpoint: string,
-    data?: any,
+    data?: unknown,
     config: Omit<RequestConfig, 'method' | 'body'> = {}
   ): Promise<ApiResponse<T>> {
-    // Log incoming data
-    console.log('📤 HTTP Client POST - Incoming data:', JSON.stringify(data, null, 2));
-    console.log('📤 HTTP Client POST - Incoming data (object):', data);
-    
+    // Do not log request body here — it may contain password/tokens; request() uses logger.apiRequest with sanitized body
     // Remove userId/user_id from data if present (for meal submissions)
     // Backend should use authenticated user ID from JWT token
     let cleanData = data;
     if (data && typeof data === 'object' && !Array.isArray(data)) {
-      const { userId, user_id, ...rest } = data;
-      if (userId || user_id) {
+      const obj = data as Record<string, unknown>;
+      const { userId, user_id, ...rest } = obj;
+      if (userId !== undefined || user_id !== undefined) {
         cleanData = rest;
       }
     }
@@ -644,7 +647,7 @@ class HttpClient {
         uri: file.uri,
         type: file.type,
         name: file.name,
-      } as any);
+      } as unknown as Blob);
 
       // Add additional data
       if (additionalData) {

@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, StyleSheet, Alert, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Alert, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedView } from '../ThemedView';
@@ -209,7 +209,7 @@ export const EnhancedMealManagement: React.FC<EnhancedMealManagementProps> = ({
                 }
                 setSelectedMeals([]);
                 await refreshMeals();
-              } catch (error) {
+              } catch {
                 Alert.alert('Error', `Failed to ${actionText} meals`);
               }
             },
@@ -221,9 +221,10 @@ export const EnhancedMealManagement: React.FC<EnhancedMealManagementProps> = ({
   );
 
   const handleEnhancedMealPress = useCallback((meal: MealEntry) => {
+    handleMealPress(meal);
     setSelectedMeal(meal);
     setShowMealDetails(true);
-  }, []);
+  }, [handleMealPress]);
 
   const handleTabPress = useCallback(
     (tab: string) => {
@@ -382,16 +383,19 @@ export const EnhancedMealManagement: React.FC<EnhancedMealManagementProps> = ({
         pendingCount={pendingMealsCount}
       />
 
-      {currentView === 'analytics' ? (
+      {currentView === 'analytics' && canViewAnalytics ? (
         <MealAnalytics
           meals={meals}
-          mealStats={mealStats}
+          mealStats={(mealStats ?? {}) as Record<string, unknown>}
           userRole={role as 'admin' | 'member' | 'super_admin'}
         />
       ) : (
         <>
+          {!hasMeals && !loading && (
+            <ThemedText style={{ padding: 16, textAlign: 'center' }}>No meals yet. Add your first meal!</ThemedText>
+          )}
           {/* Pending Meals Summary Banner */}
-          {filters.status === 'pending' && pendingMealsCount > 0 && (
+          {filters.status === 'pending' && pendingMealsCount > 0 && canApproveMeals && (
             <PendingMealsBanner
               count={pendingMealsCount}
               onApproveAll={() => {
@@ -415,23 +419,25 @@ export const EnhancedMealManagement: React.FC<EnhancedMealManagementProps> = ({
             onDateRangeChange={handleDateRangeChange}
           />
 
+          {canBulkOperate && (
           <MealBulkActions
             selectedCount={selectedMeals.length}
             onApprove={() => handleBulkAction('approve')}
             onReject={() => handleBulkAction('reject')}
             onDelete={() => handleBulkAction('delete')}
           />
+          )}
 
           <MealList
             meals={filteredMeals}
             selectedMeals={selectedMeals}
             onMealPress={handleEnhancedMealPress}
             onMealSelect={handleMealSelection}
-            onStatusUpdate={handleStatusUpdate}
-            onEdit={handleEditMeal}
-            onDelete={handleDeleteMeal}
-            isAdmin={true}
-            showUserInfo={true}
+            onStatusUpdate={canApproveMeals ? handleStatusUpdate : undefined}
+            onEdit={canDeleteMeals ? handleEditMeal : undefined}
+            onDelete={canDeleteMeals ? handleDeleteMeal : undefined}
+            isAdmin={isAdmin}
+            showUserInfo={canViewAllMeals}
             refreshing={refreshing}
             onRefresh={refreshMeals}
             filters={filters}
@@ -441,21 +447,24 @@ export const EnhancedMealManagement: React.FC<EnhancedMealManagementProps> = ({
     </View>
   );
 
-  // Main render based on role
-  const renderInterface = () => {
-    switch (role) {
-      case 'super_admin':
-      case 'admin':
-        return renderAdminInterface();
-      case 'member':
-      default:
-        return renderMemberInterface();
-    }
-  };
+  if (loading) {
+    return (
+      <ThemedView style={styles.mainContainer}>
+        <ActivityIndicator size="large" style={{ flex: 1, justifyContent: 'center' }} />
+      </ThemedView>
+    );
+  }
+  if (error) {
+    return (
+      <ThemedView style={styles.mainContainer}>
+        <ThemedText style={{ padding: 16, color: theme?.status?.error }}>{error}</ThemedText>
+      </ThemedView>
+    );
+  }
 
   return (
     <ThemedView style={styles.mainContainer}>
-      {renderInterface()}
+      {isAdmin ? renderAdminInterface() : renderMemberInterface()}
 
       <MealModal
         visible={showAddMealModal}

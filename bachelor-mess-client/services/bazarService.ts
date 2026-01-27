@@ -276,15 +276,16 @@ class BazarServiceImpl implements BazarService {
           'bazarEntries' in response.data
         ) {
           console.log('🔄 Bazar Service - Handling nested response structure');
-          bazarEntries = (response.data as any).bazarEntries;
+          bazarEntries = (response.data as { bazarEntries?: BazarEntry[] }).bazarEntries ?? [];
         }
 
         // Ensure we have an array and transform _id to id for each entry
+        type RawEntry = Partial<BazarEntry> & { _id?: string };
         const transformedEntries = Array.isArray(bazarEntries)
-          ? bazarEntries.map(
-              (entry: any): BazarEntry => ({
+          ? (bazarEntries as RawEntry[]).map(
+              (entry: RawEntry): BazarEntry => ({
                 ...entry,
-                id: entry._id || entry.id,
+                id: (entry._id ?? entry.id) ?? '',
                 // Ensure all required fields exist
                 items: entry.items || [],
                 totalAmount: entry.totalAmount || 0,
@@ -349,17 +350,18 @@ class BazarServiceImpl implements BazarService {
           typeof response.data === 'object' &&
           'bazarEntries' in response.data
         ) {
-          bazarEntries = (response.data as any).bazarEntries || [];
+          bazarEntries = (response.data as { bazarEntries?: BazarEntry[] }).bazarEntries || [];
         } else {
           // Fallback: treat response.data as array directly
           bazarEntries = Array.isArray(response.data) ? response.data : [];
         }
 
         // Transform entries to ensure proper structure
+        type RawEntry = Partial<BazarEntry> & { _id?: string };
         const transformedEntries = bazarEntries.map(
-          (entry: any): BazarEntry => ({
+          (entry: RawEntry): BazarEntry => ({
             ...entry,
-            id: entry._id || entry.id,
+            id: (entry._id ?? entry.id) ?? '',
             items: entry.items || [],
             totalAmount: entry.totalAmount || 0,
             date: entry.date || new Date().toISOString(),
@@ -371,13 +373,10 @@ class BazarServiceImpl implements BazarService {
           })
         );
 
-        return {
-          ...response,
-          data: transformedEntries,
-        } as ApiResponse<BazarEntry[]>;
+        return { ...response, data: transformedEntries };
       }
 
-      return response;
+      return { success: response.success, data: undefined, error: response.error };
     } catch (error) {
       return {
         success: false,
@@ -643,8 +642,9 @@ class BazarServiceImpl implements BazarService {
         const bazarEntries = response.data.bazarEntries || response.data;
 
         // Transform _id to id for each entry
+        type RawEntry = Partial<BazarEntry> & { _id?: string };
         const transformedEntries = Array.isArray(bazarEntries)
-          ? bazarEntries.map((entry: any) => ({
+          ? (bazarEntries as RawEntry[]).map((entry: RawEntry) => ({
               ...entry,
               id: entry._id || entry.id,
             }))

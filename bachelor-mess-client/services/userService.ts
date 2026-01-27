@@ -87,20 +87,18 @@ class UserServiceImpl implements UserService {
 
       // Backend returns { users, pagination }, extract users array
       if (response.success && response.data) {
-        const data = response.data as any;
-        let users: any[] = [];
-        
-        // Handle different response structures
+        type UsersResponse = { users?: User[] } | User[];
+        const data = response.data as UsersResponse;
+        let users: User[] = [];
         if (Array.isArray(data)) {
-          // Direct array response
           users = data;
-        } else if (data.users && Array.isArray(data.users)) {
-          // Nested { users: [...], pagination: {...} } format
+        } else if (data && 'users' in data && Array.isArray(data.users)) {
           users = data.users;
         }
 
         // Transform _id to id for each user (MongoDB returns _id)
-        const transformedUsers = users.map((user: any) => ({
+        type RawUser = User & { _id?: string };
+        const transformedUsers = users.map((user: RawUser) => ({
           ...user,
           id: user._id || user.id,
         }));
@@ -113,7 +111,7 @@ class UserServiceImpl implements UserService {
         console.error('UserService - getAllUsers failed:', response.error);
       }
 
-      return response as ApiResponse<User[]>;
+      return response as unknown as ApiResponse<User[]>;
     } catch (error) {
       return {
         success: false,
@@ -134,13 +132,11 @@ class UserServiceImpl implements UserService {
 
       // Transform _id to id if needed
       if (response.success && response.data) {
-        const user = response.data as any;
+        type RawUser = User & { _id?: string };
+        const user = response.data as RawUser;
         return {
           ...response,
-          data: {
-            ...user,
-            id: user._id || user.id,
-          },
+          data: { ...user, id: user._id || user.id },
         };
       }
 
@@ -187,9 +183,8 @@ class UserServiceImpl implements UserService {
           if (response.success && response.data) {
             // Successfully created - clear cache and remove from SQLite
             await this.clearUserCache();
-            
-            // Transform _id to id if needed
-            const user = response.data as any;
+            type RawUser = User & { _id?: string };
+            const user = response.data as RawUser;
             const transformedUser = {
               ...user,
               id: user._id || user.id,
@@ -218,7 +213,7 @@ class UserServiceImpl implements UserService {
             // Return success since data is saved locally
             return {
               success: true,
-              data: userDataWithId as any,
+              data: userDataWithId as unknown as User,
             };
           }
         } catch (apiError) {
@@ -232,12 +227,7 @@ class UserServiceImpl implements UserService {
           } catch (queueError) {
             // Continue even if queue fails
           }
-          
-          // Return success since data is saved locally
-          return {
-            success: true,
-            data: userDataWithId as any,
-          };
+          return { success: true, data: userDataWithId as unknown as User };
         }
       } else {
         // Offline - add to sync queue
@@ -250,12 +240,7 @@ class UserServiceImpl implements UserService {
         } catch (queueError) {
           // Continue even if queue fails
         }
-        
-        // Return success since data is saved locally
-        return {
-          success: true,
-          data: userDataWithId as any,
-        };
+        return { success: true, data: userDataWithId as unknown as User };
       }
     } catch (error) {
       console.error('❌ UserService - createUser error:', error);
@@ -282,7 +267,8 @@ class UserServiceImpl implements UserService {
         
         // Transform _id to id if needed
         if (response.data) {
-          const user = response.data as any;
+          type RawUser = User & { _id?: string };
+          const user = response.data as RawUser;
           return {
             ...response,
             data: {

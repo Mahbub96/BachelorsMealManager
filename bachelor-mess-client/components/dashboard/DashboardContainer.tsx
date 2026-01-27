@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
+import { View, StyleSheet, ScrollView, RefreshControl, type StyleProp, type ViewStyle } from 'react-native';
 import { ThemedView } from '../ThemedView';
 import { ThemedText } from '../ThemedText';
 import { Ionicons } from '@expo/vector-icons';
+import type { IconName } from '@/constants/IconTypes';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/context/ThemeContext';
 
@@ -15,7 +16,7 @@ interface DashboardContainerProps {
   showHeader?: boolean;
   gradient?: readonly [string, string];
   icon?: string;
-  style?: any;
+  style?: StyleProp<ViewStyle>;
 }
 
 export const DashboardContainer: React.FC<DashboardContainerProps> = ({
@@ -41,7 +42,7 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
         <LinearGradient colors={finalGradient} style={styles.header}>
           <View style={styles.headerContent}>
             <View style={styles.titleContainer}>
-              <Ionicons name={icon as any} size={24} color='#fff' />
+              <Ionicons name={icon as IconName} size={24} color='#fff' />
               <ThemedText style={styles.title}>{title}</ThemedText>
             </View>
             {subtitle && (

@@ -6,7 +6,7 @@ import { MealEntry } from '../../services/mealService';
 
 interface MealListContainerProps {
   title: string;
-  filters: any;
+  filters: Record<string, unknown>;
   onMealPress?: (meal: MealEntry) => void;
   onRefresh?: () => void;
   isAdmin?: boolean;

@@ -10,6 +10,7 @@ import {
   Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import type { IconName } from '@/constants/IconTypes';
 import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { ThemedText } from './ThemedText';
@@ -68,6 +69,7 @@ export const MealForm: React.FC<MealFormProps> = ({
         clearTimeout(checkTimeout);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run on initialDate, checkExistingMeal/checkTimeout are stable
   }, [initialDate]);
 
   // Sync selectedDate with formData.date when formData.date changes externally (e.g., from initialDate prop)
@@ -198,7 +200,7 @@ export const MealForm: React.FC<MealFormProps> = ({
           Alert.alert('Error', response.error || 'Failed to submit meal');
         }
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'An unexpected error occurred');
     } finally {
       setLoading(false);
@@ -264,7 +266,7 @@ export const MealForm: React.FC<MealFormProps> = ({
         setExistingMealId(null);
         setExistingMealWarning(null);
       }
-    } catch (error) {
+    } catch {
       // Silently fail - this is just a warning check
       setExistingMealId(null);
       setExistingMealWarning(null);
@@ -281,7 +283,7 @@ export const MealForm: React.FC<MealFormProps> = ({
     setShowDatePicker(false);
   };
 
-  const handleDateChange = (event: any, date?: Date) => {
+  const handleDateChange = (event: unknown, date?: Date) => {
     // On Android, close the picker immediately after selection
     // On iOS, the picker stays open in the modal until user clicks "Done"
     if (Platform.OS === 'android') {
@@ -324,19 +326,6 @@ export const MealForm: React.FC<MealFormProps> = ({
     }
   };
 
-
-  const getMealIcon = (mealType: 'breakfast' | 'lunch' | 'dinner') => {
-    switch (mealType) {
-      case 'breakfast':
-        return 'sunny';
-      case 'lunch':
-        return 'restaurant';
-      case 'dinner':
-        return 'moon';
-      default:
-        return 'fast-food';
-    }
-  };
 
   const getMealColor = (mealType: 'breakfast' | 'lunch' | 'dinner') => {
     switch (mealType) {
@@ -437,7 +426,7 @@ export const MealForm: React.FC<MealFormProps> = ({
                   style={styles.mealGradient}
                 >
                   <Ionicons
-                    name={meal.icon as any}
+                    name={meal.icon as IconName}
                     size={24}
                     color={formData[meal.key] ? '#fff' : '#6b7280'}
                   />

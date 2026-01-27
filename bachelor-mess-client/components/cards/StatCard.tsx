@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import type { IconName } from '@/constants/IconTypes';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '../ThemedText';
 
@@ -56,7 +57,7 @@ export const StatCard: React.FC<StatCardProps> = ({
         <View style={styles.compactContent}>
           {showIcon && icon && (
             <Ionicons
-              name={icon as any}
+              name={icon as IconName}
               size={isSmallScreen ? 28 : 32}
               color={iconColor}
             />
@@ -107,7 +108,7 @@ export const StatCard: React.FC<StatCardProps> = ({
           {showIcon && icon && (
             <View style={styles.iconContainer}>
               <Ionicons
-                name={icon as any}
+                name={icon as IconName}
                 size={isSmallScreen ? 24 : 28}
                 color={iconColor}
               />
@@ -180,7 +181,7 @@ export const StatCard: React.FC<StatCardProps> = ({
           {showIcon && icon && (
             <View style={styles.iconContainer}>
               <Ionicons
-                name={icon as any}
+                name={icon as IconName}
                 size={isSmallScreen ? 24 : 28}
                 color={iconColor}
               />

@@ -336,7 +336,7 @@ class OfflineStorageService {
         setTimeout(() => reject(new Error('Sync timeout')), 30000)
       );
 
-      const response = await Promise.race([syncPromise, timeoutPromise]) as any;
+      const response = await Promise.race([syncPromise, timeoutPromise]) as { success?: boolean } | undefined;
 
       if (response && response.success) {
         // Clear the corresponding SQLite data after successful API submission

@@ -7,6 +7,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import type { IconName } from '@/constants/IconTypes';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '../../ThemedText';
 
@@ -116,7 +117,7 @@ export const DataModal: React.FC<DataModalProps> = ({
               <View style={styles.trendCard}>
                 <View style={styles.trendCardHeader}>
                   <Ionicons
-                    name={getTrendIcon(data.trend) as any}
+                    name={getTrendIcon(data.trend) as IconName}
                     size={20}
                     color={getTrendColor(data.trend)}
                   />

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import type { IconName } from '@/constants/IconTypes';
 import { ThemedText } from '../../ThemedText';
 import { BazarItem } from '../../../services/bazarService';
 
@@ -40,7 +41,7 @@ export const BazarItemRow: React.FC<BazarItemRowProps> = ({
       <View style={styles.header}>
         <View style={styles.iconContainer}>
           <Ionicons
-            name={getItemIcon(index) as any}
+            name={getItemIcon(index) as IconName}
             size={20}
             color={getItemColor(index)}
           />

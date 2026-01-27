@@ -1,9 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
+import type { IconName } from "@/constants/IconTypes";
 import React from "react";
-import { StyleSheet, TouchableOpacity, View } from "react-native";
+import { StyleSheet, StyleProp, ViewStyle, TouchableOpacity, View } from "react-native";
 import { ThemedText } from "./ThemedText";
-
-
 
 interface DetailCardProps {
   title: string;
@@ -15,7 +14,7 @@ interface DetailCardProps {
   gradient?: boolean;
   gradientColors?: [string, string];
   children?: React.ReactNode;
-  style?: any;
+  style?: StyleProp<ViewStyle>;
 }
 
 export const DetailCard: React.FC<DetailCardProps> = ({
@@ -36,7 +35,7 @@ export const DetailCard: React.FC<DetailCardProps> = ({
   return (
     <CardWrapper style={cardStyle} onPress={onPress}>
       <View style={styles.cardHeader}>
-        {icon && <Ionicons name={icon as any} size={20} color={iconColor} />}
+        {icon && <Ionicons name={icon as IconName} size={20} color={iconColor} />}
         <ThemedText style={styles.cardTitle}>{title}</ThemedText>
       </View>
 
@@ -63,7 +62,7 @@ export const MetricCard: React.FC<{
 
   return (
     <CardWrapper style={styles.metricCard} onPress={onPress}>
-      <Ionicons name={icon as any} size={20} color={color} />
+      <Ionicons name={icon as IconName} size={20} color={color} />
       <ThemedText style={styles.metricValue}>{value}</ThemedText>
       <ThemedText style={styles.metricLabel}>{label}</ThemedText>
     </CardWrapper>
@@ -81,7 +80,7 @@ export const ChartCard: React.FC<{
   return (
     <CardWrapper style={styles.chartCard} onPress={onPress}>
       <View style={styles.chartHeader}>
-        {icon && <Ionicons name={icon as any} size={20} color="#6b7280" />}
+        {icon && <Ionicons name={icon as IconName} size={20} color="#6b7280" />}
         <ThemedText style={styles.chartTitle}>{title}</ThemedText>
       </View>
       {children}
@@ -105,7 +104,7 @@ export const BreakdownCard: React.FC<{
   return (
     <CardWrapper style={styles.breakdownCard} onPress={onPress}>
       <View style={styles.breakdownHeader}>
-        {icon && <Ionicons name={icon as any} size={20} color="#6b7280" />}
+        {icon && <Ionicons name={icon as IconName} size={20} color="#6b7280" />}
         <ThemedText style={styles.breakdownTitle}>{title}</ThemedText>
       </View>
 
@@ -143,7 +142,7 @@ export const ActionButton: React.FC<{
 }> = ({ icon, label, onPress, color = "#667eea" }) => {
   return (
     <TouchableOpacity style={styles.actionButton} onPress={onPress}>
-      <Ionicons name={icon as any} size={16} color={color} />
+      <Ionicons name={icon as IconName} size={16} color={color} />
       <ThemedText style={[styles.actionButtonText, { color }]}>
         {label}
       </ThemedText>

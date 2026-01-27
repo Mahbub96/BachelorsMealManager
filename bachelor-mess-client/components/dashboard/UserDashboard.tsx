@@ -8,8 +8,9 @@ import userStatsService, {
 } from '@/services/userStatsService';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { ThemedView } from '../ThemedView';
+import { ThemedText } from '../ThemedText';
 import { DataDisplay } from '../ui/DataDisplay';
 import {
   DashboardHeader,
@@ -141,6 +142,7 @@ export const UserDashboard: React.FC = () => {
   };
 
   const handleRetry = async () => {
+    refetchStats();
     // Clear cache before retrying to ensure fresh data
     try {
       const { default: dashboardService } = await import('@/services/dashboardService');
@@ -156,6 +158,13 @@ export const UserDashboard: React.FC = () => {
   };
 
   const handleQuickAction = (action: string) => {
+    if (!user) {
+      Alert.alert('Login Required', 'Please log in to use this feature', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Login', onPress: () => router.push('/LoginScreen') },
+      ]);
+      return;
+    }
     switch (action) {
       case 'add-meal':
         router.push('/(tabs)/meals');
@@ -170,7 +179,8 @@ export const UserDashboard: React.FC = () => {
         router.push('/(tabs)/explore');
         break;
       case 'make-payment':
-        Alert.alert('Coming Soon', 'Payment feature will be available soon!');
+      case 'payments':
+        Alert.alert('Payments', 'Payment management coming soon!');
         break;
       case 'view-profile':
         router.push('/profile');
@@ -377,16 +387,7 @@ export const UserDashboard: React.FC = () => {
       subtitle: 'Record your meals',
       icon: 'fast-food',
       color: theme.gradient.primary[0],
-      onPress: () => {
-        if (!user) {
-          Alert.alert('Login Required', 'Please log in to add meals', [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Login', onPress: () => router.push('/LoginScreen') },
-          ]);
-          return;
-        }
-        router.push('/(tabs)/meals');
-      },
+      onPress: () => handleQuickAction('add-meal'),
     },
     {
       id: 'add-bazar',
@@ -394,16 +395,7 @@ export const UserDashboard: React.FC = () => {
       subtitle: 'Submit bazar items',
       icon: 'cart',
       color: theme.gradient.secondary[0],
-      onPress: () => {
-        if (!user) {
-          Alert.alert('Login Required', 'Please log in to add bazar items', [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Login', onPress: () => router.push('/LoginScreen') },
-          ]);
-          return;
-        }
-        router.push('/(tabs)/explore');
-      },
+      onPress: () => handleQuickAction('add-bazar'),
     },
     {
       id: 'view-profile',
@@ -411,16 +403,7 @@ export const UserDashboard: React.FC = () => {
       subtitle: 'Manage your account',
       icon: 'person',
       color: theme.gradient.success[0],
-      onPress: () => {
-        if (!user) {
-          Alert.alert('Login Required', 'Please log in to view profile', [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Login', onPress: () => router.push('/LoginScreen') },
-          ]);
-          return;
-        }
-        router.push('/profile');
-      },
+      onPress: () => handleQuickAction('view-profile'),
     },
     {
       id: 'payments',
@@ -428,16 +411,7 @@ export const UserDashboard: React.FC = () => {
       subtitle: 'View payment status',
       icon: 'card',
       color: theme.gradient.warning[0],
-      onPress: () => {
-        if (!user) {
-          Alert.alert('Login Required', 'Please log in to view payments', [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Login', onPress: () => router.push('/LoginScreen') },
-          ]);
-          return;
-        }
-        Alert.alert('Payments', 'Payment management coming soon!');
-      },
+      onPress: () => handleQuickAction('payments'),
     },
   ];
 
@@ -450,7 +424,7 @@ export const UserDashboard: React.FC = () => {
       title: activity.title || 'Activity',
       description: activity.description || 'No description',
       time: activity.time || 'Unknown time',
-      icon: activity.icon || 'information-circle',
+      icon: activity.icon || getActivityIcon(activity.type),
       colors: getActivityColors(activity.type, theme) as [string, string],
       onPress: () =>
         handleActivityClick({
@@ -483,7 +457,7 @@ export const UserDashboard: React.FC = () => {
   };
 
   // Helper function to get activity colors
-  const getActivityColors = (type: string, theme: any): [string, string] => {
+  const getActivityColors = (type: string, theme: ReturnType<typeof useTheme>['theme']): [string, string] => {
     switch (type) {
       case 'meal':
         return theme.gradient.success as [string, string];
@@ -619,14 +593,24 @@ export const UserDashboard: React.FC = () => {
         />
 
         {/* Recent Activity */}
-        <RecentActivity
-          activities={recentActivities}
-          title='Recent Activity'
-          subtitle='Latest updates from your mess'
-          showViewAll={true}
-          maxItems={3}
-          isSmallScreen={false}
-        />
+        {activitiesLoading && (
+          <View style={{ padding: 16, alignItems: 'center' }}>
+            <ActivityIndicator size="small" />
+          </View>
+        )}
+        {activitiesError && !activitiesLoading && (
+          <ThemedText style={{ padding: 16, color: theme?.status?.error }}>{activitiesError}</ThemedText>
+        )}
+        {!activitiesLoading && (
+          <RecentActivity
+            activities={recentActivities}
+            title='Recent Activity'
+            subtitle='Latest updates from your mess'
+            showViewAll={true}
+            maxItems={3}
+            isSmallScreen={false}
+          />
+        )}
       </ScrollView>
     </ThemedView>
   );

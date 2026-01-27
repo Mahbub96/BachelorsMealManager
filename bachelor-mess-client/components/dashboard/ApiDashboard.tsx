@@ -23,8 +23,6 @@ import { RecentActivity } from './RecentActivity';
 import { useTheme } from '@/context/ThemeContext';
 import { ThemedView } from '../ThemedView';
 
-import errorHandler from '@/services/errorHandler';
-
 const { width: screenWidth } = Dimensions.get('window');
 
 // Removed hardcoded design system - using theme instead
@@ -39,11 +37,10 @@ export const ApiDashboard: React.FC = () => {
     stats: DashboardStats | null;
     activities: ApiActivity[];
     analytics: AnalyticsData | null;
-    charts?: any;
+    charts?: Record<string, unknown>;
   } | null>(null);
 
   const isTablet = screenWidth >= 768;
-  const isMobile = screenWidth < 768;
   const containerPadding = isTablet ? 24 : 16;
   const cardSpacing = isTablet ? 20 : 12;
 
@@ -108,20 +105,15 @@ export const ApiDashboard: React.FC = () => {
     await loadDashboardData();
   };
 
-  const handleReset = async () => {
-    // Reload dashboard data after reset
-    await loadDashboardData();
-  };
-
   // Safe number conversion - always returns 0 if invalid
-  const safeNumber = (value: any): number => {
+  const safeNumber = (value: unknown): number => {
     if (value === null || value === undefined || value === '') return 0;
     const num = Number(value);
     return isNaN(num) ? 0 : num;
   };
 
   // Safe string conversion - always returns '0' if invalid
-  const safeString = (value: any): string => {
+  const safeString = (value: unknown): string => {
     if (value === null || value === undefined || value === '') return '0';
     return String(value);
   };

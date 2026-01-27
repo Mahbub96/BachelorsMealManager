@@ -96,7 +96,7 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
 
     try {
       await onSubmit(formData);
-    } catch (error) {
+    } catch {
       // Error handling is done in parent component
     }
   };

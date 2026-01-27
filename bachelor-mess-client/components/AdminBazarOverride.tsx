@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
   Alert,
@@ -9,12 +8,9 @@ import {
   ScrollView,
   Modal,
   TextInput,
-  Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from './ThemedText';
-import { ThemedView } from './ThemedView';
 import bazarService, {
   BazarEntry,
   BazarSubmission,
@@ -44,10 +40,9 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
   selectedBazar,
   mode,
 }) => {
-  const { user } = useAuth();
-  const colorScheme = useColorScheme();
+  useAuth();
+  useColorScheme();
   const [loading, setLoading] = useState(false);
-  const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
   const [selectedBazarIds, setSelectedBazarIds] = useState<string[]>([]);
   const [bulkOperation, setBulkOperation] = useState<
     'approve' | 'reject' | 'delete'
@@ -72,21 +67,27 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
     loadUsers();
   }, []);
 
+  useEffect(() => {
+    if (visible && mode === 'bulk') {
+      setSelectedBazarIds([]);
+    }
+  }, [visible, mode]);
+
   const loadUsers = async () => {
     setLoadingUsers(true);
     try {
       const response = await userService.getAllUsers();
       if (response.success && response.data) {
         setUsers(
-          response.data.map((user: any) => ({
+          response.data.map((user: { _id?: string; id?: string; name: string; email: string }) => ({
             id: user._id || user.id,
             name: user.name,
             email: user.email,
           }))
         );
       }
-    } catch (error) {
-      console.error('Failed to load users:', error);
+    } catch (err) {
+      console.error('Failed to load users:', err);
     } finally {
       setLoadingUsers(false);
     }
@@ -123,7 +124,7 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
       } else {
         Alert.alert('Error', response.error || 'Failed to create bazar entry');
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'An unexpected error occurred');
     } finally {
       setLoading(false);
@@ -146,7 +147,7 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
       } else {
         Alert.alert('Error', response.error || 'Failed to update bazar entry');
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'An unexpected error occurred');
     } finally {
       setLoading(false);
@@ -181,7 +182,7 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
                   response.error || 'Failed to delete bazar entry'
                 );
               }
-            } catch (error) {
+            } catch {
               Alert.alert('Error', 'An unexpected error occurred');
             } finally {
               setLoading(false);
@@ -215,7 +216,7 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
           response.error || `Failed to perform bulk ${bulkOperation}`
         );
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'An unexpected error occurred');
     } finally {
       setLoading(false);
@@ -254,6 +255,9 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
   const renderCreateForm = () => (
     <ScrollView style={styles.formContainer}>
       <ThemedText style={styles.sectionTitle}>Select User</ThemedText>
+      {loadingUsers ? (
+        <ActivityIndicator size="small" style={styles.loader} />
+      ) : (
       <View style={styles.userSelector}>
         {users.map(user => (
           <TouchableOpacity
@@ -269,6 +273,7 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
           </TouchableOpacity>
         ))}
       </View>
+      )}
 
       <ThemedText style={styles.sectionTitle}>Bazar Details</ThemedText>
       <TextInput
@@ -696,5 +701,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
+  },
+  loader: {
+    marginVertical: 16,
+    alignSelf: 'center',
   },
 });

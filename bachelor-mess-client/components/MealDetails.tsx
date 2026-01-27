@@ -7,11 +7,11 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import type { IconName } from '@/constants/IconTypes';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from './ThemedText';
 import { useTheme } from '../context/ThemeContext';
-import { MealEntry } from '../services/mealService';
-import mealService from '../services/mealService';
+import mealService, { MealEntry } from '../services/mealService';
 
 interface MealDetailsProps {
   meal: MealEntry;
@@ -40,7 +40,7 @@ export const MealDetails: React.FC<MealDetailsProps> = ({
       } else {
         Alert.alert('Error', response.error || 'Failed to update meal status');
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'An unexpected error occurred');
     }
   };
@@ -180,7 +180,7 @@ export const MealDetails: React.FC<MealDetailsProps> = ({
                   ]}
                 >
                   <Ionicons
-                    name={getStatusIcon(meal.status) as any}
+                    name={getStatusIcon(meal.status) as IconName}
                     size={16}
                     color='#fff'
                   />
@@ -228,7 +228,7 @@ export const MealDetails: React.FC<MealDetailsProps> = ({
                                 | 'breakfast'
                                 | 'lunch'
                                 | 'dinner'
-                            ) as any
+                            ) as IconName
                           }
                           size={20}
                           color={mealColor}

@@ -8,14 +8,14 @@ import {
   Platform,
   TouchableOpacity,
   Switch,
-} from 'react-native';
+ TextInput } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Ionicons } from '@expo/vector-icons';
+import type { IconName } from '@/constants/IconTypes';
 import { useAuth } from '@/context/AuthContext';
 import { useUsers } from '@/hooks/useUsers';
 import { useRouter } from 'expo-router';
-import { TextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -161,7 +161,7 @@ export default function EditProfileScreen() {
     }
 
     try {
-      const updateData: any = {
+      const updateData: Record<string, string | undefined> = {
         name: formData.name.trim(),
       };
 
@@ -184,7 +184,7 @@ export default function EditProfileScreen() {
         Alert.alert('Success', 'Profile updated successfully!');
         router.back();
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Failed to update profile. Please try again.');
     }
   }, [formData, showPasswordFields, validateForm, updateProfile, router]);
@@ -262,7 +262,7 @@ export default function EditProfileScreen() {
       onPress={() => setActiveSection(section)}
     >
       <Ionicons
-        name={icon as any}
+        name={icon as IconName}
         size={20}
         color={activeSection === section ? '#667eea' : '#6b7280'}
       />

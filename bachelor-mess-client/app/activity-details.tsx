@@ -8,16 +8,16 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import type { IconName } from '@/constants/IconTypes';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { useTheme } from '@/context/ThemeContext';
-import { activityService } from '@/services/activityService';
-import { Activity as ActivityItem } from '@/services/activityService';
+import { activityService , Activity as ActivityItem } from '@/services/activityService';
 
-interface ActivityDetailsScreenProps {}
+type ActivityDetailsScreenProps = Record<string, never>;
 
-export default function ActivityDetailsScreen({}: ActivityDetailsScreenProps) {
+export default function ActivityDetailsScreen(_props: ActivityDetailsScreenProps) {
   const { theme } = useTheme();
   const params = useLocalSearchParams();
   const [activity, setActivity] = useState<ActivityItem | null>(null);
@@ -26,6 +26,7 @@ export default function ActivityDetailsScreen({}: ActivityDetailsScreenProps) {
 
   useEffect(() => {
     loadActivityDetails();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- load once on mount
   }, []);
 
   const loadActivityDetails = async () => {
@@ -282,7 +283,7 @@ export default function ActivityDetailsScreen({}: ActivityDetailsScreenProps) {
               { backgroundColor: activityColors[0] },
             ]}
           >
-            <Ionicons name={activityIcon as any} size={32} color='#fff' />
+            <Ionicons name={activityIcon as IconName} size={32} color='#fff' />
           </View>
         </View>
 

@@ -77,11 +77,12 @@ export const useMealManagement = (): UseMealManagementReturn => {
             mealsData = response.data.meals as MealEntry[];
           } else if (response.data && typeof response.data === 'object') {
             // Fallback: try to extract meals from any structure
-            mealsData = (response.data as any).meals || [];
+            mealsData = (response.data as { meals?: MealEntry[] }).meals || [];
           }
 
           // Ensure all meals have id field (transform _id to id if needed)
-          const transformedMeals: MealEntry[] = mealsData.map((meal: any) => ({
+          type RawMeal = Partial<MealEntry> & { _id?: string };
+          const transformedMeals: MealEntry[] = mealsData.map((meal: RawMeal) => ({
             ...meal,
             id: meal.id || meal._id || String(meal._id),
           }));

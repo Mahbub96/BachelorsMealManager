@@ -3,31 +3,25 @@ import { DetailPageTemplate } from '@/components/DetailPageTemplate';
 import { SwappableLineChart } from '@/components/ModernCharts';
 import { ThemedText } from '@/components/ThemedText';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import type { IconName } from '@/constants/IconTypes';
+import { useLocalSearchParams } from 'expo-router';
 import React, { useState, useEffect } from 'react';
 import {
-  Alert,
-  Dimensions,
   StyleSheet,
   TouchableOpacity,
   View,
   ActivityIndicator,
 } from 'react-native';
 import statisticsService from '@/services/statisticsService';
-import userStatsService from '@/services/userStatsService';
 import { useTheme } from '@/context/ThemeContext';
 
-const { width: screenWidth } = Dimensions.get('window');
-
 export default function ExpenseDetailsPage() {
-  const router = useRouter();
   const params = useLocalSearchParams();
   const { theme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [expenseData, setExpenseData] = useState<any>(null);
+  const [expenseData, setExpenseData] = useState<Record<string, unknown> | null>(null);
 
-  const [selectedPeriod, setSelectedPeriod] = useState('current');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   useEffect(() => {
@@ -80,7 +74,7 @@ export default function ExpenseDetailsPage() {
   };
 
   // Generate chart data from API data
-  const expenseTrendData = expenseData?.monthlyData?.slice(-6).map((item: any) => ({
+  const expenseTrendData = (expenseData?.monthlyData as Record<string, unknown>[] | undefined)?.slice(-6).map((item: Record<string, unknown>) => ({
     month: item.month,
     expenses: item.expenses || 0,
     budget: item.revenue || 0,
@@ -89,7 +83,7 @@ export default function ExpenseDetailsPage() {
   })) || [];
 
   // Generate daily expense data
-  const dailyExpenseData = expenseData?.dailyData?.slice(-7).map((item: any) => ({
+  const dailyExpenseData = (expenseData?.dailyData as Record<string, unknown>[] | undefined)?.slice(-7).map((item: Record<string, unknown>) => ({
     day: new Date(item.date).toLocaleDateString('en-US', { weekday: 'short' }),
     amount: item.expenses || 0,
     meals: item.meals || 0,
@@ -103,7 +97,7 @@ export default function ExpenseDetailsPage() {
       percentage: 60,
       color: theme.status.success,
       icon: 'fast-food',
-      subItems: expenseData?.recentBazarEntries?.slice(-5).map((bazar: any) => ({
+      subItems: (expenseData?.recentBazarEntries as Record<string, unknown>[] | undefined)?.slice(-5).map((bazar: Record<string, unknown>) => ({
         name: bazar.items?.slice(0, 3).join(', ') || 'Unknown items',
         amount: bazar.totalAmount || 0,
         percentage: Math.round(
@@ -198,23 +192,6 @@ export default function ExpenseDetailsPage() {
     return `৳${amount.toLocaleString()}`;
   };
 
-  const getTrendColor = (trend: string) => {
-    return trend === 'up' ? theme.status.success : theme.status.error;
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'good':
-        return theme.status.success;
-      case 'warning':
-        return theme.status.warning;
-      case 'critical':
-        return theme.status.error;
-      default:
-        return theme.status.info;
-    }
-  };
-
   const getBudgetStatusColor = (status: string) => {
     switch (status) {
       case 'under':
@@ -231,11 +208,6 @@ export default function ExpenseDetailsPage() {
   const handleCategoryPress = (category: string) => {
     console.log('📊 Category pressed:', category);
     setSelectedCategory(category);
-  };
-
-  const handleMemberPress = (member: any) => {
-    console.log('👤 Member pressed:', member);
-    // Navigate to member details if needed
   };
 
       return (
@@ -269,7 +241,7 @@ export default function ExpenseDetailsPage() {
           icon="trending-up"
         >
           <SwappableLineChart
-            monthlyRevenue={expenseTrendData.map((item: any) => ({
+            monthlyRevenue={expenseTrendData.map((item: Record<string, unknown>) => ({
               month: item.month,
               revenue: item.expenses,
               value: item.expenses,
@@ -294,7 +266,7 @@ export default function ExpenseDetailsPage() {
           icon="calendar"
         >
           <View style={styles.dailyBreakdown}>
-            {dailyExpenseData.map((day: any, index: number) => (
+            {dailyExpenseData.map((day: Record<string, unknown>, index: number) => (
               <View key={index} style={styles.dailyItem}>
                 <ThemedText style={[styles.dailyDay, { color: theme.text.primary }]}>
                   {day.day}
@@ -336,7 +308,7 @@ export default function ExpenseDetailsPage() {
               >
                 <View style={styles.categoryHeader}>
                   <View style={[styles.categoryIcon, { backgroundColor: category.color }]}>
-                    <Ionicons name={category.icon as any} size={16} color="#fff" />
+                    <Ionicons name={category.icon as IconName} size={16} color="#fff" />
                   </View>
                   <View style={styles.categoryInfo}>
                     <ThemedText style={[styles.categoryName, { color: theme.text.primary }]}>
@@ -352,7 +324,7 @@ export default function ExpenseDetailsPage() {
                 </View>
                 {category.subItems.length > 0 && (
                   <View style={styles.subItems}>
-                                     {category.subItems.slice(0, 3).map((item: any, subIndex: number) => (
+                                     {category.subItems.slice(0, 3).map((item: { name?: string; amount?: number }, subIndex: number) => (
                    <View key={subIndex} style={styles.subItem}>
                      <ThemedText style={[styles.subItemName, { color: theme.text.secondary }]}>
                        {item.name}

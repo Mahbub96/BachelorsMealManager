@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import type { IconName } from '@/constants/IconTypes';
 import { ThemedText } from '../ThemedText';
 import { useTheme } from '@/context/ThemeContext';
 
@@ -66,7 +67,7 @@ export const PaymentStatusCard: React.FC<PaymentStatusCardProps> = ({
           ]}
         >
           <Ionicons
-            name={getStatusIcon(payments.paymentStatus) as any}
+            name={getStatusIcon(payments.paymentStatus) as IconName}
             size={16}
             color={theme.text.inverse}
           />

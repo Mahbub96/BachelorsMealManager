@@ -1,6 +1,7 @@
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { Ionicons } from "@expo/vector-icons";
+import type { IconName } from "@/constants/IconTypes";
 import { Pressable, StyleSheet, View } from "react-native";
 
 export default function HelpScreen() {
@@ -85,7 +86,7 @@ export default function HelpScreen() {
               <View style={styles.topicLeft}>
                 <View style={styles.topicIcon}>
                   <Ionicons
-                    name={topic.icon as any}
+                    name={topic.icon as IconName}
                     size={24}
                     color="#667eea"
                   />
@@ -114,7 +115,7 @@ export default function HelpScreen() {
               <View style={styles.contactLeft}>
                 <View style={styles.contactIcon}>
                   <Ionicons
-                    name={contact.icon as any}
+                    name={contact.icon as IconName}
                     size={24}
                     color="#667eea"
                   />

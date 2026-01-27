@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import type { IconName } from '@/constants/IconTypes';
 import { ThemedText } from '../ThemedText';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -26,7 +27,7 @@ export const BazarEmptyState: React.FC<BazarEmptyStateProps> = ({
   return (
     <View style={styles.container}>
       <View style={styles.iconContainer}>
-        <Ionicons name={icon as any} size={64} color={theme.text.tertiary} />
+        <Ionicons name={icon as IconName} size={64} color={theme.text.tertiary} />
       </View>
 
       <ThemedText style={[styles.title, { color: theme.text.primary }]}>

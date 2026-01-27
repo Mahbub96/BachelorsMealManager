@@ -4,15 +4,13 @@ import {
   StyleSheet,
   TouchableOpacity,
   Animated,
-  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import type { IconName } from '@/constants/IconTypes';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '../ThemedText';
 import { useTheme } from '@/context/ThemeContext';
-
-const { width: screenWidth } = Dimensions.get('window');
 
 interface StatItem {
   title: string;
@@ -145,7 +143,7 @@ export const SwappableStats: React.FC<SwappableStatsProps> = ({
           <View style={styles.cardContent}>
             <View style={styles.iconContainer}>
               <Ionicons
-                name={currentStat.icon as any}
+                name={currentStat.icon as IconName}
                 size={32}
                 color={theme.text.inverse}
               />
@@ -158,7 +156,7 @@ export const SwappableStats: React.FC<SwappableStatsProps> = ({
               {currentStat.trend && (
                 <View style={styles.trendContainer}>
                   <Ionicons
-                    name={getTrendIcon(currentStat.trend) as any}
+                    name={getTrendIcon(currentStat.trend) as IconName}
                     size={16}
                     color={getTrendColor(currentStat.trend)}
                   />
@@ -192,7 +190,7 @@ export const SwappableStats: React.FC<SwappableStatsProps> = ({
           >
             <View style={styles.quickStatContent}>
               <Ionicons
-                name={stat.icon as any}
+                name={stat.icon as IconName}
                 size={20}
                 color={stat.color}
               />

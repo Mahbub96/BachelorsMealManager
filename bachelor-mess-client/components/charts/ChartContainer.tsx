@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import type { IconName } from '@/constants/IconTypes';
 import { ThemedText } from '../ThemedText';
 
 interface ChartContainerProps {
@@ -12,7 +13,7 @@ interface ChartContainerProps {
   icon?: string;
   subtitle?: string;
   showHeader?: boolean;
-  style?: any;
+  style?: React.ComponentProps<typeof View>['style'];
 }
 
 export const ChartContainer: React.FC<ChartContainerProps> = ({
@@ -37,7 +38,7 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
         <LinearGradient colors={gradient} style={styles.header}>
           <View style={styles.headerContent}>
             <View style={styles.titleContainer}>
-              <Ionicons name={icon as any} size={20} color='#fff' />
+              <Ionicons name={icon as IconName} size={20} color='#fff' />
               <ThemedText style={styles.title}>{title}</ThemedText>
             </View>
             {subtitle && (

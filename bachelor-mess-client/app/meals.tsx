@@ -4,8 +4,6 @@ import {
   ScrollView,
   Pressable,
   RefreshControl,
-  Alert,
-  Dimensions,
   StyleSheet,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,8 +11,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { useActivity } from '@/hooks/useActivity';
-
-const { width: screenWidth } = Dimensions.get('window');
 
 interface MealStats {
   totalMeals: number;
@@ -45,7 +41,7 @@ const statusFilters: StatusFilter[] = [
 export default function MealsScreen() {
   const router = useRouter();
   const [selectedStatus, setSelectedStatus] = useState('all');
-  const [currentPage, setCurrentPage] = useState(1);
+  const [, setCurrentPage] = useState(1);
 
   // Activity hook for meals
   const {
@@ -80,7 +76,7 @@ export default function MealsScreen() {
 
   // Handle meal press
   const handleMealPress = useCallback(
-    (meal: any) => {
+    (meal: { id: string }) => {
       router.push({
         pathname: '/activity-details',
         params: {
@@ -186,7 +182,7 @@ export default function MealsScreen() {
   };
 
   // Get meal types text
-  const getMealTypesText = (meal: any) => {
+  const getMealTypesText = (meal: { breakfast?: boolean; lunch?: boolean; dinner?: boolean }) => {
     const types = [];
     if (meal.breakfast) types.push('Breakfast');
     if (meal.lunch) types.push('Lunch');

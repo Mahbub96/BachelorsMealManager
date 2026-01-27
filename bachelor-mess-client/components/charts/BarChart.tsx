@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Pressable, StyleSheet, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import type { IconName } from '@/constants/IconTypes';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '../ThemedText';
 import { useTheme } from '@/context/ThemeContext';
@@ -168,7 +169,7 @@ export const BarChart: React.FC<BarChartProps> = ({
             {showTrend && item?.trend && getTrendIcon(item.trend) && (
               <View style={styles.trendContainer}>
                 <Ionicons
-                  name={getTrendIcon(item.trend) as any}
+                  name={getTrendIcon(item.trend) as IconName}
                   size={12}
                   color={getTrendColor(item.trend)}
                 />

@@ -1,6 +1,6 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { featureManager, offlineStorage } from '@/services';
+import { featureManager, FeatureConfig, offlineStorage } from '@/services';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -27,7 +27,7 @@ interface SettingItem {
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const [featureConfig, setFeatureConfig] = useState<any>(null);
+  const [featureConfig, setFeatureConfig] = useState<FeatureConfig | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -45,12 +45,12 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleFeatureToggle = async (featureKey: string, value: boolean) => {
+  const handleFeatureToggle = async (featureKey: keyof FeatureConfig, value: boolean) => {
     try {
       if (value) {
-        await featureManager.enableFeature(featureKey as any);
+        await featureManager.enableFeature(featureKey);
       } else {
-        await featureManager.disableFeature(featureKey as any);
+        await featureManager.disableFeature(featureKey);
       }
       await loadFeatureConfig(); // Reload config
     } catch (error) {
@@ -73,7 +73,7 @@ export default function SettingsScreen() {
               await featureManager.resetConfig();
               await loadFeatureConfig();
               Alert.alert('Success', 'Settings reset to default');
-            } catch (error) {
+            } catch {
               Alert.alert('Error', 'Failed to reset settings');
             }
           },

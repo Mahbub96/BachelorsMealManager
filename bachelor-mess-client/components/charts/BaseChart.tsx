@@ -1,12 +1,12 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import { ThemedText } from '../ThemedText';
 import { useTheme } from '@/context/ThemeContext';
 
 export interface BaseChartProps {
   title?: string;
   children: React.ReactNode;
-  containerStyle?: any;
+  containerStyle?: StyleProp<ViewStyle>;
   showHeader?: boolean;
 }
 

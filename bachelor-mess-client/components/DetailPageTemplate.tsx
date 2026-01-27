@@ -30,7 +30,7 @@ export const DetailPageTemplate: React.FC<DetailPageTemplateProps> = ({
   actionButtons = [],
 }) => {
   const router = useRouter();
-  const { theme } = useTheme();
+  useTheme(); // theme from context used by children
 
   return (
     <View style={styles.container}>

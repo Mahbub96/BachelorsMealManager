@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import type { IconName } from '@/constants/IconTypes';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -7,7 +8,6 @@ import {
   Modal,
   Pressable,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
   Dimensions,
@@ -16,7 +16,7 @@ import {
 import { ThemedText } from './ThemedText';
 import { useAuth } from '@/context/AuthContext';
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+const { height: screenHeight } = Dimensions.get('window');
 
 interface AuthAvatarProps {
   size?: number;
@@ -301,7 +301,7 @@ export const AuthAvatar: React.FC<AuthAvatarProps> = ({
                         ]}
                       >
                         <Ionicons
-                          name={item.icon as any}
+                          name={item.icon as IconName}
                           size={20}
                           color='#fff'
                         />

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import type { IconName } from '@/constants/IconTypes';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '../ThemedText';
 import { useTheme } from '@/context/ThemeContext';
@@ -96,7 +97,7 @@ export const QuickActions: React.FC<QuickActionsProps> = ({
                 ]}
               >
                 <Ionicons
-                  name={action.icon as any}
+                  name={action.icon as IconName}
                   size={isSmallScreen ? 24 : 28}
                   color={theme.text.inverse}
                 />

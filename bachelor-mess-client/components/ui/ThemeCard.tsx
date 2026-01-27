@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, type StyleProp, type ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '../ThemedText';
 import { useTheme } from '@/context/ThemeContext';
@@ -10,8 +10,8 @@ interface ThemeCardProps {
   children: React.ReactNode;
   gradient?: [string, string];
   onPress?: () => void;
-  style?: any;
-  contentStyle?: any;
+  style?: StyleProp<ViewStyle>;
+  contentStyle?: StyleProp<ViewStyle>;
 }
 
 export const ThemeCard: React.FC<ThemeCardProps> = ({
@@ -25,8 +25,7 @@ export const ThemeCard: React.FC<ThemeCardProps> = ({
 }) => {
   const { theme } = useTheme();
   const Container = onPress ? TouchableOpacity : View;
-
-  const defaultGradient: [string, string] = [
+  const resolvedGradient: [string, string] = gradient ?? [
     theme.gradient.primary[0],
     theme.gradient.primary[1],
   ];
@@ -47,7 +46,7 @@ export const ThemeCard: React.FC<ThemeCardProps> = ({
     >
       {gradient ? (
         <LinearGradient
-          colors={gradient}
+          colors={resolvedGradient}
           style={[styles.gradientContainer, contentStyle]}
         >
           {title && (

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import type { IconName } from '@/constants/IconTypes';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '../ThemedText';
 import { useTheme } from '../../context/ThemeContext';
@@ -83,7 +84,7 @@ export const MealCard: React.FC<MealCardProps> = ({
             style={styles.statusBadge}
           >
             <Ionicons
-              name={getStatusIcon(meal.status) as any}
+              name={getStatusIcon(meal.status) as IconName}
               size={12}
               color='#fff'
             />

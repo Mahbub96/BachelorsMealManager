@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import type { IconName } from '@/constants/IconTypes';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '../ThemedText';
 
@@ -99,9 +100,9 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
           </ThemedText>
 
           <View style={styles.badges}>
-            <View style={styles.badgeContainer}>
+            <View style={[styles.badgeContainer, { backgroundColor: getRoleColor(user.role) }]}>
               <Ionicons
-                name={getRoleIcon(user.role) as any}
+                name={getRoleIcon(user.role) as IconName}
                 size={12}
                 color='#fff'
               />

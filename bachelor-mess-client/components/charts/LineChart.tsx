@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { View, Pressable, StyleSheet, Dimensions } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '../ThemedText';
@@ -13,7 +12,7 @@ export interface LineChartData {
   date: string;
   value: number;
   forecast?: number;
-  details?: any;
+  details?: Record<string, unknown>;
 }
 
 export interface LineChartProps extends Omit<BaseChartProps, 'children'> {

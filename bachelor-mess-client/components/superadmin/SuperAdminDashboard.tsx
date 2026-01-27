@@ -7,6 +7,7 @@ import {
   Alert,
   RefreshControl,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -160,6 +161,14 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
       ]
     );
   };
+
+  if (loading) {
+    return (
+      <ThemedView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" />
+      </ThemedView>
+    );
+  }
 
   // Access control - only super admin can see this
   if (user?.role !== 'super_admin') {

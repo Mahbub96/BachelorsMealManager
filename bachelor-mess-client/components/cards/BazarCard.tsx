@@ -3,35 +3,34 @@ import {
   View,
   StyleSheet,
   TouchableOpacity,
-  Dimensions,
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import type { IconName } from '@/constants/IconTypes';
 import { ThemedText } from '../ThemedText';
 import { useTheme } from '../../context/ThemeContext';
 
-const { width: screenWidth } = Dimensions.get('window');
+type BazarCardBazar = {
+  id: string;
+  items: { name: string; quantity: string; price: number }[];
+  totalAmount: number;
+  date: string;
+  status: 'pending' | 'approved' | 'rejected';
+  userId:
+    | string
+    | {
+        _id: string;
+        name: string;
+        email: string;
+        fullProfile?: unknown;
+        id: string;
+      };
+  description?: string;
+};
 
 export interface BazarCardProps {
-  bazar: {
-    id: string;
-    items: Array<{ name: string; quantity: string; price: number }>;
-    totalAmount: number;
-    date: string;
-    status: 'pending' | 'approved' | 'rejected';
-    userId:
-      | string
-      | {
-          _id: string;
-          name: string;
-          email: string;
-          fullProfile?: any;
-          id: string;
-        };
-    description?: string;
-  };
-  onPress?: (bazar: any) => void;
+  bazar: BazarCardBazar;
+  onPress?: (bazar: BazarCardBazar) => void;
   onStatusUpdate?: (bazarId: string, status: 'approved' | 'rejected') => void;
   onDelete?: (bazarId: string) => void;
   variant?: 'default' | 'compact' | 'detailed';
@@ -55,10 +54,9 @@ export const BazarCard: React.FC<BazarCardProps> = memo(
   }) => {
     const { theme } = useTheme();
 
-    // Validate bazar data
+    // Validate bazar data (use theme from top-level hook only)
     if (!bazar || !bazar.id) {
       console.warn('⚠️ Invalid bazar data:', bazar);
-      const { theme } = useTheme();
       return (
         <View
           style={[
@@ -122,7 +120,7 @@ export const BazarCard: React.FC<BazarCardProps> = memo(
       }
     };
 
-    const getItemsSummary = (items: any[]) => {
+    const getItemsSummary = (items: { name: string }[]) => {
       if (!items || items.length === 0) return 'No items';
       if (items.length <= 2) {
         return items.map(item => item.name).join(', ');
@@ -207,7 +205,7 @@ export const BazarCard: React.FC<BazarCardProps> = memo(
               ]}
             >
               <Ionicons
-                name={getStatusIcon(bazar.status) as any}
+                name={getStatusIcon(bazar.status) as IconName}
                 size={14}
                 color={getStatusColor(bazar.status)}
               />
@@ -231,6 +229,14 @@ export const BazarCard: React.FC<BazarCardProps> = memo(
               >
                 Items
               </ThemedText>
+              {isCompact ? (
+                <ThemedText
+                  style={[styles.itemName, { color: theme.text.primary }]}
+                  numberOfLines={2}
+                >
+                  {getItemsSummary(bazar.items || [])}
+                </ThemedText>
+              ) : (
               <View style={styles.itemsList}>
                 {bazar.items?.map((item, index) => (
                   <View key={index} style={styles.itemRow}>
@@ -250,6 +256,7 @@ export const BazarCard: React.FC<BazarCardProps> = memo(
                   </View>
                 ))}
               </View>
+              )}
             </View>
 
             {/* Description */}

@@ -5,18 +5,19 @@ import { ThemedText } from '../ThemedText';
 import { BazarList } from '../BazarList';
 import { ErrorBoundary } from '../ErrorBoundary';
 import { useTheme } from '../../context/ThemeContext';
+import type { BazarEntry, BazarFilters } from '../../services/bazarService';
 
 interface BazarListSectionProps {
   title?: string;
   showUserInfo?: boolean;
   isAdmin?: boolean;
-  onBazarPress?: (bazar: any) => void;
+  onBazarPress?: (bazar: BazarEntry) => void;
   onRefresh?: () => void;
   onShowAllPress?: () => void;
   showAllButton?: boolean;
   showAllButtonText?: string;
-  filters?: any;
-  bazarEntries?: any[];
+  filters?: BazarFilters;
+  bazarEntries?: BazarEntry[];
   loading?: boolean;
   error?: string | null;
   onStatusUpdate?: (bazarId: string, status: 'approved' | 'rejected') => void;

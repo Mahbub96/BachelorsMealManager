@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { Animated, Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import type { IconName } from '@/constants/IconTypes';
 import { ThemedText } from '../ThemedText';
 import { useTheme } from '@/context/ThemeContext';
 
@@ -24,10 +25,10 @@ export const StatsCards: React.FC<StatsCardsProps> = ({
   };
 
   // Calculate meal rate: totalBazarAmount / totalMeals
+  const totalMeals = data?.stats?.totalMeals ?? 0;
+  const totalBazarAmount = data?.stats?.totalBazarAmount ?? 0;
   const mealRate =
-    data?.stats?.totalMeals > 0 && data?.stats?.totalBazarAmount > 0
-      ? data.stats.totalBazarAmount / data.stats.totalMeals
-      : 0;
+    totalMeals > 0 && totalBazarAmount > 0 ? totalBazarAmount / totalMeals : 0;
 
   const stats = [
     {
@@ -67,7 +68,8 @@ export const StatsCards: React.FC<StatsCardsProps> = ({
     },
   ];
 
-  const handleStatPress = (stat: any) => {
+  type StatItem = { title: string; value: number; color: string };
+  const handleStatPress = (stat: StatItem) => {
     // Handle expense-related stats
     if (
       stat.title.toLowerCase().includes('expense') ||
@@ -161,7 +163,7 @@ export const StatsCards: React.FC<StatsCardsProps> = ({
                 },
               ]}
             >
-              <Ionicons name={stat.icon as any} size={24} color={stat.color} />
+              <Ionicons name={stat.icon as IconName} size={24} color={stat.color} />
             </View>
             <View style={styles.cardContent}>
               <ThemedText style={styles.cardTitle}>{stat.title}</ThemedText>

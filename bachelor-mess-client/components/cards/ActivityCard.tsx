@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import type { IconName } from '@/constants/IconTypes';
 import { ThemedText } from '../ThemedText';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -108,7 +108,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
             ]}
           >
             <Ionicons
-              name={icon as any}
+              name={icon as IconName}
               size={isSmallScreen ? 16 : 18}
               color={defaultIconColor}
             />
@@ -188,7 +188,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
               ]}
             >
               <Ionicons
-                name={icon as any}
+                name={icon as IconName}
                 size={isSmallScreen ? 20 : 24}
                 color={defaultIconColor}
               />
@@ -235,7 +235,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
               ]}
             >
               <Ionicons
-                name={getStatusIcon(status) as any}
+                name={getStatusIcon(status) as IconName}
                 size={isSmallScreen ? 10 : 12}
                 color='#fff'
               />
@@ -284,7 +284,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
               ]}
             >
               <Ionicons
-                name={icon as any}
+                name={icon as IconName}
                 size={isSmallScreen ? 20 : 24}
                 color={defaultIconColor}
               />
@@ -331,7 +331,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
               ]}
             >
               <Ionicons
-                name={getStatusIcon(status) as any}
+                name={getStatusIcon(status) as IconName}
                 size={isSmallScreen ? 10 : 12}
                 color='#fff'
               />

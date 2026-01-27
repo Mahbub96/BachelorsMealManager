@@ -334,11 +334,10 @@ class NotificationServiceImpl implements NotificationService {
         return 'dev-skip';
       }
 
+      type TriggerInput = Parameters<typeof NotificationsModule.scheduleNotificationAsync>[0]['trigger'];
       const identifier = await NotificationsModule.scheduleNotificationAsync({
         content: notificationContent,
-        trigger: {
-          date: date,
-        } as any,
+        trigger: { date } as unknown as TriggerInput,
       });
 
       console.log(

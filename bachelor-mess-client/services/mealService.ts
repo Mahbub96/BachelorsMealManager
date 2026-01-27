@@ -123,7 +123,7 @@ class MealServiceImpl implements MealService {
 
       // Remove userId from data if present - backend should use authenticated user's ID from token
       // This prevents "userId already exists" errors when different users submit meals
-      const { userId, user_id, ...mealData } = data as any;
+      const { userId, user_id, ...mealData } = data as unknown as Record<string, unknown> & { userId?: string; user_id?: string };
 
       const response = await httpClient.post<MealEntry>(
         API_ENDPOINTS.MEALS.SUBMIT,

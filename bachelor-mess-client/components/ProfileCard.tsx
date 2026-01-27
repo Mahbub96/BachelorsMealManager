@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
 import { Ionicons } from '@expo/vector-icons';
+import type { IconName } from '@/constants/IconTypes';
 import { LinearGradient } from 'expo-linear-gradient';
 
 interface User {
@@ -61,10 +62,6 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
     return formatDate(dateString);
   };
 
-  const getRoleColor = (role: string) => {
-    return role === 'admin' ? '#ef4444' : '#667eea';
-  };
-
   const getStatusColor = (status: string) => {
     return status === 'active' ? '#10b981' : '#6b7280';
   };
@@ -112,7 +109,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
             <View style={styles.badges}>
               <View style={styles.badgeContainer}>
                 <Ionicons
-                  name={getRoleIcon(user.role) as any}
+                  name={getRoleIcon(user.role) as IconName}
                   size={12}
                   color='#fff'
                 />

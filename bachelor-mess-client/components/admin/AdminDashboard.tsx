@@ -25,9 +25,7 @@ import userService, { User, CreateUserData, UpdateUserData } from '../../service
 import { MemberFormModal } from './MemberFormModal';
 import { MemberViewModal } from './MemberViewModal';
 
-interface AdminDashboardProps {
-  // Props can be extended in the future if needed
-}
+type AdminDashboardProps = Record<string, never>;
 
 interface AdminStats {
   totalMeals: number;
@@ -175,6 +173,49 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
     }
   }, [user?.role, activeTab]);
 
+  // Memoized stat cards (must be before any conditional return to satisfy rules-of-hooks)
+  const statCards = useMemo(
+    () => [
+      {
+        icon: 'fast-food' as const,
+        value: adminStats.totalMeals,
+        label: 'Total Meals',
+        colors: theme.gradient.success as [string, string],
+      },
+      {
+        icon: 'time' as const,
+        value: adminStats.pendingApprovals,
+        label: 'Pending',
+        colors: theme.gradient.warning as [string, string],
+      },
+      {
+        icon: 'checkmark-circle' as const,
+        value: adminStats.approvedMeals,
+        label: 'Approved',
+        colors: theme.gradient.secondary as [string, string],
+      },
+      {
+        icon: 'people' as const,
+        value: adminStats.totalMembers,
+        label: 'Members',
+        colors: theme.gradient.info as [string, string],
+      },
+      {
+        icon: 'calculator' as const,
+        value: adminStats.mealRate > 0 ? `৳${adminStats.mealRate.toFixed(2)}` : 'N/A',
+        label: 'Meal Rate',
+        colors: theme.gradient.warning as [string, string],
+      },
+      {
+        icon: 'calendar' as const,
+        value: adminStats.todayMeals,
+        label: 'Today Meals',
+        colors: theme.gradient.success as [string, string],
+      },
+    ],
+    [adminStats, theme]
+  );
+
   // Access control
   if (user?.role !== 'admin' && user?.role !== 'super_admin') {
     return (
@@ -236,51 +277,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
     }
   };
 
-  // Memoized stat cards to prevent unnecessary re-renders
-  const statCards = useMemo(
-    () => [
-      {
-        icon: 'fast-food' as const,
-        value: adminStats.totalMeals,
-        label: 'Total Meals',
-        colors: theme.gradient.success as [string, string],
-      },
-      {
-        icon: 'time' as const,
-        value: adminStats.pendingApprovals,
-        label: 'Pending',
-        colors: theme.gradient.warning as [string, string],
-      },
-      {
-        icon: 'checkmark-circle' as const,
-        value: adminStats.approvedMeals,
-        label: 'Approved',
-        colors: theme.gradient.secondary as [string, string],
-      },
-      {
-        icon: 'people' as const,
-        value: adminStats.totalMembers,
-        label: 'Members',
-        colors: theme.gradient.info as [string, string],
-      },
-      {
-        icon: 'calculator' as const,
-        value: adminStats.mealRate > 0 ? `৳${adminStats.mealRate.toFixed(2)}` : 'N/A',
-        label: 'Meal Rate',
-        colors: theme.gradient.warning as [string, string],
-      },
-      {
-        icon: 'calendar' as const,
-        value: adminStats.todayMeals,
-        label: 'Today Meals',
-        colors: theme.gradient.success as [string, string],
-      },
-    ],
-    [adminStats, theme]
-  );
-
-  const renderOverview = () => {
-    return (
+  const renderOverview = () => (
     <ScrollView
       style={styles.scrollView}
       refreshControl={
@@ -454,8 +451,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
         </>
       )}
     </ScrollView>
-    );
-  };
+  );
 
   const renderMeals = () => (
     <View style={styles.tabContent}>
@@ -705,7 +701,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
           <Ionicons name='people-outline' size={64} color={theme.icon.secondary} />
           <ThemedText style={[styles.emptyText, { color: theme.text.secondary }]}>No members found</ThemedText>
           <ThemedText style={[styles.emptySubtext, { color: theme.text.tertiary }]}>
-            Click "Add Member" to create your first member
+            Click &quot;Add Member&quot; to create your first member
           </ThemedText>
         </View>
       ) : (

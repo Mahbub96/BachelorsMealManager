@@ -9,23 +9,19 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Modal,
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useRouter , Stack } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import bazarService, { BazarItem } from '@/services/bazarService';
-import { useAuth } from '@/context/AuthContext';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Stack } from 'expo-router';
 import { useThemeColor } from '@/hooks/useThemeColor';
 
 export default function NewBazarScreen() {
   const router = useRouter();
-  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<BazarItem[]>([
     { name: '', quantity: '1', price: 0 },
@@ -35,7 +31,6 @@ export default function NewBazarScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [receiptImage, setReceiptImage] = useState<string | null>(null);
-  const [showReceiptModal, setShowReceiptModal] = useState(false);
 
   // Theme colors
   const backgroundColor = useThemeColor({}, 'background');
@@ -83,7 +78,7 @@ export default function NewBazarScreen() {
     }
   };
 
-  const handleDateChange = (event: any, selectedDate?: Date) => {
+  const handleDateChange = (_event: unknown, selectedDate?: Date) => {
     console.log('📅 NewBazar - Date picker event:', event.type);
     setShowDatePicker(false);
 

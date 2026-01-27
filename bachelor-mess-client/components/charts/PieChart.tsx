@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { View, Pressable, StyleSheet, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '../ThemedText';
 import { useTheme } from '@/context/ThemeContext';
@@ -43,8 +42,6 @@ export const PieChart: React.FC<PieChartProps> = ({
   const safeData = data || [];
   const total = safeData.reduce((sum, item) => sum + (item.value || 0), 0);
   const chartSize = Math.min(screenWidth - 120, 200);
-  const centerX = chartSize / 2;
-  const centerY = chartSize / 2;
   const radius = (chartSize - 40) / 2;
 
   const handleSlicePress = (item: PieChartData, index: number) => {
@@ -67,24 +64,6 @@ export const PieChart: React.FC<PieChartProps> = ({
 
   const renderSlice = (item: PieChartData, index: number) => {
     const percentage = total > 0 ? (item.value / total) * 100 : 0;
-    const startAngle = safeData
-      .slice(0, index)
-      .reduce((sum, slice) => sum + (slice.value / total) * 360, 0);
-    const endAngle = startAngle + (item.value / total) * 360;
-
-    const x1 = centerX + radius * Math.cos((startAngle * Math.PI) / 180);
-    const y1 = centerY + radius * Math.sin((startAngle * Math.PI) / 180);
-    const x2 = centerX + radius * Math.cos((endAngle * Math.PI) / 180);
-    const y2 = centerY + radius * Math.sin((endAngle * Math.PI) / 180);
-
-    const largeArcFlag = endAngle - startAngle > 180 ? 1 : 0;
-
-    const path = [
-      `M ${centerX} ${centerY}`,
-      `L ${x1} ${y1}`,
-      `A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2}`,
-      'Z',
-    ].join(' ');
 
     return (
       <Pressable
@@ -97,6 +76,7 @@ export const PieChart: React.FC<PieChartProps> = ({
           },
         ]}
         onPress={() => handleSlicePress(item, index)}
+        accessibilityLabel={`${item.label} ${percentage.toFixed(1)}%`}
       >
         <LinearGradient
           colors={item.gradient || [theme.primary, theme.secondary]}

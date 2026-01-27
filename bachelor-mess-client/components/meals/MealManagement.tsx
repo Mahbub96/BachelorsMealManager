@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -13,18 +13,17 @@ import {
   Modal,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-
-const { width } = Dimensions.get('window');
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '../ThemedText';
 import { ThemedView } from '../ThemedView';
 import { ActivityCard } from '../cards';
-import { MealCard } from '../cards/MealCard';
 import { useAuth } from '../../context/AuthContext';
 import { useMealManagement } from '../../hooks/useMealManagement';
 import mealService from '../../services/mealService';
 import { useThemeColor } from '../../hooks/useThemeColor';
+
+const { width } = Dimensions.get('window');
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -35,7 +34,7 @@ interface MealManagementProps {
 export const MealManagement: React.FC<MealManagementProps> = ({
   onNavigate,
 }) => {
-  const { user } = useAuth();
+  useAuth();
 
   // Theme colors
   const backgroundColor = useThemeColor({}, 'background');
@@ -128,14 +127,14 @@ export const MealManagement: React.FC<MealManagementProps> = ({
           response.message || response.error || 'Failed to submit meal'
         );
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'An unexpected error occurred');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const getMealSummary = (meal: any) => {
+  const getMealSummary = (meal: { breakfast?: boolean; lunch?: boolean; dinner?: boolean }) => {
     const meals: string[] = [];
     if (meal?.breakfast) meals.push('Breakfast');
     if (meal?.lunch) meals.push('Lunch');
@@ -430,7 +429,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
     );
   };
 
-  const handleDateChange = (event: any, date?: Date) => {
+  const handleDateChange = (_event: unknown, date?: Date) => {
     if (Platform.OS === 'android') {
       setShowDatePicker(false);
     }

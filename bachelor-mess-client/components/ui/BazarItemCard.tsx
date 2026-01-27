@@ -9,20 +9,21 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '../ThemedText';
-import { ThemedView } from '../ThemedView';
 
 const { width: screenWidth } = Dimensions.get('window');
 
+type BazarItem = {
+  id: string;
+  name: string;
+  amount: number;
+  date: string;
+  status: 'pending' | 'approved' | 'rejected';
+  submittedBy: string;
+};
+
 interface BazarItemCardProps {
-  item: {
-    id: string;
-    name: string;
-    amount: number;
-    date: string;
-    status: 'pending' | 'approved' | 'rejected';
-    submittedBy: string;
-  };
-  onPress?: (item: any) => void;
+  item: BazarItem;
+  onPress?: (item: BazarItem) => void;
   onApprove?: (id: string) => void;
   onReject?: (id: string) => void;
   onDelete?: (id: string) => void;

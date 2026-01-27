@@ -3,8 +3,7 @@ import { View, StyleSheet, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '../ThemedText';
 import { useTheme } from '../../context/ThemeContext';
-import { MealEntry } from '../../services/mealService';
-import mealService from '../../services/mealService';
+import mealService, { MealEntry } from '../../services/mealService';
 
 interface MealDetailsViewProps {
   meal: MealEntry;

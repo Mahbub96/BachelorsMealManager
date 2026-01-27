@@ -3,28 +3,27 @@ import {
   View,
   StyleSheet,
   TouchableOpacity,
-  Dimensions,
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '../ThemedText';
 
-const { width: screenWidth } = Dimensions.get('window');
+type MealCardMeal = {
+  id: string;
+  date: string;
+  breakfast: boolean;
+  lunch: boolean;
+  dinner: boolean;
+  status: 'pending' | 'approved' | 'rejected';
+  userId?: string;
+  cost?: number;
+  notes?: string;
+};
 
 export interface MealCardProps {
-  meal: {
-    id: string;
-    date: string;
-    breakfast: boolean;
-    lunch: boolean;
-    dinner: boolean;
-    status: 'pending' | 'approved' | 'rejected';
-    userId?: string;
-    cost?: number;
-    notes?: string;
-  };
-  onPress?: (meal: any) => void;
+  meal: MealCardMeal;
+  onPress?: (meal: MealCardMeal) => void;
   onStatusUpdate?: (mealId: string, status: 'approved' | 'rejected') => void;
   onDelete?: (mealId: string) => void;
   onEdit?: (mealId: string) => void;

@@ -9,19 +9,18 @@ import {
   ActivityIndicator,
   StatusBar,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import type { IconName } from '@/constants/IconTypes';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { useTheme } from '@/context/ThemeContext';
-import { activityService } from '@/services/activityService';
-import { Activity as ActivityItem } from '@/services/activityService';
+import { activityService , Activity as ActivityItem } from '@/services/activityService';
 
 export default function RecentActivityScreen() {
   const themeContext = useTheme();
   const theme = themeContext?.theme;
-  const insets = useSafeAreaInsets();
   
   // Safe fallback values
   const safeTheme = useMemo(() => {
@@ -243,7 +242,7 @@ export default function RecentActivityScreen() {
             style={styles.activityIconGradient}
           >
             <Ionicons
-              name={getActivityIcon(item.type || '') as any}
+              name={getActivityIcon(item.type || '') as IconName}
               size={16}
               color={safeTheme?.text?.inverse || '#ffffff'}
             />
@@ -293,7 +292,7 @@ export default function RecentActivityScreen() {
         activeOpacity={0.7}
       >
         <Ionicons
-          name={icon as any}
+          name={icon as IconName}
           size={16}
           color={
             isActive

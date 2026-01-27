@@ -53,6 +53,9 @@ class SQLiteDatabaseService implements DatabaseService {
   private DATABASE_NAME = 'mess_manager.db';
   private isInitializing = false;
   private isInitialized = false;
+  private isClosing = false; // Track if database is being closed
+  private closingPromise: Promise<void> | null = null; // Promise for closing operation
+  private activeOperations = 0; // Track number of active database operations
   private tablesCreated = false; // Track if tables have been created
   private isCreatingTables = false; // Track if tables are being created
   private tablesCreationPromise: Promise<void> | null = null; // Promise for table creation
@@ -106,6 +109,18 @@ class SQLiteDatabaseService implements DatabaseService {
       );
       this.isInitialized = true; // Mark as initialized to prevent retries
       return;
+    }
+
+    // CRITICAL FIX: Wait for close to complete before initializing
+    if (this.isClosing && this.closingPromise) {
+      console.log('⏳ SQLite Database - Waiting for close to complete before init...');
+      try {
+        await this.closingPromise;
+        // Small delay to ensure close is fully complete
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch {
+        // Ignore close errors
+      }
     }
 
     // PERFECT FIX: If already initializing, wait for the existing promise
@@ -702,10 +717,57 @@ class SQLiteDatabaseService implements DatabaseService {
   }
 
   async close(): Promise<void> {
+    // If already closing, wait for the existing close operation
+    if (this.isClosing && this.closingPromise) {
+      return this.closingPromise;
+    }
+
+    // If already closed, return immediately
+    if (!this.db && !this.isInitialized) {
+      return;
+    }
+
+    // Set closing flag and create promise
+    this.isClosing = true;
+    this.closingPromise = this.performClose();
+
+    try {
+      await this.closingPromise;
+    } finally {
+      this.isClosing = false;
+      this.closingPromise = null;
+    }
+  }
+
+  private async performClose(): Promise<void> {
     // Clear connection timeout to prevent memory leak
     if (this.connectionTimeout) {
       clearTimeout(this.connectionTimeout);
       this.connectionTimeout = null;
+    }
+
+    // Wait for active operations to complete (with timeout)
+    const maxWaitTime = 5000; // 5 seconds max wait
+    const startTime = Date.now();
+    while (this.activeOperations > 0 && Date.now() - startTime < maxWaitTime) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    if (this.activeOperations > 0) {
+      console.warn('⚠️ SQLite Database - Closing with active operations, may cause issues');
+    }
+
+    // Prevent new initializations during close
+    if (this.isInitializing && this.initializationPromise) {
+      try {
+        // Wait a bit for init to complete, but don't wait too long
+        await Promise.race([
+          this.initializationPromise,
+          new Promise(resolve => setTimeout(resolve, 2000))
+        ]);
+      } catch {
+        // Ignore init errors during close
+      }
     }
 
     if (this.db) {
@@ -719,9 +781,9 @@ class SQLiteDatabaseService implements DatabaseService {
           // Only commit if there's actually a transaction active
           // We'll catch the error if there's no transaction
           await this.db.execAsync('COMMIT');
-        } catch (commitError: any) {
+        } catch (commitError: unknown) {
           // Ignore "no transaction is active" errors - this is expected if no transaction was started
-          const errorMessage = commitError?.message || String(commitError);
+          const errorMessage = commitError instanceof Error ? commitError.message : String(commitError);
           if (!errorMessage.includes('no transaction is active') && 
               !errorMessage.includes('cannot commit')) {
             // Only log if it's a different error
@@ -744,6 +806,20 @@ class SQLiteDatabaseService implements DatabaseService {
     // Skip on web platform
     if (!this.isSQLiteAvailable()) {
       return;
+    }
+
+    // If database is closing, wait for it to finish before initializing
+    if (this.isClosing && this.closingPromise) {
+      try {
+        await this.closingPromise;
+      } catch {
+        // Ignore close errors, continue to init
+      }
+      // After close completes, reset flags
+      if (!this.isClosing) {
+        // Small delay to ensure close is fully complete
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
     }
 
     // If in bypass mode, don't try to initialize
@@ -775,7 +851,14 @@ class SQLiteDatabaseService implements DatabaseService {
           return; // Database initialized during wait
         }
       }
-      await this.init();
+      try {
+        await this.init();
+      } catch (error) {
+        // If init fails during ensureConnection, don't crash - enable bypass mode
+        console.error('❌ SQLite Database - Init failed in ensureConnection, enabling bypass mode:', error);
+        await this.bypassDatabase();
+        return;
+      }
     }
 
     // If still null after init, we're in bypass mode
@@ -1065,6 +1148,11 @@ class SQLiteDatabaseService implements DatabaseService {
   }
 
   private async closeIdleConnection(): Promise<void> {
+    // Don't close if there are active operations or if already closing
+    if (this.activeOperations > 0 || this.isClosing) {
+      return;
+    }
+
     const idleTime = Date.now() - this.lastActivity;
     if (idleTime >= SQLITE_CONSTANTS.CONNECTION_POOL.IDLE_TIMEOUT) {
       console.log('🔄 SQLite Database - Closing idle connection...');
@@ -1072,33 +1160,52 @@ class SQLiteDatabaseService implements DatabaseService {
     }
   }
 
+  /**
+   * Track an active database operation to prevent closing during operations
+   */
+  private async trackOperation<T>(operation: () => Promise<T>): Promise<T> {
+    // Don't start new operations if closing
+    if (this.isClosing) {
+      throw new Error('Database is closing, cannot start new operation');
+    }
+
+    this.activeOperations++;
+    try {
+      return await operation();
+    } finally {
+      this.activeOperations = Math.max(0, this.activeOperations - 1);
+    }
+  }
+
   private async executeWithRetry<T>(
     operation: () => Promise<T>,
     operationName: string
   ): Promise<T> {
-    let lastError: Error | null = null;
+    return this.trackOperation(async () => {
+      let lastError: Error | null = null;
 
-    for (let attempt = 1; attempt <= this.MAX_RETRIES; attempt++) {
-      try {
-        return await operation();
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error));
+      for (let attempt = 1; attempt <= this.MAX_RETRIES; attempt++) {
+        try {
+          return await operation();
+        } catch (error) {
+          lastError = error instanceof Error ? error : new Error(String(error));
 
-        if (attempt < this.MAX_RETRIES) {
-          console.log(
-            `🔄 SQLite Database - ${operationName} failed (attempt ${attempt}/${this.MAX_RETRIES}), retrying...`
-          );
-          await new Promise(resolve =>
-            setTimeout(resolve, this.RETRY_DELAY * attempt)
-          );
+          if (attempt < this.MAX_RETRIES) {
+            console.log(
+              `🔄 SQLite Database - ${operationName} failed (attempt ${attempt}/${this.MAX_RETRIES}), retrying...`
+            );
+            await new Promise(resolve =>
+              setTimeout(resolve, this.RETRY_DELAY * attempt)
+            );
+          }
         }
       }
-    }
 
-    throw (
-      lastError ||
-      new Error(`${operationName} failed after ${this.MAX_RETRIES} attempts`)
-    );
+      throw (
+        lastError ||
+        new Error(`${operationName} failed after ${this.MAX_RETRIES} attempts`)
+      );
+    });
   }
 
   async healthCheck(): Promise<boolean> {
@@ -1704,10 +1811,11 @@ class SQLiteDatabaseService implements DatabaseService {
   }
 
   async saveData(table: string, data: Record<string, any>): Promise<void> {
-    try {
-      await this.ensureConnection();
-      await this.acquireLock();
-      this.updateActivity();
+    return this.trackOperation(async () => {
+      try {
+        await this.ensureConnection();
+        await this.acquireLock();
+        this.updateActivity();
 
       // Validate table name to prevent SQL injection
       if (!this.isValidTableName(table)) {
@@ -1779,6 +1887,7 @@ class SQLiteDatabaseService implements DatabaseService {
     } finally {
       this.releaseLock();
     }
+    });
   }
 
   private async isInTransaction(): Promise<boolean> {
@@ -1797,10 +1906,11 @@ class SQLiteDatabaseService implements DatabaseService {
     query?: string,
     params?: any[]
   ): Promise<Record<string, any>[]> {
-    try {
-      await this.ensureConnection();
-      await this.acquireLock();
-      this.updateActivity();
+    return this.trackOperation(async () => {
+      try {
+        await this.ensureConnection();
+        await this.acquireLock();
+        this.updateActivity();
 
       // Validate table name to prevent SQL injection
       if (!this.isValidTableName(table)) {
@@ -1907,6 +2017,7 @@ class SQLiteDatabaseService implements DatabaseService {
     } finally {
       this.releaseLock();
     }
+    });
   }
 
   async updateData(
@@ -2195,16 +2306,17 @@ class SQLiteDatabaseService implements DatabaseService {
   }
 
   async executeQuery(query: string, params?: any[]): Promise<any> {
-    try {
-      await this.ensureConnection();
-      
-      // Double-check database is available after ensureConnection
-      if (!this.db || typeof this.db.getAllAsync !== 'function') {
-        throw new Error('Database connection is not available');
-      }
-      
-      await this.acquireLock();
-      this.updateActivity();
+    return this.trackOperation(async () => {
+      try {
+        await this.ensureConnection();
+        
+        // Double-check database is available after ensureConnection
+        if (!this.db || typeof this.db.getAllAsync !== 'function') {
+          throw new Error('Database connection is not available');
+        }
+        
+        await this.acquireLock();
+        this.updateActivity();
 
       // Validate query to prevent dangerous operations
       if (!this.isValidQuery(query)) {
@@ -2229,6 +2341,7 @@ class SQLiteDatabaseService implements DatabaseService {
     } finally {
       this.releaseLock();
     }
+    });
   }
 
   // Enhanced convenience methods with validation
@@ -2871,14 +2984,21 @@ class SQLiteDatabaseService implements DatabaseService {
     this.isInitializing = false;
     this.consecutiveErrors = 0;
 
-    // Create a mock database object that returns empty results
+    // Create a mock database object that returns empty results (bypass mode)
+    type BypassDb = {
+      closeAsync: () => Promise<void>;
+      execAsync: (sql: string) => Promise<void>;
+      getAllAsync: (sql: string) => Promise<unknown[]>;
+      getFirstAsync: (sql: string) => Promise<null>;
+      runAsync: (sql: string) => Promise<{ lastInsertRowId: number; changes: number }>;
+    };
     this.db = {
       closeAsync: async () => {},
       execAsync: async () => {},
       getAllAsync: async () => [],
       getFirstAsync: async () => null,
       runAsync: async () => ({ lastInsertRowId: 0, changes: 0 }),
-    } as any;
+    } as unknown as BypassDb;
 
     console.log(
       '⚠️ SQLite Database - Operating in bypass mode - no data persistence'

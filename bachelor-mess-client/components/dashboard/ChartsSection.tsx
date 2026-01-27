@@ -1,16 +1,14 @@
 import React, { useState } from 'react';
-import { Dimensions, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { BarChart, SwappableLineChart } from '../ModernCharts';
 import { ThemedText } from '../ThemedText';
 import { useTheme } from '@/context/ThemeContext';
 
-const { width: screenWidth } = Dimensions.get('window');
-
 interface ChartsSectionProps {
-  monthlyRevenue: any[];
-  currentMonthRevenue: any;
-  expenseBreakdown: any[];
-  weeklyMeals: any[];
+  monthlyRevenue: Record<string, unknown>[];
+  currentMonthRevenue: Record<string, unknown>;
+  expenseBreakdown: Record<string, unknown>[];
+  weeklyMeals: Record<string, unknown>[];
   isTablet?: boolean;
 }
 

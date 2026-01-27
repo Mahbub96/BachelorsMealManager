@@ -1,5 +1,6 @@
 import { useTheme } from '@/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
+import type { IconName } from '@/constants/IconTypes';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React from 'react';
@@ -53,7 +54,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               ]}
             >
               <Ionicons
-                name={icon as any}
+                name={icon as IconName}
                 size={isSmallScreen ? 32 : 40}
                 color={theme.text.inverse}
               />

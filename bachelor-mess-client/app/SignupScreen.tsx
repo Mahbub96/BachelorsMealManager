@@ -105,7 +105,7 @@ export default function SignupScreen() {
       } else {
         setError(response.error || 'Registration failed');
       }
-    } catch (error) {
+    } catch {
       setError('Network error. Please try again.');
     } finally {
       setLoading(false);
