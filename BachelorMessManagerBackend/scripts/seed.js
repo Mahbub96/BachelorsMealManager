@@ -57,8 +57,8 @@ const sampleUsers = [
     paymentHistory: [{ amount: 5000, date: new Date(), method: 'cash', status: 'completed', notes: 'Monthly contribution' }]
   },
   {
-    name: 'Jane Smith',
-    email: 'jane@mess.com',
+    name: 'Mahbub Alam',
+    email: 'mahbub@mess.com',
     password: 'Password@123',
     role: 'member',
     phone: '+8801234567893',
@@ -68,8 +68,8 @@ const sampleUsers = [
     paymentHistory: []
   },
   {
-    name: 'Mike Johnson',
-    email: 'mike@mess.com',
+    name: 'Rafiqul Islam',
+    email: 'rafiqul@mess.com',
     password: 'Password@123',
     role: 'member',
     phone: '+8801234567894',
