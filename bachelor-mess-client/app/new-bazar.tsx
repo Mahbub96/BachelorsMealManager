@@ -1,24 +1,24 @@
-import React, { useState } from 'react';
-import {
-  View,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  Alert,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Image,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter , Stack } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import bazarService, { BazarItem } from '@/services/bazarService';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { useThemeColor } from '@/hooks/useThemeColor';
+import bazarService, { BazarItem } from '@/services/bazarService';
+import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Stack, useRouter } from 'expo-router';
+import { useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 export default function NewBazarScreen() {
   const router = useRouter();
@@ -51,19 +51,10 @@ export default function NewBazarScreen() {
     field: keyof BazarItem,
     value: string | number
   ) => {
-    console.log('✏️ NewBazar - Updating item:', { index, field, value });
-    
-    // #region agent log
-    __DEV__ && fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'new-bazar.tsx:54',message:'updateItem called',data:{index,field,value,currentItems:items},timestamp:Date.now(),sessionId:'debug-session',runId:'update-item',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
-
+    console.log(`✏️ NewBazar - Updating item ${index} field ${field}:`, value);
     setItems(prev => {
       const updated = prev.map((item, i) => (i === index ? { ...item, [field]: value } : item));
-      
-      // #region agent log
-      __DEV__ && fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'new-bazar.tsx:62',message:'Items state updated',data:{updatedItems:updated},timestamp:Date.now(),sessionId:'debug-session',runId:'update-item',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
-      
+       
       return updated;
     });
   };
@@ -78,7 +69,7 @@ export default function NewBazarScreen() {
     }
   };
 
-  const handleDateChange = (_event: unknown, selectedDate?: Date) => {
+  const handleDateChange = (event: any, selectedDate?: Date) => {
     console.log('📅 NewBazar - Date picker event:', event.type);
     setShowDatePicker(false);
 
@@ -130,14 +121,8 @@ export default function NewBazarScreen() {
     console.log('✅ NewBazar - Validating form');
 
     // #region agent log
-    __DEV__ && fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'new-bazar.tsx:123',message:'validateForm called',data:{itemsCount:items.length,items:items.map(i=>({name:i.name,quantity:i.quantity,price:i.price}))},timestamp:Date.now(),sessionId:'debug-session',runId:'validation',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
 
     const emptyItems = items.filter(item => !item.name.trim());
-    
-    // #region agent log
-    __DEV__ && fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'new-bazar.tsx:130',message:'Checking for empty items',data:{emptyItemsCount:emptyItems.length,emptyItems,allItems:items},timestamp:Date.now(),sessionId:'debug-session',runId:'validation',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
 
     if (emptyItems.length > 0) {
       console.error('❌ NewBazar - Validation failed: Empty item names', {
@@ -164,11 +149,6 @@ export default function NewBazarScreen() {
   };
 
   const handleSubmit = async () => {
-    console.log('📝 NewBazar - Submitting bazar entry');
-
-    // #region agent log
-    __DEV__ && fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'new-bazar.tsx:171',message:'handleSubmit called',data:{itemsCount:items.length,items:items.map(i=>({name:i.name,quantity:i.quantity,price:i.price})),date,description},timestamp:Date.now(),sessionId:'debug-session',runId:'submit',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
 
     if (!validateForm()) {
       console.log('❌ NewBazar - Form validation failed');
@@ -185,9 +165,6 @@ export default function NewBazarScreen() {
           item.price > 0
       );
 
-      // #region agent log
-      __DEV__ && fetch('http://127.0.0.1:7242/ingest/7b131878-66d7-4e41-a34a-1e43324df177',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'new-bazar.tsx:186',message:'Filtered items',data:{originalCount:items.length,validItemsCount:validItems.length,validItems},timestamp:Date.now(),sessionId:'debug-session',runId:'submit',hypothesisId:'C'})}).catch(()=>{});
-      // #endregion
 
       const bazarData = {
         items: validItems,
@@ -308,7 +285,10 @@ export default function NewBazarScreen() {
             </ThemedText>
             <TouchableOpacity
               style={[styles.dateInput, { backgroundColor, borderColor }]}
-              onPress={showDatePickerModal}
+              onPress={() => {
+                console.log('📅 NewBazar - Opening date picker manually');
+                showDatePickerModal();
+              }}
             >
               <ThemedText style={[styles.dateInputText, { color: textColor }]}>
                 {date || 'Select a date'}

@@ -101,7 +101,7 @@ class Logger {
    * Log error (always logged, but sanitized)
    */
   error(message: string, ...args: unknown[]): void {
-    const sanitizedArgs = args.map(arg => this.sanitize(arg));
+    const sanitizedArgs = args.map(arg => this.sanitize(JSON.parse(arg)));
     console.error(message, ...sanitizedArgs);
   }
 

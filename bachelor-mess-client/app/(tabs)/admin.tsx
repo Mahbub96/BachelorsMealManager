@@ -1,29 +1,28 @@
 import React from 'react';
-import { View, StyleSheet, Text } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { ThemedView } from '../../components/ThemedView';
 import { AdminDashboard } from '../../components/admin/AdminDashboard';
 import { ErrorBoundary } from '../../components/ErrorBoundary';
-import { useAuth } from '../../context/AuthContext';
-import { useThemeColor } from '@/hooks/useThemeColor';
+
 
 export default function AdminScreen() {
-  const { user } = useAuth();
+  // const { user } = useAuth();
 
-  // Theme colors
-  const textColor = useThemeColor({}, 'text');
+  // // Theme colors
+  // const textColor = useThemeColor({}, 'text');
 
   // Add access control for admin users only
-  if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
-    return (
-      <ThemedView style={styles.container}>
-        <View style={styles.errorContainer}>
-          <Text style={[styles.errorText, { color: textColor }]}>
-            Access Denied. Admin privileges required.
-          </Text>
-        </View>
-      </ThemedView>
-    );
-  }
+  // if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
+  //   return (
+  //     <ThemedView style={styles.container}>
+  //       <View style={styles.errorContainer}>
+  //         <Text style={[styles.errorText, { color: textColor }]}>
+  //           Access Denied. Admin privileges required.
+  //         </Text>
+  //       </View>
+  //     </ThemedView>
+  //   );
+  // }
 
   return (
     <ErrorBoundary>

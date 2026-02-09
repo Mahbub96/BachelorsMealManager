@@ -6,9 +6,8 @@ import React, {
   useEffect,
 } from 'react';
 import { useRouter } from 'expo-router';
-import authService from '@/services/authService';
+import authService,{User} from '@/services/authService';
 import authEventEmitter from '@/services/authEventEmitter';
-import { User } from '@/services/authService';
 
 interface AuthData {
   user: User | null;

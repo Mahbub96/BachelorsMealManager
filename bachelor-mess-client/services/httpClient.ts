@@ -40,18 +40,6 @@ class HttpClient {
       'Content-Type': 'application/json',
       Accept: 'application/json',
     };
-    
-    // Log the configured base URL for debugging
-    logger.debug('HttpClient initialized with baseURL:', this.baseURL);
-    logger.debug('API_CONFIG.apiUrl:', API_CONFIG.apiUrl);
-    
-    // Validate that baseURL is not pointing to Metro bundler
-    if (this.baseURL.includes(':8081')) {
-      logger.error('ERROR: baseURL is pointing to Metro bundler port (8081) instead of backend API!');
-      logger.error('Current baseURL:', this.baseURL);
-      logger.error('Expected: http://localhost:3000 (or your backend URL)');
-      logger.error('Fix: Set EXPO_PUBLIC_API_URL=http://localhost:3000 in .env file');
-    }
   }
 
   // Add request interceptor
@@ -150,7 +138,6 @@ class HttpClient {
           clearTimeout(timeoutId);
 
           if (response.ok) {
-            logger.debug(`API connectivity check successful via ${healthUrl}`);
             this.isOnlineCache = {
               status: true,
               timestamp: Date.now(),

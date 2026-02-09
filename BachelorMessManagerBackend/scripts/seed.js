@@ -11,7 +11,8 @@ const connectDB = async () => {
     console.log(`MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
     console.error('Database connection error:', error);
-    process.exit(1);
+    throw error;
+    // process.exit(1);
   }
 };
 
@@ -28,7 +29,7 @@ const sampleUsers = [
     totalPaid: 5000,
     lastPaymentDate: new Date(),
     isSuperAdmin: true,
-    superAdminPermissions: ['manage_users','manage_admins','view_all_data','system_settings','analytics_access','backup_restore','audit_logs','billing_management','support_management'],
+    superAdminPermissions: ['manage_users', 'manage_admins', 'view_all_data', 'system_settings', 'analytics_access', 'backup_restore', 'audit_logs', 'billing_management', 'support_management'],
     paymentHistory: [{ amount: 5000, date: new Date(), method: 'bank_transfer', status: 'completed', notes: 'Monthly contribution' }]
   },
   {
@@ -75,8 +76,8 @@ const sampleUsers = [
     monthlyContribution: 5000,
     paymentStatus: 'paid',
     totalPaid: 5000,
-    lastPaymentDate: new Date(Date.now() - 10*24*60*60*1000),
-    paymentHistory: [{ amount: 5000, date: new Date(Date.now() - 10*24*60*60*1000), method: 'mobile_banking', status: 'completed', notes: 'Monthly contribution' }]
+    lastPaymentDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+    paymentHistory: [{ amount: 5000, date: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000), method: 'mobile_banking', status: 'completed', notes: 'Monthly contribution' }]
   }
 ];
 
@@ -109,8 +110,8 @@ const sampleBazarEntries = [
 const generateMealEntries = (members, admin) => {
   const meals = [];
   for (let i = 0; i < 7; i++) {
-    const date = new Date(Date.now() - i*24*60*60*1000);
-    date.setUTCHours(0,0,0,0);
+    const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+    date.setUTCHours(0, 0, 0, 0);
     members.forEach(member => {
       meals.push({
         userId: member._id,

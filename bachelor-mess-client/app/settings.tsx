@@ -421,7 +421,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 12,
     marginHorizontal: 20,
-    color: '#374151',
+    color: '#ddd',
   },
   settingItem: {
     flexDirection: 'row',
