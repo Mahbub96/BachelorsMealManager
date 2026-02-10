@@ -2,6 +2,7 @@ const Bazar = require('../models/Bazar');
 const User = require('../models/User');
 const { config } = require('../config/config');
 const logger = require('../utils/logger');
+const { getGroupMemberIds } = require('../utils/groupHelper');
 const {
   sendSuccessResponse,
   sendErrorResponse,
@@ -116,7 +117,7 @@ class BazarController {
     }
   }
 
-  // Get all bazar entries (admin only)
+  // Get all bazar entries (admin/member: group-scoped; super_admin: all). Defaults to current month when no date params.
   async getAllBazar(req, res, next) {
     try {
       const {
@@ -128,28 +129,35 @@ class BazarController {
         page = 1,
       } = req.query;
 
-      // Build query
       const query = {};
 
-      if (status) {
-        query.status = status;
-      }
+      if (status) query.status = status;
 
+      // Date: use params if both provided, else default to current month
       if (startDate && endDate) {
         query.date = {
           $gte: new Date(startDate),
           $lte: new Date(endDate),
         };
+      } else {
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        query.date = { $gte: monthStart, $lte: monthEnd };
       }
 
+      // User scope: specific userId from params, or group members (admin/member see group; super_admin sees all)
       if (userId) {
         query.userId = userId;
+      } else {
+        const groupMemberIds = await getGroupMemberIds(req.user);
+        if (Array.isArray(groupMemberIds) && groupMemberIds.length > 0) {
+          query.userId = { $in: groupMemberIds };
+        }
       }
 
-      // Calculate pagination
       const skip = (parseInt(page) - 1) * parseInt(limit);
 
-      // Get bazar entries with pagination
       const bazarEntries = await Bazar.find(query)
         .populate('userId', 'name email')
         .populate('approvedBy', 'name')
@@ -157,7 +165,6 @@ class BazarController {
         .skip(skip)
         .limit(parseInt(limit));
 
-      // Get total count
       const total = await Bazar.countDocuments(query);
 
       return sendSuccessResponse(

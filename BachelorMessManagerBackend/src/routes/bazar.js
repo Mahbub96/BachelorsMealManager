@@ -26,13 +26,13 @@ router.get('/', AuthMiddleware.protect(), bazarController.getUserBazar);
 // @access  Private
 router.get('/user', AuthMiddleware.protect(), bazarController.getUserBazar);
 
-// @desc    Get all bazar entries (admin only)
+// @desc    Get all bazar entries (admin/member: group-scoped; super_admin: all). Defaults to current month.
 // @route   GET /api/bazar/all
-// @access  Private/Admin
+// @access  Private (admin, member, super_admin)
 router.get(
   '/all',
   AuthMiddleware.protect(),
-  AuthMiddleware.requireAdmin(),
+  AuthMiddleware.requireRole(['admin', 'member', 'super_admin']),
   bazarController.getAllBazar
 );
 

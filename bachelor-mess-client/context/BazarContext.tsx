@@ -6,7 +6,9 @@ import React, {
   useEffect,
   useState,
 } from 'react';
-import bazarService from '../services/bazarService';
+import bazarService, {
+  type BazarFilters as ApiBazarFilters,
+} from '../services/bazarService';
 import userStatsService from '../services/userStatsService';
 import { useAuth } from './AuthContext';
 
@@ -189,7 +191,7 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
     }
   }, [user]);
 
-  // Load Bazar entries
+  // Load Bazar entries (admin/member/super_admin: group/all via GET /api/bazar/all; others: own via GET /api/bazar)
   const loadBazarEntries = useCallback(async () => {
     if (!user) return;
 
@@ -197,15 +199,17 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
       setLoadingEntries(true);
       setEntriesError(null);
 
-      console.log('🛒 Loading bazar entries...');
-
-      // Convert UI filters to API filters
-      const apiFilters: Record<string, string> = {};
-
-      if (filters.status && filters.status !== 'all') {
+      // Convert UI filters to API query params
+      const apiFilters: ApiBazarFilters = {};
+      if (
+        filters.status &&
+        filters.status !== 'all' &&
+        (filters.status === 'pending' ||
+          filters.status === 'approved' ||
+          filters.status === 'rejected')
+      ) {
         apiFilters.status = filters.status;
       }
-
       if (filters.dateRange && filters.dateRange !== 'all') {
         const today = new Date();
         switch (filters.dateRange) {
@@ -230,7 +234,13 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
         }
       }
 
-      const response = await bazarService.getUserBazarEntries(apiFilters);
+      const useGroupApi =
+        user.role === 'admin' ||
+        user.role === 'member' ||
+        user.role === 'super_admin';
+      const response = useGroupApi
+        ? await bazarService.getAllBazarEntries(apiFilters)
+        : await bazarService.getUserBazarEntries(apiFilters);
 
       console.log('📊 Bazar entries response:', response);
 
