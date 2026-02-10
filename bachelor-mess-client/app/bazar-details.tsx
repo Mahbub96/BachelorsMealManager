@@ -10,6 +10,7 @@ import {
   TextInput,
   FlatList,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { IconName } from '@/constants/IconTypes';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -362,7 +363,7 @@ export default function BazarDetailsScreen() {
   }
 
   return (
-    <ThemedView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <Stack.Screen
         options={{
           headerShown: false,
@@ -706,7 +707,7 @@ export default function BazarDetailsScreen() {
           </View>
         </ThemedView>
       </Modal>
-    </ThemedView>
+    </SafeAreaView>
   );
 }
 
@@ -779,7 +780,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   headerGradient: {
-    paddingTop: 60,
+    paddingTop: 16,
     paddingBottom: 20,
     paddingHorizontal: 20,
   },

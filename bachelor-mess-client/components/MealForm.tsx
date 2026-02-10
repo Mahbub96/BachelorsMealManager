@@ -156,28 +156,45 @@ export const MealForm: React.FC<MealFormProps> = ({
         onSuccess?.();
         resetForm();
       } else {
-        // Check for specific error types
-        if (response.error?.includes('already exists for this date')) {
+        // Backend returns "You already have a meal entry for ... Use PUT /api/meals/:id ..."
+        const isDuplicateMeal =
+          response.error?.includes('already have a meal entry') ||
+          response.error?.includes('already exists for this date');
+        const mealIdMatch = response.error?.match(/\/api\/meals\/([a-f0-9]+)/i);
+        const existingId = mealIdMatch?.[1] ?? existingMealId;
+
+        if (isDuplicateMeal && existingId) {
+          setExistingMealId(existingId);
           Alert.alert(
             'Meal Already Exists',
             'You have already submitted a meal entry for this date. Would you like to update your existing entry instead?',
             [
-              {
-                text: 'Cancel',
-                style: 'cancel',
-                onPress: () => {
-                  clearWarnings(); // Clear warnings when user cancels
-                },
-              },
+              { text: 'Cancel', style: 'cancel', onPress: () => clearWarnings() },
               {
                 text: 'Update Existing',
-                onPress: () => {
-                  setIsUpdating(true);
-                  handleSubmit(); // Retry submission as update
+                onPress: async () => {
+                  setLoading(true);
+                  const updateRes = await mealService.updateMeal(existingId, {
+                    breakfast: formData.breakfast,
+                    lunch: formData.lunch,
+                    dinner: formData.dinner,
+                    notes: formData.notes,
+                  });
+                  setLoading(false);
+                  if (updateRes.success) {
+                    Alert.alert('Success', 'Meal entry updated successfully!');
+                    clearWarnings();
+                    onSuccess?.();
+                    resetForm();
+                  } else {
+                    Alert.alert('Error', updateRes.error || 'Failed to update meal');
+                  }
                 },
               },
             ]
           );
+        } else if (isDuplicateMeal) {
+          Alert.alert('Meal Already Exists', response.error || 'You already have a meal entry for this date.');
         } else if (
           response.error?.includes('offline') ||
           response.error?.includes('network')

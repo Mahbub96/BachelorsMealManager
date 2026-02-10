@@ -360,7 +360,10 @@ class HttpClient {
     const msg = error instanceof Error ? error.message : (err?.message ?? 'Unknown error');
     const status = err?.response?.status ?? (error as { status?: number })?.status;
     // Expected client errors: log as warn to avoid production noise
+    const duplicateMealMsg =
+      status === 400 && msg.includes('already have a meal entry');
     const expectedClientError =
+      duplicateMealMsg ||
       status === 404 ||
       msg.includes('Resource not found') ||
       status === 401 ||

@@ -19,13 +19,13 @@ router.post(
 // @access  Private
 router.get('/', AuthMiddleware.protect(), mealController.getUserMeals);
 
-// @desc    Get all meals (admin only)
+// @desc    Get all meals (admin/member: group-scoped; super_admin: all). Defaults to current month.
 // @route   GET /api/meals/all
-// @access  Private/Admin
+// @access  Private (admin, member, super_admin)
 router.get(
   '/all',
   AuthMiddleware.protect(),
-  AuthMiddleware.requireAdmin(),
+  AuthMiddleware.requireRole(['admin', 'member', 'super_admin']),
   mealController.getAllMeals
 );
 

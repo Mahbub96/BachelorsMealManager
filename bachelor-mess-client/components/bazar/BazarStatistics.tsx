@@ -91,31 +91,6 @@ export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
 
   const shouldShowLoading = loading && !hasData;
 
-  console.log('🔍 BazarStatistics Debug:', {
-    stats,
-    loading,
-    error,
-    hasStats: !!stats,
-    hasFilteredEntries: !!filteredEntries,
-    filteredEntriesCount: filteredEntries?.length || 0,
-    hasBazarEntries: !!bazarEntries,
-    bazarEntriesCount: bazarEntries?.length || 0,
-    displayStats: !!displayStats,
-    displayStatsData: displayStats,
-    hasData: !!hasData,
-    shouldShowLoading: !!shouldShowLoading,
-    hasDataRaw: hasData,
-    shouldShowLoadingRaw: shouldShowLoading,
-    // Add more detailed debugging
-    statsData: stats,
-    filteredEntriesData: filteredEntries
-      ?.slice(0, 2)
-      .map(e => ({ id: e.id, amount: e.totalAmount, status: e.status })),
-    bazarEntriesData: bazarEntries
-      ?.slice(0, 2)
-      .map(e => ({ id: e.id, amount: e.totalAmount, status: e.status })),
-  });
-
   const renderLoadingState = () => (
     <View
       style={[styles.modernCard, { backgroundColor: theme.cardBackground }]}
@@ -194,45 +169,55 @@ export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
     if (!displayStats) return renderEmptyState();
 
     try {
+      const totalAmount = Number(displayStats.totalAmount) || 0;
+      const totalEntries = Number(displayStats.totalEntries) || 0;
+      const pendingAmount = Number(displayStats.pendingAmount) || 0;
+      const approvedAmount = Number(displayStats.approvedAmount) || 0;
+      const averageAmount = Number(displayStats.averageAmount) || 0;
+      const myMonth = Number(displayStats.myTotalAmountCurrentMonth) ?? 0;
+      const groupMonth =
+        displayStats.groupTotalAmount !== undefined &&
+        displayStats.groupTotalAmount !== null
+          ? Number(displayStats.groupTotalAmount)
+          : null;
+
       const statItems = [
         {
           icon: 'wallet',
-          label: 'Total Amount',
-          value: formatCurrency(Number(displayStats.totalAmount) || 0),
-          subtitle: 'All time spending',
+          label: 'Total amount',
+          value: formatCurrency(totalAmount),
+          subtitle: 'All time',
           color: theme.status.info,
-          bgColor: theme.status.info + '12',
+          bgColor: theme.status.info + '15',
         },
         {
           icon: 'list',
-          label: 'Total Entries',
-          value: (Number(displayStats.totalEntries) || 0).toString(),
+          label: 'Total entries',
+          value: totalEntries.toLocaleString(),
           subtitle: 'Shopping entries',
           color: theme.status.warning,
-          bgColor: theme.status.warning + '12',
+          bgColor: theme.status.warning + '15',
         },
         {
           icon: 'time',
-          label: 'Pending',
-          value: (Number(displayStats.pendingAmount) || 0).toString(),
+          label: 'Pending amount',
+          value: formatCurrency(pendingAmount),
           subtitle: 'Awaiting approval',
           color: theme.status.pending,
-          bgColor: theme.status.pending + '12',
+          bgColor: theme.status.pending + '15',
         },
         {
           icon: 'checkmark-circle',
-          label: 'Approved',
-          value: (Number(displayStats.approvedAmount) || 0).toString(),
-          subtitle: 'Approved entries',
+          label: 'Approved amount',
+          value: formatCurrency(approvedAmount),
+          subtitle: 'Approved total',
           color: theme.status.success,
-          bgColor: theme.status.success + '12',
+          bgColor: theme.status.success + '15',
         },
       ];
 
       if (compact) {
-        const showGroupTotals =
-          displayStats.groupTotalAmount !== undefined &&
-          displayStats.groupTotalAmount !== null;
+        const showThisMonth = myMonth > 0 || groupMonth !== null;
         return (
           <View
             style={[
@@ -245,7 +230,7 @@ export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
                 <View
                   style={[
                     styles.headerIcon,
-                    { backgroundColor: theme.primary + '15' },
+                    { backgroundColor: theme.primary + '18' },
                   ]}
                 >
                   <Ionicons name='analytics' size={18} color={theme.primary} />
@@ -254,7 +239,7 @@ export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
                   <ThemedText
                     style={[styles.compactTitle, { color: theme.text.primary }]}
                   >
-                    Statistics
+                    Bazar statistics
                   </ThemedText>
                 </View>
               </View>
@@ -263,12 +248,12 @@ export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
               )}
             </View>
 
-            {showGroupTotals && (
+            {showThisMonth && (
               <View style={[styles.compactStatsRow, { marginBottom: 12 }]}>
                 <View
                   style={[
                     styles.compactStatItem,
-                    { backgroundColor: theme.status.info + '12', flex: 1 },
+                    { backgroundColor: theme.status.info + '18', flex: 1 },
                   ]}
                 >
                   <View style={styles.compactStatIcon}>
@@ -281,9 +266,7 @@ export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
                         { color: theme.text.primary },
                       ]}
                     >
-                      {formatCurrency(
-                        Number(displayStats.myTotalAmountCurrentMonth) || 0
-                      )}
+                      {formatCurrency(myMonth)}
                     </ThemedText>
                     <ThemedText
                       style={[
@@ -291,44 +274,44 @@ export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
                         { color: theme.text.secondary },
                       ]}
                     >
-                      Your bazar (this month)
+                      You this month
                     </ThemedText>
                   </View>
                 </View>
-                <View
-                  style={[
-                    styles.compactStatItem,
-                    { backgroundColor: theme.status.success + '12', flex: 1 },
-                  ]}
-                >
-                  <View style={styles.compactStatIcon}>
-                    <Ionicons
-                      name='people'
-                      size={16}
-                      color={theme.status.success}
-                    />
+                {groupMonth !== null && (
+                  <View
+                    style={[
+                      styles.compactStatItem,
+                      { backgroundColor: theme.status.success + '18', flex: 1 },
+                    ]}
+                  >
+                    <View style={styles.compactStatIcon}>
+                      <Ionicons
+                        name='people'
+                        size={16}
+                        color={theme.status.success}
+                      />
+                    </View>
+                    <View style={styles.compactStatContent}>
+                      <ThemedText
+                        style={[
+                          styles.compactStatValue,
+                          { color: theme.text.primary },
+                        ]}
+                      >
+                        {formatCurrency(groupMonth)}
+                      </ThemedText>
+                      <ThemedText
+                        style={[
+                          styles.compactStatLabel,
+                          { color: theme.text.secondary },
+                        ]}
+                      >
+                        Group this month
+                      </ThemedText>
+                    </View>
                   </View>
-                  <View style={styles.compactStatContent}>
-                    <ThemedText
-                      style={[
-                        styles.compactStatValue,
-                        { color: theme.text.primary },
-                      ]}
-                    >
-                      {formatCurrency(
-                        Number(displayStats.groupTotalAmount) || 0
-                      )}
-                    </ThemedText>
-                    <ThemedText
-                      style={[
-                        styles.compactStatLabel,
-                        { color: theme.text.secondary },
-                      ]}
-                    >
-                      Group bazar (this month)
-                    </ThemedText>
-                  </View>
-                </View>
+                )}
               </View>
             )}
 
@@ -373,27 +356,42 @@ export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
         );
       }
 
-      // Full version for show all page
+      // Full version: bazar statistics page with all actual values
+      const showThisMonth = myMonth > 0 || groupMonth !== null;
+      const approvedShare =
+        totalAmount > 0
+          ? Math.round((approvedAmount / totalAmount) * 100)
+          : 0;
+
       return (
         <View
-          style={[styles.modernCard, { backgroundColor: theme.cardBackground }]}
+          style={[
+            styles.modernCard,
+            {
+              backgroundColor: theme.cardBackground,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.06,
+              shadowRadius: 8,
+              elevation: 2,
+            },
+          ]}
         >
-          {/* Modern Header */}
           <View style={styles.modernHeader}>
             <View style={styles.headerLeft}>
               <View
                 style={[
                   styles.headerIcon,
-                  { backgroundColor: theme.primary + '15' },
+                  { backgroundColor: theme.primary + '18' },
                 ]}
               >
-                <Ionicons name='analytics' size={20} color={theme.primary} />
+                <Ionicons name='analytics' size={22} color={theme.primary} />
               </View>
               <View style={styles.headerText}>
                 <ThemedText
                   style={[styles.modernTitle, { color: theme.text.primary }]}
                 >
-                  Bazar Statistics
+                  Bazar statistics
                 </ThemedText>
                 <ThemedText
                   style={[
@@ -401,7 +399,7 @@ export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
                     { color: theme.text.secondary },
                   ]}
                 >
-                  Overview of your shopping expenses
+                  Real-time from your entries
                 </ThemedText>
               </View>
             </View>
@@ -410,7 +408,85 @@ export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
             )}
           </View>
 
-          {/* Modern Stats Grid */}
+          {showThisMonth && (
+            <View
+              style={[
+                styles.thisMonthSection,
+                { backgroundColor: theme.surface },
+              ]}
+            >
+              <ThemedText
+                style={[styles.sectionTitle, { color: theme.text.secondary }]}
+              >
+                This month
+              </ThemedText>
+              <View style={styles.thisMonthRow}>
+                <View style={styles.thisMonthItem}>
+                  <Ionicons
+                    name='person'
+                    size={18}
+                    color={theme.status.info}
+                    style={styles.thisMonthIcon}
+                  />
+                  <View>
+                    <ThemedText
+                      style={[
+                        styles.thisMonthValue,
+                        { color: theme.text.primary },
+                      ]}
+                    >
+                      {formatCurrency(myMonth)}
+                    </ThemedText>
+                    <ThemedText
+                      style={[
+                        styles.thisMonthLabel,
+                        { color: theme.text.tertiary },
+                      ]}
+                    >
+                      Your bazar
+                    </ThemedText>
+                  </View>
+                </View>
+                {groupMonth !== null && (
+                  <>
+                    <View
+                      style={[
+                        styles.thisMonthDivider,
+                        { backgroundColor: theme.border.secondary },
+                      ]}
+                    />
+                    <View style={styles.thisMonthItem}>
+                      <Ionicons
+                        name='people'
+                        size={18}
+                        color={theme.status.success}
+                        style={styles.thisMonthIcon}
+                      />
+                      <View>
+                        <ThemedText
+                          style={[
+                            styles.thisMonthValue,
+                            { color: theme.text.primary },
+                          ]}
+                        >
+                          {formatCurrency(groupMonth)}
+                        </ThemedText>
+                        <ThemedText
+                          style={[
+                            styles.thisMonthLabel,
+                            { color: theme.text.tertiary },
+                          ]}
+                        >
+                          Group total
+                        </ThemedText>
+                      </View>
+                    </View>
+                  </>
+                )}
+              </View>
+            </View>
+          )}
+
           <View style={styles.modernStatsGrid}>
             <View style={styles.gridRow}>
               {statItems.slice(0, 2).map((item, index) => (
@@ -504,62 +580,51 @@ export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
             </View>
           </View>
 
-          {/* Modern Summary Section */}
-          {displayStats.averageAmount > 0 && (
+          <View
+            style={[
+              styles.summaryContainer,
+              { backgroundColor: theme.surface },
+            ]}
+          >
+            <View style={styles.summaryItem}>
+              <ThemedText
+                style={[styles.summaryLabel, { color: theme.text.secondary }]}
+              >
+                Average per entry
+              </ThemedText>
+              <ThemedText
+                style={[styles.summaryValue, { color: theme.text.primary }]}
+              >
+                {formatCurrency(averageAmount)}
+              </ThemedText>
+            </View>
             <View
               style={[
-                styles.summaryContainer,
-                { backgroundColor: theme.surface },
+                styles.summaryDivider,
+                { backgroundColor: theme.border.secondary },
               ]}
-            >
-              <View style={styles.summaryItem}>
-                <ThemedText
-                  style={[styles.summaryLabel, { color: theme.text.secondary }]}
-                >
-                  Average per entry
-                </ThemedText>
-                <ThemedText
-                  style={[styles.summaryValue, { color: theme.text.primary }]}
-                >
-                  {formatCurrency(Number(displayStats.averageAmount) || 0)}
-                </ThemedText>
-              </View>
-              <View
-                style={[
-                  styles.summaryDivider,
-                  { backgroundColor: theme.border.secondary },
-                ]}
-              />
-              <View style={styles.summaryItem}>
-                <ThemedText
-                  style={[styles.summaryLabel, { color: theme.text.secondary }]}
-                >
-                  Success rate
-                </ThemedText>
-                <ThemedText
-                  style={[styles.summaryValue, { color: theme.status.success }]}
-                >
-                  {displayStats.totalEntries > 0
-                    ? `${Math.round(
-                        (displayStats.approvedAmount /
-                          displayStats.totalEntries) *
-                          100
-                      )}%`
-                    : '0%'}
-                </ThemedText>
-              </View>
+            />
+            <View style={styles.summaryItem}>
+              <ThemedText
+                style={[styles.summaryLabel, { color: theme.text.secondary }]}
+              >
+                Approved share
+              </ThemedText>
+              <ThemedText
+                style={[styles.summaryValue, { color: theme.status.success }]}
+              >
+                {approvedShare}%
+              </ThemedText>
             </View>
-          )}
+          </View>
         </View>
       );
-    } catch (error) {
-      console.error('💥 Error rendering stats:', error);
+    } catch {
       return renderEmptyState();
     }
   };
 
   if (hasData) {
-    console.log('🎯 BazarStatistics - Rendering stats with data');
     return (
       <TouchableOpacity
         style={styles.container}
@@ -572,17 +637,9 @@ export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
     );
   }
 
-  if (shouldShowLoading) {
-    console.log('🎯 BazarStatistics - Rendering loading state');
-    return renderLoadingState();
-  }
+  if (shouldShowLoading) return renderLoadingState();
+  if (error) return renderErrorState();
 
-  if (error) {
-    console.log('🎯 BazarStatistics - Rendering error state');
-    return renderErrorState();
-  }
-
-  console.log('🎯 BazarStatistics - Rendering empty state');
   return (
     <TouchableOpacity
       style={styles.container}
@@ -597,10 +654,14 @@ export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
 
 const styles = StyleSheet.create({
   container: {
+    width: '100%',
+    maxWidth: '100%',
     marginBottom: 16,
+    paddingHorizontal: 16,
   },
   modernCard: {
-    marginHorizontal: 12,
+    width: '100%',
+    maxWidth: '100%',
     marginBottom: 16,
     paddingHorizontal: 16,
     paddingVertical: 20,
@@ -639,6 +700,45 @@ const styles = StyleSheet.create({
     fontSize: 14,
     opacity: 0.7,
   },
+  thisMonthSection: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: 10,
+  },
+  thisMonthRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  thisMonthItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  thisMonthIcon: {
+    marginRight: 10,
+  },
+  thisMonthValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+  thisMonthLabel: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  thisMonthDivider: {
+    width: 1,
+    height: 36,
+    marginHorizontal: 12,
+  },
   modernStatsGrid: {
     marginBottom: 24,
     width: '100%',
@@ -648,10 +748,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     width: '100%',
     marginBottom: 12,
+    gap: 10,
   },
   modernStatCard: {
-    width: '48%',
-    paddingHorizontal: 12,
+    flex: 1,
+    minWidth: 0,
+    paddingHorizontal: 10,
     paddingVertical: 16,
     borderRadius: 12,
     elevation: 0,
@@ -788,13 +890,14 @@ const styles = StyleSheet.create({
   compactStatsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 16,
+    gap: 10,
   },
   compactStatItem: {
     flex: 1,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 12,
     borderRadius: 12,
     elevation: 0,

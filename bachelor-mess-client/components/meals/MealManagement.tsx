@@ -62,12 +62,8 @@ export const MealManagement: React.FC<MealManagementProps> = ({
   const [showDatePicker, setShowDatePicker] = useState(false);
   const isSmallScreen = screenWidth < 375;
 
-  const {
-    meals,
-    mealStats,
-    refreshMeals,
-    handleMealPress,
-  } = useMealManagement();
+  const { meals, mealStats, refreshMeals, handleMealPress } =
+    useMealManagement();
   const { register, unregister, refreshAll } = useAppRefresh();
 
   useFocusEffect(
@@ -130,19 +126,25 @@ export const MealManagement: React.FC<MealManagementProps> = ({
 
       if (response.success) {
         Alert.alert('Success', 'Meal submitted successfully!');
-        // Reset form
         setSelectedMeals({ breakfast: false, lunch: false, dinner: false });
         setNotes('');
         setSelectedDate(new Date());
-        // Refresh meals
         await refreshMeals();
-        // Go back to overview
         setActiveTab('overview');
       } else {
-        Alert.alert(
-          'Error',
-          response.message || response.error || 'Failed to submit meal'
-        );
+        const err =
+          response.message || response.error || 'Failed to submit meal';
+        if (
+          err.includes('already have a meal entry') ||
+          err.includes('already exists for this date')
+        ) {
+          Alert.alert(
+            'Meal Already Exists',
+            'You already have a meal entry for this date. You can update it from the meal list.'
+          );
+        } else {
+          Alert.alert('Error', err);
+        }
       }
     } catch {
       Alert.alert('Error', 'An unexpected error occurred');
@@ -406,8 +408,8 @@ export const MealManagement: React.FC<MealManagementProps> = ({
                   meal?.status === 'approved'
                     ? 'success'
                     : meal?.status === 'rejected'
-                    ? 'error'
-                    : 'warning'
+                      ? 'error'
+                      : 'warning'
                 }
                 onPress={() => handleMealPress(meal)}
                 variant='compact'
@@ -460,17 +462,17 @@ export const MealManagement: React.FC<MealManagementProps> = ({
     if (Platform.OS === 'android') {
       setShowDatePicker(false);
     }
-    
+
     if (date) {
       // Don't allow future dates
       const today = new Date();
       today.setHours(23, 59, 59, 999);
-      
+
       if (date > today) {
         Alert.alert('Invalid Date', 'Cannot select future dates');
         return;
       }
-      
+
       setSelectedDate(date);
     } else if (Platform.OS === 'android') {
       setShowDatePicker(false);
@@ -502,10 +504,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
         <View style={styles.formSection}>
           <ThemedText style={styles.formSectionTitle}>Date</ThemedText>
           <TouchableOpacity
-            style={[
-              styles.dateButton,
-              { backgroundColor, borderColor },
-            ]}
+            style={[styles.dateButton, { backgroundColor, borderColor }]}
             onPress={() => setShowDatePicker(true)}
             activeOpacity={0.7}
           >
@@ -640,7 +639,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
         <Modal
           visible={showDatePicker}
           transparent={true}
-          animationType="slide"
+          animationType='slide'
           onRequestClose={() => setShowDatePicker(false)}
         >
           <View style={styles.modalOverlay}>
@@ -653,18 +652,18 @@ export const MealManagement: React.FC<MealManagementProps> = ({
                   onPress={confirmDateSelection}
                   style={styles.closeButton}
                 >
-                  <Ionicons name="checkmark" size={24} color="#667eea" />
+                  <Ionicons name='checkmark' size={24} color='#667eea' />
                 </TouchableOpacity>
               </View>
               <View style={styles.datePickerContainer}>
                 <DateTimePicker
                   value={selectedDate}
-                  mode="date"
-                  display="spinner"
+                  mode='date'
+                  display='spinner'
                   onChange={handleDateChange}
                   maximumDate={new Date()}
                   minimumDate={new Date(2020, 0, 1)}
-                  themeVariant="light"
+                  themeVariant='light'
                 />
               </View>
             </View>
@@ -674,8 +673,8 @@ export const MealManagement: React.FC<MealManagementProps> = ({
         showDatePicker && (
           <DateTimePicker
             value={selectedDate}
-            mode="date"
-            display="default"
+            mode='date'
+            display='default'
             onChange={handleDateChange}
             maximumDate={new Date()}
             minimumDate={new Date(2020, 0, 1)}
@@ -740,8 +739,8 @@ export const MealManagement: React.FC<MealManagementProps> = ({
                 meal?.status === 'approved'
                   ? 'success'
                   : meal?.status === 'rejected'
-                  ? 'error'
-                  : 'warning'
+                    ? 'error'
+                    : 'warning'
               }
               onPress={() => handleMealPress(meal)}
               variant='compact'

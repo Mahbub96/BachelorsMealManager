@@ -7,6 +7,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { LogBox } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 // import { useColorScheme } from 'react-native';
 
 // Suppress all debug/warning overlays in GUI (production + dev)
@@ -114,16 +115,18 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <BazarProvider>
-          <AppRefreshProvider>
-            <AuthGuard>
-              <AppContent />
-            </AuthGuard>
-          </AppRefreshProvider>
-        </BazarProvider>
-      </AuthProvider>
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <BazarProvider>
+            <AppRefreshProvider>
+              <AuthGuard>
+                <AppContent />
+              </AuthGuard>
+            </AppRefreshProvider>
+          </BazarProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }

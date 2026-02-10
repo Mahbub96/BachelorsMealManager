@@ -227,7 +227,7 @@ class MealController {
     }
   }
 
-  // Get all meals (admin: group-scoped; super_admin: all)
+  // Get all meals (admin/member: group-scoped; super_admin: all). Defaults to current month when no date params.
   async getAllMeals(req, res, next) {
     try {
       const {
@@ -241,12 +241,20 @@ class MealController {
 
       const query = {};
       if (status) query.status = status;
+
+      // Date: use params if both provided, else default to current month
       if (startDate && endDate) {
         query.date = {
           $gte: new Date(startDate),
           $lte: new Date(endDate),
         };
+      } else {
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        query.date = { $gte: monthStart, $lte: monthEnd };
       }
+
       if (userId) {
         query.userId = userId;
       } else {

@@ -1,5 +1,4 @@
 import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import bazarService, { BazarItem } from '@/services/bazarService';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,6 +18,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function NewBazarScreen() {
   const router = useRouter();
@@ -222,7 +222,7 @@ export default function NewBazarScreen() {
   };
 
   return (
-    <ThemedView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <Stack.Screen
         options={{
           headerShown: false,
@@ -535,7 +535,7 @@ export default function NewBazarScreen() {
           minimumDate={new Date(2020, 0, 1)}
         />
       )}
-    </ThemedView>
+    </SafeAreaView>
   );
 }
 
@@ -544,7 +544,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerGradient: {
-    paddingTop: 50,
+    paddingTop: 16,
     paddingBottom: 20,
   },
   header: {

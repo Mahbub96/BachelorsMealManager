@@ -50,6 +50,10 @@ export const useMealManagement = (): UseMealManagementReturn => {
   const [lastFetchTime, setLastFetchTime] = useState<number>(0);
 
   const isAdmin = user?.role === 'admin';
+  const useGroupApi =
+    user?.role === 'admin' ||
+    user?.role === 'member' ||
+    user?.role === 'super_admin';
 
   const loadMeals = useCallback(
     async (forceRefresh = false) => {
@@ -63,8 +67,8 @@ export const useMealManagement = (): UseMealManagementReturn => {
         setLoading(true);
         setError(null);
 
-        // Use getAllMeals for admins, getUserMeals for regular users
-        const response = isAdmin
+        // Use getAllMeals for admin/member/super_admin (group or all), getUserMeals for others
+        const response = useGroupApi
           ? await mealService.getAllMeals(filters)
           : await mealService.getUserMeals(filters);
 
@@ -113,7 +117,7 @@ export const useMealManagement = (): UseMealManagementReturn => {
         setLoading(false);
       }
     },
-    [filters, lastFetchTime, isAdmin]
+    [filters, lastFetchTime, useGroupApi]
   );
 
   const loadMealStats = useCallback(
