@@ -7,8 +7,16 @@ import userStatsService, {
   UserDashboardStats,
 } from '@/services/userStatsService';
 import { useRouter, useFocusEffect } from 'expo-router';
-import React, { useState, useCallback, useRef } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
+import { useAppRefresh } from '@/context/AppRefreshContext';
 import { ThemedView } from '../ThemedView';
 import { ThemedText } from '../ThemedText';
 import { DataDisplay } from '../ui/DataDisplay';
@@ -33,6 +41,8 @@ export const UserDashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [apiConnected, setApiConnected] = useState<boolean | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const { register, unregister, refreshAll } = useAppRefresh();
 
   const {
     data: userStats,
@@ -156,6 +166,23 @@ export const UserDashboard: React.FC = () => {
       };
     }, [loadDashboardData, loadActivities])
   );
+
+  useEffect(() => {
+    register('dashboard', async () => {
+      await loadDashboardData();
+      await loadActivities();
+    });
+    return () => unregister('dashboard');
+  }, [register, unregister, loadDashboardData, loadActivities]);
+
+  const handlePullRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refreshAll();
+    } finally {
+      if (isMounted.current) setRefreshing(false);
+    }
+  }, [refreshAll]);
 
   const handleRetry = async () => {
     // Clear cached dashboard/analytics data, then reload screen-level data
@@ -576,6 +603,9 @@ export const UserDashboard: React.FC = () => {
         style={styles.content}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handlePullRefresh} />
+        }
       >
         {/* Stats Grid */}
         <StatsGrid stats={dashboardStats} columns={2} isSmallScreen={false} />

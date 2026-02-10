@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -15,9 +15,11 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect } from 'expo-router';
 import { ThemedText } from '../ThemedText';
 import { ThemedView } from '../ThemedView';
 import { ActivityCard } from '../cards';
+import { useAppRefresh } from '../../context/AppRefreshContext';
 import { useAuth } from '../../context/AuthContext';
 import { useMealManagement } from '../../hooks/useMealManagement';
 import mealService from '../../services/mealService';
@@ -66,11 +68,26 @@ export const MealManagement: React.FC<MealManagementProps> = ({
     refreshMeals,
     handleMealPress,
   } = useMealManagement();
+  const { register, unregister, refreshAll } = useAppRefresh();
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshMeals();
+    }, [refreshMeals])
+  );
+
+  useEffect(() => {
+    register('meals', refreshMeals);
+    return () => unregister('meals');
+  }, [register, unregister, refreshMeals]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await refreshMeals();
-    setRefreshing(false);
+    try {
+      await refreshAll();
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const handleAddMeal = () => {

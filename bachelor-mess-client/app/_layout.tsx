@@ -1,5 +1,6 @@
 import { AuthGuard } from '@/components/AuthGuard';
 import { AuthProvider } from '@/context/AuthContext';
+import { AppRefreshProvider } from '@/context/AppRefreshContext';
 import { BazarProvider } from '@/context/BazarContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { Stack } from 'expo-router';
@@ -116,9 +117,11 @@ export default function RootLayout() {
     <ThemeProvider>
       <AuthProvider>
         <BazarProvider>
-          <AuthGuard>
-            <AppContent />
-          </AuthGuard>
+          <AppRefreshProvider>
+            <AuthGuard>
+              <AppContent />
+            </AuthGuard>
+          </AppRefreshProvider>
         </BazarProvider>
       </AuthProvider>
     </ThemeProvider>

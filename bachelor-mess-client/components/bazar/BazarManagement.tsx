@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import React, { useState, useCallback, useEffect } from 'react';
+import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ThemedView } from '../ThemedView';
+import { useAppRefresh } from '../../context/AppRefreshContext';
 import { useAuth } from '../../context/AuthContext';
 import { useBazar } from '../../context/BazarContext';
 import { BazarHeader } from './BazarHeader';
@@ -47,6 +48,7 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
 }) => {
   const router = useRouter();
   const { user } = useAuth();
+  const { register, unregister, refreshAll } = useAppRefresh();
   const {
     bazarStats,
     filteredEntries,
@@ -64,6 +66,21 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
   } = useBazar();
 
   const [showFiltersPanel, setShowFiltersPanel] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    register('bazar', refreshData);
+    return () => unregister('bazar');
+  }, [register, unregister, refreshData]);
+
+  const handlePullRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refreshAll();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshAll]);
 
   const handleAddBazar = () => {
     if (onAddPress) {
@@ -78,10 +95,9 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
     onBazarPress?.(bazar);
   };
 
-  const handleRefresh = () => {
-    console.log('🔄 Refreshing bazar data...');
-    refreshData();
-  };
+  const handleRefresh = useCallback(() => {
+    handlePullRefresh();
+  }, [handlePullRefresh]);
 
   const handleFilterChange = (newFilters: BazarFiltersType) => {
     updateFilters(newFilters);
@@ -147,9 +163,17 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
 
   return (
     <ThemedView style={styles.container}>
-      <View style={styles.mainContainer}>
-        {/* Header */}
-        <BazarHeader
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handlePullRefresh} />
+        }
+      >
+        <View style={styles.mainContainer}>
+          {/* Header */}
+          <BazarHeader
           title={title}
           subtitle={
             filteredEntries?.length === 0 ? 'No bazar items found' : subtitle
@@ -257,7 +281,8 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
           emptyMessage="No bazar items found"
         />
         */}
-      </View>
+        </View>
+      </ScrollView>
     </ThemedView>
   );
 };
@@ -265,6 +290,12 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   mainContainer: {
     flex: 1,
