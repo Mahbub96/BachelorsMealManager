@@ -60,7 +60,10 @@ export interface UserService {
     data: UpdateUserData
   ) => Promise<ApiResponse<User>>;
   deleteUser: (userId: string) => Promise<ApiResponse<{ message: string }>>;
-  resetUserPassword: (userId: string, newPassword: string) => Promise<ApiResponse<{ id: string; email: string }>>;
+  resetUserPassword: (
+    userId: string,
+    newPassword: string
+  ) => Promise<ApiResponse<{ id: string; email: string }>>;
   getUserStats: (
     userId: string,
     filters?: { startDate?: string; endDate?: string }
@@ -80,7 +83,10 @@ class UserServiceImpl implements UserService {
       // Use ALL endpoint instead of PROFILE endpoint to get all users
       const endpoint = `${API_ENDPOINTS.USERS.ALL}${queryParams}`;
 
-      const response = await httpClient.get<{ users: User[]; pagination?: any }>(endpoint, {
+      const response = await httpClient.get<{
+        users: User[];
+        pagination?: any;
+      }>(endpoint, {
         cache: true,
         cacheKey: `all_users_${JSON.stringify(filters)}`,
       });
@@ -109,7 +115,10 @@ class UserServiceImpl implements UserService {
       // 403 = member calling admin-only endpoint; return empty list, no error
       if (!response.success) {
         const errMsg = response.error || '';
-        if (errMsg.includes('Access denied') || errMsg.includes('Insufficient permissions')) {
+        if (
+          errMsg.includes('Access denied') ||
+          errMsg.includes('Insufficient permissions')
+        ) {
           return { success: true, data: [] };
         }
         if (process.env.NODE_ENV !== 'production') {
@@ -163,11 +172,11 @@ class UserServiceImpl implements UserService {
       // Import offlineStorage and sqliteDatabase dynamically to avoid circular dependencies
       const { offlineStorage } = await import('./offlineStorage');
       const sqliteDatabase = (await import('./sqliteDatabase')).default;
-      
+
       // Generate unique ID for offline storage
       const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const userDataWithId = { ...data, id: userId };
-      
+
       // Always save to SQLite first (offline-first approach)
       try {
         await sqliteDatabase.saveUserData(userDataWithId);
@@ -195,14 +204,14 @@ class UserServiceImpl implements UserService {
               ...user,
               id: user._id || user.id,
             };
-            
+
             // Remove from SQLite since it's now synced
             try {
               await sqliteDatabase.deleteData('user_data', userId);
             } catch (deleteError) {
               // Non-critical - continue
             }
-            
+
             return { ...response, data: transformedUser };
           } else {
             // API returned error - add to sync queue for retry
@@ -215,7 +224,7 @@ class UserServiceImpl implements UserService {
             } catch (queueError) {
               // Continue even if queue fails
             }
-            
+
             // Return success since data is saved locally
             return {
               success: true,
@@ -270,7 +279,7 @@ class UserServiceImpl implements UserService {
       // Clear cache after successful update
       if (response.success) {
         await this.clearUserCache();
-        
+
         // Transform _id to id if needed
         if (response.data) {
           type RawUser = User & { _id?: string };
@@ -301,12 +310,19 @@ class UserServiceImpl implements UserService {
       );
 
       // Clear cache after deletion (success or not found - both mean user is gone)
-      if (response.success || response.error?.includes('not found') || response.error?.includes('404')) {
+      if (
+        response.success ||
+        response.error?.includes('not found') ||
+        response.error?.includes('404')
+      ) {
         await this.clearUserCache();
       }
 
       // If user not found, treat it as success (user already deleted)
-      if (response.error?.includes('not found') || response.error?.includes('404')) {
+      if (
+        response.error?.includes('not found') ||
+        response.error?.includes('404')
+      ) {
         return {
           success: true,
           data: { message: 'User not found (may have been already deleted)' },
@@ -315,8 +331,9 @@ class UserServiceImpl implements UserService {
 
       return response;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to delete user';
-      
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to delete user';
+
       // If it's a "not found" error, clear cache and return success
       if (errorMessage.includes('not found') || errorMessage.includes('404')) {
         await this.clearUserCache();
@@ -347,7 +364,8 @@ class UserServiceImpl implements UserService {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to reset password',
+        error:
+          error instanceof Error ? error.message : 'Failed to reset password',
       };
     }
   }

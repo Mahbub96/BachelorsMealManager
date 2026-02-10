@@ -138,25 +138,37 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
         console.log('🔍 Raw API response structure:', {
           keys: Object.keys(data),
           values: data,
-          types: Object.keys(data).map(key => ({ key, type: typeof data[key], value: data[key] })),
+          types: Object.keys(data).map(key => ({
+            key,
+            type: typeof data[key],
+            value: data[key],
+          })),
         });
 
         // Transform backend data to match our interface with better error handling
-        const backendStats = data as Partial<BackendBazarStats & { pendingAmount?: number; approvedAmount?: number }>;
+        const backendStats = data as Partial<
+          BackendBazarStats & {
+            pendingAmount?: number;
+            approvedAmount?: number;
+          }
+        >;
 
         // Validate and transform the data with fallbacks
         const transformedStats: BazarStats = {
           totalAmount: Number(backendStats.totalAmount) || 0,
           totalEntries: Number(backendStats.totalEntries) || 0,
           pendingAmount:
-            Number(backendStats.pendingCount || backendStats.pendingAmount) || 0,
+            Number(backendStats.pendingCount || backendStats.pendingAmount) ||
+            0,
           approvedAmount:
-            Number(backendStats.approvedCount || backendStats.approvedAmount) || 0,
+            Number(backendStats.approvedCount || backendStats.approvedAmount) ||
+            0,
           averageAmount: Number(backendStats.averageAmount) || 0,
           myTotalAmountCurrentMonth:
             Number(backendStats.myTotalAmountCurrentMonth) || 0,
           groupTotalAmount:
-            backendStats.groupTotalAmount !== undefined && backendStats.groupTotalAmount !== null
+            backendStats.groupTotalAmount !== undefined &&
+            backendStats.groupTotalAmount !== null
               ? Number(backendStats.groupTotalAmount)
               : undefined,
         };
@@ -228,11 +240,15 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
         // Handle nested response structure from backend
         type BazarResponse = BazarEntry[] | { bazarEntries: BazarEntry[] };
         const data = response.data as BazarResponse;
-        let entries: BazarEntry[] = Array.isArray(data) ? data : (data && 'bazarEntries' in data ? (data.bazarEntries ?? []) : []);
+        let entries: BazarEntry[] = Array.isArray(data)
+          ? data
+          : data && 'bazarEntries' in data
+            ? (data.bazarEntries ?? [])
+            : [];
 
         // Transform _id to id for each entry (API may return _id)
         type EntryWithId = BazarEntry & { _id?: string };
-        const transformedEntries = (entries as EntryWithId[]).map((entry) => ({
+        const transformedEntries = (entries as EntryWithId[]).map(entry => ({
           ...entry,
           id: entry._id || entry.id,
         }));

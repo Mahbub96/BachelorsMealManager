@@ -1,5 +1,11 @@
 import { useFocusEffect } from 'expo-router';
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+} from 'react';
 import {
   View,
   StyleSheet,
@@ -22,7 +28,11 @@ import { EnhancedMealManagement } from '../meals/EnhancedMealManagement';
 import dashboardService from '../../services/dashboardService';
 import statisticsService from '../../services/statisticsService';
 import { useUsers } from '../../hooks/useUsers';
-import userService, { User, CreateUserData, UpdateUserData } from '../../services/userService';
+import userService, {
+  User,
+  CreateUserData,
+  UpdateUserData,
+} from '../../services/userService';
 import { MemberFormModal } from './MemberFormModal';
 import { MemberViewModal } from './MemberViewModal';
 
@@ -68,7 +78,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   const [submittingMember, setSubmittingMember] = useState(false);
   const [deletingMemberId, setDeletingMemberId] = useState<string | null>(null);
   const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
-  const [resettingPasswordFor, setResettingPasswordFor] = useState<string | null>(null);
+  const [resettingPasswordFor, setResettingPasswordFor] = useState<
+    string | null
+  >(null);
   const [newPassword, setNewPassword] = useState('');
   const [resettingPassword, setResettingPassword] = useState(false);
   const [showResetPassword, setShowResetPassword] = useState(false);
@@ -87,11 +99,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
       ]);
 
       if (!dashboardResponse.success || !dashboardResponse.data) {
-        throw new Error(dashboardResponse.error || 'Failed to load dashboard stats');
+        throw new Error(
+          dashboardResponse.error || 'Failed to load dashboard stats'
+        );
       }
 
       const stats = dashboardResponse.data;
-      const completeStats = statisticsResponse.success ? statisticsResponse.data : null;
+      const completeStats = statisticsResponse.success
+        ? statisticsResponse.data
+        : null;
 
       // Calculate meal rate: totalBazarAmount / totalMeals
       const mealRate =
@@ -100,11 +116,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
           : 0;
 
       // Get today's meals count from monthly statistics
-      const todayMeals = completeStats?.monthly?.currentMonth?.meals?.total || 0;
+      const todayMeals =
+        completeStats?.monthly?.currentMonth?.meals?.total || 0;
 
       // Get approved meals from statistics
-      const approvedMeals = completeStats?.meals?.approvedMeals || 
-        (stats.totalMeals - stats.pendingMeals);
+      const approvedMeals =
+        completeStats?.meals?.approvedMeals ||
+        stats.totalMeals - stats.pendingMeals;
 
       setAdminStats({
         totalMeals: stats.totalMeals || 0,
@@ -116,7 +134,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
         totalBazarAmount: stats.totalBazarAmount || 0,
       });
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load admin statistics';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to load admin statistics';
       setError(errorMessage);
       // Error loading stats - non-critical
     } finally {
@@ -130,7 +149,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
     try {
       setLoadingMembers(true);
       setError(null); // Clear previous errors
-      
+
       // Clear cache if force refresh is requested
       if (forceRefresh) {
         try {
@@ -139,9 +158,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
           // Continue even if cache clear fails
         }
       }
-      
+
       const response = await userService.getAllUsers({ role: 'member' });
-      
+
       if (response.success && response.data) {
         const membersList = Array.isArray(response.data) ? response.data : [];
         if (isMountedRef.current) setMembers(membersList);
@@ -153,7 +172,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
         }
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load members';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to load members';
       console.error('AdminDashboard - Error loading members:', err);
       if (isMountedRef.current) {
         setError(errorMessage);
@@ -215,7 +235,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
       },
       {
         icon: 'calculator' as const,
-        value: adminStats.mealRate > 0 ? `৳${adminStats.mealRate.toFixed(2)}` : 'N/A',
+        value:
+          adminStats.mealRate > 0
+            ? `৳${adminStats.mealRate.toFixed(2)}`
+            : 'N/A',
         label: 'Meal Rate',
         colors: theme.gradient.warning as [string, string],
       },
@@ -298,7 +321,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
       }
     >
       {/* Header */}
-      <LinearGradient colors={theme.gradient.info as [string, string]} style={styles.header}>
+      <LinearGradient
+        colors={theme.gradient.info as [string, string]}
+        style={styles.header}
+      >
         <View style={styles.headerContent}>
           <View style={styles.headerIconContainer}>
             <Ionicons name='shield' size={40} color='#fff' />
@@ -315,8 +341,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
       {/* Loading State */}
       {loading && (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.status.info} />
-          <ThemedText style={[styles.loadingText, { color: theme.text.secondary }]}>Loading statistics...</ThemedText>
+          <ActivityIndicator size='large' color={theme.status.info} />
+          <ThemedText
+            style={[styles.loadingText, { color: theme.text.secondary }]}
+          >
+            Loading statistics...
+          </ThemedText>
         </View>
       )}
 
@@ -324,12 +354,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
       {error && !loading && (
         <View style={styles.errorContainer}>
           <Ionicons name='alert-circle' size={48} color={theme.status.error} />
-          <ThemedText style={[styles.errorText, { color: theme.status.error }]}>{error}</ThemedText>
+          <ThemedText style={[styles.errorText, { color: theme.status.error }]}>
+            {error}
+          </ThemedText>
           <TouchableOpacity
-            style={[styles.retryButton, { backgroundColor: theme.button.primary.background }]}
+            style={[
+              styles.retryButton,
+              { backgroundColor: theme.button.primary.background },
+            ]}
             onPress={loadAdminStats}
           >
-            <ThemedText style={[styles.retryButtonText, { color: theme.button.primary.text }]}>Retry</ThemedText>
+            <ThemedText
+              style={[
+                styles.retryButtonText,
+                { color: theme.button.primary.text },
+              ]}
+            >
+              Retry
+            </ThemedText>
           </TouchableOpacity>
         </View>
       )}
@@ -345,9 +387,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                   style={styles.statGradient}
                 >
                   <Ionicons name={card.icon} size={28} color='#fff' />
-                  <ThemedText style={styles.statValue}>
-                    {card.value}
-                  </ThemedText>
+                  <ThemedText style={styles.statValue}>{card.value}</ThemedText>
                   <ThemedText style={styles.statLabel}>{card.label}</ThemedText>
                 </LinearGradient>
               </View>
@@ -367,7 +407,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                   style={styles.actionGradient}
                 >
                   <Ionicons name='checkmark-circle' size={36} color='#fff' />
-                  <ThemedText style={styles.actionTitle}>Approve All</ThemedText>
+                  <ThemedText style={styles.actionTitle}>
+                    Approve All
+                  </ThemedText>
                   <ThemedText style={styles.actionSubtitle}>
                     Approve pending meals
                   </ThemedText>
@@ -383,7 +425,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                   style={styles.actionGradient}
                 >
                   <Ionicons name='download' size={36} color='#fff' />
-                  <ThemedText style={styles.actionTitle}>Export Data</ThemedText>
+                  <ThemedText style={styles.actionTitle}>
+                    Export Data
+                  </ThemedText>
                   <ThemedText style={styles.actionSubtitle}>
                     Export meal reports
                   </ThemedText>
@@ -417,7 +461,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                   style={styles.actionGradient}
                 >
                   <Ionicons name='fast-food' size={36} color='#fff' />
-                  <ThemedText style={styles.actionTitle}>Manage Meals</ThemedText>
+                  <ThemedText style={styles.actionTitle}>
+                    Manage Meals
+                  </ThemedText>
                   <ThemedText style={styles.actionSubtitle}>
                     View all meals
                   </ThemedText>
@@ -431,30 +477,75 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
             <ThemedText style={styles.sectionTitle}>
               Today&apos;s Summary
             </ThemedText>
-            <View style={[styles.summaryCard, { backgroundColor: theme.cardBackground, borderColor: theme.cardBorder, borderWidth: 1 }]}>
+            <View
+              style={[
+                styles.summaryCard,
+                {
+                  backgroundColor: theme.cardBackground,
+                  borderColor: theme.cardBorder,
+                  borderWidth: 1,
+                },
+              ]}
+            >
               <View style={styles.summaryGradient}>
                 <View style={styles.summaryRow}>
                   <View style={styles.summaryItem}>
-                    <Ionicons name='sunny' size={24} color={theme.status.warning} />
-                    <ThemedText style={[styles.summaryLabel, { color: theme.text.secondary }]}>Breakfast</ThemedText>
+                    <Ionicons
+                      name='sunny'
+                      size={24}
+                      color={theme.status.warning}
+                    />
+                    <ThemedText
+                      style={[
+                        styles.summaryLabel,
+                        { color: theme.text.secondary },
+                      ]}
+                    >
+                      Breakfast
+                    </ThemedText>
                     <ThemedText style={styles.summaryValue}>-</ThemedText>
                   </View>
                   <View style={styles.summaryItem}>
-                    <Ionicons name='partly-sunny' size={24} color={theme.status.warning} />
-                    <ThemedText style={[styles.summaryLabel, { color: theme.text.secondary }]}>Lunch</ThemedText>
+                    <Ionicons
+                      name='partly-sunny'
+                      size={24}
+                      color={theme.status.warning}
+                    />
+                    <ThemedText
+                      style={[
+                        styles.summaryLabel,
+                        { color: theme.text.secondary },
+                      ]}
+                    >
+                      Lunch
+                    </ThemedText>
                     <ThemedText style={styles.summaryValue}>-</ThemedText>
                   </View>
                   <View style={styles.summaryItem}>
                     <Ionicons name='moon' size={24} color={theme.primary} />
-                    <ThemedText style={[styles.summaryLabel, { color: theme.text.secondary }]}>Dinner</ThemedText>
+                    <ThemedText
+                      style={[
+                        styles.summaryLabel,
+                        { color: theme.text.secondary },
+                      ]}
+                    >
+                      Dinner
+                    </ThemedText>
                     <ThemedText style={styles.summaryValue}>-</ThemedText>
                   </View>
                 </View>
-                <View style={[styles.summaryTotal, { borderTopColor: theme.border.secondary }]}>
+                <View
+                  style={[
+                    styles.summaryTotal,
+                    { borderTopColor: theme.border.secondary },
+                  ]}
+                >
                   <ThemedText style={styles.summaryTotalLabel}>
                     Total Today
                   </ThemedText>
-                  <ThemedText style={[styles.summaryTotalValue, { color: theme.primary }]}>
+                  <ThemedText
+                    style={[styles.summaryTotalValue, { color: theme.primary }]}
+                  >
                     {adminStats.todayMeals} meals
                   </ThemedText>
                 </View>
@@ -475,7 +566,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
       <EnhancedMealManagement />
     </View>
   );
-
 
   const handleOpenAddModal = () => {
     setModalMode('add');
@@ -529,13 +619,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
         };
 
         const success = await createUser(cleanedData);
-        
+
         if (!isMountedRef.current) return;
 
         if (success) {
           setShowMemberModal(false);
           setEditingMember(null);
-          
+
           // Refresh data
           setTimeout(async () => {
             if (isMountedRef.current) {
@@ -551,13 +641,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
         // Edit mode
         if (!editingMember) return;
 
-        const response = await userService.updateUser(editingMember.id, data as UpdateUserData);
+        const response = await userService.updateUser(
+          editingMember.id,
+          data as UpdateUserData
+        );
 
         if (response.success) {
           Alert.alert('Success', 'Member updated successfully');
           setShowMemberModal(false);
           setEditingMember(null);
-          
+
           // Refresh members list
           setTimeout(() => {
             if (isMountedRef.current) {
@@ -570,10 +663,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
       }
     } catch (err) {
       if (!isMountedRef.current) return;
-      
-      const errorMessage = err instanceof Error 
-        ? err.message 
-        : `Failed to ${modalMode === 'add' ? 'create' : 'update'} member. Please try again.`;
+
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : `Failed to ${modalMode === 'add' ? 'create' : 'update'} member. Please try again.`;
       Alert.alert('Error', errorMessage);
     } finally {
       setSubmittingMember(false);
@@ -598,28 +692,40 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
 
               if (response.success) {
                 Alert.alert('Success', 'Member deleted successfully');
-                
+
                 // Refresh members list immediately
                 if (isMountedRef.current) {
                   loadMembers(true);
                 }
               } else {
                 // Handle specific error cases
-                if (response.error?.includes('not found') || response.error?.includes('404')) {
+                if (
+                  response.error?.includes('not found') ||
+                  response.error?.includes('404')
+                ) {
                   // User already deleted or doesn't exist - refresh list to sync
                   Alert.alert('Info', 'Member not found. Refreshing list...');
                   if (isMountedRef.current) {
                     loadMembers(true);
                   }
                 } else {
-                  Alert.alert('Error', response.error || 'Failed to delete member');
+                  Alert.alert(
+                    'Error',
+                    response.error || 'Failed to delete member'
+                  );
                 }
               }
             } catch (err) {
-              const errorMessage = err instanceof Error ? err.message : 'Failed to delete member. Please try again.';
-              
+              const errorMessage =
+                err instanceof Error
+                  ? err.message
+                  : 'Failed to delete member. Please try again.';
+
               // If it's a "not found" error, refresh the list
-              if (errorMessage.includes('not found') || errorMessage.includes('404')) {
+              if (
+                errorMessage.includes('not found') ||
+                errorMessage.includes('404')
+              ) {
                 Alert.alert('Info', 'Member not found. Refreshing list...');
                 if (isMountedRef.current) {
                   loadMembers(true);
@@ -653,7 +759,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
 
     setResettingPassword(true);
     try {
-      const response = await userService.resetUserPassword(resettingPasswordFor, newPassword);
+      const response = await userService.resetUserPassword(
+        resettingPasswordFor,
+        newPassword
+      );
 
       if (response.success) {
         Alert.alert('Success', 'Password reset successfully');
@@ -665,7 +774,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
         Alert.alert('Error', response.error || 'Failed to reset password');
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to reset password. Please try again.';
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : 'Failed to reset password. Please try again.';
       Alert.alert('Error', errorMessage);
     } finally {
       setResettingPassword(false);
@@ -684,16 +796,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
       <View style={styles.membersHeader}>
         <View>
           <ThemedText style={styles.tabTitle}>Member Management</ThemedText>
-          <ThemedText style={[styles.tabSubtitle, { color: theme.text.secondary }]}>
-            {user?.role === 'super_admin' 
-              ? 'View and manage all members' 
+          <ThemedText
+            style={[styles.tabSubtitle, { color: theme.text.secondary }]}
+          >
+            {user?.role === 'super_admin'
+              ? 'View and manage all members'
               : 'View and manage your members'}
           </ThemedText>
         </View>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={handleOpenAddModal}
-        >
+        <TouchableOpacity style={styles.addButton} onPress={handleOpenAddModal}>
           <LinearGradient
             colors={theme.gradient.success as [string, string]}
             style={styles.addButtonGradient}
@@ -706,14 +817,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
 
       {loadingMembers ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.status.info} />
-          <ThemedText style={[styles.loadingText, { color: theme.text.secondary }]}>Loading members...</ThemedText>
+          <ActivityIndicator size='large' color={theme.status.info} />
+          <ThemedText
+            style={[styles.loadingText, { color: theme.text.secondary }]}
+          >
+            Loading members...
+          </ThemedText>
         </View>
       ) : members.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Ionicons name='people-outline' size={64} color={theme.icon.secondary} />
-          <ThemedText style={[styles.emptyText, { color: theme.text.secondary }]}>No members found</ThemedText>
-          <ThemedText style={[styles.emptySubtext, { color: theme.text.tertiary }]}>
+          <Ionicons
+            name='people-outline'
+            size={64}
+            color={theme.icon.secondary}
+          />
+          <ThemedText
+            style={[styles.emptyText, { color: theme.text.secondary }]}
+          >
+            No members found
+          </ThemedText>
+          <ThemedText
+            style={[styles.emptySubtext, { color: theme.text.tertiary }]}
+          >
             Click &quot;Add Member&quot; to create your first member
           </ThemedText>
         </View>
@@ -724,23 +849,50 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
             <RefreshControl refreshing={refreshing} onRefresh={loadMembers} />
           }
         >
-          {members.map((member) => (
+          {members.map(member => (
             <TouchableOpacity
               key={member.id}
-              style={[styles.memberCard, { backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }]}
+              style={[
+                styles.memberCard,
+                {
+                  backgroundColor: theme.cardBackground,
+                  borderColor: theme.cardBorder,
+                },
+              ]}
               onPress={() => handleOpenViewModal(member)}
               activeOpacity={0.7}
               disabled={submittingMember || deletingMemberId !== null}
             >
               <View style={styles.memberInfo}>
-                <View style={[styles.memberAvatar, { backgroundColor: theme.primary + '20' }]}>
+                <View
+                  style={[
+                    styles.memberAvatar,
+                    { backgroundColor: theme.primary + '20' },
+                  ]}
+                >
                   <Ionicons name='person' size={24} color={theme.primary} />
                 </View>
                 <View style={styles.memberDetails}>
-                  <ThemedText style={styles.memberName}>{member.name}</ThemedText>
-                  <ThemedText style={[styles.memberEmail, { color: theme.text.secondary }]}>{member.email}</ThemedText>
+                  <ThemedText style={styles.memberName}>
+                    {member.name}
+                  </ThemedText>
+                  <ThemedText
+                    style={[
+                      styles.memberEmail,
+                      { color: theme.text.secondary },
+                    ]}
+                  >
+                    {member.email}
+                  </ThemedText>
                   {member.phone && (
-                    <ThemedText style={[styles.memberPhone, { color: theme.text.tertiary }]}>{member.phone}</ThemedText>
+                    <ThemedText
+                      style={[
+                        styles.memberPhone,
+                        { color: theme.text.tertiary },
+                      ]}
+                    >
+                      {member.phone}
+                    </ThemedText>
                   )}
                   <View style={styles.memberStatus}>
                     <View
@@ -751,7 +903,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                           : { backgroundColor: theme.status.error },
                       ]}
                     />
-                    <ThemedText style={[styles.statusText, { color: theme.text.secondary }]}>
+                    <ThemedText
+                      style={[
+                        styles.statusText,
+                        { color: theme.text.secondary },
+                      ]}
+                    >
                       {member.status}
                     </ThemedText>
                   </View>
@@ -759,20 +916,39 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                 <View style={styles.memberActions}>
                   <TouchableOpacity
                     onPress={() => handleOpenEditModal(member)}
-                    style={[styles.actionButton, styles.editButton, { backgroundColor: theme.primary + '20' }]}
+                    style={[
+                      styles.actionButton,
+                      styles.editButton,
+                      { backgroundColor: theme.primary + '20' },
+                    ]}
                     disabled={submittingMember || deletingMemberId !== null}
                   >
                     <Ionicons name='pencil' size={18} color={theme.primary} />
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => handleDeleteMember(member.id)}
-                    style={[styles.actionButton, styles.deleteButton, { backgroundColor: theme.status.error + '20' }]}
-                    disabled={submittingMember || deletingMemberId !== null || deletingMemberId === member.id}
+                    style={[
+                      styles.actionButton,
+                      styles.deleteButton,
+                      { backgroundColor: theme.status.error + '20' },
+                    ]}
+                    disabled={
+                      submittingMember ||
+                      deletingMemberId !== null ||
+                      deletingMemberId === member.id
+                    }
                   >
                     {deletingMemberId === member.id ? (
-                      <ActivityIndicator size="small" color={theme.status.error} />
+                      <ActivityIndicator
+                        size='small'
+                        color={theme.status.error}
+                      />
                     ) : (
-                      <Ionicons name='trash' size={18} color={theme.status.error} />
+                      <Ionicons
+                        name='trash'
+                        size={18}
+                        color={theme.status.error}
+                      />
                     )}
                   </TouchableOpacity>
                 </View>
@@ -804,38 +980,58 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
       {/* Reset Password Modal */}
       <Modal
         visible={showResetPasswordModal}
-        animationType="slide"
+        animationType='slide'
         transparent={true}
         onRequestClose={handleCancelResetPassword}
       >
         <View style={styles.resetPasswordModalOverlay}>
-          <View style={[styles.resetPasswordModalContent, { backgroundColor: theme.modal }]}>
-            <View style={[styles.resetPasswordModalHeader, { borderBottomColor: theme.border.secondary }]}>
-              <ThemedText style={styles.resetPasswordModalTitle}>Reset Password</ThemedText>
+          <View
+            style={[
+              styles.resetPasswordModalContent,
+              { backgroundColor: theme.modal },
+            ]}
+          >
+            <View
+              style={[
+                styles.resetPasswordModalHeader,
+                { borderBottomColor: theme.border.secondary },
+              ]}
+            >
+              <ThemedText style={styles.resetPasswordModalTitle}>
+                Reset Password
+              </ThemedText>
               <TouchableOpacity onPress={handleCancelResetPassword}>
                 <Ionicons name='close' size={24} color={theme.icon.secondary} />
               </TouchableOpacity>
             </View>
 
             <View style={styles.resetPasswordModalBody}>
-              <ThemedText style={[styles.resetPasswordModalText, { color: theme.text.secondary }]}>
+              <ThemedText
+                style={[
+                  styles.resetPasswordModalText,
+                  { color: theme.text.secondary },
+                ]}
+              >
                 Enter a new password for this member (minimum 6 characters):
               </ThemedText>
               <View style={styles.resetPasswordInputContainer}>
                 <TextInput
-                  style={[styles.resetPasswordInput, { 
-                    backgroundColor: theme.input.background,
-                    borderColor: theme.input.border,
-                    color: theme.input.text,
-                  }]}
-                  placeholder="New password (min 6 characters)"
+                  style={[
+                    styles.resetPasswordInput,
+                    {
+                      backgroundColor: theme.input.background,
+                      borderColor: theme.input.border,
+                      color: theme.input.text,
+                    },
+                  ]}
+                  placeholder='New password (min 6 characters)'
                   placeholderTextColor={theme.text.tertiary}
                   value={newPassword}
                   onChangeText={setNewPassword}
                   secureTextEntry={!showResetPassword}
                   autoFocus
                   maxLength={128}
-                  autoCapitalize="none"
+                  autoCapitalize='none'
                   autoCorrect={false}
                 />
                 <TouchableOpacity
@@ -851,29 +1047,52 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                 </TouchableOpacity>
               </View>
               {newPassword.length > 0 && newPassword.length < 6 && (
-                <ThemedText style={[styles.passwordErrorText, { color: theme.status.error }]}>
+                <ThemedText
+                  style={[
+                    styles.passwordErrorText,
+                    { color: theme.status.error },
+                  ]}
+                >
                   Password must be at least 6 characters
                 </ThemedText>
               )}
             </View>
 
-            <View style={[styles.resetPasswordModalFooter, { borderTopColor: theme.border.secondary }]}>
+            <View
+              style={[
+                styles.resetPasswordModalFooter,
+                { borderTopColor: theme.border.secondary },
+              ]}
+            >
               <TouchableOpacity
-                style={[styles.resetPasswordCancelButton, { borderColor: theme.border.secondary }]}
+                style={[
+                  styles.resetPasswordCancelButton,
+                  { borderColor: theme.border.secondary },
+                ]}
                 onPress={handleCancelResetPassword}
                 disabled={resettingPassword}
               >
-                <ThemedText style={[styles.resetPasswordCancelText, { color: theme.text.secondary }]}>
+                <ThemedText
+                  style={[
+                    styles.resetPasswordCancelText,
+                    { color: theme.text.secondary },
+                  ]}
+                >
                   Cancel
                 </ThemedText>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.resetPasswordConfirmButton, { backgroundColor: theme.status.warning }]}
+                style={[
+                  styles.resetPasswordConfirmButton,
+                  { backgroundColor: theme.status.warning },
+                ]}
                 onPress={handleConfirmResetPassword}
-                disabled={resettingPassword || !newPassword || newPassword.length < 6}
+                disabled={
+                  resettingPassword || !newPassword || newPassword.length < 6
+                }
               >
                 {resettingPassword ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                  <ActivityIndicator size='small' color='#fff' />
                 ) : (
                   <ThemedText style={styles.resetPasswordConfirmText}>
                     Reset Password
@@ -890,23 +1109,41 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   return (
     <ThemedView style={styles.container}>
       {/* Tab Navigation */}
-      <View style={[styles.tabNavigation, { backgroundColor: theme.tab.background, borderBottomColor: theme.tab.border }]}>
+      <View
+        style={[
+          styles.tabNavigation,
+          {
+            backgroundColor: theme.tab.background,
+            borderBottomColor: theme.tab.border,
+          },
+        ]}
+      >
         <TouchableOpacity
           style={[
             styles.tabButton,
-            activeTab === 'overview' && [styles.activeTab, { backgroundColor: theme.surface }],
+            activeTab === 'overview' && [
+              styles.activeTab,
+              { backgroundColor: theme.surface },
+            ],
           ]}
           onPress={() => setActiveTab('overview')}
         >
           <Ionicons
             name='grid'
             size={20}
-            color={activeTab === 'overview' ? theme.tab.active : theme.tab.inactive}
+            color={
+              activeTab === 'overview' ? theme.tab.active : theme.tab.inactive
+            }
           />
           <ThemedText
             style={[
               styles.tabText,
-              { color: activeTab === 'overview' ? theme.tab.active : theme.tab.inactive },
+              {
+                color:
+                  activeTab === 'overview'
+                    ? theme.tab.active
+                    : theme.tab.inactive,
+              },
               activeTab === 'overview' && styles.activeTabText,
             ]}
           >
@@ -915,18 +1152,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.tabButton, activeTab === 'meals' && [styles.activeTab, { backgroundColor: theme.surface }]]}
+          style={[
+            styles.tabButton,
+            activeTab === 'meals' && [
+              styles.activeTab,
+              { backgroundColor: theme.surface },
+            ],
+          ]}
           onPress={() => setActiveTab('meals')}
         >
           <Ionicons
             name='fast-food'
             size={20}
-            color={activeTab === 'meals' ? theme.tab.active : theme.tab.inactive}
+            color={
+              activeTab === 'meals' ? theme.tab.active : theme.tab.inactive
+            }
           />
           <ThemedText
             style={[
               styles.tabText,
-              { color: activeTab === 'meals' ? theme.tab.active : theme.tab.inactive },
+              {
+                color:
+                  activeTab === 'meals' ? theme.tab.active : theme.tab.inactive,
+              },
               activeTab === 'meals' && styles.activeTabText,
             ]}
           >
@@ -937,19 +1185,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
         <TouchableOpacity
           style={[
             styles.tabButton,
-            activeTab === 'members' && [styles.activeTab, { backgroundColor: theme.surface }],
+            activeTab === 'members' && [
+              styles.activeTab,
+              { backgroundColor: theme.surface },
+            ],
           ]}
           onPress={() => setActiveTab('members')}
         >
           <Ionicons
             name='people'
             size={20}
-            color={activeTab === 'members' ? theme.tab.active : theme.tab.inactive}
+            color={
+              activeTab === 'members' ? theme.tab.active : theme.tab.inactive
+            }
           />
           <ThemedText
             style={[
               styles.tabText,
-              { color: activeTab === 'members' ? theme.tab.active : theme.tab.inactive },
+              {
+                color:
+                  activeTab === 'members'
+                    ? theme.tab.active
+                    : theme.tab.inactive,
+              },
               activeTab === 'members' && styles.activeTabText,
             ]}
           >

@@ -13,7 +13,10 @@ import { BazarFilters } from './BazarFilters';
 import { BazarSearchBar } from './BazarSearchBar';
 import { BazarErrorState } from './BazarErrorState';
 import type { BazarCardBazar } from '../cards/BazarCard';
-import type { BazarEntry, BazarFilters as BazarFiltersType } from '../../services/bazarService';
+import type {
+  BazarEntry,
+  BazarFilters as BazarFiltersType,
+} from '../../services/bazarService';
 
 interface BazarManagementProps {
   showFilters?: boolean;
@@ -168,98 +171,105 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handlePullRefresh} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handlePullRefresh}
+          />
         }
       >
         <View style={styles.mainContainer}>
           {/* Header */}
           <BazarHeader
-          title={title}
-          subtitle={
-            filteredEntries?.length === 0 ? 'No bazar items found' : subtitle
-          }
-        />
-
-        {/* Add Button */}
-        {showAddButton && (
-          <BazarAddButton
-            onPress={handleAddBazar}
-            title='Add New Bazar'
-            icon='add'
+            title={title}
+            subtitle={
+              filteredEntries?.length === 0 ? 'No bazar items found' : subtitle
+            }
           />
-        )}
 
-        {/* Search and Filters Row */}
-        {(showSearch || showFilters) && (
-          <View style={styles.searchFiltersRow}>
-            {/* Search Bar */}
-            {showSearch && (
-              <View style={styles.searchContainer}>
-                <BazarSearchBar
-                  onSearch={handleSearch}
-                  placeholder='Search bazar items...'
-                  value={searchQuery}
-                />
-              </View>
-            )}
-
-            {/* Filters Toggle */}
-            {showFilters && (
-              <View style={styles.filtersContainer}>
-                <BazarFilters
-                  filters={filters}
-                  onFilterChange={handleFilterChange}
-                  showFilters={showFiltersPanel}
-                  onToggleFilters={() => setShowFiltersPanel(!showFiltersPanel)}
-                />
-              </View>
-            )}
-          </View>
-        )}
-
-        {/* Bazar Statistics */}
-        {showStatistics && (
-          <>
-            {console.log(
-              '🎯 BazarManagement - showStatistics:',
-              showStatistics
-            )}
-            {console.log('🎯 BazarManagement - Stats Data:', {
-              bazarStats,
-              loadingStats,
-              statsError,
-              hasStats: !!bazarStats,
-              loadingStatsValue: loadingStats,
-            })}
-            <BazarStatistics
-              stats={bazarStats}
-              loading={loadingStats}
-              error={statsError}
-              onRetry={() => refreshData()}
-              compact={true}
+          {/* Add Button */}
+          {showAddButton && (
+            <BazarAddButton
+              onPress={handleAddBazar}
+              title='Add New Bazar'
+              icon='add'
             />
-          </>
-        )}
+          )}
 
-        {/* Bazar Items List */}
-        <BazarListSection
-          title='Recent Bazar Items'
-          showUserInfo={isAdmin}
-          isAdmin={isAdmin}
-          onBazarPress={handleBazarPress}
-          onRefresh={handleRefresh}
-          onShowAllPress={handleShowAllPress}
-          showAllButton={true}
-          showAllButtonText='View All'
-          filters={customFilters || filters}
-          bazarEntries={customBazarEntries || filteredEntries?.slice(0, 2)}
-          loading={customLoading !== undefined ? customLoading : loadingEntries}
-          error={customError || entriesError}
-          onStatusUpdate={handleStatusUpdate}
-          onDelete={handleDelete}
-        />
+          {/* Search and Filters Row */}
+          {(showSearch || showFilters) && (
+            <View style={styles.searchFiltersRow}>
+              {/* Search Bar */}
+              {showSearch && (
+                <View style={styles.searchContainer}>
+                  <BazarSearchBar
+                    onSearch={handleSearch}
+                    placeholder='Search bazar items...'
+                    value={searchQuery}
+                  />
+                </View>
+              )}
 
-        {/* Alternative: Using ShowAllList component
+              {/* Filters Toggle */}
+              {showFilters && (
+                <View style={styles.filtersContainer}>
+                  <BazarFilters
+                    filters={filters}
+                    onFilterChange={handleFilterChange}
+                    showFilters={showFiltersPanel}
+                    onToggleFilters={() =>
+                      setShowFiltersPanel(!showFiltersPanel)
+                    }
+                  />
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* Bazar Statistics */}
+          {showStatistics && (
+            <>
+              {console.log(
+                '🎯 BazarManagement - showStatistics:',
+                showStatistics
+              )}
+              {console.log('🎯 BazarManagement - Stats Data:', {
+                bazarStats,
+                loadingStats,
+                statsError,
+                hasStats: !!bazarStats,
+                loadingStatsValue: loadingStats,
+              })}
+              <BazarStatistics
+                stats={bazarStats}
+                loading={loadingStats}
+                error={statsError}
+                onRetry={() => refreshData()}
+                compact={true}
+              />
+            </>
+          )}
+
+          {/* Bazar Items List */}
+          <BazarListSection
+            title='Recent Bazar Items'
+            showUserInfo={isAdmin}
+            isAdmin={isAdmin}
+            onBazarPress={handleBazarPress}
+            onRefresh={handleRefresh}
+            onShowAllPress={handleShowAllPress}
+            showAllButton={true}
+            showAllButtonText='View All'
+            filters={customFilters || filters}
+            bazarEntries={customBazarEntries || filteredEntries?.slice(0, 2)}
+            loading={
+              customLoading !== undefined ? customLoading : loadingEntries
+            }
+            error={customError || entriesError}
+            onStatusUpdate={handleStatusUpdate}
+            onDelete={handleDelete}
+          />
+
+          {/* Alternative: Using ShowAllList component
         <ShowAllList
           title="Bazar Items"
           items={filteredEntries || []}

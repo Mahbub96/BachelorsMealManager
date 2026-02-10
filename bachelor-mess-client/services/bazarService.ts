@@ -112,8 +112,6 @@ export interface BazarService {
 class BazarServiceImpl implements BazarService {
   async submitBazar(data: BazarSubmission): Promise<ApiResponse<BazarEntry>> {
     try {
-
-
       // Validate input data
       if (!data.items || data.items.length === 0) {
         console.error(
@@ -147,7 +145,6 @@ class BazarServiceImpl implements BazarService {
       // Get the baseURL from config to verify it's using env config
       const endpoint = API_ENDPOINTS.BAZAR.SUBMIT;
 
-
       let response: ApiResponse<BazarEntry>;
 
       if (data.receiptImage) {
@@ -159,7 +156,6 @@ class BazarServiceImpl implements BazarService {
           description: data.description || '',
           date: data.date,
         };
-
 
         response = await httpClient.uploadFile<BazarEntry>(
           API_ENDPOINTS.BAZAR.SUBMIT,
@@ -181,14 +177,12 @@ class BazarServiceImpl implements BazarService {
           date: data.date,
         };
 
-
         response = await httpClient.post<BazarEntry>(
           API_ENDPOINTS.BAZAR.SUBMIT,
           requestData,
           { offlineFallback: true }
         );
       }
-
 
       console.log('📥 Bazar Service - Submit response:', {
         success: response.success,
@@ -249,7 +243,9 @@ class BazarServiceImpl implements BazarService {
           'bazarEntries' in response.data
         ) {
           console.log('🔄 Bazar Service - Handling nested response structure');
-          bazarEntries = (response.data as { bazarEntries?: BazarEntry[] }).bazarEntries ?? [];
+          bazarEntries =
+            (response.data as { bazarEntries?: BazarEntry[] }).bazarEntries ??
+            [];
         }
 
         // Ensure we have an array and transform _id to id for each entry
@@ -258,7 +254,7 @@ class BazarServiceImpl implements BazarService {
           ? (bazarEntries as RawEntry[]).map(
               (entry: RawEntry): BazarEntry => ({
                 ...entry,
-                id: (entry._id ?? entry.id) ?? '',
+                id: entry._id ?? entry.id ?? '',
                 // Ensure all required fields exist
                 items: entry.items || [],
                 totalAmount: entry.totalAmount || 0,
@@ -323,7 +319,9 @@ class BazarServiceImpl implements BazarService {
           typeof response.data === 'object' &&
           'bazarEntries' in response.data
         ) {
-          bazarEntries = (response.data as { bazarEntries?: BazarEntry[] }).bazarEntries || [];
+          bazarEntries =
+            (response.data as { bazarEntries?: BazarEntry[] }).bazarEntries ||
+            [];
         } else {
           // Fallback: treat response.data as array directly
           bazarEntries = Array.isArray(response.data) ? response.data : [];
@@ -334,7 +332,7 @@ class BazarServiceImpl implements BazarService {
         const transformedEntries = bazarEntries.map(
           (entry: RawEntry): BazarEntry => ({
             ...entry,
-            id: (entry._id ?? entry.id) ?? '',
+            id: entry._id ?? entry.id ?? '',
             items: entry.items || [],
             totalAmount: entry.totalAmount || 0,
             date: entry.date || new Date().toISOString(),
@@ -349,7 +347,11 @@ class BazarServiceImpl implements BazarService {
         return { ...response, data: transformedEntries };
       }
 
-      return { success: response.success, data: undefined, error: response.error };
+      return {
+        success: response.success,
+        data: undefined,
+        error: response.error,
+      };
     } catch (error) {
       return {
         success: false,
@@ -558,7 +560,8 @@ class BazarServiceImpl implements BazarService {
 
     if (filters.startDate) params.append('startDate', filters.startDate);
     if (filters.endDate) params.append('endDate', filters.endDate);
-    if (filters.status && filters.status !== 'all') params.append('status', filters.status);
+    if (filters.status && filters.status !== 'all')
+      params.append('status', filters.status);
     if (filters.userId) params.append('userId', filters.userId);
     if (filters.limit) params.append('limit', filters.limit.toString());
     if (filters.page) params.append('page', filters.page.toString());
@@ -572,16 +575,21 @@ class BazarServiceImpl implements BazarService {
       console.log('🗑️ Bazar Service - Clearing bazar cache');
       // Clear all bazar-related cache
       await httpClient.clearCache();
-      
+
       // Also clear dashboard cache since bazar entries affect dashboard stats
       try {
-        const { default: dashboardService } = await import('./dashboardService');
+        const { default: dashboardService } =
+          await import('./dashboardService');
         await dashboardService.refreshDashboard();
-        console.log('🔄 Bazar Service - Dashboard cache refreshed after bazar submission');
+        console.log(
+          '🔄 Bazar Service - Dashboard cache refreshed after bazar submission'
+        );
       } catch (error) {
-        console.log('⚠️ Bazar Service - Could not refresh dashboard cache:', error);
+        console.log(
+          '⚠️ Bazar Service - Could not refresh dashboard cache:',
+          error
+        );
       }
-      
 
       console.log('✅ Bazar Service - Cache cleared successfully');
     } catch (error) {
