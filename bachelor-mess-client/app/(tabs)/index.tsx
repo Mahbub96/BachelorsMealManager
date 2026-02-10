@@ -8,12 +8,11 @@ export default function HomeScreen() {
   const { user, isLoading } = useAuth();
 
   const renderDashboard = () => {
-    // Show user-specific dashboard for regular members, admin dashboard for admins
-    if (user?.role === 'admin' || user?.role === 'super_admin') {
+    // Group-scoped dashboard for admin and member (same group view); full system view only for super_admin
+    if (user?.role === 'super_admin') {
       return <ApiDashboard />;
-    } else {
-      return <UserDashboard />;
     }
+    return <UserDashboard />;
   };
 
   // Show loading while auth is being checked

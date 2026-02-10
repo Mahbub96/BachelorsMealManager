@@ -134,12 +134,22 @@ export const MealManagement: React.FC<MealManagementProps> = ({
     }
   };
 
-  const getMealSummary = (meal: { breakfast?: boolean; lunch?: boolean; dinner?: boolean }) => {
-    const meals: string[] = [];
-    if (meal?.breakfast) meals.push('Breakfast');
-    if (meal?.lunch) meals.push('Lunch');
-    if (meal?.dinner) meals.push('Dinner');
-    return meals.join(', ') || 'No meals selected';
+  const getMealSummary = (meal: {
+    breakfast?: boolean;
+    lunch?: boolean;
+    dinner?: boolean;
+    userId?: { name?: string; email?: string } | string;
+  }) => {
+    const parts: string[] = [];
+    if (meal?.breakfast) parts.push('Breakfast');
+    if (meal?.lunch) parts.push('Lunch');
+    if (meal?.dinner) parts.push('Dinner');
+    const summary = parts.join(', ') || 'No meals selected';
+    const name =
+      typeof meal?.userId === 'object' && meal?.userId?.name
+        ? meal.userId.name
+        : null;
+    return name ? `${summary} • Added by ${name}` : summary;
   };
 
   const renderOverview = () => {

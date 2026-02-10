@@ -17,6 +17,8 @@ interface BazarStats {
   pendingAmount: number;
   approvedAmount: number;
   averageAmount: number;
+  myTotalAmountCurrentMonth?: number;
+  groupTotalAmount?: number;
 }
 
 interface BazarStatisticsProps {
@@ -43,7 +45,7 @@ export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
     return `৳${amount.toLocaleString()}`;
   };
 
-  const getFallbackStats = () => {
+  const getFallbackStats = (): BazarStats | null => {
     const entriesToUse =
       filteredEntries && filteredEntries.length > 0
         ? filteredEntries
@@ -66,20 +68,21 @@ export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
       ).length;
       const averageAmount = totalEntries > 0 ? totalAmount / totalEntries : 0;
 
-      return {
+      const fallback: BazarStats = {
         totalAmount,
         totalEntries,
         pendingAmount: pendingEntries,
         approvedAmount: approvedEntries,
         averageAmount,
       };
+      return fallback;
     } catch (err) {
       console.error('💥 Error calculating fallback stats:', err);
       return null;
     }
   };
 
-  const displayStats = stats || getFallbackStats();
+  const displayStats: BazarStats | null = stats || getFallbackStats();
 
   const hasData =
     !!displayStats ||
@@ -227,7 +230,9 @@ export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
       ];
 
       if (compact) {
-        // Compact version for Bazar Management page
+        const showGroupTotals =
+          displayStats.groupTotalAmount !== undefined &&
+          displayStats.groupTotalAmount !== null;
         return (
           <View
             style={[
@@ -235,7 +240,6 @@ export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
               { backgroundColor: theme.cardBackground },
             ]}
           >
-            {/* Compact Header */}
             <View style={styles.compactHeader}>
               <View style={styles.headerLeft}>
                 <View
@@ -259,7 +263,75 @@ export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
               )}
             </View>
 
-            {/* Compact Stats Row */}
+            {showGroupTotals && (
+              <View style={[styles.compactStatsRow, { marginBottom: 12 }]}>
+                <View
+                  style={[
+                    styles.compactStatItem,
+                    { backgroundColor: theme.status.info + '12', flex: 1 },
+                  ]}
+                >
+                  <View style={styles.compactStatIcon}>
+                    <Ionicons name='person' size={16} color={theme.status.info} />
+                  </View>
+                  <View style={styles.compactStatContent}>
+                    <ThemedText
+                      style={[
+                        styles.compactStatValue,
+                        { color: theme.text.primary },
+                      ]}
+                    >
+                      {formatCurrency(
+                        Number(displayStats.myTotalAmountCurrentMonth) || 0
+                      )}
+                    </ThemedText>
+                    <ThemedText
+                      style={[
+                        styles.compactStatLabel,
+                        { color: theme.text.secondary },
+                      ]}
+                    >
+                      Your bazar (this month)
+                    </ThemedText>
+                  </View>
+                </View>
+                <View
+                  style={[
+                    styles.compactStatItem,
+                    { backgroundColor: theme.status.success + '12', flex: 1 },
+                  ]}
+                >
+                  <View style={styles.compactStatIcon}>
+                    <Ionicons
+                      name='people'
+                      size={16}
+                      color={theme.status.success}
+                    />
+                  </View>
+                  <View style={styles.compactStatContent}>
+                    <ThemedText
+                      style={[
+                        styles.compactStatValue,
+                        { color: theme.text.primary },
+                      ]}
+                    >
+                      {formatCurrency(
+                        Number(displayStats.groupTotalAmount) || 0
+                      )}
+                    </ThemedText>
+                    <ThemedText
+                      style={[
+                        styles.compactStatLabel,
+                        { color: theme.text.secondary },
+                      ]}
+                    >
+                      Group bazar (this month)
+                    </ThemedText>
+                  </View>
+                </View>
+              </View>
+            )}
+
             <View style={styles.compactStatsRow}>
               {statItems.slice(0, 2).map((item, index) => (
                 <View

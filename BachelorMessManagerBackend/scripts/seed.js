@@ -140,7 +140,7 @@ const seedDatabase = async () => {
     await Statistics.deleteMany({});
     console.log('🗑️ Cleared previous data');
 
-    // Create users
+    // Create users (order: super_admin, admin, then members so we can set createdBy)
     const createdUsers = [];
     for (const u of sampleUsers) {
       const user = await User.create(u);
@@ -148,8 +148,16 @@ const seedDatabase = async () => {
     }
     console.log(`✅ Created ${createdUsers.length} users`);
 
-    const members = createdUsers.filter(u => u.role === 'member');
     const admin = createdUsers.find(u => u.role === 'admin');
+    const members = createdUsers.filter(u => u.role === 'member');
+    // Link members to admin so group (getGroupMemberIds) includes them for dashboard/bazar
+    if (admin) {
+      await User.updateMany(
+        { _id: { $in: members.map(m => m._id) } },
+        { $set: { createdBy: admin._id } }
+      );
+      console.log(`✅ Set createdBy to admin for ${members.length} members`);
+    }
 
     // Create bazar entries
     const bazarData = sampleBazarEntries.map((entry, idx) => ({

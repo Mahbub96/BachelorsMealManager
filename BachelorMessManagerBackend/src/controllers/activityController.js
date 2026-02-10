@@ -3,17 +3,22 @@ const Bazar = require('../models/Bazar');
 const User = require('../models/User');
 const logger = require('../utils/logger');
 const StatisticsService = require('../services/statisticsService');
+const { getGroupMemberIds } = require('../utils/groupHelper');
 const {
   sendSuccessResponse,
   sendErrorResponse,
 } = require('../utils/responseHandler');
 
 class ActivityController {
-  // Get comprehensive recent activities with advanced filtering
+  // Get comprehensive recent activities with advanced filtering (group-scoped for admin/member)
   async getRecentActivities(req, res, next) {
     try {
       const userId = req.user.id;
       const isAdmin = req.user.role === 'admin';
+      const isSuperAdmin = req.user.role === 'super_admin';
+      const groupMemberIds = await getGroupMemberIds(req.user);
+      const useGroup = Array.isArray(groupMemberIds) && groupMemberIds.length > 0;
+
       const {
         type,
         status,
@@ -26,18 +31,13 @@ class ActivityController {
         sortOrder = 'desc',
       } = req.query;
 
-      // Build base query
       const baseQuery = {};
-
-      // Add date range filter
       if (startDate && endDate) {
         baseQuery.createdAt = {
           $gte: new Date(startDate),
           $lte: new Date(endDate),
         };
       }
-
-      // Add search filter
       if (search) {
         baseQuery.$or = [
           { notes: { $regex: search, $options: 'i' } },
@@ -49,40 +49,38 @@ class ActivityController {
       const limitPerType = Math.ceil(parseInt(limit) / 2);
       const skip = (parseInt(page) - 1) * parseInt(limit);
 
-      // Helper function to get time ago
       const getTimeAgo = date => {
         const now = new Date();
         const diffInSeconds = Math.floor((now - new Date(date)) / 1000);
-
-        if (diffInSeconds < 60) {
-          return `${diffInSeconds} seconds ago`;
-        } else if (diffInSeconds < 3600) {
-          const minutes = Math.floor(diffInSeconds / 60);
-          return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
-        } else if (diffInSeconds < 86400) {
-          const hours = Math.floor(diffInSeconds / 3600);
-          return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-        } else if (diffInSeconds < 2592000) {
-          const days = Math.floor(diffInSeconds / 86400);
-          return `${days} day${days > 1 ? 's' : ''} ago`;
-        } else if (diffInSeconds < 31536000) {
-          const months = Math.floor(diffInSeconds / 2592000);
-          return `${months} month${months > 1 ? 's' : ''} ago`;
-        } else {
-          const years = Math.floor(diffInSeconds / 31536000);
-          return `${years} year${years > 1 ? 's' : ''} ago`;
+        if (diffInSeconds < 60) return `${diffInSeconds} seconds ago`;
+        if (diffInSeconds < 3600) {
+          const m = Math.floor(diffInSeconds / 60);
+          return `${m} minute${m > 1 ? 's' : ''} ago`;
         }
+        if (diffInSeconds < 86400) {
+          const h = Math.floor(diffInSeconds / 3600);
+          return `${h} hour${h > 1 ? 's' : ''} ago`;
+        }
+        if (diffInSeconds < 2592000) {
+          const d = Math.floor(diffInSeconds / 86400);
+          return `${d} day${d > 1 ? 's' : ''} ago`;
+        }
+        if (diffInSeconds < 31536000) {
+          const mo = Math.floor(diffInSeconds / 2592000);
+          return `${mo} month${mo > 1 ? 's' : ''} ago`;
+        }
+        const y = Math.floor(diffInSeconds / 31536000);
+        return `${y} year${y > 1 ? 's' : ''} ago`;
       };
 
-      // Get meals activities
       if (!type || type === 'meals') {
         const mealQuery = { ...baseQuery };
-        if (!isAdmin) {
+        if (useGroup) {
+          mealQuery.userId = { $in: groupMemberIds };
+        } else if (!isAdmin && !isSuperAdmin) {
           mealQuery.userId = userId;
         }
-        if (status) {
-          mealQuery.status = status;
-        }
+        if (status) mealQuery.status = status;
 
         const meals = await Meal.find(mealQuery)
           .populate('userId', 'name email')
@@ -121,15 +119,14 @@ class ActivityController {
         });
       }
 
-      // Get bazar activities
       if (!type || type === 'bazar') {
         const bazarQuery = { ...baseQuery };
-        if (!isAdmin) {
+        if (useGroup) {
+          bazarQuery.userId = { $in: groupMemberIds };
+        } else if (!isAdmin && !isSuperAdmin) {
           bazarQuery.userId = userId;
         }
-        if (status) {
-          bazarQuery.status = status;
-        }
+        if (status) bazarQuery.status = status;
 
         const bazarEntries = await Bazar.find(bazarQuery)
           .populate('userId', 'name email')
@@ -161,14 +158,21 @@ class ActivityController {
         });
       }
 
-      // Get user registration activities (admin only)
-      if (isAdmin && (!type || type === 'members')) {
-        const userQuery = { ...baseQuery };
+      if ((isAdmin || isSuperAdmin) && (!type || type === 'members')) {
+        const userQuery = { status: 'active' };
+        if (Object.keys(baseQuery).length) {
+          Object.assign(userQuery, baseQuery);
+        }
         if (search) {
           userQuery.$or = [
             { name: { $regex: search, $options: 'i' } },
             { email: { $regex: search, $options: 'i' } },
           ];
+        }
+        if (useGroup) {
+          userQuery._id = { $in: groupMemberIds };
+        } else if (isAdmin && !isSuperAdmin) {
+          userQuery.createdBy = req.user._id || req.user.id;
         }
 
         const users = await User.find(userQuery)

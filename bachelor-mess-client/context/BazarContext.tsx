@@ -13,9 +13,13 @@ import { useAuth } from './AuthContext';
 interface BazarStats {
   totalAmount: number;
   totalEntries: number;
-  pendingAmount: number; // Actually pending count
-  approvedAmount: number; // Actually approved count
+  pendingAmount: number;
+  approvedAmount: number;
   averageAmount: number;
+  /** User's bazar total for current month */
+  myTotalAmountCurrentMonth?: number;
+  /** Group's bazar total for current month (when in group) */
+  groupTotalAmount?: number;
 }
 
 interface BackendBazarStats {
@@ -23,10 +27,12 @@ interface BackendBazarStats {
   totalEntries: number;
   pendingCount: number;
   approvedCount: number;
-  rejectedCount: number;
+  rejectedCount?: number;
   averageAmount: number;
-  maxAmount: number;
-  minAmount: number;
+  maxAmount?: number;
+  minAmount?: number;
+  myTotalAmountCurrentMonth?: number;
+  groupTotalAmount?: number;
 }
 
 interface BazarFilters {
@@ -143,12 +149,16 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
           totalAmount: Number(backendStats.totalAmount) || 0,
           totalEntries: Number(backendStats.totalEntries) || 0,
           pendingAmount:
-            Number(backendStats.pendingCount || backendStats.pendingAmount) ||
-            0, // Handle both field names
+            Number(backendStats.pendingCount || backendStats.pendingAmount) || 0,
           approvedAmount:
-            Number(backendStats.approvedCount || backendStats.approvedAmount) ||
-            0, // Handle both field names
+            Number(backendStats.approvedCount || backendStats.approvedAmount) || 0,
           averageAmount: Number(backendStats.averageAmount) || 0,
+          myTotalAmountCurrentMonth:
+            Number(backendStats.myTotalAmountCurrentMonth) || 0,
+          groupTotalAmount:
+            backendStats.groupTotalAmount !== undefined && backendStats.groupTotalAmount !== null
+              ? Number(backendStats.groupTotalAmount)
+              : undefined,
         };
 
         console.log('🔄 Transformed stats:', transformedStats);

@@ -225,7 +225,7 @@ export const UserDashboard: React.FC = () => {
       case 'Meal Rate':
         Alert.alert(
           'Current Meal Rate',
-          `Your current meal rate is calculated as: Total Meals ÷ Total Bazar Amount (for this month)`,
+          `Meal rate (this month) = Total group bazar ÷ Total group meals. Same for everyone in your group.`,
         );
         break;
       default:

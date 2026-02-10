@@ -165,7 +165,7 @@ export const API_ENDPOINTS = {
   USER_STATS: {
     DASHBOARD: '/api/user-stats/dashboard',
     MEALS: '/api/user-stats/meals',
-    BAZAR: '/api/bazar/stats/user', // Fixed: Use correct backend endpoint
+    BAZAR: '/api/user-stats/bazar', // Group-scoped: my total + group total (this month)
     PAYMENTS: '/api/user-stats/payments',
   },
 } as const;

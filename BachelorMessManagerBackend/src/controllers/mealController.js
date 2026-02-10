@@ -4,6 +4,7 @@ const User = require('../models/User');
 const { config } = require('../config/config');
 const logger = require('../utils/logger');
 const StatisticsService = require('../services/statisticsService');
+const { getGroupMemberIds } = require('../utils/groupHelper');
 const {
   sendSuccessResponse,
   sendErrorResponse,
@@ -171,18 +172,21 @@ class MealController {
     }
   }
 
-  // Get user meals
+  // Get user meals (group-scoped for admin/member: returns all group members' meals)
   async getUserMeals(req, res, next) {
     try {
-      // Convert userId to ObjectId for proper matching
       let userId = req.user._id || req.user.id;
       if (typeof userId === 'string') {
         userId = new mongoose.Types.ObjectId(userId);
       }
       const { startDate, endDate, status, limit = 10, page = 1 } = req.query;
 
-      // Build query - userId is now ObjectId, will automatically exclude null
-      const query = { userId: userId };
+      const groupMemberIds = await getGroupMemberIds(req.user);
+      const useGroup = Array.isArray(groupMemberIds) && groupMemberIds.length > 0;
+
+      const query = useGroup
+        ? { userId: { $in: groupMemberIds } }
+        : { userId };
 
       if (startDate && endDate) {
         query.date = {
@@ -190,15 +194,10 @@ class MealController {
           $lte: new Date(endDate),
         };
       }
+      if (status) query.status = status;
 
-      if (status) {
-        query.status = status;
-      }
-
-      // Calculate pagination
       const skip = (parseInt(page) - 1) * parseInt(limit);
 
-      // Get meals with pagination - use lean() for better performance
       const meals = await Meal.find(query)
         .populate('userId', 'name email')
         .populate('approvedBy', 'name')
@@ -207,13 +206,12 @@ class MealController {
         .limit(parseInt(limit))
         .lean();
 
-      // Get total count
       const total = await Meal.countDocuments(query);
 
       return sendSuccessResponse(
         res,
         200,
-        'User meals retrieved successfully',
+        useGroup ? 'Group meals retrieved successfully' : 'User meals retrieved successfully',
         {
           meals,
           pagination: {
@@ -229,7 +227,7 @@ class MealController {
     }
   }
 
-  // Get all meals (admin only)
+  // Get all meals (admin: group-scoped; super_admin: all)
   async getAllMeals(req, res, next) {
     try {
       const {
@@ -241,28 +239,25 @@ class MealController {
         page = 1,
       } = req.query;
 
-      // Build query
       const query = {};
-
-      if (status) {
-        query.status = status;
-      }
-
+      if (status) query.status = status;
       if (startDate && endDate) {
         query.date = {
           $gte: new Date(startDate),
           $lte: new Date(endDate),
         };
       }
-
       if (userId) {
         query.userId = userId;
+      } else {
+        const groupMemberIds = await getGroupMemberIds(req.user);
+        if (Array.isArray(groupMemberIds) && groupMemberIds.length > 0) {
+          query.userId = { $in: groupMemberIds };
+        }
       }
 
-      // Calculate pagination
       const skip = (parseInt(page) - 1) * parseInt(limit);
 
-      // Get meals with pagination - use lean() for better performance and batch populate
       const meals = await Meal.find(query)
         .populate('userId', 'name email')
         .populate('approvedBy', 'name')
@@ -271,10 +266,9 @@ class MealController {
         .limit(parseInt(limit))
         .lean();
 
-      // Get total count
       const total = await Meal.countDocuments(query);
 
-      return sendSuccessResponse(res, 200, 'All meals retrieved successfully', {
+      return sendSuccessResponse(res, 200, 'Meals retrieved successfully', {
         meals,
         pagination: {
           page: parseInt(page),

@@ -6,22 +6,23 @@ const Meal = require('../models/Meal');
 const Bazar = require('../models/Bazar');
 const User = require('../models/User');
 const logger = require('../utils/logger');
+const { getGroupMemberIds } = require('../utils/groupHelper');
 
 /**
  * @route   GET /api/user-stats/dashboard
- * @desc    Get comprehensive user dashboard statistics
+ * @desc    Get comprehensive user dashboard statistics (group-scoped for admin/member)
  * @access  Private
+ * - For admin/member: total meals and total bazar are GROUP totals (current month).
+ * - Meal rate = group total bazar / group total meals.
+ * - bazar.myTotalAmount = current user's bazar (current month) for bazar tab.
  */
 router.get('/dashboard', protect, async (req, res) => {
   try {
-    // Use same user ID extraction as mealController for consistency
     let userId = req.user._id || req.user.id;
     if (typeof userId === 'string') {
       userId = new mongoose.Types.ObjectId(userId);
     }
     const currentDate = new Date();
-
-    // Calculate current month date range: from 1st of current month to current date
     const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
     const todayEndOfDay = new Date(
       currentDate.getFullYear(),
@@ -33,171 +34,271 @@ router.get('/dashboard', protect, async (req, res) => {
       999,
     );
 
-    // Fetch user's meal statistics
+    const groupMemberIds = await getGroupMemberIds(req.user);
+    const useGroup = Array.isArray(groupMemberIds) && groupMemberIds.length > 0;
 
-    // Use Meal.getStats method directly for consistency with /api/meals/user/stats endpoint
-    // This ensures we get the correct totalMeals count (sum of individual meals)
-    // Filter by current month: from 1st of month to current date
-    const statsFromModel = await Meal.getStats({
-      userId: userId,
-      startDate: firstDayOfMonth,
-      endDate: todayEndOfDay,
-    });
-
-    // Also run aggregation for lastMealDate (not in getStats) - current month only
-    const lastMealAggregation = await Meal.aggregate([
-      {
-        $match: {
-          userId: userId,
-          date: { $gte: firstDayOfMonth, $lte: todayEndOfDay },
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          lastMealDate: { $max: '$date' },
-        },
-      },
-    ]);
-
-    const lastMealDate = lastMealAggregation[0]?.lastMealDate || null;
-
-    // Use stats from Meal.getStats for consistency
-    const mealStats = [{
-      totalMeals: statsFromModel.totalMeals,
-      totalEntries: statsFromModel.totalEntries,
-      approvedCount: statsFromModel.approvedCount,
-      pendingCount: statsFromModel.pendingCount,
-      rejectedCount: statsFromModel.rejectedCount,
-      lastMealDate: lastMealDate,
-    }];
-
-    // Fetch user's bazar statistics - current month only
-    // Use Bazar.getStats method for consistency, or use aggregation with date filter
-    const bazarStats = await Bazar.aggregate([
-      {
-        $match: {
-          userId: userId, // userId is already ObjectId
-          date: { $gte: firstDayOfMonth, $lte: todayEndOfDay },
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          totalAmount: { $sum: '$totalAmount' },
-          totalEntries: { $sum: 1 },
-          pendingAmount: {
-            $sum: {
-              $cond: [{ $eq: ['$status', 'pending'] }, '$totalAmount', 0],
-            },
-          },
-          approvedAmount: {
-            $sum: {
-              $cond: [{ $eq: ['$status', 'approved'] }, '$totalAmount', 0],
-            },
-          },
-        },
-      },
-    ]);
-
-    // Note: User profile query removed as we're no longer using payment data
-
-    // Calculate statistics - use statsFromModel directly for accuracy
-    const mealData = {
-      totalMeals: statsFromModel.totalMeals,
-      totalEntries: statsFromModel.totalEntries,
-      approvedCount: statsFromModel.approvedCount,
-      pendingCount: statsFromModel.pendingCount,
-      rejectedCount: statsFromModel.rejectedCount,
-      lastMealDate: lastMealDate,
+    let finalTotalMeals = 0;
+    let mealData = {
+      totalMeals: 0,
+      totalEntries: 0,
+      approvedCount: 0,
+      pendingCount: 0,
+      rejectedCount: 0,
+      lastMealDate: null,
     };
-
-    const bazarData = bazarStats[0] || {
+    let bazarData = {
       totalAmount: 0,
       totalEntries: 0,
       pendingAmount: 0,
       approvedAmount: 0,
     };
+    let myBazarTotal = 0;
 
-    // Calculate days since last meal
+    if (useGroup) {
+      // All-time group totals for dashboard cards (so cards show real activity)
+      const mealMatchAll = { userId: { $in: groupMemberIds } };
+      const mealAggAll = await Meal.aggregate([
+        { $match: mealMatchAll },
+        {
+          $addFields: {
+            mealsPerEntry: {
+              $add: [
+                { $cond: ['$breakfast', 1, 0] },
+                { $cond: ['$lunch', 1, 0] },
+                { $cond: ['$dinner', 1, 0] },
+              ],
+            },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalMeals: { $sum: '$mealsPerEntry' },
+            totalEntries: { $sum: 1 },
+            approvedCount: { $sum: { $cond: [{ $eq: ['$status', 'approved'] }, 1, 0] } },
+            pendingCount: { $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] } },
+            rejectedCount: { $sum: { $cond: [{ $eq: ['$status', 'rejected'] }, 1, 0] } },
+            lastMealDate: { $max: '$date' },
+          },
+        },
+      ]);
+      const groupMealAll = mealAggAll[0] || {};
+      finalTotalMeals = groupMealAll.totalMeals || 0;
+      mealData = {
+        totalMeals: finalTotalMeals,
+        totalEntries: groupMealAll.totalEntries || 0,
+        approvedCount: groupMealAll.approvedCount || 0,
+        pendingCount: groupMealAll.pendingCount || 0,
+        rejectedCount: groupMealAll.rejectedCount || 0,
+        lastMealDate: groupMealAll.lastMealDate || null,
+      };
+
+      const bazarMatchAll = { userId: { $in: groupMemberIds } };
+      const bazarAggAll = await Bazar.aggregate([
+        { $match: bazarMatchAll },
+        {
+          $group: {
+            _id: null,
+            totalAmount: { $sum: '$totalAmount' },
+            totalEntries: { $sum: 1 },
+            pendingAmount: { $sum: { $cond: [{ $eq: ['$status', 'pending'] }, '$totalAmount', 0] } },
+            approvedAmount: { $sum: { $cond: [{ $eq: ['$status', 'approved'] }, '$totalAmount', 0] } },
+          },
+        },
+      ]);
+      bazarData = bazarAggAll[0] || { totalAmount: 0, totalEntries: 0, pendingAmount: 0, approvedAmount: 0 };
+
+      // Current month only for meal rate and "my bazar" (bazar tab)
+      const bazarMatchMonth = {
+        userId: { $in: groupMemberIds },
+        date: { $gte: firstDayOfMonth, $lte: todayEndOfDay },
+      };
+      const bazarAggMonth = await Bazar.aggregate([
+        { $match: bazarMatchMonth },
+        { $group: { _id: null, total: { $sum: '$totalAmount' } } },
+      ]);
+      const mealMatchMonth = {
+        userId: { $in: groupMemberIds },
+        date: { $gte: firstDayOfMonth, $lte: todayEndOfDay },
+      };
+      const mealAggMonth = await Meal.aggregate([
+        { $match: mealMatchMonth },
+        {
+          $addFields: {
+            mealsPerEntry: {
+              $add: [
+                { $cond: ['$breakfast', 1, 0] },
+                { $cond: ['$lunch', 1, 0] },
+                { $cond: ['$dinner', 1, 0] },
+              ],
+            },
+          },
+        },
+        { $group: { _id: null, totalMeals: { $sum: '$mealsPerEntry' } } },
+      ]);
+      const groupBazarThisMonth = bazarAggMonth[0]?.total || 0;
+      const groupMealsThisMonth = mealAggMonth[0]?.totalMeals || 0;
+
+      const myBazarAgg = await Bazar.aggregate([
+        {
+          $match: {
+            userId,
+            date: { $gte: firstDayOfMonth, $lte: todayEndOfDay },
+          },
+        },
+        { $group: { _id: null, total: { $sum: '$totalAmount' } } },
+      ]);
+      myBazarTotal = myBazarAgg[0]?.total || 0;
+
+      // Meal rate = current month only (group bazar / group meals this month)
+      bazarData._mealRateBazar = groupBazarThisMonth;
+      mealData._mealRateMeals = groupMealsThisMonth;
+    } else {
+      // Non-group (e.g. super_admin or no group): use all-time totals for cards so data appears
+      const mealAggAll = await Meal.aggregate([
+        { $match: { userId } },
+        {
+          $addFields: {
+            mealsPerEntry: {
+              $add: [
+                { $cond: ['$breakfast', 1, 0] },
+                { $cond: ['$lunch', 1, 0] },
+                { $cond: ['$dinner', 1, 0] },
+              ],
+            },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalMeals: { $sum: '$mealsPerEntry' },
+            totalEntries: { $sum: 1 },
+            approvedCount: { $sum: { $cond: [{ $eq: ['$status', 'approved'] }, 1, 0] } },
+            pendingCount: { $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] } },
+            rejectedCount: { $sum: { $cond: [{ $eq: ['$status', 'rejected'] }, 1, 0] } },
+            lastMealDate: { $max: '$date' },
+          },
+        },
+      ]);
+      const singleMealAll = mealAggAll[0] || {};
+      finalTotalMeals = singleMealAll.totalMeals || 0;
+      mealData = {
+        totalMeals: finalTotalMeals,
+        totalEntries: singleMealAll.totalEntries || 0,
+        approvedCount: singleMealAll.approvedCount || 0,
+        pendingCount: singleMealAll.pendingCount || 0,
+        rejectedCount: singleMealAll.rejectedCount || 0,
+        lastMealDate: singleMealAll.lastMealDate || null,
+      };
+
+      const bazarAggAll = await Bazar.aggregate([
+        { $match: { userId } },
+        {
+          $group: {
+            _id: null,
+            totalAmount: { $sum: '$totalAmount' },
+            totalEntries: { $sum: 1 },
+            pendingAmount: { $sum: { $cond: [{ $eq: ['$status', 'pending'] }, '$totalAmount', 0] } },
+            approvedAmount: { $sum: { $cond: [{ $eq: ['$status', 'approved'] }, '$totalAmount', 0] } },
+          },
+        },
+      ]);
+      bazarData = bazarAggAll[0] || { totalAmount: 0, totalEntries: 0, pendingAmount: 0, approvedAmount: 0 };
+      myBazarTotal = bazarData.totalAmount || 0;
+
+      // Meal rate: current month only (same as group path)
+      const bazarAggMonth = await Bazar.aggregate([
+        { $match: { userId, date: { $gte: firstDayOfMonth, $lte: todayEndOfDay } } },
+        { $group: { _id: null, total: { $sum: '$totalAmount' } } },
+      ]);
+      const mealAggMonth = await Meal.aggregate([
+        { $match: { userId, date: { $gte: firstDayOfMonth, $lte: todayEndOfDay } } },
+        {
+          $addFields: {
+            mealsPerEntry: {
+              $add: [
+                { $cond: ['$breakfast', 1, 0] },
+                { $cond: ['$lunch', 1, 0] },
+                { $cond: ['$dinner', 1, 0] },
+              ],
+            },
+          },
+        },
+        { $group: { _id: null, totalMeals: { $sum: '$mealsPerEntry' } } },
+      ]);
+      mealData._mealRateMeals = mealAggMonth[0]?.totalMeals ?? 0;
+      bazarData._mealRateBazar = bazarAggMonth[0]?.total ?? 0;
+    }
+
     const daysSinceLastMeal = mealData.lastMealDate
       ? Math.floor(
-        (currentDate - new Date(mealData.lastMealDate)) /
-        (1000 * 60 * 60 * 24)
+        (currentDate - new Date(mealData.lastMealDate)) / (1000 * 60 * 60 * 24)
       )
       : 0;
-
-    // Calculate meal efficiency (based on entries, not individual meals)
     const mealEfficiency =
       mealData.totalEntries > 0
         ? Math.round((mealData.approvedCount / mealData.totalEntries) * 100)
         : 0;
-
-    // Calculate average meals per day (current month) - count entries, not individual meals
-    const currentDayOfMonth = currentDate.getDate(); // 1-31
-    const averageMealsPerDay = currentDayOfMonth > 0
-      ? mealData.totalMeals / currentDayOfMonth
-      : 0;
-
-    // Calculate bazar average amount
+    const currentDayOfMonth = currentDate.getDate();
+    const averageMealsPerDay =
+      currentDayOfMonth > 0 ? mealData.totalMeals / currentDayOfMonth : 0;
     const averageAmount =
-      bazarData.totalEntries > 0
-        ? bazarData.totalAmount / bazarData.totalEntries
-        : 0;
-
-    // Calculate performance score
+      bazarData.totalEntries > 0 ? bazarData.totalAmount / bazarData.totalEntries : 0;
     const bazarEfficiency =
       bazarData.totalAmount > 0
         ? (bazarData.approvedAmount / bazarData.totalAmount) * 100
         : 0;
     const performanceScore = Math.round((mealEfficiency + bazarEfficiency) / 2);
 
-
-    // CRITICAL: Verify the totalMeals value before sending response
-    // Ensure we use statsFromModel directly - this is the same method used by /api/meals/user/stats
-    const finalTotalMeals = statsFromModel.totalMeals || 0;
-
-
-    // Calculate current meal rate: totalMeals / totalBazarAmount (for current month)
+    const mealRateBazar = bazarData._mealRateBazar !== undefined ? bazarData._mealRateBazar : bazarData.totalAmount;
+    const mealRateMeals = mealData._mealRateMeals !== undefined ? mealData._mealRateMeals : finalTotalMeals;
     const currentMealRate =
-      finalTotalMeals > 0
-        ? bazarData.totalAmount / finalTotalMeals
-        : 0;
+      mealRateMeals > 0 ? mealRateBazar / mealRateMeals : 0;
+    delete bazarData._mealRateBazar;
+    delete mealData._mealRateMeals;
 
     const dashboardStats = {
       meals: {
-        total: finalTotalMeals, // Use directly from Meal.getStats to ensure accuracy - same as /api/meals/user/stats
-        approved: statsFromModel.approvedCount || 0,
-        pending: statsFromModel.pendingCount || 0,
-        rejected: statsFromModel.rejectedCount || 0,
+        total: finalTotalMeals,
+        approved: mealData.approvedCount || 0,
+        pending: mealData.pendingCount || 0,
+        rejected: mealData.rejectedCount || 0,
         efficiency: mealEfficiency,
         averagePerDay: averageMealsPerDay,
-        daysSinceLastMeal: daysSinceLastMeal,
+        daysSinceLastMeal,
       },
       bazar: {
         totalAmount: bazarData.totalAmount,
-        pendingAmount: bazarData.pendingAmount,
-        approvedAmount: bazarData.approvedAmount,
-        totalEntries: bazarData.totalEntries,
+        pendingAmount: bazarData.pendingAmount || 0,
+        approvedAmount: bazarData.approvedAmount || 0,
+        totalEntries: bazarData.totalEntries || 0,
         averageAmount: averageAmount,
+        myTotalAmount: myBazarTotal,
       },
       currentMealRate: {
         rate: currentMealRate,
-        totalMeals: finalTotalMeals,
-        totalBazarAmount: bazarData.totalAmount,
+        totalMeals: mealRateMeals,
+        totalBazarAmount: mealRateBazar,
       },
       overview: {
-        totalActivities: finalTotalMeals + bazarData.totalEntries, // Use finalTotalMeals for consistency
+        totalActivities: finalTotalMeals + (bazarData.totalEntries || 0),
         recentActivityCount: Math.min(
-          finalTotalMeals + bazarData.totalEntries,
-          10
+          finalTotalMeals + (bazarData.totalEntries || 0),
+          10,
         ),
-        performanceScore: performanceScore,
+        performanceScore,
       },
     };
 
-    logger.info(`Dashboard stats fetched for user ${userId}`);
+    logger.info(
+      `Dashboard stats fetched for user ${userId}${useGroup ? ' (group)' : ''}`
+    );
 
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+      Pragma: 'no-cache',
+      ETag: `"dashboard-${Date.now()}-${userId}"`,
+    });
     res.json({
       success: true,
       data: dashboardStats,
@@ -314,33 +415,28 @@ router.get('/meals', protect, async (req, res) => {
 
 /**
  * @route   GET /api/user-stats/bazar
- * @desc    Get user bazar statistics
+ * @desc    Get user bazar statistics (totalAmount = user's total; groupTotalAmount = group total this month when in group)
  * @access  Private
  */
 router.get('/bazar', protect, async (req, res) => {
   try {
-    // Use same user ID extraction as mealController for consistency
     let userId = req.user._id || req.user.id;
     if (typeof userId === 'string') {
       userId = new mongoose.Types.ObjectId(userId);
     }
 
     const bazarStats = await Bazar.aggregate([
-      { $match: { userId: userId } },
+      { $match: { userId } },
       {
         $group: {
           _id: null,
           totalAmount: { $sum: '$totalAmount' },
           totalEntries: { $sum: 1 },
           pendingAmount: {
-            $sum: {
-              $cond: [{ $eq: ['$status', 'pending'] }, '$totalAmount', 0],
-            },
+            $sum: { $cond: [{ $eq: ['$status', 'pending'] }, '$totalAmount', 0] },
           },
           approvedAmount: {
-            $sum: {
-              $cond: [{ $eq: ['$status', 'approved'] }, '$totalAmount', 0],
-            },
+            $sum: { $cond: [{ $eq: ['$status', 'approved'] }, '$totalAmount', 0] },
           },
         },
       },
@@ -358,12 +454,56 @@ router.get('/bazar', protect, async (req, res) => {
         ? bazarData.totalAmount / bazarData.totalEntries
         : 0;
 
+    const currentDate = new Date();
+    const firstDayOfMonth = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth(),
+      1
+    );
+    const todayEndOfDay = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth(),
+      currentDate.getDate(),
+      23,
+      59,
+      59,
+      999,
+    );
+
+    const myMonthAgg = await Bazar.aggregate([
+      {
+        $match: {
+          userId,
+          date: { $gte: firstDayOfMonth, $lte: todayEndOfDay },
+        },
+      },
+      { $group: { _id: null, total: { $sum: '$totalAmount' } } },
+    ]);
+    const myTotalAmountCurrentMonth = myMonthAgg[0]?.total ?? 0;
+
+    let groupTotalAmount = null;
+    const groupMemberIds = await getGroupMemberIds(req.user);
+    if (Array.isArray(groupMemberIds) && groupMemberIds.length > 0) {
+      const groupAgg = await Bazar.aggregate([
+        {
+          $match: {
+            userId: { $in: groupMemberIds },
+            date: { $gte: firstDayOfMonth, $lte: todayEndOfDay },
+          },
+        },
+        { $group: { _id: null, total: { $sum: '$totalAmount' } } },
+      ]);
+      groupTotalAmount = groupAgg[0]?.total ?? 0;
+    }
+
     const bazarStatistics = {
       totalAmount: bazarData.totalAmount,
       pendingAmount: bazarData.pendingAmount,
       approvedAmount: bazarData.approvedAmount,
       totalEntries: bazarData.totalEntries,
-      averageAmount: averageAmount,
+      averageAmount,
+      myTotalAmountCurrentMonth,
+      ...(groupTotalAmount !== null && { groupTotalAmount }),
     };
 
     res.json({

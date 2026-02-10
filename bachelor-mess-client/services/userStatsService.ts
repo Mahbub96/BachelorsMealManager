@@ -18,6 +18,8 @@ export interface UserDashboardStats {
     approvedAmount: number;
     totalEntries: number;
     averageAmount: number;
+    /** Current user's bazar total for current month (for bazar tab) */
+    myTotalAmount?: number;
   };
   currentMealRate: {
     rate: number;
