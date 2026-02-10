@@ -6,8 +6,8 @@ import errorHandler from '@/services/errorHandler';
 import userStatsService, {
   UserDashboardStats,
 } from '@/services/userStatsService';
-import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { useRouter, useFocusEffect } from 'expo-router';
+import React, { useState, useCallback, useRef } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { ThemedView } from '../ThemedView';
 import { ThemedText } from '../ThemedText';
@@ -23,6 +23,7 @@ import {
 } from './index';
 
 export const UserDashboard: React.FC = () => {
+  const isMounted = useRef(true);
   const router = useRouter();
   const { user } = useAuth();
   const { theme } = useTheme();
@@ -37,11 +38,12 @@ export const UserDashboard: React.FC = () => {
     data: userStats,
     loading: statsLoading,
     error: statsError,
-    refetch: refetchStats,
   } = useApiData(userStatsService.getUserDashboardStats, {
-    autoFetch: true,
-    retryOnError: true,
-    maxRetries: 3,
+    // Disable automatic fetching & retries here to avoid duplicate
+    // requests; this screen uses its own explicit loader.
+    autoFetch: false,
+    retryOnError: false,
+    maxRetries: 0,
   });
 
   // Activity data from API
@@ -49,22 +51,21 @@ export const UserDashboard: React.FC = () => {
   const [activitiesLoading, setActivitiesLoading] = useState(false);
   const [activitiesError, setActivitiesError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadDashboardData();
-    loadActivities();
-  }, []);
 
-  const loadDashboardData = async () => {
+
+  const loadDashboardData = useCallback(async () => {
     try {
-      setIsLoading(true);
-      setError(null);
+      if (isMounted.current) {
+        setIsLoading(true);
+        setError(null);
+      }
 
       console.log('🔄 Loading user dashboard data...');
 
       // First test API connection (but don't block if it fails - try to fetch data anyway)
       console.log('🧪 Testing API connection...');
       const isConnected = await userStatsService.testApiConnection();
-      setApiConnected(isConnected);
+      if (isMounted.current) setApiConnected(isConnected);
 
       if (!isConnected) {
         console.warn('⚠️ API connection test failed, but attempting to fetch data anyway...');
@@ -76,12 +77,15 @@ export const UserDashboard: React.FC = () => {
       const response = await userStatsService.getUserDashboardStats();
 
       if (response.success && response.data) {
-
-        setDashboardData(response.data);
-        console.log('✅ Dashboard data loaded successfully');
+        if (isMounted.current) {
+          setDashboardData(response.data);
+          console.log('✅ Dashboard data loaded successfully');
+        }
       } else {
         const errorMessage = response.error || 'Failed to load dashboard data';
-        setError(errorMessage);
+        if (isMounted.current) {
+          setError(errorMessage);
+        }
         console.error('❌ Failed to load dashboard data:', errorMessage);
 
         // Show user-friendly error
@@ -94,54 +98,70 @@ export const UserDashboard: React.FC = () => {
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : 'Unknown error occurred';
-      setError(errorMessage);
+      if (isMounted.current) {
+        setError(errorMessage);
+      }
       console.error('❌ Error loading dashboard data:', err);
 
       // Show user-friendly error
       const appError = errorHandler.handleError(err, 'Dashboard Data');
       errorHandler.showErrorAlert(appError);
     } finally {
-      setIsLoading(false);
+      if (isMounted.current) {
+        setIsLoading(false);
+      }
     }
-  };
+  }, []);
 
-  const loadActivities = async () => {
+  const loadActivities = useCallback(async () => {
     try {
-      setActivitiesLoading(true);
-      setActivitiesError(null);
+      if (isMounted.current) {
+        setActivitiesLoading(true);
+        setActivitiesError(null);
+      }
 
       console.log('📋 Loading recent activities...');
       const response = await activityService.getRecentActivities({}, 1, 10);
 
       if (response.success && response.data) {
-        setActivities(response.data.activities);
-        console.log(
-          '✅ Activities loaded successfully:',
-          response.data.activities.length
-        );
+        if (isMounted.current) {
+          setActivities(response.data.activities);
+          console.log(
+            '✅ Activities loaded successfully:',
+            response.data.activities.length
+          );
+        }
       } else {
-        setActivitiesError(response.error || 'Failed to load activities');
+        const errorMsg = response.error || 'Failed to load activities';
+        if (isMounted.current) setActivitiesError(errorMsg);
         console.error('❌ Failed to load activities:', response.error);
       }
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : 'Failed to load activities';
-      setActivitiesError(errorMessage);
+      if (isMounted.current) setActivitiesError(errorMessage);
       console.error('❌ Error loading activities:', err);
     } finally {
-      setActivitiesLoading(false);
+      if (isMounted.current) setActivitiesLoading(false);
     }
-  };
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      isMounted.current = true;
+      loadDashboardData();
+      loadActivities();
+      return () => {
+        isMounted.current = false;
+      };
+    }, [loadDashboardData, loadActivities])
+  );
 
   const handleRetry = async () => {
-    refetchStats();
-    // Clear cache before retrying to ensure fresh data
+    // Clear cached dashboard/analytics data, then reload screen-level data
     try {
       const { default: dashboardService } = await import('@/services/dashboardService');
       await dashboardService.refreshDashboard();
-      // Also clear httpClient cache
-      const { default: httpClient } = await import('@/services/httpClient');
-      await httpClient.clearCache();
     } catch (error) {
       console.log('⚠️ Could not refresh dashboard service cache:', error);
     }

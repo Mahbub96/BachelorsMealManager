@@ -13,7 +13,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '../components/ThemedText';
-import { BazarCard } from '../components/cards/BazarCard';
+import { BazarCard, type BazarCardBazar } from '../components/cards/BazarCard';
 import { BazarFilters } from '../components/bazar/BazarFilters';
 import { BazarSearchBar } from '../components/bazar/BazarSearchBar';
 import { BazarStatistics } from '../components/bazar/BazarStatistics';
@@ -59,7 +59,7 @@ export default function BazarListScreen(_props: BazarListScreenProps) {
     setRefreshing(false);
   };
 
-  const handleBazarPress = (bazar: BazarEntry) => {
+  const handleBazarPress = (bazar: BazarCardBazar) => {
     console.log('🎯 Bazar pressed:', bazar);
     router.push(`/bazar-details?id=${bazar.id}`);
   };

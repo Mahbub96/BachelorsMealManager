@@ -311,7 +311,7 @@ class DashboardServiceImpl implements DashboardService {
       )
       .then(result => ({
         success: result.data !== null,
-        data: result.data,
+        data: result.data as AnalyticsData,
         error: result.error,
       }));
   }
@@ -353,7 +353,7 @@ class DashboardServiceImpl implements DashboardService {
       )
       .then(result => ({
         success: result.data !== null,
-        data: result.data,
+        data: result.data as CombinedDashboardData,
         error: result.error,
       }));
   }
@@ -392,7 +392,7 @@ class DashboardServiceImpl implements DashboardService {
       )
       .then(result => ({
         success: result.data !== null,
-        data: result.data,
+        data: result.data as StatisticsData,
         error: result.error,
       }));
   }
@@ -432,7 +432,7 @@ class DashboardServiceImpl implements DashboardService {
       )
       .then(result => ({
         success: result.data !== null,
-        data: result.data,
+        data: result.data as AnalyticsData['mealDistribution'],
         error: result.error,
       }));
   }
@@ -472,7 +472,7 @@ class DashboardServiceImpl implements DashboardService {
       )
       .then(result => ({
         success: result.data !== null,
-        data: result.data,
+        data: result.data as AnalyticsData['expenseTrend'],
         error: result.error,
       }));
   }
@@ -512,7 +512,7 @@ class DashboardServiceImpl implements DashboardService {
       )
       .then(result => ({
         success: result.data !== null,
-        data: result.data,
+        data: result.data as AnalyticsData['categoryBreakdown'],
         error: result.error,
       }));
   }

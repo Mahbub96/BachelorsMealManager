@@ -11,7 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { ThemedText } from './ThemedText';
-import { BazarCard } from './cards/BazarCard';
+import { BazarCard, type BazarCardBazar } from './cards/BazarCard';
 import bazarService, {
   BazarEntry,
   BazarFilters,
@@ -21,7 +21,7 @@ import { bazarOptimizations } from '../utils/performance';
 interface BazarListProps {
   filters?: BazarFilters;
   showUserInfo?: boolean;
-  onBazarPress?: (bazar: BazarEntry) => void;
+  onBazarPress?: (bazar: BazarCardBazar | BazarEntry) => void;
   onRefresh?: () => void;
   isAdmin?: boolean;
   bazarEntries?: BazarEntry[];
@@ -144,7 +144,7 @@ export const BazarList: React.FC<BazarListProps> = ({
 
   // Memoize handlers to prevent unnecessary re-renders
   const handleBazarPress = useCallback(
-    (bazar: BazarEntry) => {
+    (bazar: BazarCardBazar) => {
       if (onBazarPress) {
         onBazarPress(bazar);
       } else {

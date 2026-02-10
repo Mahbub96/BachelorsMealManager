@@ -58,7 +58,7 @@ export const SwappableStats: React.FC<SwappableStatsProps> = ({
       onStatPress(stat);
     } else {
       router.push({
-        pathname: '/stat-details',
+        pathname: '/stat-details' as never,
         params: {
           title: stat.title,
           value: stat.value.toString(),

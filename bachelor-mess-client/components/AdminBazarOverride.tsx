@@ -79,11 +79,13 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
       const response = await userService.getAllUsers();
       if (response.success && response.data) {
         setUsers(
-          response.data.map((user: { _id?: string; id?: string; name: string; email: string }) => ({
-            id: user._id || user.id,
-            name: user.name,
-            email: user.email,
-          }))
+          response.data
+            .map((user: { _id?: string; id?: string; name: string; email: string }) => ({
+              id: user._id || user.id || '',
+              name: user.name,
+              email: user.email,
+            }))
+            .filter((u): u is User => u.id !== '')
         );
       }
     } catch (err) {

@@ -1,10 +1,16 @@
 import { Platform } from 'react-native';
 import type { DatabaseService } from './databaseService.types';
+import { logger } from '../utils/logger';
 // Platform-specific import: on web, this imports null; on native, it imports expo-sqlite
 // Metro will use sqliteLoader.native.ts on native and sqliteLoader.ts on web
 import SQLiteModule from './sqliteLoader';
 
-const SQLite = SQLiteModule;
+interface SQLiteModuleType {
+  openDatabaseAsync: (name: string) => Promise<unknown>;
+  deleteDatabaseAsync: (name: string) => Promise<void>;
+  [key: string]: unknown;
+}
+const SQLite = SQLiteModule as SQLiteModuleType | null;
 
 // Re-export the interface for backward compatibility
 export type { DatabaseService };
@@ -227,7 +233,7 @@ class SQLiteDatabaseService implements DatabaseService {
       console.log('🔄 SQLite Database - Opening database...');
 
       // #region agent log
-      const preOpenLog = {location:'sqliteDatabase.ts:172',message:'Before opening database',data:{databaseName:this.DATABASE_NAME,SQLiteAvailable:this.isSQLiteAvailable(),SQLiteType:typeof SQLite,hasOpenDatabaseAsync:SQLite&&typeof SQLite.openDatabaseAsync==='function',SQLiteMethods:SQLite?Object.keys(SQLite).filter(k=>typeof SQLite[k]==='function'):[]},timestamp:Date.now(),sessionId:'debug-session',runId:'sqlite-open',hypothesisId:'B'};
+      const preOpenLog = {location:'sqliteDatabase.ts:172',message:'Before opening database',data:{databaseName:this.DATABASE_NAME,SQLiteAvailable:this.isSQLiteAvailable(),SQLiteType:typeof SQLite,hasOpenDatabaseAsync:!!(SQLite&&typeof (SQLite as SQLiteModuleType).openDatabaseAsync==='function'),SQLiteMethods:SQLite?Object.keys(SQLite as Record<string, unknown>).filter((k:string)=>typeof (SQLite as Record<string, unknown>)[k]==='function'):[]},timestamp:Date.now(),sessionId:'debug-session',runId:'sqlite-open',hypothesisId:'B'};
       try { fetch('http://127.0.0.1:7243/ingest/039fbe99-77d0-456c-8c69-082177214fc6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(preOpenLog)}).catch(()=>{}); } catch(e){}
       // #endregion
 
@@ -237,7 +243,7 @@ class SQLiteDatabaseService implements DatabaseService {
         const tryOpenLog = {location:'sqliteDatabase.ts:178',message:'Attempting to open database',data:{databaseName:this.DATABASE_NAME},timestamp:Date.now(),sessionId:'debug-session',runId:'sqlite-open',hypothesisId:'B'};
         try { fetch('http://127.0.0.1:7243/ingest/039fbe99-77d0-456c-8c69-082177214fc6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(tryOpenLog)}).catch(()=>{}); } catch(e){}
         // #endregion
-        this.db = await SQLite.openDatabaseAsync(this.DATABASE_NAME);
+        this.db = await SQLite!.openDatabaseAsync(this.DATABASE_NAME);
         
         // Verify database object is valid and has required methods
         if (!this.db) {
@@ -269,7 +275,7 @@ class SQLiteDatabaseService implements DatabaseService {
         const retryLog = {location:'sqliteDatabase.ts:192',message:'Retrying database open after delete',data:{databaseName:this.DATABASE_NAME},timestamp:Date.now(),sessionId:'debug-session',runId:'sqlite-open',hypothesisId:'C'};
         try { fetch('http://127.0.0.1:7243/ingest/039fbe99-77d0-456c-8c69-082177214fc6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(retryLog)}).catch(()=>{}); } catch(e){}
         // #endregion
-        this.db = await SQLite.openDatabaseAsync(this.DATABASE_NAME);
+        this.db = await SQLite!.openDatabaseAsync(this.DATABASE_NAME);
       }
 
       // Verify database is actually ready before using it
@@ -408,7 +414,7 @@ class SQLiteDatabaseService implements DatabaseService {
     if (!SQLite) return;
     try {
       // Try to check if database file exists and is accessible
-      const testDb = await SQLite.openDatabaseAsync(this.DATABASE_NAME);
+      const testDb = await SQLite!.openDatabaseAsync(this.DATABASE_NAME) as { getAllAsync?: (sql: string) => Promise<unknown>; closeAsync?: () => Promise<void> } | null;
       
       // Verify test database is ready
       if (testDb && typeof testDb.getAllAsync === 'function') {
@@ -416,13 +422,13 @@ class SQLiteDatabaseService implements DatabaseService {
           await testDb.getAllAsync('SELECT 1');
         } catch (testError) {
           console.log('⚠️ SQLite Database - Test database not ready, will recreate');
-          await testDb.closeAsync().catch(() => {});
+          await testDb.closeAsync?.().catch(() => {});
           await this.deleteDatabaseFile();
           return;
         }
       }
       
-      await testDb.closeAsync();
+      await testDb?.closeAsync?.();
       console.log('✅ SQLite Database - Database file integrity check passed');
     } catch (error) {
       console.log(
@@ -436,7 +442,7 @@ class SQLiteDatabaseService implements DatabaseService {
   private async deleteDatabaseFile(): Promise<void> {
     if (!SQLite) return;
     try {
-      await SQLite.deleteDatabaseAsync(this.DATABASE_NAME);
+      await SQLite!.deleteDatabaseAsync(this.DATABASE_NAME);
       console.log('🗑️ SQLite Database - Database file deleted');
     } catch (error) {
       console.log(
@@ -530,7 +536,7 @@ class SQLiteDatabaseService implements DatabaseService {
       // Try to delete database with multiple attempts
       for (let attempt = 1; attempt <= 3; attempt++) {
         try {
-          await SQLite.deleteDatabaseAsync(this.DATABASE_NAME);
+          await SQLite!.deleteDatabaseAsync(this.DATABASE_NAME);
           console.log(
             `🗑️ SQLite Database - Database file deleted (attempt ${attempt})`
           );
@@ -550,7 +556,7 @@ class SQLiteDatabaseService implements DatabaseService {
       await new Promise(resolve => setTimeout(resolve, 1500));
 
       // Recreate database with fresh connection
-      this.db = await SQLite.openDatabaseAsync(this.DATABASE_NAME);
+      this.db = await SQLite!.openDatabaseAsync(this.DATABASE_NAME);
 
       // Wait after opening
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -591,7 +597,7 @@ class SQLiteDatabaseService implements DatabaseService {
       let deleteSuccess = false;
       for (let attempt = 1; attempt <= 3; attempt++) {
         try {
-          await SQLite.deleteDatabaseAsync(this.DATABASE_NAME);
+          await SQLite!.deleteDatabaseAsync(this.DATABASE_NAME);
           console.log(
             `🗑️ SQLite Database - Database file deleted (attempt ${attempt})`
           );
@@ -617,7 +623,7 @@ class SQLiteDatabaseService implements DatabaseService {
       await new Promise(resolve => setTimeout(resolve, 800));
 
       // Recreate database
-      this.db = await SQLite.openDatabaseAsync(this.DATABASE_NAME);
+      this.db = await SQLite!.openDatabaseAsync(this.DATABASE_NAME);
 
       // Wait after opening
       await new Promise(resolve => setTimeout(resolve, 300));
@@ -635,7 +641,7 @@ class SQLiteDatabaseService implements DatabaseService {
       // Try to reinitialize without deleting
       try {
         console.log('🔄 SQLite Database - Attempting reinitialization...');
-        this.db = await SQLite.openDatabaseAsync(this.DATABASE_NAME);
+        this.db = await SQLite!.openDatabaseAsync(this.DATABASE_NAME);
         await this.createTables();
         console.log('✅ SQLite Database - Reinitialized successfully');
       } catch (reinitError) {
@@ -695,7 +701,7 @@ class SQLiteDatabaseService implements DatabaseService {
 
       // Force delete database file
       try {
-        await SQLite.deleteDatabaseAsync(this.DATABASE_NAME);
+        await SQLite!.deleteDatabaseAsync(this.DATABASE_NAME);
         console.log('🗑️ SQLite Database - Database file force deleted');
       } catch (deleteError) {
         console.log('⚠️ Could not delete database file, continuing...');
@@ -705,7 +711,7 @@ class SQLiteDatabaseService implements DatabaseService {
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Recreate database
-      this.db = await SQLite.openDatabaseAsync(this.DATABASE_NAME);
+      this.db = await SQLite!.openDatabaseAsync(this.DATABASE_NAME);
       await this.createTables();
 
       this.isInitialized = true;
@@ -2130,6 +2136,31 @@ class SQLiteDatabaseService implements DatabaseService {
     }
   }
 
+  /** Lightweight count of pending sync items (no full table load) */
+  async getPendingSyncCount(): Promise<number> {
+    try {
+      await this.ensureConnection();
+      await this.acquireLock();
+      const tableCheck = await this.executeWithRetry(
+        () =>
+          this.db!.getAllAsync(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='sync_queue'"
+          ),
+        'check sync_queue exists'
+      );
+      if ((tableCheck as { length: number }).length === 0) return 0;
+      const result = await this.executeWithRetry(
+        () => this.db!.getAllAsync('SELECT COUNT(*) as count FROM sync_queue WHERE status = ?', ['pending']),
+        'get pending sync count'
+      ) as { count: number }[];
+      return result[0]?.count ?? 0;
+    } catch {
+      return 0;
+    } finally {
+      this.releaseLock();
+    }
+  }
+
   async getPendingSync(): Promise<any[]> {
     try {
       await this.ensureConnection();
@@ -2144,7 +2175,7 @@ class SQLiteDatabaseService implements DatabaseService {
         'check sync_queue table existence'
       );
 
-      if (tableCheck.length === 0) {
+      if ((tableCheck as { length: number }).length === 0) {
         console.log(
           "⚠️ SQLite Database - sync_queue table doesn't exist, creating missing tables..."
         );
@@ -2156,9 +2187,9 @@ class SQLiteDatabaseService implements DatabaseService {
       const result = await this.executeWithRetry(
         () => this.db!.getAllAsync(query),
         'get pending sync items'
-      );
+      ) as Record<string, unknown>[];
 
-      const parsedResult = result.map((row: any) => {
+      const parsedResult = result.map((row: Record<string, unknown>) => {
         try {
           return {
             ...row,
@@ -2170,8 +2201,8 @@ class SQLiteDatabaseService implements DatabaseService {
         }
       });
 
-      console.log(
-        `📋 SQLite Database - Retrieved ${parsedResult.length} pending sync items`
+      logger.debug(
+        `SQLite Database - Retrieved ${parsedResult.length} pending sync items`
       );
       return parsedResult;
     } catch (error) {
@@ -2202,9 +2233,27 @@ class SQLiteDatabaseService implements DatabaseService {
         await this.db!.runAsync(query, [id]);
       }, 'mark sync item as synced');
 
-      console.log(`✅ SQLite Database - Marked sync item as synced: ${id}`);
+      logger.debug(`SQLite Database - Marked sync item as synced: ${id}`);
     } catch (error) {
       console.error('❌ SQLite Database - Failed to mark sync item:', error);
+      throw error;
+    } finally {
+      this.releaseLock();
+    }
+  }
+
+  /** Remove all pending sync items for an endpoint (dedupe after successful GET retry) */
+  async removePendingSyncByEndpoint(endpoint: string): Promise<void> {
+    try {
+      await this.ensureConnection();
+      await this.acquireLock();
+      this.updateActivity();
+      const query = `DELETE FROM sync_queue WHERE endpoint = ? AND status = 'pending'`;
+      await this.executeWithRetry(async () => {
+        await this.db!.runAsync(query, [endpoint]);
+      }, 'remove pending sync by endpoint');
+    } catch (error) {
+      console.error('❌ SQLite Database - Failed to remove pending sync by endpoint:', error);
       throw error;
     } finally {
       this.releaseLock();
@@ -2904,7 +2953,7 @@ class SQLiteDatabaseService implements DatabaseService {
         return;
       }
       try {
-        await SQLite.deleteDatabaseAsync(this.DATABASE_NAME);
+        await SQLite!.deleteDatabaseAsync(this.DATABASE_NAME);
         console.log('🗑️ SQLite Database - Database file deleted successfully');
         fileDeleted = true;
       } catch (deleteError) {

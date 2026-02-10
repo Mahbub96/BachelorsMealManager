@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   Alert,
   Dimensions,
@@ -8,7 +8,7 @@ import {
   Text,
   ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import {
   dashboardService,
   DashboardStats,
@@ -29,6 +29,7 @@ const { width: screenWidth } = Dimensions.get('window');
 
 export const ApiDashboard: React.FC = () => {
   const router = useRouter();
+  const isMounted = useRef(true);
   const { theme } = useTheme();
 
   const [loading, setLoading] = useState(false);
@@ -37,20 +38,32 @@ export const ApiDashboard: React.FC = () => {
     stats: DashboardStats | null;
     activities: ApiActivity[];
     analytics: AnalyticsData | null;
-    charts?: Record<string, unknown>;
+    charts?: {
+      monthlyRevenue?: Record<string, unknown>[];
+      expenseBreakdown?: Record<string, unknown>[];
+      weeklyMeals?: Record<string, unknown>[];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      [key: string]: any;
+    };
   } | null>(null);
 
   const isTablet = screenWidth >= 768;
   const containerPadding = isTablet ? 24 : 16;
   const cardSpacing = isTablet ? 20 : 12;
 
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      isMounted.current = true;
+      loadDashboardData();
+      return () => {
+        isMounted.current = false;
+      };
+    }, [])
+  );
 
   const loadDashboardData = async () => {
-    setLoading(true);
-    setError(null);
+    if (isMounted.current) setLoading(true);
+    if (isMounted.current) setError(null);
 
     try {
       console.log('Loading dashboard data from API...');
@@ -59,11 +72,15 @@ export const ApiDashboard: React.FC = () => {
       console.log('Dashboard response:', response);
 
       if (response.success && response.data) {
-        setDashboardData(response.data);
+        if (isMounted.current) {
+          setDashboardData(response.data);
+        }
         console.log('✅ Dashboard data loaded successfully');
       } else {
         const errorMessage = response.error || 'Failed to load dashboard data';
-        setError(errorMessage);
+        if (isMounted.current) {
+          setError(errorMessage);
+        }
         console.error('❌ Failed to load dashboard data:', errorMessage);
 
         // Don't show alert for every error, let the UI handle it
@@ -78,7 +95,9 @@ export const ApiDashboard: React.FC = () => {
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : 'Unknown error occurred';
-      setError(errorMessage);
+      if (isMounted.current) {
+        setError(errorMessage);
+      }
       console.error('❌ Error loading dashboard data:', err);
 
       // Log the error for debugging
@@ -90,7 +109,9 @@ export const ApiDashboard: React.FC = () => {
         type: 'UNKNOWN',
       });
     } finally {
-      setLoading(false);
+      if (isMounted.current) {
+        setLoading(false);
+      }
     }
   };
 
@@ -199,7 +220,7 @@ export const ApiDashboard: React.FC = () => {
     }
 
     const chartsData = {
-      monthlyRevenue: dashboardData.charts.monthlyRevenue || [],
+      monthlyRevenue: (dashboardData.charts?.monthlyRevenue as Record<string, unknown>[]) || [],
       currentMonthRevenue: {
         revenue: safeNumber(dashboardData.stats?.balance || 0),
         expenses: safeNumber(dashboardData.stats?.monthlyExpense || 0),
@@ -326,7 +347,6 @@ export const ApiDashboard: React.FC = () => {
           title='Admin Dashboard'
           subtitle='Manage your flat operations'
           icon='analytics'
-          colors={['#667eea', '#764ba2']}
         />
 
         {/* Data Source Indicator */}

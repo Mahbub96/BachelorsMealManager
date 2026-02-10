@@ -30,24 +30,25 @@ export const ChartsSection: React.FC<ChartsSectionProps> = ({
 
   // Generate meaningful chart data with safety checks
   const revenueChartData = ((monthlyRevenue || []).slice(-6) || []).map(
-    item => ({
-      date: item?.date || item?.month || 'Unknown',
-      value: item?.value || item?.revenue || 0,
-      forecast:
-        item?.forecast ||
-        Math.round((item?.value || item?.revenue || 0) * 1.05),
-      details: {
-        expenses: item?.expenses || 0,
-        profit: item?.profit || 0,
-        memberCount: item?.memberCount || 0,
-      },
-    })
+    (item: Record<string, unknown>) => {
+      const val = Number(item?.value ?? item?.revenue) || 0;
+      return {
+        date: String(item?.date ?? item?.month ?? 'Unknown'),
+        value: val,
+        forecast: Number(item?.forecast) || Math.round(val * 1.05),
+        details: {
+          expenses: Number(item?.expenses) || 0,
+          profit: Number(item?.profit) || 0,
+          memberCount: Number(item?.memberCount) || 0,
+        },
+      };
+    }
   );
 
   console.log('📊 Processed revenue chart data:', revenueChartData);
 
   // Create expense breakdown data from API with theme colors
-  const expenseChartData = (expenseBreakdown || []).map((item, index) => {
+  const expenseChartData = (expenseBreakdown || []).map((item: Record<string, unknown>, index: number) => {
     const colors = [
       theme.status.error,
       theme.status.info,
@@ -62,17 +63,17 @@ export const ChartsSection: React.FC<ChartsSectionProps> = ({
     ];
 
     return {
-      label: item.label || `Category ${index + 1}`,
-      value: item.value || 0,
-      forecast: item.forecast || 0,
+      label: String(item?.label ?? `Category ${index + 1}`),
+      value: Number(item?.value) || 0,
+      forecast: Number(item?.forecast) || 0,
       color: colors[index % colors.length],
       gradient: gradients[index % gradients.length] as [string, string],
-      trend: item.trend || 'stable',
+      trend: (item?.trend as 'up' | 'down' | 'stable') || 'stable',
     };
   });
 
   // Create meal chart data from API with theme colors
-  const mealChartData = (weeklyMeals || []).map((item, index) => {
+  const mealChartData = (weeklyMeals || []).map((item: Record<string, unknown>, index: number) => {
     const colors = [
       theme.status.success,
       theme.status.info,
@@ -80,7 +81,7 @@ export const ChartsSection: React.FC<ChartsSectionProps> = ({
       theme.status.error,
       theme.primary,
       theme.secondary,
-      theme.accent,
+      theme.primary,
     ];
     const gradients = [
       theme.gradient.success,
@@ -89,16 +90,16 @@ export const ChartsSection: React.FC<ChartsSectionProps> = ({
       theme.gradient.error,
       theme.gradient.primary,
       theme.gradient.secondary,
-      theme.gradient.accent,
+      theme.gradient.primary,
     ];
 
     return {
-      label: item.label || `Day ${index + 1}`,
-      value: item.value || 0,
-      forecast: item.forecast || 0,
+      label: String(item?.label ?? `Day ${index + 1}`),
+      value: Number(item?.value) || 0,
+      forecast: Number(item?.forecast) || 0,
       color: colors[index % colors.length],
       gradient: gradients[index % gradients.length] as [string, string],
-      trend: item.trend || 'stable',
+      trend: (item?.trend as 'up' | 'down' | 'stable') || 'stable',
     };
   });
 

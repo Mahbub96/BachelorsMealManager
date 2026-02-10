@@ -5,13 +5,14 @@ import { ThemedText } from '../ThemedText';
 import { BazarList } from '../BazarList';
 import { ErrorBoundary } from '../ErrorBoundary';
 import { useTheme } from '../../context/ThemeContext';
+import type { BazarCardBazar } from '../cards/BazarCard';
 import type { BazarEntry, BazarFilters } from '../../services/bazarService';
 
 interface BazarListSectionProps {
   title?: string;
   showUserInfo?: boolean;
   isAdmin?: boolean;
-  onBazarPress?: (bazar: BazarEntry) => void;
+  onBazarPress?: (bazar: BazarEntry | BazarCardBazar) => void;
   onRefresh?: () => void;
   onShowAllPress?: () => void;
   showAllButton?: boolean;

@@ -76,8 +76,8 @@ export const ThemeInput: React.FC<ThemeInputProps> = ({
               backgroundColor: colors.background,
               color: colors.text,
             },
-            leftIcon && styles.inputWithLeftIcon,
-            rightIcon && styles.inputWithRightIcon,
+            leftIcon ? styles.inputWithLeftIcon : undefined,
+            rightIcon ? styles.inputWithRightIcon : undefined,
             style,
           ]}
           placeholderTextColor={colors.placeholder}

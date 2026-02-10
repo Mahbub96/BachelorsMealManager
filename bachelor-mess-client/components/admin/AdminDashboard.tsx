@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useFocusEffect } from 'expo-router';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -74,7 +75,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   const { createUser } = useUsers();
   const isMountedRef = useRef(true);
 
-  const loadAdminStats = async () => {
+  const loadAdminStats = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -119,11 +120,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
       setError(errorMessage);
       // Error loading stats - non-critical
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
-  };
+  }, []);
 
-  const loadMembers = async (forceRefresh = false) => {
+  const loadMembers = useCallback(async (forceRefresh = false) => {
     try {
       setLoadingMembers(true);
       setError(null); // Clear previous errors
@@ -141,21 +144,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
       
       if (response.success && response.data) {
         const membersList = Array.isArray(response.data) ? response.data : [];
-        setMembers(membersList);
+        if (isMountedRef.current) setMembers(membersList);
       } else {
         const errorMsg = response.error || 'Failed to load members';
-        setError(errorMsg);
-        setMembers([]);
+        if (isMountedRef.current) {
+          setError(errorMsg);
+          setMembers([]);
+        }
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load members';
       console.error('AdminDashboard - Error loading members:', err);
-      setError(errorMessage);
-      setMembers([]);
+      if (isMountedRef.current) {
+        setError(errorMessage);
+        setMembers([]);
+      }
     } finally {
-      setLoadingMembers(false);
+      if (isMountedRef.current) setLoadingMembers(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -164,14 +171,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
     };
   }, []);
 
-  useEffect(() => {
-    if (user?.role === 'admin' || user?.role === 'super_admin') {
-      loadAdminStats();
-      if (activeTab === 'members') {
-        loadMembers();
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.role === 'admin' || user?.role === 'super_admin') {
+        const loadData = async () => {
+          if (activeTab === 'overview') {
+            await loadAdminStats();
+          } else if (activeTab === 'members') {
+            await loadMembers(true);
+          }
+        };
+        loadData();
       }
-    }
-  }, [user?.role, activeTab]);
+    }, [user?.role, activeTab, loadAdminStats, loadMembers])
+  );
 
   // Memoized stat cards (must be before any conditional return to satisfy rules-of-hooks)
   const statCards = useMemo(
@@ -221,7 +234,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
     return (
       <ThemedView style={styles.accessDeniedContainer}>
         <LinearGradient
-          colors={theme.gradient.info}
+          colors={theme.gradient.info as [string, string]}
           style={styles.accessDeniedGradient}
         >
           <Ionicons name='shield' size={80} color='#fff' />
@@ -285,7 +298,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
       }
     >
       {/* Header */}
-      <LinearGradient colors={theme.gradient.info} style={styles.header}>
+      <LinearGradient colors={theme.gradient.info as [string, string]} style={styles.header}>
         <View style={styles.headerContent}>
           <View style={styles.headerIconContainer}>
             <Ionicons name='shield' size={40} color='#fff' />
@@ -350,7 +363,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                 onPress={() => handleQuickAction('approve-all')}
               >
                 <LinearGradient
-                  colors={theme.gradient.success}
+                  colors={theme.gradient.success as [string, string]}
                   style={styles.actionGradient}
                 >
                   <Ionicons name='checkmark-circle' size={36} color='#fff' />
@@ -366,7 +379,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                 onPress={() => handleQuickAction('export-data')}
               >
                 <LinearGradient
-                  colors={theme.gradient.warning}
+                  colors={theme.gradient.warning as [string, string]}
                   style={styles.actionGradient}
                 >
                   <Ionicons name='download' size={36} color='#fff' />
@@ -382,7 +395,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                 onPress={() => handleQuickAction('send-notification')}
               >
                 <LinearGradient
-                  colors={theme.gradient.primary}
+                  colors={theme.gradient.primary as [string, string]}
                   style={styles.actionGradient}
                 >
                   <Ionicons name='notifications' size={36} color='#fff' />
@@ -400,7 +413,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                 onPress={() => setActiveTab('meals')}
               >
                 <LinearGradient
-                  colors={theme.gradient.secondary}
+                  colors={theme.gradient.secondary as [string, string]}
                   style={styles.actionGradient}
                 >
                   <Ionicons name='fast-food' size={36} color='#fff' />
@@ -682,7 +695,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
           onPress={handleOpenAddModal}
         >
           <LinearGradient
-            colors={theme.gradient.success}
+            colors={theme.gradient.success as [string, string]}
             style={styles.addButtonGradient}
           >
             <Ionicons name='add' size={24} color='#fff' />

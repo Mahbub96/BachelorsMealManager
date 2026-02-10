@@ -432,16 +432,39 @@ class OfflineStorageService {
     }
   }
 
+  // Read-only endpoints stored as CREATE when offline; must be sent as GET on sync
+  private static readonly GET_ONLY_ENDPOINTS = [
+    '/api/bazar/user',
+    '/api/activity/recent',
+    '/api/user-stats/dashboard',
+    '/api/user-stats/me',
+    '/api/meals',
+    '/api/health',
+  ];
+
+  private isGetOnlyEndpoint(endpoint: string): boolean {
+    return OfflineStorageService.GET_ONLY_ENDPOINTS.some(
+      (p) => endpoint === p || endpoint.startsWith(p + '?')
+    );
+  }
+
   private async makeApiCall(item: SyncQueueItem): Promise<any> {
     try {
-      // Import HTTP client dynamically to avoid circular dependencies
       const httpClient = (await import('./httpClient')).default;
 
       let response;
       switch (item.action) {
-        case 'CREATE':
-          response = await httpClient.post(item.endpoint, item.data);
+        case 'CREATE': {
+          const useGet =
+            (item.data && item.data._method === 'GET') ||
+            this.isGetOnlyEndpoint(item.endpoint);
+          if (useGet) {
+            response = await httpClient.get(item.endpoint);
+          } else {
+            response = await httpClient.post(item.endpoint, item.data);
+          }
           break;
+        }
         case 'UPDATE':
           response = await httpClient.put(item.endpoint, item.data);
           break;
@@ -1046,8 +1069,9 @@ class OfflineStorageService {
 
   async getPendingCount(): Promise<number> {
     try {
-      const pendingSync = await sqliteDatabase.getPendingSync();
-      return pendingSync.length;
+      return sqliteDatabase.getPendingSyncCount
+        ? await sqliteDatabase.getPendingSyncCount()
+        : 0;
     } catch (error) {
       console.error('❌ OfflineStorage - Failed to get pending count:', error);
       return 0;
@@ -1119,6 +1143,15 @@ class OfflineStorageService {
       await sqliteDatabase.deleteData('sync_queue', requestId);
     } catch (error) {
       console.error('❌ Error removing request:', error);
+    }
+  }
+
+  /** Remove all pending requests for an endpoint (stops duplicate GET retry storm) */
+  async removePendingRequestsByEndpoint(endpoint: string): Promise<void> {
+    try {
+      await sqliteDatabase.removePendingSyncByEndpoint(endpoint);
+    } catch (error) {
+      console.error('❌ Error removing pending requests by endpoint:', error);
     }
   }
 

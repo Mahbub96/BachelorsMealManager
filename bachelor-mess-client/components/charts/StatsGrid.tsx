@@ -34,9 +34,9 @@ export const StatsGrid: React.FC<StatsGridProps> = ({
   const router = useRouter();
 
   const handleStatPress = (stat: StatItem) => {
-    router.push({
-      pathname: '/stat-details',
-      params: {
+      router.push({
+        pathname: '/stat-details' as never,
+        params: {
         title: stat.title,
         value: stat.value,
         icon: stat.icon,

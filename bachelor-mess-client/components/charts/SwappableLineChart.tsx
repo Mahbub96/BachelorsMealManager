@@ -70,7 +70,7 @@ export const SwappableLineChart: React.FC<SwappableLineChartProps> = ({
     setSelectedIndex(selectedIndex === index ? null : index);
 
     router.push({
-      pathname: '/line-details',
+      pathname: '/line-details' as never,
       params: {
         date: item?.date || item?.month || '',
         value: (item?.value || item?.revenue || 0).toString(),

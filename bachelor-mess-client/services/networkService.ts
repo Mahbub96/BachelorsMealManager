@@ -281,12 +281,18 @@ class NetworkServiceImpl implements NetworkService {
     });
   }
 
-  // Retry failed requests when back online
+  private retryInProgress = false;
+
+  // Retry failed requests when back online (single-flight to avoid parallel runs)
   async retryFailedRequests(): Promise<void> {
+    if (this.retryInProgress) {
+      return;
+    }
+    this.retryInProgress = true;
     try {
       console.log('🔄 Retrying failed requests...');
 
-      // Get offline status
+      // Get offline status (uses count only, does not load full queue)
       const offlineStatus = await httpClient.getOfflineStatus();
 
       if (offlineStatus.pendingRequests > 0) {
@@ -312,6 +318,8 @@ class NetworkServiceImpl implements NetworkService {
     } catch (error) {
       console.error('❌ Error retrying failed requests:', error);
       // Don't throw error, just log it to prevent app crashes
+    } finally {
+      this.retryInProgress = false;
     }
   }
 

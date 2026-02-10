@@ -83,8 +83,21 @@ export const useMealManagement = (): UseMealManagementReturn => {
           // Ensure all meals have id field (transform _id to id if needed)
           type RawMeal = Partial<MealEntry> & { _id?: string };
           const transformedMeals: MealEntry[] = mealsData.map((meal: RawMeal) => ({
-            ...meal,
-            id: meal.id || meal._id || String(meal._id),
+            id: meal.id || meal._id || '',
+            userId: meal.userId ?? '',
+            date: meal.date ?? new Date().toISOString().split('T')[0],
+            breakfast: meal.breakfast ?? false,
+            lunch: meal.lunch ?? false,
+            dinner: meal.dinner ?? false,
+            status: meal.status ?? 'pending',
+            notes: meal.notes,
+            approvedBy: meal.approvedBy,
+            approvedAt: meal.approvedAt,
+            createdAt: meal.createdAt ?? new Date().toISOString(),
+            updatedAt: meal.updatedAt ?? new Date().toISOString(),
+            totalMeals: meal.totalMeals,
+            mealSummary: meal.mealSummary,
+            approvalInfo: meal.approvalInfo,
           }));
 
           setMeals(transformedMeals);

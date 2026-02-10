@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { useFocusEffect } from 'expo-router';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -15,8 +16,7 @@ import { ThemedView } from '../ThemedView';
 import { ThemedText } from '../ThemedText';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import userService from '../../services/userService';
-import { User } from '../../services/authService';
+import userService, { User } from '../../services/userService';
 
 interface SuperAdminDashboardProps {
   onNavigate?: (screen: string) => void;
@@ -91,12 +91,14 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
     setRefreshing(false);
   };
 
-  useEffect(() => {
-    if (user?.role === 'super_admin') {
-      loadSystemStats();
-      loadRecentUsers();
-    }
-  }, [user?.role]);
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.role === 'super_admin') {
+        loadSystemStats();
+        loadRecentUsers();
+      }
+    }, [user?.role])
+  );
 
   const getHealthColor = (health: string) => {
     switch (health) {
@@ -175,7 +177,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
     return (
       <ThemedView style={styles.accessDeniedContainer}>
         <LinearGradient
-          colors={theme.gradient.primary}
+          colors={theme.gradient.primary as [string, string]}
           style={styles.accessDeniedGradient}
         >
           <Ionicons name='shield-checkmark' size={80} color='#fff' />
@@ -198,7 +200,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
       }
     >
       {/* Header */}
-      <LinearGradient colors={theme.gradient.primary} style={styles.header}>
+      <LinearGradient colors={theme.gradient.primary as [string, string]} style={styles.header}>
         <View style={styles.headerContent}>
           <View style={styles.headerIconContainer}>
             <Ionicons name='shield-checkmark' size={40} color='#fff' />
@@ -220,7 +222,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
           colors={[
             getHealthColor(systemStats.systemHealth),
             getHealthColor(systemStats.systemHealth) + '80',
-          ]}
+          ] as [string, string]}
           style={styles.healthGradient}
         >
           <View style={styles.healthContent}>
@@ -243,7 +245,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
       <View style={styles.statsGrid}>
         <View style={styles.statCard}>
           <LinearGradient
-            colors={theme.gradient.success}
+            colors={theme.gradient.success as [string, string]}
             style={styles.statGradient}
           >
             <Ionicons name='people' size={28} color='#fff' />
@@ -256,7 +258,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
 
         <View style={styles.statCard}>
           <LinearGradient
-            colors={theme.gradient.info}
+            colors={theme.gradient.info as [string, string]}
             style={styles.statGradient}
           >
             <Ionicons name='shield' size={28} color='#fff' />
@@ -269,7 +271,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
 
         <View style={styles.statCard}>
           <LinearGradient
-            colors={theme.gradient.warning}
+            colors={theme.gradient.warning as [string, string]}
             style={styles.statGradient}
           >
             <Ionicons name='time' size={28} color='#fff' />
@@ -282,7 +284,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
 
         <View style={styles.statCard}>
           <LinearGradient
-            colors={theme.gradient.secondary}
+            colors={theme.gradient.secondary as [string, string]}
             style={styles.statGradient}
           >
             <Ionicons name='checkmark-circle' size={28} color='#fff' />
@@ -303,7 +305,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
             onPress={() => setActiveTab('users')}
           >
             <LinearGradient
-              colors={theme.gradient.success}
+              colors={theme.gradient.success as [string, string]}
               style={styles.actionGradient}
             >
               <Ionicons name='people-circle' size={36} color='#fff' />
@@ -319,7 +321,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
             onPress={() => handleSystemAction('backup')}
           >
             <LinearGradient
-              colors={theme.gradient.warning}
+              colors={theme.gradient.warning as [string, string]}
               style={styles.actionGradient}
             >
               <Ionicons name='cloud-download' size={36} color='#fff' />
@@ -335,7 +337,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
             onPress={() => setActiveTab('system')}
           >
             <LinearGradient
-              colors={theme.gradient.secondary}
+              colors={theme.gradient.secondary as [string, string]}
               style={styles.actionGradient}
             >
               <Ionicons name='settings' size={36} color='#fff' />
@@ -353,7 +355,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
             onPress={() => handleSystemAction('analytics')}
           >
             <LinearGradient
-              colors={theme.gradient.primary}
+              colors={theme.gradient.primary as [string, string]}
               style={styles.actionGradient}
             >
               <Ionicons name='analytics' size={36} color='#fff' />
@@ -412,7 +414,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
             onPress={() => handleSystemAction('restart')}
           >
             <LinearGradient
-              colors={theme.gradient.warning}
+              colors={theme.gradient.warning as [string, string]}
               style={styles.systemActionGradient}
             >
               <Ionicons name='refresh' size={24} color='#fff' />
@@ -427,7 +429,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
             onPress={() => handleSystemAction('maintenance')}
           >
             <LinearGradient
-              colors={theme.gradient.secondary}
+              colors={theme.gradient.secondary as [string, string]}
               style={styles.systemActionGradient}
             >
               <Ionicons name='construct' size={24} color='#fff' />

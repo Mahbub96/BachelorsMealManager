@@ -15,12 +15,24 @@ import {
 import statisticsService from '@/services/statisticsService';
 import { useTheme } from '@/context/ThemeContext';
 
+interface ExpenseDetailsData {
+  monthlyExpenses?: number;
+  monthlyData?: { month?: string; expenses?: number; revenue?: number; totalMeals?: number; budget?: number; savings?: number; meals?: number }[];
+  dailyData?: { date?: string; expenses?: number; meals?: number }[];
+  bazarStats?: { totalAmount?: number; totalEntries?: number };
+  recentBazarEntries?: { items?: unknown[]; totalAmount?: number }[];
+  budgetStatus?: string;
+  averageDailyExpense?: number;
+  highestExpenseDay?: string;
+  lastUpdated?: string;
+}
+
 export default function ExpenseDetailsPage() {
   const params = useLocalSearchParams();
   const { theme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [expenseData, setExpenseData] = useState<Record<string, unknown> | null>(null);
+  const [expenseData, setExpenseData] = useState<ExpenseDetailsData | null>(null);
 
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
@@ -39,7 +51,7 @@ export default function ExpenseDetailsPage() {
       console.log('📊 Statistics response:', statsResponse);
 
       if (statsResponse.success && statsResponse.data) {
-        setExpenseData(statsResponse.data);
+        setExpenseData(statsResponse.data as unknown as ExpenseDetailsData);
         console.log('✅ Expense data loaded successfully');
       } else {
         console.error('❌ Failed to load expense data:', statsResponse.error);
@@ -54,9 +66,10 @@ export default function ExpenseDetailsPage() {
   };
 
   // Parse the data from params
+  const monthlyExpensesNum = Number(expenseData?.monthlyExpenses) || 0;
   const data = {
     title: (params.title as string) || 'Monthly Expenses',
-    value: parseInt(params.value as string) || (expenseData?.monthlyExpenses || 0),
+    value: parseInt(params.value as string, 10) || monthlyExpensesNum,
     type: (params.type as string) || 'monthly',
     color: (params.color as string) || theme.primary,
     gradient: [(params.color as string) || theme.primary, theme.secondary] as [
@@ -73,84 +86,63 @@ export default function ExpenseDetailsPage() {
     },
   };
 
-  // Generate chart data from API data
-  const expenseTrendData = (expenseData?.monthlyData as Record<string, unknown>[] | undefined)?.slice(-6).map((item: Record<string, unknown>) => ({
-    month: item.month,
-    expenses: item.expenses || 0,
-    budget: item.revenue || 0,
-    savings: (item.revenue || 0) - (item.expenses || 0),
-    meals: item.totalMeals || 0,
-  })) || [];
+  const monthlyData = expenseData?.monthlyData?.slice(-6) ?? [];
+  const expenseTrendData = monthlyData.map((item) => ({
+    month: item.month ?? '',
+    expenses: Number(item.expenses) || 0,
+    budget: Number(item.revenue) || 0,
+    savings: (Number(item.revenue) || 0) - (Number(item.expenses) || 0),
+    meals: Number(item.totalMeals) || 0,
+  }));
 
-  // Generate daily expense data
-  const dailyExpenseData = (expenseData?.dailyData as Record<string, unknown>[] | undefined)?.slice(-7).map((item: Record<string, unknown>) => ({
-    day: new Date(item.date).toLocaleDateString('en-US', { weekday: 'short' }),
-    amount: item.expenses || 0,
-    meals: item.meals || 0,
-  })) || [];
+  const dailyData = expenseData?.dailyData?.slice(-7) ?? [];
+  const dailyExpenseData = dailyData.map((item) => ({
+    day: item.date ? new Date(item.date).toLocaleDateString('en-US', { weekday: 'short' }) : '',
+    amount: Number(item.expenses) || 0,
+    meals: Number(item.meals) || 0,
+  }));
 
-  // Generate expense breakdown from API data
+  const bazarTotal = Number(expenseData?.bazarStats?.totalAmount) || 0;
+  const recentBazar = expenseData?.recentBazarEntries?.slice(-5) ?? [];
   const expenseBreakdown = [
     {
       category: 'Groceries',
-      amount: expenseData?.bazarStats?.totalAmount || 0,
+      amount: bazarTotal,
       percentage: 60,
       color: theme.status.success,
       icon: 'fast-food',
-      subItems: (expenseData?.recentBazarEntries as Record<string, unknown>[] | undefined)?.slice(-5).map((bazar: Record<string, unknown>) => ({
-        name: bazar.items?.slice(0, 3).join(', ') || 'Unknown items',
-        amount: bazar.totalAmount || 0,
-        percentage: Math.round(
-          ((bazar.totalAmount || 0) / (expenseData?.bazarStats?.totalAmount || 1)) * 100
-        ),
-      })) || [],
+      subItems: recentBazar.map((bazar) => {
+        const amt = Number(bazar.totalAmount) || 0;
+        const itemsLabel = Array.isArray(bazar.items) ? bazar.items.slice(0, 3).join(', ') : 'Unknown items';
+        return {
+          name: itemsLabel,
+          amount: amt,
+          percentage: bazarTotal > 0 ? Math.round((amt / bazarTotal) * 100) : 0,
+        };
+      }),
     },
     {
       category: 'Utilities',
-      amount: Math.round((expenseData?.monthlyExpenses || 0) * 0.25),
+      amount: Math.round(monthlyExpensesNum * 0.25),
       percentage: 25,
       color: theme.status.info,
       icon: 'flash',
       subItems: [
-        {
-          name: 'Electricity',
-          amount: Math.round((expenseData?.monthlyExpenses || 0) * 0.15),
-          percentage: 60,
-        },
-        {
-          name: 'Gas',
-          amount: Math.round((expenseData?.monthlyExpenses || 0) * 0.06),
-          percentage: 24,
-        },
-        {
-          name: 'Water',
-          amount: Math.round((expenseData?.monthlyExpenses || 0) * 0.04),
-          percentage: 16,
-        },
+        { name: 'Electricity', amount: Math.round(monthlyExpensesNum * 0.15), percentage: 60 },
+        { name: 'Gas', amount: Math.round(monthlyExpensesNum * 0.06), percentage: 24 },
+        { name: 'Water', amount: Math.round(monthlyExpensesNum * 0.04), percentage: 16 },
       ],
     },
     {
       category: 'Maintenance',
-      amount: Math.round((expenseData?.monthlyExpenses || 0) * 0.15),
+      amount: Math.round(monthlyExpensesNum * 0.15),
       percentage: 15,
       color: theme.status.warning,
       icon: 'construct',
       subItems: [
-        {
-          name: 'Repairs',
-          amount: Math.round((expenseData?.monthlyExpenses || 0) * 0.09),
-          percentage: 60,
-        },
-        {
-          name: 'Cleaning',
-          amount: Math.round((expenseData?.monthlyExpenses || 0) * 0.04),
-          percentage: 27,
-        },
-        {
-          name: 'Supplies',
-          amount: Math.round((expenseData?.monthlyExpenses || 0) * 0.02),
-          percentage: 13,
-        },
+        { name: 'Repairs', amount: Math.round(monthlyExpensesNum * 0.09), percentage: 60 },
+        { name: 'Cleaning', amount: Math.round(monthlyExpensesNum * 0.04), percentage: 27 },
+        { name: 'Supplies', amount: Math.round(monthlyExpensesNum * 0.02), percentage: 13 },
       ],
     },
   ];
@@ -227,7 +219,7 @@ export default function ExpenseDetailsPage() {
           />
           <MetricCard
             icon="checkmark-circle"
-            value={expenseData?.budgetStatus || 'Under Budget'}
+            value={String(expenseData?.budgetStatus ?? 'Under Budget')}
             label="Budget Status"
             color={getBudgetStatusColor(expenseData?.budgetStatus || 'under')}
           />
@@ -241,7 +233,7 @@ export default function ExpenseDetailsPage() {
           icon="trending-up"
         >
           <SwappableLineChart
-            monthlyRevenue={expenseTrendData.map((item: Record<string, unknown>) => ({
+            monthlyRevenue={expenseTrendData.map((item) => ({
               month: item.month,
               revenue: item.expenses,
               value: item.expenses,
@@ -266,7 +258,7 @@ export default function ExpenseDetailsPage() {
           icon="calendar"
         >
           <View style={styles.dailyBreakdown}>
-            {dailyExpenseData.map((day: Record<string, unknown>, index: number) => (
+            {dailyExpenseData.map((day, index) => (
               <View key={index} style={styles.dailyItem}>
                 <ThemedText style={[styles.dailyDay, { color: theme.text.primary }]}>
                   {day.day}
@@ -324,16 +316,16 @@ export default function ExpenseDetailsPage() {
                 </View>
                 {category.subItems.length > 0 && (
                   <View style={styles.subItems}>
-                                     {category.subItems.slice(0, 3).map((item: { name?: string; amount?: number }, subIndex: number) => (
-                   <View key={subIndex} style={styles.subItem}>
-                     <ThemedText style={[styles.subItemName, { color: theme.text.secondary }]}>
-                       {item.name}
-                     </ThemedText>
-                     <ThemedText style={[styles.subItemAmount, { color: theme.text.primary }]}>
-                       {formatCurrency(item.amount)}
-                     </ThemedText>
-                   </View>
-                 ))}
+                    {category.subItems.slice(0, 3).map((item, subIndex) => (
+                      <View key={subIndex} style={styles.subItem}>
+                        <ThemedText style={[styles.subItemName, { color: theme.text.secondary }]}>
+                          {item.name}
+                        </ThemedText>
+                        <ThemedText style={[styles.subItemAmount, { color: theme.text.primary }]}>
+                          {formatCurrency(Number(item.amount) || 0)}
+                        </ThemedText>
+                      </View>
+                    ))}
                   </View>
                 )}
               </TouchableOpacity>
@@ -354,7 +346,7 @@ export default function ExpenseDetailsPage() {
                 Average Daily Expense
               </ThemedText>
               <ThemedText style={[styles.detailValue, { color: theme.text.primary }]}>
-                {formatCurrency(expenseData?.averageDailyExpense || 0)}
+                {formatCurrency(Number(expenseData?.averageDailyExpense) || 0)}
               </ThemedText>
             </View>
             <View style={styles.detailRow}>
@@ -362,7 +354,7 @@ export default function ExpenseDetailsPage() {
                 Highest Expense Day
               </ThemedText>
               <ThemedText style={[styles.detailValue, { color: theme.text.primary }]}>
-                {expenseData?.highestExpenseDay || 'N/A'}
+                {expenseData?.highestExpenseDay ?? 'N/A'}
               </ThemedText>
             </View>
             <View style={styles.detailRow}>
@@ -370,7 +362,7 @@ export default function ExpenseDetailsPage() {
                 Total Bazar Entries
               </ThemedText>
               <ThemedText style={[styles.detailValue, { color: theme.text.primary }]}>
-                {expenseData?.bazarStats?.totalEntries || 0}
+                {expenseData?.bazarStats?.totalEntries ?? 0}
               </ThemedText>
             </View>
             <View style={styles.detailRow}>
@@ -378,7 +370,7 @@ export default function ExpenseDetailsPage() {
                 Last Updated
               </ThemedText>
               <ThemedText style={[styles.detailValue, { color: theme.text.primary }]}>
-                {expenseData?.lastUpdated || 'N/A'}
+                {expenseData?.lastUpdated ?? 'N/A'}
               </ThemedText>
             </View>
           </View>

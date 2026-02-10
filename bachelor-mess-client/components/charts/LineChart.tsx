@@ -62,7 +62,7 @@ export const LineChart: React.FC<LineChartProps> = ({
     setSelectedIndex(selectedIndex === index ? null : index);
 
     router.push({
-      pathname: '/line-details',
+      pathname: '/line-details' as never,
       params: {
         date: item?.date || '',
         value: (item?.value || 0).toString(),

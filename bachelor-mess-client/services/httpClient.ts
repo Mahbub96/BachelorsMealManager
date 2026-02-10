@@ -32,6 +32,8 @@ class HttpClient {
     [];
   private responseInterceptors: ((response: Response) => Response)[] = [];
   private isOnlineCache: { status: boolean; timestamp: number } | null = null;
+  private lastSessionExpiredEmit = 0;
+  private static readonly SESSION_EXPIRED_DEBOUNCE_MS = 2000;
   private readonly ONLINE_CACHE_DURATION = 60000; // 60 seconds (increased to reduce health check frequency)
 
   constructor() {
@@ -269,10 +271,15 @@ class HttpClient {
         }
       }
 
-      // Create enhanced error object
+      // Create enhanced error object.
+      // Normalize response shape so downstream handlers (and offline retry logic)
+      // can reliably read both status and error payload.
       const error: ApiError = new Error(errorMessage) as ApiError;
       error.status = response.status;
-      error.response = errorData;
+      error.response = {
+        status: response.status,
+        data: errorData,
+      };
 
       // Check if this is a login/register endpoint (should not trigger session expiration)
       // Use endpoint parameter or fallback to response.url
@@ -317,19 +324,56 @@ class HttpClient {
     }
 
     if (isJson) {
-      const data = await response.json();
-      return data;
+      try {
+        const data = await response.json();
+        return data;
+      } catch (e) {
+        // If JSON parsing fails despite content-type, consider it a server error or return text
+        const text = await response.text().catch(() => '');
+        throw new Error(`Invalid JSON response from server: ${text.substring(0, 100)}...`);
+      }
     }
 
     const text = await response.text();
     return { success: true, data: text } as ApiResponse<T>;
   }
 
+  // Known read-only (GET) endpoints - used when offline queue has no _method (legacy items)
+  private static readonly GET_ONLY_ENDPOINTS = [
+    '/api/bazar/user',
+    '/api/activity/recent',
+    '/api/user-stats/dashboard',
+    '/api/user-stats/me',
+    '/api/meals',
+    '/api/health',
+  ];
+
+  private isGetOnlyEndpoint(endpoint: string): boolean {
+    return HttpClient.GET_ONLY_ENDPOINTS.some(
+      (p) => endpoint === p || endpoint.startsWith(p + '?')
+    );
+  }
+
   // Enhanced error handling
   private handleResponseError(error: unknown): ApiResponse<never> {
     const err = error as { name?: string; message?: string; response?: { status?: number; data?: { message?: string } }; code?: string };
     const msg = error instanceof Error ? error.message : (err?.message ?? 'Unknown error');
-    logger.error('HTTP Client Error:', msg);
+    const status = err?.response?.status ?? (error as { status?: number })?.status;
+    // Expected client errors: log as warn to avoid production noise
+    const expectedClientError =
+      status === 404 ||
+      msg.includes('Resource not found') ||
+      status === 401 ||
+      msg.includes('Session expired') ||
+      status === 403 ||
+      msg.includes('Access denied') ||
+      status === 429 ||
+      msg.includes('Too many requests');
+    if (expectedClientError) {
+      logger.warn('HTTP Client:', msg);
+    } else {
+      logger.error('HTTP Client Error:', msg);
+    }
 
     if (err?.name === 'AbortError') {
       return {
@@ -340,6 +384,9 @@ class HttpClient {
 
     if (err?.response) {
       const { status, data } = err.response;
+      const dataMsg = data && typeof data === 'object' && (data as Record<string, unknown>).message;
+      const dataErr = data && typeof data === 'object' && (data as Record<string, unknown>).error;
+      const fromBody = (typeof dataMsg === 'string' ? dataMsg : null) || (typeof dataErr === 'string' ? dataErr : null);
 
       switch (status) {
         case 401:
@@ -359,6 +406,11 @@ class HttpClient {
             success: false,
             error: 'Resource not found.',
           };
+        case 429:
+          return {
+            success: false,
+            error: msg || fromBody || 'Too many requests. Please try again later.',
+          };
         case 500:
           return {
             success: false,
@@ -367,7 +419,7 @@ class HttpClient {
         default:
           return {
             success: false,
-            error: data?.message || `HTTP ${status} error occurred.`,
+            error: msg || fromBody || (status != null ? `HTTP ${status} error occurred.` : 'Request failed.'),
           };
       }
     }
@@ -402,13 +454,16 @@ class HttpClient {
     }
   }
 
-  // Trigger logout event
+  // Trigger logout event (debounced so many 401s don't spam logout/navigation)
   private async triggerLogout(): Promise<void> {
     try {
-      // Clear auth data directly
       await AsyncStorage.multiRemove(['auth_token', 'auth_user']);
 
-      // Emit auth event
+      const now = Date.now();
+      if (now - this.lastSessionExpiredEmit < HttpClient.SESSION_EXPIRED_DEBOUNCE_MS) {
+        return;
+      }
+      this.lastSessionExpiredEmit = now;
       authEventEmitter.emitAuthEvent({
         type: 'session_expired',
         data: { message: 'Session expired. Please login again.' },
@@ -839,22 +894,22 @@ class HttpClient {
     };
   }
 
-  // Enhanced offline status
+  // Enhanced offline status (uses count only to avoid loading 50k+ queue into memory)
   async getOfflineStatus() {
     try {
       const online = await this.isOnline();
-      const pendingRequests = offlineStorage?.getPendingRequests
-        ? await offlineStorage.getPendingRequests()
-        : [];
+      const pendingCount = offlineStorage?.getPendingCount
+        ? await offlineStorage.getPendingCount()
+        : 0;
       const storageSize = offlineStorage?.getStorageSize
         ? await offlineStorage.getStorageSize()
         : 0;
 
       return {
         isOnline: online,
-        pendingRequests: pendingRequests.length,
-        pendingCount: pendingRequests.length,
-        storageSize: storageSize,
+        pendingRequests: pendingCount,
+        pendingCount,
+        storageSize,
         lastChecked: this.isOnlineCache?.timestamp || null,
       };
     } catch (error) {
@@ -869,6 +924,7 @@ class HttpClient {
   }
 
   // Enhanced offline request retry
+  // Enhanced offline request retry
   async retryOfflineRequests(): Promise<void> {
     try {
       const online = await this.isOnline();
@@ -876,27 +932,90 @@ class HttpClient {
         return;
       }
 
-      const pendingRequests = offlineStorage?.getPendingRequests
+      const allPending = offlineStorage?.getPendingRequests
         ? await offlineStorage.getPendingRequests()
         : [];
+      // Process in batches to avoid flooding server (e.g. 2347 legacy items)
+      const MAX_RETRY_BATCH = 50;
+      const pendingRequests = allPending.slice(0, MAX_RETRY_BATCH);
+      const sentGetEndpoints = new Set<string>();
 
       for (const request of pendingRequests) {
         try {
           const url = `${this.baseURL}${request.endpoint}`;
 
-          // Minimal fix: Extract method and headers from data if stored
-          let method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' = 'POST';
-          let headers: Record<string, string> = {};
           let requestBody = request.data;
           
-          if (request.data && typeof request.data === 'object' && request.data._method) {
-            method = request.data._method;
-            headers = request.data._headers || {};
-            const { _method, _headers, ...cleanData } = request.data;
+          // Robust fix: Ensure data is an object if it's stored as a string
+          if (typeof requestBody === 'string') {
+            try {
+              const parsed = JSON.parse(requestBody);
+              requestBody = parsed;
+              // Update local variable, we dont need to update request.data on the object
+            } catch (e) {
+              console.warn(`⚠️ Failed to parse offline request data for ${request.endpoint}`, e);
+            }
+          }
+
+          // Robust fix: Extract method and headers from data if stored
+          // Default to NULL if not found, do NOT default to POST blindly
+          let method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD' | null =
+            null;
+          let headers: Record<string, string> = {};
+          // let requestBody = request.data; // Removed as we defined it above
+
+          if (
+            requestBody &&
+            typeof requestBody === 'object' &&
+            requestBody._method
+          ) {
+            method = requestBody._method;
+            headers = requestBody._headers || {};
+            const { _method, _headers, ...cleanData } = requestBody;
             requestBody = cleanData;
           } else if (request.action) {
-            // Fallback: map action to method
-            method = request.action === 'UPDATE' ? 'PUT' : request.action === 'DELETE' ? 'DELETE' : 'POST';
+            if (request.action === 'UPDATE') method = 'PUT';
+            else if (request.action === 'DELETE') method = 'DELETE';
+            else if (request.action === 'CREATE') {
+              method = this.isGetOnlyEndpoint(request.endpoint) ? 'GET' : 'POST';
+            }
+          }
+
+          if (!method && this.isGetOnlyEndpoint(request.endpoint)) {
+            method = 'GET';
+          }
+
+          // Force GET for read-only endpoints (backend has no POST for these; fixes 404 spam)
+          if (this.isGetOnlyEndpoint(request.endpoint)) {
+            method = 'GET';
+          }
+
+          if (!method) {
+            if (process.env.NODE_ENV !== 'production') {
+              console.warn(
+                `⚠️ Skipping offline request ${request.endpoint}: Unknown method`
+              );
+            }
+            if (offlineStorage?.removeRequest) {
+              await offlineStorage.removeRequest(request.id);
+            }
+            continue;
+          }
+
+          // Ensure no body for GET/HEAD requests
+          if (method === 'GET' || method === 'HEAD') {
+            requestBody = undefined;
+          }
+
+          // Dedupe: only send one GET per endpoint per batch to avoid request storm
+          if (method === 'GET' && sentGetEndpoints.has(request.endpoint)) {
+            if (offlineStorage?.removeRequest) {
+              await offlineStorage.removeRequest(request.id);
+            }
+            continue;
+          }
+          if (method === 'GET') {
+            sentGetEndpoints.add(request.endpoint);
           }
 
           // Reconstruct headers with auth token
@@ -908,7 +1027,8 @@ class HttpClient {
           };
 
           const response = await this.retryRequest(url, {
-            method: method,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            method: method as any,
             body: requestBody,
             headers: finalHeaders,
             timeout: API_CONFIG.timeout,
@@ -918,15 +1038,52 @@ class HttpClient {
           const result = await this.handleResponse(response);
 
           if (result.success) {
-            if (offlineStorage?.removeRequest) {
+            if (method === 'GET' && offlineStorage?.removePendingRequestsByEndpoint) {
+              await offlineStorage.removePendingRequestsByEndpoint(request.endpoint);
+            } else if (offlineStorage?.removeRequest) {
               await offlineStorage.removeRequest(request.id);
             }
           }
         } catch (error) {
-          logger.error(
-            `Failed to retry offline request ${request.endpoint}:`,
-            error
-          );
+          const err = error as any;
+          // Prefer top-level status (from our ApiError), fall back to nested response.status
+          const status = err?.status ?? err?.response?.status;
+          const msg = err?.message || '';
+
+          // Stop retrying if:
+          // 1. It's a client error (4xx) like 400, 401, 403, 404
+          // 2. Specific error messages like "Session expired"
+          if (
+            (status >= 400 && status < 500) ||
+            msg.includes('Session expired') ||
+            msg.includes('Resource not found')
+          ) {
+            console.warn(
+              `⚠️ Removing failing offline request ${request.endpoint} (Status: ${status}, Msg: ${msg})`
+            );
+            if (status === 429 || msg.includes('Too many requests')) {
+              if (offlineStorage?.removePendingRequestsByEndpoint) {
+                await offlineStorage.removePendingRequestsByEndpoint(request.endpoint);
+              }
+              console.log('🛑 Rate limited (429), stopping offline retry loop');
+              break;
+            }
+            if (offlineStorage?.removeRequest) {
+              await offlineStorage.removeRequest(request.id);
+            }
+
+            // critical: break the loop if session expired to prevent spamming logouts
+            if (status === 401 || msg.includes('Session expired')) {
+              console.log('🛑 Auth failed, stopping offline retry loop');
+              break;
+            }
+          } else {
+            // Only log as error if we're going to keep retrying (5xx or network error)
+            logger.error(
+              `Failed to retry offline request ${request.endpoint}:`,
+              error
+            );
+          }
         }
       }
     } catch (error) {

@@ -128,7 +128,7 @@ export const useDashboard = (): UseDashboardReturn => {
           setCombinedData(response.data);
           // Also update individual data
           setStats(response.data.stats);
-          setActivities(response.data.activities);
+          setActivities((response.data.activities ?? []) as Activity[]);
           setAnalytics(response.data.analytics);
         } else {
           setError(response.error || 'Failed to fetch combined dashboard data');

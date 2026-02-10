@@ -129,6 +129,7 @@ export const EnhancedMealManagement: React.FC<EnhancedMealManagementProps> = ({
   showUserManagement = true,
 }) => {
   const { user } = useAuth();
+  const { theme } = useTheme();
   const role = userRole || user?.role;
 
   const {

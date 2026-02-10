@@ -69,8 +69,8 @@ export default function NewBazarScreen() {
     }
   };
 
-  const handleDateChange = (event: any, selectedDate?: Date) => {
-    console.log('📅 NewBazar - Date picker event:', event.type);
+  const handleDateChange = (event: unknown, selectedDate?: Date) => {
+    console.log('📅 NewBazar - Date picker event:', (event as { type?: string })?.type);
     setShowDatePicker(false);
 
     if (selectedDate) {

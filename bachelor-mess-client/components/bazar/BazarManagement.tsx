@@ -11,6 +11,7 @@ import { BazarListSection } from './BazarListSection';
 import { BazarFilters } from './BazarFilters';
 import { BazarSearchBar } from './BazarSearchBar';
 import { BazarErrorState } from './BazarErrorState';
+import type { BazarCardBazar } from '../cards/BazarCard';
 import type { BazarEntry, BazarFilters as BazarFiltersType } from '../../services/bazarService';
 
 interface BazarManagementProps {
@@ -20,7 +21,7 @@ interface BazarManagementProps {
   showAddButton?: boolean;
   title?: string;
   subtitle?: string;
-  onBazarPress?: (bazar: BazarEntry) => void;
+  onBazarPress?: (bazar: BazarEntry | BazarCardBazar) => void;
   onShowAllPress?: () => void;
   onAddPress?: () => void;
   customFilters?: BazarFiltersType;
@@ -72,7 +73,7 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
     }
   };
 
-  const handleBazarPress = (bazar: BazarEntry) => {
+  const handleBazarPress = (bazar: BazarEntry | BazarCardBazar) => {
     console.log('🎯 Bazar pressed:', bazar);
     onBazarPress?.(bazar);
   };

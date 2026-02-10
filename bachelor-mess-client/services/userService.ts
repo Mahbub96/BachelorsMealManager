@@ -106,9 +106,15 @@ class UserServiceImpl implements UserService {
         return { ...response, data: transformedUsers };
       }
 
-      // If we get here, something went wrong
+      // 403 = member calling admin-only endpoint; return empty list, no error
       if (!response.success) {
-        console.error('UserService - getAllUsers failed:', response.error);
+        const errMsg = response.error || '';
+        if (errMsg.includes('Access denied') || errMsg.includes('Insufficient permissions')) {
+          return { success: true, data: [] };
+        }
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('UserService - getAllUsers failed:', response.error);
+        }
       }
 
       return response as unknown as ApiResponse<User[]>;

@@ -42,7 +42,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={theme.gradient.primary}
+        colors={theme.gradient.primary as [string, string]}
         style={styles.headerGradient}
       >
         <View style={styles.headerContent}>

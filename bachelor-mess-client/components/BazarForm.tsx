@@ -23,6 +23,7 @@ import bazarService, {
   BazarItem,
 } from '../services/bazarService';
 import { useColorScheme } from '../hooks/useColorScheme';
+import { useAuth } from '@/context/AuthContext';
 
 const { width: screenWidth } = Dimensions.get('window');
 

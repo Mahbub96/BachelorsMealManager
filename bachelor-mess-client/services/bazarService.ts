@@ -52,7 +52,7 @@ export interface BazarStatusUpdate {
 export interface BazarFilters {
   startDate?: string;
   endDate?: string;
-  status?: 'pending' | 'approved' | 'rejected';
+  status?: 'all' | 'pending' | 'approved' | 'rejected';
   userId?: string;
   limit?: number;
   page?: number;
@@ -558,7 +558,7 @@ class BazarServiceImpl implements BazarService {
 
     if (filters.startDate) params.append('startDate', filters.startDate);
     if (filters.endDate) params.append('endDate', filters.endDate);
-    if (filters.status) params.append('status', filters.status);
+    if (filters.status && filters.status !== 'all') params.append('status', filters.status);
     if (filters.userId) params.append('userId', filters.userId);
     if (filters.limit) params.append('limit', filters.limit.toString());
     if (filters.page) params.append('page', filters.page.toString());

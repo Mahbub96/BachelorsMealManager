@@ -10,7 +10,7 @@ import type { IconName } from '@/constants/IconTypes';
 import { ThemedText } from '../ThemedText';
 import { useTheme } from '../../context/ThemeContext';
 
-type BazarCardBazar = {
+export type BazarCardBazar = {
   id: string;
   items: { name: string; quantity: string; price: number }[];
   totalAmount: number;
