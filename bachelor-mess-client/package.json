@@ -10,7 +10,8 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "build:android": "npx eas-cli build --platform android --profile production --non-interactive",
-    "build:android:local": "expo run:android --variant release"
+    "build:android:local": "expo run:android --variant release",
+    "build:android:apk": "export JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home && cd android && GRADLE_OPTS='--enable-native-access=ALL-UNNAMED' ./gradlew assembleRelease --no-daemon"
   },
   "dependencies": {
     "@expo/metro-runtime": "^6.1.2",
