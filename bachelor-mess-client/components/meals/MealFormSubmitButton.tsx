@@ -2,8 +2,9 @@ import React from 'react';
 import {
   StyleSheet,
   TouchableOpacity,
-  ActivityIndicator,
+  // ActivityIndicator,
 } from 'react-native';
+import { ModernLoader } from '../ui/ModernLoader';
 import { ThemedText } from '../ThemedText';
 
 interface MealFormSubmitButtonProps {
@@ -26,7 +27,7 @@ export const MealFormSubmitButton: React.FC<MealFormSubmitButtonProps> = ({
       disabled={disabled || loading}
     >
       {loading ? (
-        <ActivityIndicator color='#fff' size='small' />
+        <ModernLoader size='small' overlay={false} />
       ) : (
         <ThemedText style={styles.buttonText}>{title}</ThemedText>
       )}

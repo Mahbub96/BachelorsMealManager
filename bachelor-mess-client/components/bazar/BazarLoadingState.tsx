@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { ModernLoader } from '../ui/ModernLoader';
 import { ThemedText } from '../ThemedText';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -18,14 +19,12 @@ export const BazarLoadingState: React.FC<BazarLoadingStateProps> = ({
 
   return (
     <View style={styles.container}>
-      <ActivityIndicator size={size} color={theme.primary} />
-      {showMessage && (
-        <ThemedText
-          style={[styles.loadingText, { color: theme.text.secondary }]}
-        >
-          {message}
-        </ThemedText>
-      )}
+      <ModernLoader
+         size={size === 'small' ? 'small' : 'large'}
+         text={showMessage ? message : undefined}
+         visible={true}
+         overlay={false}
+      />
     </View>
   );
 };

@@ -6,7 +6,6 @@ import {
   StyleSheet,
   View,
   Text,
-  ActivityIndicator,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import {
@@ -16,6 +15,7 @@ import {
   AnalyticsData,
 } from '@/services';
 import { StatsGrid } from '../ModernCharts';
+import { ModernLoader } from '../ui/ModernLoader';
 import { ChartsSection } from './ChartsSection';
 import { DashboardHeader } from './DashboardHeader';
 import { QuickActions } from './QuickActions';
@@ -266,12 +266,7 @@ export const ApiDashboard: React.FC = () => {
   // Show loading state
   if (loading) {
     return (
-      <ThemedView style={styles.loadingContainer}>
-        <ActivityIndicator size='large' color={theme.primary} />
-        <Text style={[styles.loadingText, { color: theme.text.primary }]}>
-          Loading dashboard...
-        </Text>
-      </ThemedView>
+      <ModernLoader visible={true} text="Loading dashboard..." />
     );
   }
 

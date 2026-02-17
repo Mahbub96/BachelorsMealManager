@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { ModernLoader } from './ui/ModernLoader';
 import { ThemedText } from './ThemedText';
 import { useAuth } from '@/context/AuthContext';
 
@@ -13,8 +14,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <ActivityIndicator size='large' color='#007AFF' />
-        <ThemedText style={styles.loadingText}>Loading...</ThemedText>
+        <ModernLoader size='large' text='Loading...' overlay={false} />
       </View>
     );
   }

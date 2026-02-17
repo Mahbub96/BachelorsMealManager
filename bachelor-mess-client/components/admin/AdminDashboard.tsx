@@ -14,12 +14,12 @@ import {
   Alert,
   RefreshControl,
   Dimensions,
-  ActivityIndicator,
   Modal,
   TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { ModernLoader } from '../ui/ModernLoader';
 import { ThemedView } from '../ThemedView';
 import { ThemedText } from '../ThemedText';
 import { useAuth } from '../../context/AuthContext';
@@ -340,13 +340,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
 
       {/* Loading State */}
       {loading && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size='large' color={theme.status.info} />
-          <ThemedText
-            style={[styles.loadingText, { color: theme.text.secondary }]}
-          >
-            Loading statistics...
-          </ThemedText>
+        <View style={{ height: 200 }}>
+           <ModernLoader visible={true} text="Loading statistics..." overlay={false} />
         </View>
       )}
 
@@ -817,7 +812,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
 
       {loadingMembers ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size='large' color={theme.status.info} />
+          <ModernLoader size='large' overlay={false} />
           <ThemedText
             style={[styles.loadingText, { color: theme.text.secondary }]}
           >
@@ -939,10 +934,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                     }
                   >
                     {deletingMemberId === member.id ? (
-                      <ActivityIndicator
-                        size='small'
-                        color={theme.status.error}
-                      />
+                      <ModernLoader size='small' overlay={false} />
                     ) : (
                       <Ionicons
                         name='trash'
@@ -1092,7 +1084,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                 }
               >
                 {resettingPassword ? (
-                  <ActivityIndicator size='small' color='#fff' />
+                  <ModernLoader size='small' overlay={false} />
                 ) : (
                   <ThemedText style={styles.resetPasswordConfirmText}>
                     Reset Password

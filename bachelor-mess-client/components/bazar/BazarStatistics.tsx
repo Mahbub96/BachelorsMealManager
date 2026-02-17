@@ -2,9 +2,9 @@ import React from 'react';
 import {
   View,
   StyleSheet,
-  ActivityIndicator,
   TouchableOpacity,
 } from 'react-native';
+import { ModernLoader } from '../ui/ModernLoader';
 import { Ionicons } from '@expo/vector-icons';
 import type { IconName } from '@/constants/IconTypes';
 import { ThemedText } from '../ThemedText';
@@ -96,12 +96,7 @@ export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
       style={[styles.modernCard, { backgroundColor: theme.cardBackground }]}
     >
       <View style={styles.loadingContent}>
-        <ActivityIndicator size='large' color={theme.primary} />
-        <ThemedText
-          style={[styles.loadingText, { color: theme.text.secondary }]}
-        >
-          Loading statistics...
-        </ThemedText>
+        <ModernLoader size='large' text="Loading statistics..." overlay={false} />
       </View>
     </View>
   );
@@ -243,8 +238,8 @@ export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
                   </ThemedText>
                 </View>
               </View>
-              {loading && (
-                <ActivityIndicator size='small' color={theme.primary} />
+            {loading && (
+                <ModernLoader size='small' />
               )}
             </View>
 
@@ -404,7 +399,7 @@ export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
               </View>
             </View>
             {loading && (
-              <ActivityIndicator size='small' color={theme.primary} />
+              <ModernLoader size='small' />
             )}
           </View>
 

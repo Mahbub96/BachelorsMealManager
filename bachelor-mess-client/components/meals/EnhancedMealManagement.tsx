@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, StyleSheet, Alert, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, Alert, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { ModernLoader } from '../ui/ModernLoader';
 import { ThemedView } from '../ThemedView';
 import { ThemedText } from '../ThemedText';
 import { MealHeader } from './MealHeader';
@@ -451,7 +452,7 @@ export const EnhancedMealManagement: React.FC<EnhancedMealManagementProps> = ({
   if (loading) {
     return (
       <ThemedView style={styles.mainContainer}>
-        <ActivityIndicator size="large" style={{ flex: 1, justifyContent: 'center' }} />
+        <ModernLoader size="large" />
       </ThemedView>
     );
   }

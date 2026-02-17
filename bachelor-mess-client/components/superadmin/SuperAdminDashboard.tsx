@@ -8,10 +8,10 @@ import {
   Alert,
   RefreshControl,
   Dimensions,
-  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { ModernLoader } from '../ui/ModernLoader';
 import { ThemedView } from '../ThemedView';
 import { ThemedText } from '../ThemedText';
 import { useAuth } from '../../context/AuthContext';
@@ -166,9 +166,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
 
   if (loading) {
     return (
-      <ThemedView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" />
-      </ThemedView>
+      <ModernLoader visible={true} text="Loading system stats..." />
     );
   }
 

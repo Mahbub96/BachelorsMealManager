@@ -1,32 +1,36 @@
+
 import React from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import { ThemedText } from '../ThemedText';
+import { View, StyleSheet } from 'react-native';
+import { ModernLoader } from './ModernLoader';
 
 interface LoadingSpinnerProps {
-  size?: 'small' | 'large';
-  color?: string;
+  size?: 'small' | 'large'; // Keep for backward compatibility, map to ModernLoader sizes
+  color?: string; // Ignored as ModernLoader uses theme
   text?: string;
   fullScreen?: boolean;
 }
 
 export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   size = 'large',
-  color = '#667eea',
   text,
   fullScreen = false,
 }) => {
-  const content = (
-    <View style={styles.container}>
-      <ActivityIndicator size={size} color={color} />
-      {text && <ThemedText style={styles.text}>{text}</ThemedText>}
-    </View>
-  );
+  // Map 'small'/'large' to ModernLoader sizes
+  const modernSize = size === 'small' ? 'small' : 'large';
 
   if (fullScreen) {
-    return <View style={styles.fullScreen}>{content}</View>;
+    return (
+      <View style={styles.fullScreen}>
+        <ModernLoader size={modernSize} text={text} visible={true} />
+      </View>
+    );
   }
 
-  return content;
+  return (
+    <View style={styles.container}>
+      <ModernLoader size={modernSize} text={text} visible={true} overlay={false} />
+    </View>
+  );
 };
 
 const styles = StyleSheet.create({
@@ -36,15 +40,9 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   fullScreen: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  text: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#6b7280',
-    textAlign: 'center',
+    zIndex: 999,
   },
 });

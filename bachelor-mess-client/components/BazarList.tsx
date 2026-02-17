@@ -5,13 +5,13 @@ import {
   FlatList,
   TouchableOpacity,
   Alert,
-  ActivityIndicator,
   RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { ThemedText } from './ThemedText';
 import { BazarCard, type BazarCardBazar } from './cards/BazarCard';
+import { ModernLoader } from './ui/ModernLoader';
 import bazarService, {
   BazarEntry,
   BazarFilters,
@@ -326,7 +326,7 @@ export const BazarList: React.FC<BazarListProps> = ({
     if (displayLoading && displayBazarEntries.length > 0) {
       return (
         <View style={styles.footerContainer}>
-          <ActivityIndicator size='small' color='#667eea' />
+          <ModernLoader size='small' overlay={false} />
           <ThemedText style={styles.footerText}>Loading more...</ThemedText>
         </View>
       );
@@ -343,10 +343,9 @@ export const BazarList: React.FC<BazarListProps> = ({
   if (displayLoading && displayBazarEntries.length === 0) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size='large' color='#667eea' />
-        <ThemedText style={styles.loadingText}>
-          Loading shopping entries...
-        </ThemedText>
+      <View style={styles.loadingContainer}>
+        <ModernLoader size='large' text='Loading shopping entries...' overlay={false} />
+      </View>
       </View>
     );
   }

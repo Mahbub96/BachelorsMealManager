@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import { ThemedText } from './ThemedText';
+import { ModernLoader } from './ui/ModernLoader';
 import bazarService, {
   BazarSubmission,
   BazarItem,
@@ -692,7 +693,7 @@ export const BazarForm: React.FC<BazarFormProps> = ({
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator size='small' color='#fff' />
+              <ModernLoader size='small' />
             ) : (
               <>
                 <Ionicons

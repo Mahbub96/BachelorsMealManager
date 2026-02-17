@@ -6,7 +6,7 @@ import {
   RefreshControl,
   TouchableOpacity,
   Alert,
-  ActivityIndicator,
+  // ActivityIndicator,
   StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,6 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { useTheme } from '@/context/ThemeContext';
+import { ModernLoader } from '@/components/ui/ModernLoader';
 import { activityService , Activity as ActivityItem } from '@/services/activityService';
 
 export default function RecentActivityScreen() {
@@ -347,11 +348,8 @@ export default function RecentActivityScreen() {
           backgroundColor='transparent'
           translucent={false}
         />
-        <ActivityIndicator
-          size="large"
-          color={safeTheme?.primary || '#667eea'}
-        />
-        <ThemedText style={styles.loadingText}>Loading activities...</ThemedText>
+        <ModernLoader visible={true} text="Loading activities..." />
+
       </SafeAreaView>
     );
   }

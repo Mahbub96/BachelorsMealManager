@@ -4,13 +4,13 @@ import {
   StyleSheet,
   TouchableOpacity,
   Alert,
-  ActivityIndicator,
   ScrollView,
   Modal,
   TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from './ThemedText';
+import { ModernLoader } from './ui/ModernLoader';
 import bazarService, {
   BazarEntry,
   BazarSubmission,
@@ -258,7 +258,9 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
     <ScrollView style={styles.formContainer}>
       <ThemedText style={styles.sectionTitle}>Select User</ThemedText>
       {loadingUsers ? (
-        <ActivityIndicator size="small" style={styles.loader} />
+        <View style={styles.loader}>
+          <ModernLoader size="small" />
+        </View>
       ) : (
       <View style={styles.userSelector}>
         {users.map(user => (
@@ -491,7 +493,7 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator size='small' color='#fff' />
+              <ModernLoader size='small' />
             ) : (
               <ThemedText style={styles.submitButtonText}>
                 {getSubmitButtonText()}

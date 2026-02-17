@@ -9,7 +9,6 @@ import userStatsService, {
 import { useRouter, useFocusEffect } from 'expo-router';
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   RefreshControl,
   ScrollView,
@@ -29,6 +28,7 @@ import {
   type ActivityItem,
   type StatItem,
 } from './index';
+import { ModernLoader } from '../ui/ModernLoader';
 
 export const UserDashboard: React.FC = () => {
   const isMounted = useRef(true);
@@ -505,21 +505,7 @@ export const UserDashboard: React.FC = () => {
   // Show loading state
   if (isLoading || statsLoading) {
     return (
-      <ThemedView style={styles.container}>
-        <DashboardHeader
-          title={user ? `Welcome back, ${user.name}` : 'Your Dashboard'}
-          subtitle="Here's your personal overview"
-          icon='person'
-        />
-        <DataDisplay
-          data={null}
-          loading={true}
-          error={null}
-          loadingText='Loading your dashboard...'
-        >
-          {() => null}
-        </DataDisplay>
-      </ThemedView>
+      <ModernLoader visible={true} text="Loading your dashboard..." />
     );
   }
 
@@ -621,8 +607,8 @@ export const UserDashboard: React.FC = () => {
 
         {/* Recent Activity */}
         {activitiesLoading && (
-          <View style={{ padding: 16, alignItems: 'center' }}>
-            <ActivityIndicator size="small" />
+          <View style={{ padding: 16, alignItems: 'center', height: 100 }}>
+             <ModernLoader visible={true} overlay={false} size="small" />
           </View>
         )}
         {activitiesError && !activitiesLoading && (

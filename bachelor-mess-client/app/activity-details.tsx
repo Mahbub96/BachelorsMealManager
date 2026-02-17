@@ -12,6 +12,7 @@ import type { IconName } from '@/constants/IconTypes';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
+import { ModernLoader } from '@/components/ui/ModernLoader';
 import { useTheme } from '@/context/ThemeContext';
 import { activityService , Activity as ActivityItem } from '@/services/activityService';
 
@@ -151,12 +152,7 @@ export default function ActivityDetailsScreen(_props: ActivityDetailsScreenProps
           <View style={styles.placeholderButton} />
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size='large' color={theme.primary} />
-          <ThemedText
-            style={[styles.loadingText, { color: theme.text.secondary }]}
-          >
-            Loading activity details...
-          </ThemedText>
+          <ModernLoader size='large' text="Loading activity details..." overlay={false} />
         </View>
       </View>
     );

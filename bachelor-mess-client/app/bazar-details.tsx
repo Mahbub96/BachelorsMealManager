@@ -17,6 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { ModernLoader } from '@/components/ui/ModernLoader';
 import bazarService, { BazarEntry, BazarItem } from '@/services/bazarService';
 import { useAuth } from '@/context/AuthContext';
 
@@ -327,10 +328,7 @@ export default function BazarDetailsScreen() {
   if (loading) {
     return (
       <ThemedView style={styles.loadingContainer}>
-        <ActivityIndicator size='large' color='#667eea' />
-        <ThemedText style={styles.loadingText}>
-          Loading bazar details...
-        </ThemedText>
+        <ModernLoader size='large' text='Loading bazar details...' overlay={false} />
       </ThemedView>
     );
   }

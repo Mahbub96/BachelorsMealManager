@@ -1,8 +1,9 @@
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
+import { ModernLoader } from '@/components/ui/ModernLoader';
 
 export default function AuthScreen() {
   const { user, isLoading } = useAuth();
@@ -21,10 +22,7 @@ export default function AuthScreen() {
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <ActivityIndicator size='large' color='#007AFF' />
-        <ThemedText style={styles.loadingText}>
-          Checking authentication...
-        </ThemedText>
+        <ModernLoader size='large' text='Checking authentication...' overlay={false} />
       </View>
     );
   }

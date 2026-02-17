@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { ModernLoader } from '../ui/ModernLoader';
 import { ThemedText } from '../ThemedText';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -16,15 +17,12 @@ export const MealLoadingState: React.FC<MealLoadingStateProps> = ({
 
   return (
     <View style={styles.container}>
-      <ActivityIndicator
-        size={size}
-        color={theme.gradient?.success?.[0] || theme.status?.success || '#10b981'}
+      <ModernLoader 
+        size={size === 'small' ? 'small' : 'large'} 
+        text={message}
+        visible={true}
+        overlay={false}
       />
-      <ThemedText
-        style={[styles.message, { color: theme.text.secondary || '#6b7280' }]}
-      >
-        {message}
-      </ThemedText>
     </View>
   );
 };

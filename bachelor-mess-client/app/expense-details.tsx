@@ -10,10 +10,11 @@ import {
   StyleSheet,
   TouchableOpacity,
   View,
-  ActivityIndicator,
+  // ActivityIndicator,
 } from 'react-native';
 import statisticsService from '@/services/statisticsService';
 import { useTheme } from '@/context/ThemeContext';
+import { ModernLoader } from '@/components/ui/ModernLoader';
 
 interface ExpenseDetailsData {
   monthlyExpenses?: number;
@@ -150,10 +151,8 @@ export default function ExpenseDetailsPage() {
   if (loading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
-        <ActivityIndicator size="large" color={theme.primary} />
-        <ThemedText style={[styles.loadingText, { color: theme.text.secondary }]}>
-          Loading expense details...
-        </ThemedText>
+        <ModernLoader visible={true} text="Loading expense details..." />
+
       </View>
     );
   }

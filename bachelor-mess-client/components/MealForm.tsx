@@ -4,7 +4,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Alert,
-  ActivityIndicator,
+  // ActivityIndicator,
   ScrollView,
   Platform,
   Modal,
@@ -14,6 +14,7 @@ import type { IconName } from '@/constants/IconTypes';
 import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { ThemedText } from './ThemedText';
+import { ModernLoader } from './ui/ModernLoader';
 import { ThemedView } from './ThemedView';
 import mealService, { MealSubmission } from '../services/mealService';
 import { useAuth } from '../context/AuthContext';
@@ -505,7 +506,7 @@ export const MealForm: React.FC<MealFormProps> = ({
               style={styles.submitButtonGradient}
             >
               {loading ? (
-                <ActivityIndicator size='small' color='#fff' />
+                <ModernLoader size='small' overlay={false} />
               ) : (
                 <Ionicons name='checkmark' size={20} color='#fff' />
               )}

@@ -1,5 +1,6 @@
 import React from 'react';
-import { TouchableOpacity, StyleSheet, ActivityIndicator, type StyleProp, type ViewStyle, type TextStyle } from 'react-native';
+import { TouchableOpacity, StyleSheet, type StyleProp, type ViewStyle, type TextStyle } from 'react-native';
+import { ModernLoader } from './ModernLoader';
 import { ThemedText } from '../ThemedText';
 import { useTheme } from '@/context/ThemeContext';
 
@@ -71,10 +72,7 @@ export const ThemeButton: React.FC<ThemeButtonProps> = ({
       activeOpacity={0.8}
     >
       {loading ? (
-        <ActivityIndicator
-          size="small"
-          color={buttonColors.text}
-        />
+        <ModernLoader size='small' overlay={false} />
       ) : (
         <ThemedText
           style={[

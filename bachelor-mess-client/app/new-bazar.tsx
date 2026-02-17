@@ -1,4 +1,5 @@
 import { ThemedText } from '@/components/ThemedText';
+import { ModernLoader } from '@/components/ui/ModernLoader';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import bazarService, { BazarItem } from '@/services/bazarService';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,7 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
-  ActivityIndicator,
+  // ActivityIndicator,
   Alert,
   Image,
   KeyboardAvoidingView,
@@ -511,7 +512,7 @@ export default function NewBazarScreen() {
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator size='small' color='#fff' />
+              <ModernLoader size='small' overlay={false} />
             ) : (
               <>
                 <Ionicons name='checkmark' size={20} color='#fff' />

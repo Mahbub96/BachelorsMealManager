@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '../ThemedText';
+import { ModernLoader } from '../ui/ModernLoader';
 import { useTheme } from '../../context/ThemeContext';
 import { User, CreateUserData, UpdateUserData } from '../../services/userService';
 
@@ -251,7 +252,7 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color="#fff" />
+                <ModernLoader size="small" />
               ) : (
                 <ThemedText style={styles.submitButtonText}>
                   {isEditMode ? 'Update Member' : 'Create Member'}
