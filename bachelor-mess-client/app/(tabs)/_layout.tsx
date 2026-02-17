@@ -1,24 +1,38 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Tabs } from 'expo-router';
+import { Tabs, usePathname } from 'expo-router';
 import React from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 
 import { HapticTab } from '@/components/HapticTab';
 import { AuthAvatar } from '@/components/AuthAvatar';
 import { LoginButton } from '@/components/LoginButton';
+import { OfflineBanner } from '@/components/OfflineBanner';
 import { useAuth } from '@/context/AuthContext';
-import { useThemeColor } from '@/hooks/useThemeColor';
+import { useTheme } from '@/context/ThemeContext';
+
+const TAB_LABELS: Record<string, string> = {
+  '/': 'Welcome',
+  '/(tabs)': 'Welcome',
+  '/(tabs)/': 'Welcome',
+  '/(tabs)/explore': 'Bazar',
+  '/(tabs)/meals': 'Meals',
+  '/(tabs)/admin': 'Admin',
+  '/(tabs)/super-admin': 'Super Admin',
+};
 
 export default function TabLayout() {
   const { user } = useAuth();
+  const { theme } = useTheme();
+  const pathname = usePathname();
+  const headerLabel = TAB_LABELS[pathname] ?? (pathname?.includes('explore') ? 'Bazar' : pathname?.includes('meals') ? 'Meals' : pathname?.includes('admin') ? 'Admin' : 'Welcome');
 
-  // Theme colors
-  const backgroundColor = useThemeColor({}, 'background');
-  const textColor = useThemeColor({}, 'text');
-  const borderColor = useThemeColor(
-    { light: '#f3f4f6', dark: '#374151' },
-    'background'
-  );
+  const backgroundColor = theme.background;
+  const borderColor = theme.border?.secondary ?? theme.tab?.border;
+  const textColor = theme.text.primary;
+  const textSecondary = theme.text.secondary;
+  const tabActiveColor = theme.tab?.active ?? theme.primary;
+  const tabInactiveColor = theme.tab?.inactive ?? theme.text.tertiary;
+  const shadowColor = theme.shadow?.light ?? theme.cardShadow;
 
   // Determine which tabs to show based on user role
   // Explicitly check for admin/super_admin roles only - members should never see admin tabs
@@ -44,8 +58,8 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#667eea',
-        tabBarInactiveTintColor: '#9ca3af',
+        tabBarActiveTintColor: tabActiveColor,
+        tabBarInactiveTintColor: tabInactiveColor,
         headerShown: true,
         header: () => (
           <View
@@ -54,16 +68,25 @@ export default function TabLayout() {
               { backgroundColor, borderBottomColor: borderColor },
             ]}
           >
-            <View style={styles.headerContent}>
-              {user && (
-                <View style={styles.welcomeText}>
-                  <Text style={[styles.welcomeTitle, { color: textColor }]}>
-                    Welcome, {user.name?.split(' ')[0] || 'User'}!
+            <OfflineBanner />
+            <View style={styles.headerRow}>
+              <View style={styles.headerLeft} pointerEvents="box-none">
+                {user ? (
+                  <Text style={[styles.welcomeLabel, { color: textColor }]} numberOfLines={1}>
+                    {headerLabel === 'Welcome' ? `Welcome, ${user.name?.split(' ')[0] || 'User'}` : headerLabel}
                   </Text>
-                </View>
-              )}
-              <View style={styles.headerActions}>
-                {user ? <AuthAvatar size={40} /> : <LoginButton size={40} />}
+                ) : (
+                  <Text style={[styles.welcomeLabel, { color: textSecondary }]} numberOfLines={1}>
+                    {headerLabel}
+                  </Text>
+                )}
+              </View>
+              <View style={styles.profileCorner}>
+                {user ? (
+                  <AuthAvatar size={32} showDropdown={true} />
+                ) : (
+                  <LoginButton size={32} />
+                )}
               </View>
             </View>
           </View>
@@ -76,12 +99,11 @@ export default function TabLayout() {
           height: 80,
           paddingBottom: 20,
           paddingTop: 12,
-          shadowColor: '#000',
+          shadowColor,
           shadowOffset: { width: 0, height: -2 },
           shadowOpacity: 0.1,
           shadowRadius: 8,
           elevation: 8,
-          // Fix for iOS safe area
           paddingHorizontal: 0,
         },
         tabBarLabelStyle: {
@@ -171,35 +193,28 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   header: {
-    paddingTop: 50,
-    paddingHorizontal: 20,
-    paddingBottom: 10,
+    paddingTop: 48,
+    paddingHorizontal: 12,
+    paddingBottom: 8,
     borderBottomWidth: 1,
-    // Ensure header is properly positioned
-    minHeight: 80,
   },
-  headerContent: {
+  headerRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    // Ensure content is properly aligned
-    flex: 1,
+    minHeight: 40,
+    marginTop: 2,
   },
-  welcomeText: {
+  headerLeft: {
     flex: 1,
-    // Prevent text overflow
-    marginRight: 10,
+    marginRight: 12,
+    minWidth: 0,
+    justifyContent: 'center',
   },
-  welcomeTitle: {
+  welcomeLabel: {
     fontSize: 16,
     fontWeight: '600',
-    // Ensure text doesn't overflow
-    flexShrink: 1,
   },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    // Ensure actions are properly positioned
+  profileCorner: {
     flexShrink: 0,
   },
 });

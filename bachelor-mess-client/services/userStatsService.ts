@@ -46,16 +46,11 @@ export interface UserStatsService {
 class UserStatsServiceImpl implements UserStatsService {
   async getUserDashboardStats(): Promise<ApiResponse<UserDashboardStats>> {
     try {
-      // Clear cache first, then fetch fresh data
-      await httpClient.clearCache();
-      
-      // Disable cache to ensure fresh data
       const response = await httpClient.get<UserDashboardStats>(
         API_ENDPOINTS.USER_STATS.DASHBOARD,
         {
-          cache: false,
+          cache: true,
           cacheKey: 'user_dashboard_stats',
-          offlineFallback: false,
           retries: 3,
           timeout: 15000,
         }
@@ -91,7 +86,6 @@ class UserStatsServiceImpl implements UserStatsService {
         {
           cache: true,
           cacheKey: 'user_meal_stats',
-          offlineFallback: false,
           retries: 3,
           timeout: 10000,
         }
@@ -127,7 +121,6 @@ class UserStatsServiceImpl implements UserStatsService {
         {
           cache: true,
           cacheKey: 'user_bazar_stats',
-          offlineFallback: false,
           retries: 3,
           timeout: 10000,
         }
@@ -191,7 +184,6 @@ class UserStatsServiceImpl implements UserStatsService {
         {
           cache: true,
           cacheKey: 'user_dashboard_data',
-          offlineFallback: false,
           retries: 3,
           timeout: 15000,
         }

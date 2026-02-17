@@ -26,7 +26,6 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   onNotificationPress,
   userGreeting,
   isSmallScreen = false,
-  user,
 }) => {
   const router = useRouter();
   const { theme } = useTheme();
@@ -39,62 +38,46 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
     }
   };
 
+  const onGradientText = theme.onPrimary?.text ?? theme.button?.primary?.text;
+  const onGradientMuted = theme.onPrimary?.text ?? theme.text?.inverse;
+  const iconBgOverlay = theme.onPrimary?.overlay ?? theme.overlay?.light;
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.wrap, { marginHorizontal: 16, marginBottom: 20 }]}>
       <LinearGradient
         colors={theme.gradient.primary as [string, string]}
-        style={styles.headerGradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0.6 }}
+        style={[styles.gradient, { shadowColor: theme.shadow?.light ?? theme.cardShadow }]}
       >
-        <View style={styles.headerContent}>
-          <View style={styles.headerLeft}>
-            <View
-              style={[
-                styles.iconContainer,
-                { backgroundColor: theme.overlay.light },
-              ]}
-            >
-              <Ionicons
-                name={icon as IconName}
-                size={isSmallScreen ? 32 : 40}
-                color={theme.text.inverse}
-              />
-            </View>
-            <View style={styles.textContainer}>
-              <ThemedText
-                style={[
-                  styles.title,
-                  isSmallScreen && styles.titleSmall,
-                  { color: theme.text.inverse },
-                ]}
-              >
-                {title}
-              </ThemedText>
-              <ThemedText
-                style={[
-                  styles.subtitle,
-                  isSmallScreen && styles.subtitleSmall,
-                  { color: theme.text.inverse },
-                ]}
-              >
-                {userGreeting ? `${subtitle}, ${userGreeting}!` : subtitle}
-              </ThemedText>
-            </View>
+        <View style={styles.content}>
+          <View style={[styles.iconWrap, { backgroundColor: iconBgOverlay }]}>
+            <Ionicons
+              name={icon as IconName}
+              size={isSmallScreen ? 28 : 32}
+              color={onGradientText}
+            />
           </View>
-
+          <View style={styles.textWrap}>
+            <ThemedText
+              style={[styles.title, isSmallScreen && styles.titleSmall, { color: onGradientText }]}
+              numberOfLines={1}
+            >
+              {title}
+            </ThemedText>
+            <ThemedText
+              style={[styles.subtitle, isSmallScreen && styles.subtitleSmall, { color: onGradientMuted, opacity: 0.92 }]}
+              numberOfLines={1}
+            >
+              {userGreeting ? `${subtitle}, ${userGreeting}!` : subtitle}
+            </ThemedText>
+          </View>
           {showNotificationButton && (
             <TouchableOpacity
-              style={[
-                styles.notificationButton,
-                isSmallScreen && styles.notificationButtonSmall,
-                { backgroundColor: theme.overlay.light },
-              ]}
+              style={[styles.notifBtn, { backgroundColor: iconBgOverlay }]}
               onPress={handleNotificationPress}
             >
-              <Ionicons
-                name='notifications'
-                size={isSmallScreen ? 20 : 24}
-                color={theme.text.inverse}
-              />
+              <Ionicons name="notifications-outline" size={isSmallScreen ? 20 : 24} color={onGradientText} />
             </TouchableOpacity>
           )}
         </View>
@@ -104,62 +87,56 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 };
 
 const styles = StyleSheet.create({
-  container: {
-    marginBottom: 20,
+  wrap: {
+    marginTop: 4,
   },
-  headerGradient: {
-    padding: 20,
+  gradient: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  content: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 20,
+  },
+  iconWrap: {
+    width: 52,
+    height: 52,
     borderRadius: 16,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: 14,
   },
-  textContainer: {
+  textWrap: {
     flex: 1,
+    minWidth: 0,
   },
   title: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+    marginBottom: 2,
   },
   titleSmall: {
     fontSize: 18,
   },
   subtitle: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.9)',
+    fontWeight: '500',
   },
   subtitleSmall: {
-    fontSize: 12,
+    fontSize: 13,
   },
-  notificationButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  notifBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  notificationButtonSmall: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
   },
 });

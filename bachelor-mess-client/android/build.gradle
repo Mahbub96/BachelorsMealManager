@@ -12,33 +12,11 @@ buildscript {
   }
 }
 
-def reactNativeAndroidDir = new File(
-  providers.exec {
-    workingDir(rootDir)
-    commandLine("node", "--print", "require.resolve('react-native/package.json')")
-  }.standardOutput.asText.get().trim(),
-  "../android"
-)
-
 allprojects {
   repositories {
-    maven {
-      // All of React Native (JS, Obj-C sources, Android binaries) is installed from npm
-      url(reactNativeAndroidDir)
-    }
-
     google()
     mavenCentral()
     maven { url 'https://www.jitpack.io' }
-  }
-  // Suppress Java/Kotlin deprecation warnings from dependencies (expo-dev-launcher, expo)
-  afterEvaluate { p ->
-    p.tasks.withType(JavaCompile).configureEach {
-      options.compilerArgs << "-Xlint:-deprecation"
-    }
-    p.tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
-      kotlinOptions { freeCompilerArgs += "-Xsuppress-deprecation-warnings" }
-    }
   }
 }
 

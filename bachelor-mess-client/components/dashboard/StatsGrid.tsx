@@ -1,7 +1,6 @@
 import { useTheme } from '@/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import type { IconName } from '@/constants/IconTypes';
-import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { Dimensions, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ThemedText } from '../ThemedText';
@@ -32,163 +31,126 @@ export const StatsGrid: React.FC<StatsGridProps> = ({
   isSmallScreen = false,
 }) => {
   const { theme } = useTheme();
-  const getGridStyle = () => {
-    const availableWidth = screenWidth - 32; // Account for container padding
-    const gap = isSmallScreen ? 12 : 16;
-    const totalGaps = columns - 1;
-    const cardWidth = (availableWidth - totalGaps * gap) / columns;
-
-    return { width: cardWidth };
-  };
+  const padding = 16;
+  const gap = 12;
+  const availableWidth = screenWidth - padding * 2 - gap * (columns - 1);
+  const cardWidth = availableWidth / columns;
 
   return (
-    <View style={[styles.container, isSmallScreen && styles.containerSmall]}>
-      {stats.map((stat, index) => (
-        <TouchableOpacity
-          key={index}
-          style={[
-            styles.statCard,
-            getGridStyle(),
-            isSmallScreen && styles.statCardSmall,
-          ]}
-          onPress={stat.onPress}
-          activeOpacity={stat.onPress ? 0.8 : 1}
-        >
-          <LinearGradient colors={stat.colors} style={styles.statGradient}>
-            <View style={styles.statHeader}>
+    <View style={[styles.wrap, { paddingHorizontal: padding, marginBottom: 24 }]}>
+      <View style={styles.grid}>
+        {stats.map((stat, index) => (
+          <TouchableOpacity
+            key={index}
+            style={[
+              styles.card,
+              {
+                width: cardWidth,
+                backgroundColor: theme.cardBackground ?? theme.surface,
+                borderWidth: 1,
+                borderColor: theme.border?.secondary ?? theme.cardBorder ?? 'transparent',
+                shadowColor: theme.shadow?.light ?? theme.cardShadow,
+              },
+            ]}
+            onPress={stat.onPress}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.iconWrap, { backgroundColor: (stat.colors[0] ?? theme.primary) + '18' }]}>
               <Ionicons
                 name={stat.icon as IconName}
-                size={isSmallScreen ? 20 : 24}
-                color={theme.text.inverse}
+                size={isSmallScreen ? 20 : 22}
+                color={stat.colors[0] ?? theme.primary}
               />
-              {stat.trend && (
-                <Ionicons
-                  name={stat.trend === 'up' ? 'trending-up' : 'trending-down'}
-                  size={isSmallScreen ? 12 : 14}
-                  color={theme.text.inverse}
-                  style={styles.trendIcon}
-                />
-              )}
             </View>
-
-            <ThemedText
-              style={[styles.statValue, isSmallScreen && styles.statValueSmall]}
-            >
+            <ThemedText style={[styles.value, { color: theme.text?.primary }]} numberOfLines={1}>
               {stat.value}
             </ThemedText>
-
             <ThemedText
-              style={[styles.statLabel, isSmallScreen && styles.statLabelSmall]}
+              style={[styles.label, { color: theme.text?.secondary }]}
+              numberOfLines={1}
             >
               {stat.title}
             </ThemedText>
-
-            {stat.change && (
-              <View style={styles.statDetails}>
-                <ThemedText
-                  style={[
-                    styles.statChange,
-                    isSmallScreen && styles.statChangeSmall,
-                    {
-                      color:
-                        stat.trend === 'up'
-                          ? theme.status.success
-                          : theme.status.error,
-                    },
-                  ]}
-                >
-                  {stat.change}
-                </ThemedText>
-                {stat.period && (
+            {(stat.change || stat.period) && (
+              <View style={styles.meta}>
+                {stat.change && (
                   <ThemedText
                     style={[
-                      styles.statPeriod,
-                      isSmallScreen && styles.statPeriodSmall,
+                      styles.change,
+                      {
+                        color:
+                          stat.trend === 'up'
+                            ? theme.status?.success
+                            : stat.trend === 'down'
+                              ? theme.status?.error
+                              : theme.text?.tertiary,
+                      },
                     ]}
+                    numberOfLines={1}
+                  >
+                    {stat.change}
+                  </ThemedText>
+                )}
+                {stat.period && (
+                  <ThemedText
+                    style={[styles.period, { color: theme.text?.tertiary }]}
+                    numberOfLines={1}
                   >
                     {stat.period}
                   </ThemedText>
                 )}
               </View>
             )}
-          </LinearGradient>
-        </TouchableOpacity>
-      ))}
+          </TouchableOpacity>
+        ))}
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  wrap: {},
+  grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 16,
-    justifyContent: 'center',
-    paddingBottom: 20,
-  },
-  containerSmall: {
     gap: 12,
   },
-  statCard: {
-    aspectRatio: 1.2,
+  card: {
     borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
+    padding: 14,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 3,
   },
-  statCardSmall: {
-    aspectRatio: 1.1,
+  iconWrap: {
+    width: 40,
+    height: 40,
     borderRadius: 12,
-  },
-  statGradient: {
-    flex: 1,
-    padding: 16,
-    justifyContent: 'space-between',
-  },
-  statHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 10,
   },
-  trendIcon: {
-    opacity: 0.8,
+  value: {
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: 2,
+    letterSpacing: 0.2,
   },
-  statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginVertical: 8,
-  },
-  statValueSmall: {
-    fontSize: 20,
-    marginVertical: 6,
-  },
-  statLabel: {
+  label: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontWeight: '500',
+    fontWeight: '600',
+    marginBottom: 4,
   },
-  statLabelSmall: {
-    fontSize: 11,
+  meta: {
+    marginTop: 2,
   },
-  statDetails: {
-    marginTop: 4,
-  },
-  statChange: {
+  change: {
     fontSize: 10,
     fontWeight: '600',
   },
-  statChangeSmall: {
-    fontSize: 9,
-  },
-  statPeriod: {
-    fontSize: 9,
-    color: 'rgba(255, 255, 255, 0.7)',
-  },
-  statPeriodSmall: {
-    fontSize: 8,
+  period: {
+    fontSize: 10,
+    marginTop: 1,
   },
 });

@@ -1,4 +1,12 @@
-import { API_ENDPOINTS, ApiResponse } from './config';
+import { API_ENDPOINTS as ORIGINAL_API_ENDPOINTS, ApiResponse } from './config';
+// Extending API_ENDPOINTS locally since we can't easily modify config.ts without seeing it
+const API_ENDPOINTS = {
+  ...ORIGINAL_API_ENDPOINTS,
+  STATISTICS: {
+    ...ORIGINAL_API_ENDPOINTS.STATISTICS,
+    REPORT: '/api/statistics/report',
+  }
+};
 import httpClient from './httpClient';
 import errorHandler from './errorHandler';
 
@@ -102,6 +110,43 @@ export interface CompleteStatistics {
   isStale: boolean;
 }
 
+export interface MonthlyReportData {
+  period: {
+    month: number;
+    year: number;
+    startDate: string;
+    endDate: string;
+  };
+  summary: {
+    totalMeals: number;
+    totalCost: number;
+    mealRate: number;
+    totalMembers: number;
+  };
+  members: Array<{
+    user: {
+      _id: string;
+      name: string;
+      email: string;
+      profileImage?: string;
+    };
+    meals: {
+      total: number;
+      breakfast: number;
+      lunch: number;
+      dinner: number;
+    };
+    bazar: {
+      totalAmount: number;
+      entryCount: number;
+    };
+    financial: {
+      mealCost: number;
+      balance: number;
+    };
+  }>;
+}
+
 export interface StatisticsFilters {
   forceUpdate?: boolean;
   timeframe?: 'day' | 'week' | 'month' | 'year';
@@ -123,6 +168,10 @@ export interface StatisticsService {
     forceUpdate?: boolean
   ) => Promise<ApiResponse<MonthlyStats>>;
   refreshStatistics: () => Promise<ApiResponse<void>>;
+  getMonthlyReport: (
+    month: number,
+    year: number
+  ) => Promise<ApiResponse<MonthlyReportData>>;
 }
 
 // Statistics service implementation
@@ -374,6 +423,38 @@ class StatisticsServiceImpl implements StatisticsService {
       return response;
     } catch (error) {
       const appError = errorHandler.handleError(error, 'Monthly Statistics');
+      return {
+        success: false,
+        error: appError.userFriendlyMessage,
+      };
+    }
+  }
+
+  async getMonthlyReport(
+    month: number,
+    year: number
+  ): Promise<ApiResponse<MonthlyReportData>> {
+    try {
+      const endpoint = `${API_ENDPOINTS.STATISTICS.REPORT}?month=${month}&year=${year}`;
+
+      const response = await httpClient.get<MonthlyReportData>(endpoint, {
+        cache: true,
+        cacheKey: `monthly_report_${month}_${year}`,
+        offlineFallback: true,
+        retries: 2,
+      });
+
+      if (!response.success) {
+        const appError = errorHandler.handleApiResponse(
+          response,
+          'Monthly Report'
+        );
+        console.error('❌ Failed to fetch monthly report:', appError?.message);
+      }
+
+      return response;
+    } catch (error) {
+      const appError = errorHandler.handleError(error, 'Monthly Report');
       return {
         success: false,
         error: appError.userFriendlyMessage,

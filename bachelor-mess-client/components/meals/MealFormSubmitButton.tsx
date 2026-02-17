@@ -1,11 +1,8 @@
 import React from 'react';
-import {
-  StyleSheet,
-  TouchableOpacity,
-  // ActivityIndicator,
-} from 'react-native';
+import { StyleSheet, TouchableOpacity } from 'react-native';
 import { ModernLoader } from '../ui/ModernLoader';
 import { ThemedText } from '../ThemedText';
+import { useTheme } from '../../context/ThemeContext';
 
 interface MealFormSubmitButtonProps {
   title: string;
@@ -20,16 +17,21 @@ export const MealFormSubmitButton: React.FC<MealFormSubmitButtonProps> = ({
   loading = false,
   disabled = false,
 }) => {
+  const { theme } = useTheme();
   return (
     <TouchableOpacity
-      style={[styles.button, (disabled || loading) && styles.disabledButton]}
+      style={[
+        styles.button,
+        { backgroundColor: theme.button?.primary?.background },
+        (disabled || loading) && [styles.disabledButton, { backgroundColor: theme.button?.disabled?.background }],
+      ]}
       onPress={onPress}
       disabled={disabled || loading}
     >
       {loading ? (
         <ModernLoader size='small' overlay={false} />
       ) : (
-        <ThemedText style={styles.buttonText}>{title}</ThemedText>
+        <ThemedText style={[styles.buttonText, { color: theme.button?.primary?.text }]}>{title}</ThemedText>
       )}
     </TouchableOpacity>
   );
@@ -38,19 +40,15 @@ export const MealFormSubmitButton: React.FC<MealFormSubmitButtonProps> = ({
 const styles = StyleSheet.create({
   button: {
     flex: 1,
-    backgroundColor: '#059669',
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  disabledButton: {
-    backgroundColor: '#9ca3af',
-  },
+  disabledButton: {},
   buttonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
   },
 });

@@ -30,7 +30,8 @@ export const DetailPageTemplate: React.FC<DetailPageTemplateProps> = ({
   actionButtons = [],
 }) => {
   const router = useRouter();
-  useTheme(); // theme from context used by children
+  const { theme } = useTheme();
+  const onPrimary = theme.onPrimary?.text ?? theme.text?.inverse;
 
   return (
     <View style={styles.container}>
@@ -41,12 +42,12 @@ export const DetailPageTemplate: React.FC<DetailPageTemplateProps> = ({
             onPress={() => router.back()}
             style={styles.backButton}
           >
-            <Ionicons name='arrow-back' size={24} color='#fff' />
+            <Ionicons name='arrow-back' size={24} color={onPrimary} />
           </TouchableOpacity>
-          <ThemedText style={styles.headerTitle}>{title}</ThemedText>
+          <ThemedText style={[styles.headerTitle, { color: onPrimary }]}>{title}</ThemedText>
           {showShareButton && (
             <TouchableOpacity style={styles.shareButton} onPress={onShare}>
-              <Ionicons name='share-outline' size={24} color='#fff' />
+              <Ionicons name='share-outline' size={24} color={onPrimary} />
             </TouchableOpacity>
           )}
         </View>

@@ -18,7 +18,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useUsers } from '@/hooks/useUsers';
 import { useMeals } from '@/hooks/useMeals';
 import { useBazar } from '@/hooks/useBazar';
-import authService from '@/services/authService';
+import userStatsService from '@/services/userStatsService';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
@@ -201,75 +201,58 @@ export default function ProfileScreen() {
     try {
       await getProfile();
 
-      // Load user statistics from API
-      const userStatsResponse = await fetch(
-        `${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000'}/api/user-stats/dashboard`,
-        {
-          headers: {
-            'Authorization': `Bearer ${await authService.getStoredToken()}`,
-            'Content-Type': 'application/json',
-          },
+      // Use cached user-stats service (works offline with last cached data)
+      const response = await userStatsService.getUserDashboardStats();
+
+      if (response.success && response.data) {
+        const data = response.data as {
+          meals?: { total?: number; approved?: number; averagePerDay?: number; lastMealDate?: string; daysSinceLastMeal?: number };
+          bazar?: { totalEntries?: number; totalAmount?: number; approvedAmount?: number; averageAmount?: number };
+          payments?: { lastPaymentDate?: string; monthlyContribution?: number };
+        };
+        const meals = data.meals ?? {};
+        const bazar = data.bazar ?? {};
+        const payments = data.payments ?? {};
+
+        setUserStats({
+          totalMeals: meals.total ?? 0,
+          totalBazar: bazar.totalEntries ?? 0,
+          totalAmount: bazar.totalAmount ?? 0,
+          thisMonthMeals: meals.approved ?? 0,
+          thisMonthBazar: bazar.totalEntries ?? 0,
+          thisMonthAmount: bazar.approvedAmount ?? 0,
+          averageDailyMeals: meals.averagePerDay ?? 0,
+          averageBazarAmount: bazar.averageAmount ?? 0,
+        });
+
+        const realActivity: { type?: string; action?: string; date?: string; icon?: string }[] = [];
+        if (meals?.lastMealDate) {
+          realActivity.push({
+            type: 'meal',
+            action: `Last meal submitted ${meals.daysSinceLastMeal ?? 0} days ago`,
+            date: new Date(meals.lastMealDate).toLocaleDateString(),
+            icon: 'fast-food',
+          });
         }
-      );
-
-      if (userStatsResponse.ok) {
-        const statsData = await userStatsResponse.json();
-        
-        if (statsData.success && statsData.data) {
-          const { meals, bazar, payments } = statsData.data;
-          
-          // Calculate real statistics from API data
-          const realStats = {
-            totalMeals: meals.total || 0,
-            totalBazar: bazar.totalEntries || 0,
-            totalAmount: bazar.totalAmount || 0,
-            thisMonthMeals: meals.approved || 0, // Using approved meals as this month
-            thisMonthBazar: bazar.totalEntries || 0,
-            thisMonthAmount: bazar.approvedAmount || 0,
-            averageDailyMeals: meals.averagePerDay || 0,
-            averageBazarAmount: bazar.averageAmount || 0,
-          };
-
-          setUserStats(realStats);
-
-          // Create real activity based on API data
-          const realActivity = [];
-          
-          if (meals?.lastMealDate) {
-            realActivity.push({
-              type: 'meal',
-              action: `Last meal submitted ${meals.daysSinceLastMeal || 0} days ago`,
-              date: new Date(meals.lastMealDate).toLocaleDateString(),
-              icon: 'fast-food',
-            });
-          }
-
-          if (bazar?.totalEntries > 0) {
-            realActivity.push({
-              type: 'bazar',
-              action: `Total bazar entries: ${bazar.totalEntries} (৳${bazar.totalAmount})`,
-              date: 'Recent',
-              icon: 'cart',
-            });
-          }
-
-
-          
-          if (payments?.lastPaymentDate) {
-            realActivity.push({
-              type: 'payment',
-              action: `Last payment: ৳${payments.monthlyContribution}`,
-              date: new Date(payments.lastPaymentDate).toLocaleDateString(),
-              icon: 'card',
-            });
-          }
-
-          setRecentActivity(realActivity);
+        if ((bazar?.totalEntries ?? 0) > 0) {
+          realActivity.push({
+            type: 'bazar',
+            action: `Total bazar entries: ${bazar.totalEntries} (৳${bazar.totalAmount ?? 0})`,
+            date: 'Recent',
+            icon: 'cart',
+          });
         }
+        if (payments?.lastPaymentDate) {
+          realActivity.push({
+            type: 'payment',
+            action: `Last payment: ৳${payments.monthlyContribution ?? 0}`,
+            date: new Date(payments.lastPaymentDate).toLocaleDateString(),
+            icon: 'card',
+          });
+        }
+        setRecentActivity(realActivity);
       } else {
-        console.error('Failed to load user statistics:', userStatsResponse.status);
-        // Fallback to mock data if API fails
-        const mockStats = {
+        setUserStats({
           totalMeals: 0,
           totalBazar: 0,
           totalAmount: 0,
@@ -278,14 +261,12 @@ export default function ProfileScreen() {
           thisMonthAmount: 0,
           averageDailyMeals: 0,
           averageBazarAmount: 0,
-        };
-        setUserStats(mockStats);
+        });
         setRecentActivity([]);
       }
     } catch (error) {
       console.error('Error loading user data:', error);
-      // Fallback to mock data on error
-      const mockStats = {
+      setUserStats({
         totalMeals: 0,
         totalBazar: 0,
         totalAmount: 0,
@@ -294,8 +275,7 @@ export default function ProfileScreen() {
         thisMonthAmount: 0,
         averageDailyMeals: 0,
         averageBazarAmount: 0,
-      };
-      setUserStats(mockStats);
+      });
       setRecentActivity([]);
     }
   }, [getProfile]);

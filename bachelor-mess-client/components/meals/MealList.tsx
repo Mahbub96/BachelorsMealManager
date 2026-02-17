@@ -50,15 +50,17 @@ export const MealList: React.FC<MealListProps> = ({
           onPress={() => onMealSelect(item.id)}
         />
       )}
-      <MealCard
-        meal={item}
-        onPress={onMealPress}
-        isAdmin={isAdmin}
-        showUserInfo={showUserInfo}
-        onStatusUpdate={onStatusUpdate}
-        onEdit={onEdit}
-        onDelete={onDelete}
-      />
+      <View style={styles.mealCardWrapper}>
+        <MealCard
+          meal={item}
+          onPress={onMealPress}
+          isAdmin={isAdmin}
+          showUserInfo={showUserInfo}
+          onStatusUpdate={onStatusUpdate}
+          onEdit={onEdit}
+          onDelete={onDelete}
+        />
+      </View>
     </View>
   );
 
@@ -113,9 +115,10 @@ export const MealList: React.FC<MealListProps> = ({
       keyExtractor={item => item.id}
       renderItem={renderMealItem}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} /> : undefined
       }
       style={styles.mealList}
+      contentContainerStyle={styles.listContent}
       showsVerticalScrollIndicator={false}
     />
   );
@@ -125,11 +128,20 @@ const styles = StyleSheet.create({
   mealList: {
     flex: 1,
   },
+  listContent: {
+    paddingTop: 12,
+    paddingBottom: 28,
+    paddingHorizontal: 4,
+  },
   mealCardContainer: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingHorizontal: 16,
-    marginBottom: 8,
-    paddingTop: 2,
+    alignItems: 'stretch',
+    paddingHorizontal: 12,
+    marginBottom: 16,
+    gap: 12,
+  },
+  mealCardWrapper: {
+    flex: 1,
+    minWidth: 0,
   },
 });

@@ -17,6 +17,7 @@ import bazarService, {
   BazarFilters,
 } from '../services/bazarService';
 import { bazarOptimizations } from '../utils/performance';
+import { useTheme } from '../context/ThemeContext';
 
 interface BazarListProps {
   filters?: BazarFilters;
@@ -253,8 +254,8 @@ export const BazarList: React.FC<BazarListProps> = ({
         // Validate bazar data
         if (!bazar || !bazar.id) {
           return (
-            <View style={styles.errorCard}>
-              <ThemedText style={styles.errorText}>
+            <View style={[styles.errorCard, { backgroundColor: (theme.status?.error ?? '') + '15', borderColor: theme.status?.error }]}>
+              <ThemedText style={[styles.errorText, { color: theme.status?.error }]}>
                 Invalid bazar item
               </ThemedText>
             </View>
@@ -281,15 +282,15 @@ export const BazarList: React.FC<BazarListProps> = ({
         );
       } catch {
         return (
-          <View style={styles.errorCard}>
-            <ThemedText style={styles.errorText}>
+          <View style={[styles.errorCard, { backgroundColor: (theme.status?.error ?? '') + '15', borderColor: theme.status?.error }]}>
+            <ThemedText style={[styles.errorText, { color: theme.status?.error }]}>
               Failed to load bazar item
             </ThemedText>
           </View>
         );
       }
     },
-    [isAdmin, handleBazarPress, handleStatusUpdate, handleDelete]
+    [isAdmin, handleBazarPress, handleStatusUpdate, handleDelete, theme]
   );
 
   const handleRefresh = useCallback(async () => {
@@ -307,18 +308,20 @@ export const BazarList: React.FC<BazarListProps> = ({
     }
   }, [loadBazarEntries, externalBazarEntries]);
 
+  const { theme } = useTheme();
+
   // Memoize empty state component
   const renderEmptyState = useCallback(
     () => (
       <View style={styles.emptyContainer}>
-        <Ionicons name='cart-outline' size={64} color='#9ca3af' />
+        <Ionicons name='cart-outline' size={64} color={theme.icon?.secondary ?? theme.text?.tertiary} />
         <ThemedText style={styles.emptyTitle}>No Shopping Entries</ThemedText>
         <ThemedText style={styles.emptySubtitle}>
           No shopping entries found matching your criteria
         </ThemedText>
       </View>
     ),
-    []
+    [theme]
   );
 
   // Memoize footer component
@@ -353,10 +356,10 @@ export const BazarList: React.FC<BazarListProps> = ({
   if (displayError && displayBazarEntries.length === 0) {
     return (
       <View style={styles.errorContainer}>
-        <Ionicons name='alert-circle' size={48} color='#ef4444' />
-        <ThemedText style={styles.errorText}>{displayError}</ThemedText>
-        <TouchableOpacity style={styles.retryButton} onPress={handleRefresh}>
-          <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
+        <Ionicons name='alert-circle' size={48} color={theme.status?.error} />
+        <ThemedText style={[styles.errorText, { color: theme.text?.primary }]}>{displayError}</ThemedText>
+        <TouchableOpacity style={[styles.retryButton, { backgroundColor: theme.primary ?? theme.button?.primary?.background }]} onPress={handleRefresh}>
+          <ThemedText style={[styles.retryButtonText, { color: theme.onPrimary?.text ?? theme.button?.primary?.text }]}>Retry</ThemedText>
         </TouchableOpacity>
       </View>
     );
@@ -473,14 +476,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   retryButton: {
-    backgroundColor: '#667eea',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 6,
     marginTop: 12,
   },
   retryButtonText: {
-    color: '#fff',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -499,12 +500,10 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   errorCard: {
-    backgroundColor: '#fef2f2',
     padding: 12,
     borderRadius: 6,
     marginVertical: 3,
     borderWidth: 1,
-    borderColor: '#fecaca',
   },
   footerText: {
     marginTop: 6,

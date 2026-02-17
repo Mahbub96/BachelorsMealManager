@@ -476,16 +476,19 @@ class HttpClient {
     }
   }
 
-  // Enhanced caching
+  // Enhanced caching. When allowStale is true (e.g. offline), returns cache even if expired.
   private async getCachedResponse<T>(
-    cacheKey: string
+    cacheKey: string,
+    allowStale = false
   ): Promise<ApiResponse<T> | null> {
     try {
       const cached = await AsyncStorage.getItem(`cache_${cacheKey}`);
       if (cached) {
         const { data, timestamp } = JSON.parse(cached);
-        if (Date.now() - timestamp < API_CONFIG.cacheDuration) {
-          return data;
+        const age = Date.now() - timestamp;
+        if (allowStale || age < API_CONFIG.cacheDuration) {
+          const fromCache = allowStale || age >= API_CONFIG.cacheDuration;
+          return data != null ? { ...data, fromCache } : null;
         }
       }
     } catch (error) {
@@ -543,27 +546,35 @@ class HttpClient {
       if (!online) {
         console.log('📱 Device is offline');
 
-        if (requestConfig.offlineFallback) {
-          // Store for offline retry
-          const requestId = await this.storeForOfflineRetry(
-            endpoint,
-            requestConfig
-          );
+        // When offline, for GET requests with cache: try to return cached data (even stale) so app stays workable
+        if (
+          requestConfig.method === 'GET' &&
+          requestConfig.cache &&
+          requestConfig.cacheKey
+        ) {
+          const cached = await this.getCachedResponse<T>(requestConfig.cacheKey, true);
+          if (cached && cached.success && cached.data != null) {
+            return { ...cached, fromCache: true };
+          }
+        }
 
+        // For mutating requests, store for retry when connection is restored
+        if (requestConfig.offlineFallback) {
+          await this.storeForOfflineRetry(endpoint, requestConfig);
           return {
             success: false,
             error:
-              'Device is offline. Request will be retried when connection is restored.',
+              'You\'re offline. This will be retried when connection is restored.',
           };
         }
 
         return {
           success: false,
-          error: 'No internet connection. Please check your network settings.',
+          error: 'No internet connection. You can still view previously loaded data.',
         };
       }
 
-      // Try cached response for GET requests
+      // When online: try cached response first for GET (within TTL) to reduce load
       if (
         requestConfig.method === 'GET' &&
         requestConfig.cache &&

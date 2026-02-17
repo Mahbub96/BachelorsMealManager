@@ -245,4 +245,42 @@ router.get('/dashboard', AuthMiddleware.protect(), async (req, res) => {
   }
 });
 
+// Get monthly report
+router.get('/report', AuthMiddleware.protect(), async (req, res) => {
+  try {
+    const { month, year } = req.query;
+
+    if (!month || !year) {
+      return res.status(400).json({
+        success: false,
+        error: 'Month and year are required'
+      });
+    }
+
+    const report = await StatisticsService.getMonthlyReport(
+      parseInt(month),
+      parseInt(year),
+      req.user
+    );
+
+    if (!report.success) {
+      return res.status(500).json({
+        success: false,
+        error: report.error || 'Failed to generate report'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: report.data
+    });
+  } catch (error) {
+    logger.error('Error fetching monthly report:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
+  }
+});
+
 module.exports = router;

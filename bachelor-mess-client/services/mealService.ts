@@ -330,11 +330,9 @@ class MealServiceImpl implements MealService {
       const queryParams = this.buildQueryParams(filters);
       const endpoint = `${API_ENDPOINTS.MEALS.STATS}${queryParams}`;
 
-      // Clear cache for meal stats to ensure fresh data
-      await httpClient.clearCache();
-
       const response = await httpClient.get<MealStats>(endpoint, {
-        cache: false, // Disable caching for meal stats
+        cache: true,
+        cacheKey: `meal_stats_${JSON.stringify(filters)}`,
       });
 
       return response;
@@ -356,12 +354,9 @@ class MealServiceImpl implements MealService {
       const queryParams = this.buildQueryParams(filters);
       const endpoint = `${API_ENDPOINTS.MEALS.USER_STATS}${queryParams}`;
 
-
-      // Clear cache for meal stats to ensure fresh data
-      await httpClient.clearCache();
-
       const response = await httpClient.get<MealStats>(endpoint, {
-        cache: false, // Disable caching for meal stats
+        cache: true,
+        cacheKey: `user_meal_stats_${JSON.stringify(filters)}`,
       });
 
       return response;

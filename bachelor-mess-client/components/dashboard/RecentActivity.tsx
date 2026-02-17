@@ -1,7 +1,6 @@
 import { useTheme } from '@/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import type { IconName } from '@/constants/IconTypes';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -41,228 +40,198 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
   const displayActivities = (activities || []).slice(0, maxItems);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.wrap, { paddingHorizontal: 16, marginBottom: 28 }]}>
       <View style={styles.sectionHeader}>
         <View style={styles.headerLeft}>
-          {title && (
-            <ThemedText
-              style={[
-                styles.sectionTitle,
-                isSmallScreen && styles.sectionTitleSmall,
-              ]}
-            >
-              {title}
-            </ThemedText>
-          )}
+          <ThemedText style={[styles.sectionTitle, { color: theme.text?.primary }]}>
+            {title}
+          </ThemedText>
           {subtitle && (
-            <ThemedText
-              style={[
-                styles.sectionSubtitle,
-                isSmallScreen && styles.sectionSubtitleSmall,
-              ]}
-            >
+            <ThemedText style={[styles.sectionSubtitle, { color: theme.text?.secondary }]}>
               {subtitle}
             </ThemedText>
           )}
         </View>
-
         {showViewAll && (
           <TouchableOpacity
-            style={styles.viewAllButton}
+            style={[styles.viewAllBtn, { backgroundColor: theme.primary + '14' }]}
             onPress={onViewAll || (() => router.push('/recent-activity'))}
           >
-            <ThemedText style={styles.viewAllText}>View All</ThemedText>
-            <Ionicons name='arrow-forward' size={16} color={theme.primary} />
+            <ThemedText style={[styles.viewAllText, { color: theme.primary }]}>
+              View all
+            </ThemedText>
+            <Ionicons name="chevron-forward" size={16} color={theme.primary} />
           </TouchableOpacity>
         )}
       </View>
 
       <View
         style={[
-          styles.activityList,
+          styles.list,
           {
-            backgroundColor: theme.cardBackground,
-            borderColor: theme.cardBorder,
-            shadowColor: theme.cardShadow,
+            backgroundColor: theme.cardBackground ?? theme.surface,
+            borderColor: theme.border?.secondary ?? theme.cardBorder ?? 'transparent',
+            shadowColor: theme.shadow?.light ?? theme.cardShadow,
           },
         ]}
       >
-        {displayActivities.map((activity, index) => (
-          <TouchableOpacity
-            key={activity.id}
-            style={[
-              styles.activityItem,
-              {
-                borderBottomColor: theme.border.secondary,
-              },
-              index === displayActivities.length - 1 && styles.lastActivityItem,
-            ]}
-            onPress={activity.onPress}
-            activeOpacity={activity.onPress ? 0.8 : 1}
-          >
-            <View style={styles.activityIcon}>
-              <LinearGradient
-                colors={activity.colors}
-                style={styles.activityIconGradient}
+        {displayActivities.length === 0 ? (
+          <View style={styles.empty}>
+            <Ionicons name="time-outline" size={32} color={theme.text?.tertiary} />
+            <ThemedText style={[styles.emptyText, { color: theme.text?.secondary }]}>
+              No recent activity
+            </ThemedText>
+          </View>
+        ) : (
+          displayActivities.map((activity, index) => (
+            <TouchableOpacity
+              key={activity.id}
+              style={[
+                styles.item,
+                index < displayActivities.length - 1 && {
+                  borderBottomWidth: 1,
+                  borderBottomColor: theme.border?.secondary ?? theme.cardBorder,
+                },
+              ]}
+              onPress={activity.onPress}
+              activeOpacity={0.7}
+            >
+              <View
+                style={[
+                  styles.iconWrap,
+                  { backgroundColor: (activity.colors[0] ?? theme.primary) + '18' },
+                ]}
               >
                 <Ionicons
                   name={activity.icon as IconName}
-                  size={isSmallScreen ? 14 : 16}
-                  color={theme.text.inverse}
+                  size={isSmallScreen ? 16 : 18}
+                  color={activity.colors[0] ?? theme.primary}
                 />
-              </LinearGradient>
-            </View>
-
-            <View style={styles.activityContent}>
-              <ThemedText
-                style={[
-                  styles.activityTitle,
-                  isSmallScreen && styles.activityTitleSmall,
-                ]}
-              >
-                {activity.title}
-              </ThemedText>
-              <ThemedText
-                style={[
-                  styles.activityDescription,
-                  isSmallScreen && styles.activityDescriptionSmall,
-                ]}
-              >
-                {activity.description}
-              </ThemedText>
-              <View style={styles.activityMeta}>
-                <ThemedText
-                  style={[
-                    styles.activityTime,
-                    isSmallScreen && styles.activityTimeSmall,
-                  ]}
-                >
-                  {activity.time}
-                </ThemedText>
-                {activity.amount && (
-                  <ThemedText
-                    style={[
-                      styles.activityAmount,
-                      isSmallScreen && styles.activityAmountSmall,
-                    ]}
-                  >
-                    ৳{activity.amount}
-                  </ThemedText>
-                )}
               </View>
-            </View>
-          </TouchableOpacity>
-        ))}
+              <View style={styles.body}>
+                <ThemedText
+                  style={[styles.itemTitle, { color: theme.text?.primary }]}
+                  numberOfLines={1}
+                >
+                  {activity.title}
+                </ThemedText>
+                <ThemedText
+                  style={[styles.itemDesc, { color: theme.text?.secondary }]}
+                  numberOfLines={2}
+                >
+                  {activity.description}
+                </ThemedText>
+                <View style={styles.meta}>
+                  <ThemedText style={[styles.time, { color: theme.text?.tertiary }]}>
+                    {activity.time}
+                  </ThemedText>
+                  {activity.amount != null && activity.amount !== '' && (
+                    <ThemedText style={[styles.amount, { color: theme.primary }]}>
+                      ৳{activity.amount}
+                    </ThemedText>
+                  )}
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={theme.text?.tertiary} />
+            </TouchableOpacity>
+          ))
+        )}
       </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    marginBottom: 24,
-  },
+  wrap: {},
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   headerLeft: {
     flex: 1,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  sectionTitleSmall: {
-    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+    marginBottom: 2,
   },
   sectionSubtitle: {
-    fontSize: 14,
-    opacity: 0.7,
+    fontSize: 13,
+    fontWeight: '500',
   },
-  sectionSubtitleSmall: {
-    fontSize: 12,
-  },
-  viewAllButton: {
+  viewAllBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
     gap: 4,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
   },
   viewAllText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
-  activityList: {
-    borderRadius: 16,
-    padding: 16,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-    borderWidth: 1,
-  },
-  activityItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  lastActivityItem: {
-    borderBottomWidth: 0,
-  },
-  activityIcon: {
-    marginRight: 12,
-  },
-  activityIconGradient: {
-    width: 36,
-    height: 36,
+  list: {
     borderRadius: 18,
+    borderWidth: 1,
+    overflow: 'hidden',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  item: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  iconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 14,
   },
-  activityContent: {
+  body: {
     flex: 1,
+    minWidth: 0,
   },
-  activityTitle: {
-    fontSize: 16,
+  itemTitle: {
+    fontSize: 15,
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: 2,
   },
-  activityTitleSmall: {
-    fontSize: 14,
-  },
-  activityDescription: {
-    fontSize: 14,
-    opacity: 0.7,
-    marginBottom: 8,
+  itemDesc: {
+    fontSize: 13,
     lineHeight: 18,
+    marginBottom: 6,
   },
-  activityDescriptionSmall: {
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  activityMeta: {
+  meta: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  activityTime: {
+  time: {
     fontSize: 12,
-    opacity: 0.5,
+    fontWeight: '500',
   },
-  activityTimeSmall: {
-    fontSize: 10,
-  },
-  activityAmount: {
+  amount: {
     fontSize: 12,
     fontWeight: '600',
   },
-  activityAmountSmall: {
-    fontSize: 10,
+  empty: {
+    paddingVertical: 32,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    gap: 10,
+  },
+  emptyText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
 });

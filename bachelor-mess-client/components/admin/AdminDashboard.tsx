@@ -13,9 +13,11 @@ import {
   TouchableOpacity,
   Alert,
   RefreshControl,
-  Dimensions,
   Modal,
   TextInput,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -24,6 +26,13 @@ import { ThemedView } from '../ThemedView';
 import { ThemedText } from '../ThemedText';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import {
+  DashboardHeader,
+  StatsGrid,
+  QuickActions,
+  type StatItem,
+  type ActionItem,
+} from '../dashboard';
 import { EnhancedMealManagement } from '../meals/EnhancedMealManagement';
 import dashboardService from '../../services/dashboardService';
 import statisticsService from '../../services/statisticsService';
@@ -35,6 +44,7 @@ import userService, {
 } from '../../services/userService';
 import { MemberFormModal } from './MemberFormModal';
 import { MemberViewModal } from './MemberViewModal';
+import { MonthlyReportDashboard } from './reports/MonthlyReportDashboard';
 
 type AdminDashboardProps = Record<string, never>;
 
@@ -48,7 +58,6 @@ interface AdminStats {
   totalBazarAmount: number;
 }
 
-const { width } = Dimensions.get('window');
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   const { user } = useAuth();
@@ -62,7 +71,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
     mealRate: 0,
     totalBazarAmount: 0,
   });
-  const [activeTab, setActiveTab] = useState<'overview' | 'meals' | 'members'>(
+  const [activeTab, setActiveTab] = useState<'overview' | 'meals' | 'members' | 'reports'>(
     'overview'
   );
   const [refreshing, setRefreshing] = useState(false);
@@ -86,6 +95,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   const [showResetPassword, setShowResetPassword] = useState(false);
   const { createUser } = useUsers();
   const isMountedRef = useRef(true);
+
+  const resetPasswordMember = useMemo(
+    () => (resettingPasswordFor ? members.find((m) => m.id === resettingPasswordFor) : null),
+    [resettingPasswordFor, members],
+  );
 
   const loadAdminStats = useCallback(async () => {
     try {
@@ -206,85 +220,64 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
     }, [user?.role, activeTab, loadAdminStats, loadMembers])
   );
 
-  // Memoized stat cards (must be before any conditional return to satisfy rules-of-hooks)
-  const statCards = useMemo(
+  // Admin stats for shared StatsGrid (aligned with user dashboard)
+  const adminStatsForGrid: StatItem[] = useMemo(
     () => [
       {
-        icon: 'fast-food' as const,
+        title: 'Total Meals',
         value: adminStats.totalMeals,
-        label: 'Total Meals',
+        icon: 'fast-food',
         colors: theme.gradient.success as [string, string],
+        trend: adminStats.totalMeals > 0 ? 'up' : 'neutral',
+        period: 'this month',
       },
       {
-        icon: 'time' as const,
+        title: 'Pending',
         value: adminStats.pendingApprovals,
-        label: 'Pending',
+        icon: 'time',
         colors: theme.gradient.warning as [string, string],
+        trend: 'neutral',
+        period: 'to approve',
       },
       {
-        icon: 'checkmark-circle' as const,
+        title: 'Approved',
         value: adminStats.approvedMeals,
-        label: 'Approved',
+        icon: 'checkmark-circle',
         colors: theme.gradient.secondary as [string, string],
+        trend: 'up',
+        period: 'meals',
       },
       {
-        icon: 'people' as const,
+        title: 'Members',
         value: adminStats.totalMembers,
-        label: 'Members',
+        icon: 'people',
         colors: theme.gradient.info as [string, string],
+        trend: 'neutral',
+        period: 'total',
       },
       {
-        icon: 'calculator' as const,
+        title: 'Meal Rate',
         value:
           adminStats.mealRate > 0
             ? `৳${adminStats.mealRate.toFixed(2)}`
             : 'N/A',
-        label: 'Meal Rate',
+        icon: 'calculator',
         colors: theme.gradient.warning as [string, string],
+        period: 'this month',
       },
       {
-        icon: 'calendar' as const,
+        title: 'Today Meals',
         value: adminStats.todayMeals,
-        label: 'Today Meals',
+        icon: 'calendar',
         colors: theme.gradient.success as [string, string],
+        trend: adminStats.todayMeals > 0 ? 'up' : 'neutral',
+        period: 'today',
       },
     ],
     [adminStats, theme]
   );
 
-  // Access control
-  if (user?.role !== 'admin' && user?.role !== 'super_admin') {
-    return (
-      <ThemedView style={styles.accessDeniedContainer}>
-        <LinearGradient
-          colors={theme.gradient.info as [string, string]}
-          style={styles.accessDeniedGradient}
-        >
-          <Ionicons name='shield' size={80} color='#fff' />
-          <ThemedText style={styles.accessDeniedTitle}>
-            Access Denied
-          </ThemedText>
-          <ThemedText style={styles.accessDeniedText}>
-            This area is restricted to Administrators only.
-          </ThemedText>
-        </LinearGradient>
-      </ThemedView>
-    );
-  }
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    // Clear cache before refreshing to get latest data
-    try {
-      await userService.clearUserCache();
-    } catch {
-      // Continue even if cache clear fails
-    }
-    await Promise.all([loadAdminStats(), loadMembers()]);
-    setRefreshing(false);
-  };
-
-  const handleQuickAction = (action: string) => {
+  const handleQuickAction = useCallback((action: string) => {
     switch (action) {
       case 'approve-all':
         Alert.alert(
@@ -311,37 +304,92 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
         ]);
         break;
     }
+  }, []);
+
+  const adminQuickActions: ActionItem[] = useMemo(
+    () => [
+      {
+        id: 'reports',
+        title: 'Reports',
+        subtitle: 'Monthly summaries',
+        icon: 'stats-chart',
+        color: theme.gradient.info[0],
+        onPress: () => setActiveTab('reports'),
+      },
+      {
+        id: 'approve-all',
+        title: 'Approve All',
+        subtitle: 'Approve pending meals',
+        icon: 'checkmark-circle',
+        color: theme.gradient.success[0],
+        onPress: () => handleQuickAction('approve-all'),
+      },
+      {
+        id: 'export-data',
+        title: 'Export Data',
+        subtitle: 'Export meal reports',
+        icon: 'download',
+        color: theme.gradient.warning[0],
+        onPress: () => handleQuickAction('export-data'),
+      },
+      {
+        id: 'send-notification',
+        title: 'Send Notification',
+        subtitle: 'Notify all members',
+        icon: 'notifications',
+        color: theme.gradient.primary[0],
+        onPress: () => handleQuickAction('send-notification'),
+      },
+      {
+        id: 'manage-meals',
+        title: 'Manage Meals',
+        subtitle: 'View all meals',
+        icon: 'fast-food',
+        color: theme.gradient.secondary[0],
+        onPress: () => setActiveTab('meals'),
+      },
+    ],
+    [theme, handleQuickAction]
+  );
+
+  // Access control
+  if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+    return (
+      <ThemedView style={styles.accessDeniedContainer}>
+        <LinearGradient
+          colors={theme.gradient.info as [string, string]}
+          style={styles.accessDeniedGradient}
+        >
+          <Ionicons name='shield' size={80} color={theme.onPrimary?.text ?? theme.text?.inverse} />
+          <ThemedText style={[styles.accessDeniedTitle, { color: theme.onPrimary?.text ?? theme.text?.inverse }]}>
+            Access Denied
+          </ThemedText>
+          <ThemedText style={[styles.accessDeniedText, { color: theme.onPrimary?.text ?? theme.text?.inverse }]}>
+            This area is restricted to Administrators only.
+          </ThemedText>
+        </LinearGradient>
+      </ThemedView>
+    );
+  }
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    // Clear cache before refreshing to get latest data
+    try {
+      await userService.clearUserCache();
+    } catch {
+      // Continue even if cache clear fails
+    }
+    await Promise.all([loadAdminStats(), loadMembers()]);
+    setRefreshing(false);
   };
 
   const renderOverview = () => (
-    <ScrollView
-      style={styles.scrollView}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-      }
-    >
-      {/* Header */}
-      <LinearGradient
-        colors={theme.gradient.info as [string, string]}
-        style={styles.header}
-      >
-        <View style={styles.headerContent}>
-          <View style={styles.headerIconContainer}>
-            <Ionicons name='shield' size={40} color='#fff' />
-          </View>
-          <View style={styles.headerText}>
-            <ThemedText style={styles.headerTitle}>Admin Dashboard</ThemedText>
-            <ThemedText style={styles.headerSubtitle}>
-              Meal Management Center
-            </ThemedText>
-          </View>
-        </View>
-      </LinearGradient>
-
+    <>
       {/* Loading State */}
       {loading && (
-        <View style={{ height: 200 }}>
-           <ModernLoader visible={true} text="Loading statistics..." overlay={false} />
+        <View style={styles.overviewLoader}>
+          <ModernLoader visible={true} text="Loading statistics..." overlay={false} />
         </View>
       )}
 
@@ -371,185 +419,87 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
         </View>
       )}
 
-      {/* Stats Grid */}
       {!loading && !error && (
-        <>
-          <View style={styles.statsGrid}>
-            {statCards.map((card, index) => (
-              <View key={index} style={styles.statCard}>
-                <LinearGradient
-                  colors={card.colors}
-                  style={styles.statGradient}
-                >
-                  <Ionicons name={card.icon} size={28} color='#fff' />
-                  <ThemedText style={styles.statValue}>{card.value}</ThemedText>
-                  <ThemedText style={styles.statLabel}>{card.label}</ThemedText>
-                </LinearGradient>
-              </View>
-            ))}
-          </View>
-
-          {/* Quick Actions */}
-          <View style={styles.section}>
-            <ThemedText style={styles.sectionTitle}>Quick Actions</ThemedText>
-            <View style={styles.actionsGrid}>
-              <TouchableOpacity
-                style={styles.actionCard}
-                onPress={() => handleQuickAction('approve-all')}
-              >
-                <LinearGradient
-                  colors={theme.gradient.success as [string, string]}
-                  style={styles.actionGradient}
-                >
-                  <Ionicons name='checkmark-circle' size={36} color='#fff' />
-                  <ThemedText style={styles.actionTitle}>
-                    Approve All
-                  </ThemedText>
-                  <ThemedText style={styles.actionSubtitle}>
-                    Approve pending meals
-                  </ThemedText>
-                </LinearGradient>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.actionCard}
-                onPress={() => handleQuickAction('export-data')}
-              >
-                <LinearGradient
-                  colors={theme.gradient.warning as [string, string]}
-                  style={styles.actionGradient}
-                >
-                  <Ionicons name='download' size={36} color='#fff' />
-                  <ThemedText style={styles.actionTitle}>
-                    Export Data
-                  </ThemedText>
-                  <ThemedText style={styles.actionSubtitle}>
-                    Export meal reports
-                  </ThemedText>
-                </LinearGradient>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.actionCard}
-                onPress={() => handleQuickAction('send-notification')}
-              >
-                <LinearGradient
-                  colors={theme.gradient.primary as [string, string]}
-                  style={styles.actionGradient}
-                >
-                  <Ionicons name='notifications' size={36} color='#fff' />
-                  <ThemedText style={styles.actionTitle}>
-                    Send Notification
-                  </ThemedText>
-                  <ThemedText style={styles.actionSubtitle}>
-                    Notify all members
-                  </ThemedText>
-                </LinearGradient>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.actionCard}
-                onPress={() => setActiveTab('meals')}
-              >
-                <LinearGradient
-                  colors={theme.gradient.secondary as [string, string]}
-                  style={styles.actionGradient}
-                >
-                  <Ionicons name='fast-food' size={36} color='#fff' />
-                  <ThemedText style={styles.actionTitle}>
-                    Manage Meals
-                  </ThemedText>
-                  <ThemedText style={styles.actionSubtitle}>
-                    View all meals
-                  </ThemedText>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Today's Summary */}
-          <View style={styles.section}>
-            <ThemedText style={styles.sectionTitle}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.overviewScrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          }
+        >
+          <DashboardHeader
+            title="Admin Dashboard"
+            subtitle="Meal Management Center"
+            icon="shield"
+          />
+          <StatsGrid stats={adminStatsForGrid} columns={2} isSmallScreen={false} />
+          <QuickActions
+            actions={adminQuickActions}
+            title="Quick Actions"
+            subtitle="Manage meals and members"
+            columns={2}
+            isSmallScreen={false}
+          />
+          {/* Today's Summary - same card style as dashboard */}
+          <View style={[styles.section, { paddingHorizontal: 16, marginBottom: 28 }]}>
+            <ThemedText style={[styles.sectionTitle, { color: theme.text?.primary }]}>
               Today&apos;s Summary
             </ThemedText>
             <View
               style={[
                 styles.summaryCard,
                 {
-                  backgroundColor: theme.cardBackground,
-                  borderColor: theme.cardBorder,
+                  backgroundColor: theme.cardBackground ?? theme.surface,
+                  borderColor: theme.border?.secondary ?? theme.cardBorder,
                   borderWidth: 1,
+                  shadowColor: theme.shadow?.light ?? theme.cardShadow,
                 },
               ]}
             >
               <View style={styles.summaryGradient}>
                 <View style={styles.summaryRow}>
                   <View style={styles.summaryItem}>
-                    <Ionicons
-                      name='sunny'
-                      size={24}
-                      color={theme.status.warning}
-                    />
-                    <ThemedText
-                      style={[
-                        styles.summaryLabel,
-                        { color: theme.text.secondary },
-                      ]}
-                    >
+                    <Ionicons name='sunny' size={24} color={theme.status.warning} />
+                    <ThemedText style={[styles.summaryLabel, { color: theme.text.secondary }]}>
                       Breakfast
                     </ThemedText>
-                    <ThemedText style={styles.summaryValue}>-</ThemedText>
+                    <ThemedText style={[styles.summaryValue, { color: theme.text?.primary }]}>-</ThemedText>
                   </View>
                   <View style={styles.summaryItem}>
-                    <Ionicons
-                      name='partly-sunny'
-                      size={24}
-                      color={theme.status.warning}
-                    />
-                    <ThemedText
-                      style={[
-                        styles.summaryLabel,
-                        { color: theme.text.secondary },
-                      ]}
-                    >
+                    <Ionicons name='partly-sunny' size={24} color={theme.status.warning} />
+                    <ThemedText style={[styles.summaryLabel, { color: theme.text.secondary }]}>
                       Lunch
                     </ThemedText>
-                    <ThemedText style={styles.summaryValue}>-</ThemedText>
+                    <ThemedText style={[styles.summaryValue, { color: theme.text?.primary }]}>-</ThemedText>
                   </View>
                   <View style={styles.summaryItem}>
                     <Ionicons name='moon' size={24} color={theme.primary} />
-                    <ThemedText
-                      style={[
-                        styles.summaryLabel,
-                        { color: theme.text.secondary },
-                      ]}
-                    >
+                    <ThemedText style={[styles.summaryLabel, { color: theme.text.secondary }]}>
                       Dinner
                     </ThemedText>
-                    <ThemedText style={styles.summaryValue}>-</ThemedText>
+                    <ThemedText style={[styles.summaryValue, { color: theme.text?.primary }]}>-</ThemedText>
                   </View>
                 </View>
                 <View
                   style={[
                     styles.summaryTotal,
-                    { borderTopColor: theme.border.secondary },
+                    { borderTopColor: theme.border?.secondary ?? theme.cardBorder },
                   ]}
                 >
-                  <ThemedText style={styles.summaryTotalLabel}>
+                  <ThemedText style={[styles.summaryTotalLabel, { color: theme.text?.primary }]}>
                     Total Today
                   </ThemedText>
-                  <ThemedText
-                    style={[styles.summaryTotalValue, { color: theme.primary }]}
-                  >
+                  <ThemedText style={[styles.summaryTotalValue, { color: theme.primary }]}>
                     {adminStats.todayMeals} meals
                   </ThemedText>
                 </View>
               </View>
             </View>
           </View>
-        </>
+        </ScrollView>
       )}
-    </ScrollView>
+    </>
   );
 
   const renderMeals = () => (
@@ -788,8 +738,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
 
   const renderMembers = () => (
     <View style={styles.tabContent}>
-      <View style={styles.membersHeader}>
-        <View>
+      <View style={[styles.membersHeader, { borderBottomColor: theme.border.secondary }]}>
+        <View style={styles.membersHeaderLeft}>
           <ThemedText style={styles.tabTitle}>Member Management</ThemedText>
           <ThemedText
             style={[styles.tabSubtitle, { color: theme.text.secondary }]}
@@ -797,307 +747,259 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
             {user?.role === 'super_admin'
               ? 'View and manage all members'
               : 'View and manage your members'}
+            {!loadingMembers && !error && members.length >= 0 && (
+              <ThemedText style={[styles.memberCountBadge, { color: theme.text.secondary }]}>
+                {' '}· {members.length} {members.length === 1 ? 'member' : 'members'}
+              </ThemedText>
+            )}
           </ThemedText>
         </View>
-        <TouchableOpacity style={styles.addButton} onPress={handleOpenAddModal}>
-          <LinearGradient
-            colors={theme.gradient.success as [string, string]}
-            style={styles.addButtonGradient}
+        <TouchableOpacity
+          style={[
+            styles.addMemberButton,
+            { backgroundColor: theme.button.primary.background },
+          ]}
+          onPress={handleOpenAddModal}
+        >
+          <Ionicons name='add' size={22} color={theme.button.primary.text} />
+          <ThemedText
+            style={[
+              styles.addMemberButtonText,
+              { color: theme.button.primary.text },
+            ]}
           >
-            <Ionicons name='add' size={24} color='#fff' />
-            <ThemedText style={styles.addButtonText}>Add Member</ThemedText>
-          </LinearGradient>
+            Add Member
+          </ThemedText>
         </TouchableOpacity>
       </View>
 
-      {loadingMembers ? (
-        <View style={styles.loadingContainer}>
-          <ModernLoader size='large' overlay={false} />
-          <ThemedText
-            style={[styles.loadingText, { color: theme.text.secondary }]}
-          >
-            Loading members...
-          </ThemedText>
+      {loadingMembers && (
+        <View style={styles.membersLoaderWrap}>
+          <ModernLoader visible={true} text="Loading members..." overlay={false} />
         </View>
-      ) : members.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons
-            name='people-outline'
-            size={64}
-            color={theme.icon.secondary}
-          />
-          <ThemedText
-            style={[styles.emptyText, { color: theme.text.secondary }]}
-          >
-            No members found
-          </ThemedText>
-          <ThemedText
-            style={[styles.emptySubtext, { color: theme.text.tertiary }]}
-          >
-            Click &quot;Add Member&quot; to create your first member
-          </ThemedText>
-        </View>
-      ) : (
-        <ScrollView
-          style={styles.membersList}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={loadMembers} />
-          }
-        >
-          {members.map(member => (
-            <TouchableOpacity
-              key={member.id}
-              style={[
-                styles.memberCard,
-                {
-                  backgroundColor: theme.cardBackground,
-                  borderColor: theme.cardBorder,
-                },
-              ]}
-              onPress={() => handleOpenViewModal(member)}
-              activeOpacity={0.7}
-              disabled={submittingMember || deletingMemberId !== null}
-            >
-              <View style={styles.memberInfo}>
-                <View
-                  style={[
-                    styles.memberAvatar,
-                    { backgroundColor: theme.primary + '20' },
-                  ]}
-                >
-                  <Ionicons name='person' size={24} color={theme.primary} />
-                </View>
-                <View style={styles.memberDetails}>
-                  <ThemedText style={styles.memberName}>
-                    {member.name}
-                  </ThemedText>
-                  <ThemedText
-                    style={[
-                      styles.memberEmail,
-                      { color: theme.text.secondary },
-                    ]}
-                  >
-                    {member.email}
-                  </ThemedText>
-                  {member.phone && (
-                    <ThemedText
-                      style={[
-                        styles.memberPhone,
-                        { color: theme.text.tertiary },
-                      ]}
-                    >
-                      {member.phone}
-                    </ThemedText>
-                  )}
-                  <View style={styles.memberStatus}>
-                    <View
-                      style={[
-                        styles.statusDot,
-                        member.status === 'active'
-                          ? { backgroundColor: theme.status.success }
-                          : { backgroundColor: theme.status.error },
-                      ]}
-                    />
-                    <ThemedText
-                      style={[
-                        styles.statusText,
-                        { color: theme.text.secondary },
-                      ]}
-                    >
-                      {member.status}
-                    </ThemedText>
-                  </View>
-                </View>
-                <View style={styles.memberActions}>
-                  <TouchableOpacity
-                    onPress={() => handleOpenEditModal(member)}
-                    style={[
-                      styles.actionButton,
-                      styles.editButton,
-                      { backgroundColor: theme.primary + '20' },
-                    ]}
-                    disabled={submittingMember || deletingMemberId !== null}
-                  >
-                    <Ionicons name='pencil' size={18} color={theme.primary} />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => handleDeleteMember(member.id)}
-                    style={[
-                      styles.actionButton,
-                      styles.deleteButton,
-                      { backgroundColor: theme.status.error + '20' },
-                    ]}
-                    disabled={
-                      submittingMember ||
-                      deletingMemberId !== null ||
-                      deletingMemberId === member.id
-                    }
-                  >
-                    {deletingMemberId === member.id ? (
-                      <ModernLoader size='small' overlay={false} />
-                    ) : (
-                      <Ionicons
-                        name='trash'
-                        size={18}
-                        color={theme.status.error}
-                      />
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
       )}
 
-      {/* Unified Member Form Modal */}
-      <MemberFormModal
-        visible={showMemberModal}
-        mode={modalMode}
-        member={editingMember}
-        onClose={handleCloseModal}
-        onSubmit={handleSubmitMember}
-        loading={submittingMember}
-      />
-
-      {/* Member View Modal */}
-      <MemberViewModal
-        visible={showViewModal}
-        member={viewingMember}
-        onClose={handleCloseViewModal}
-        onEdit={handleEditFromView}
-        onResetPassword={handleResetPassword}
-      />
-
-      {/* Reset Password Modal */}
-      <Modal
-        visible={showResetPasswordModal}
-        animationType='slide'
-        transparent={true}
-        onRequestClose={handleCancelResetPassword}
-      >
-        <View style={styles.resetPasswordModalOverlay}>
-          <View
+      {error && !loadingMembers && (
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={40} color={theme.status.error} />
+          <ThemedText style={[styles.errorText, { color: theme.status.error }]}>
+            {error}
+          </ThemedText>
+          <TouchableOpacity
             style={[
-              styles.resetPasswordModalContent,
-              { backgroundColor: theme.modal },
+              styles.retryButton,
+              { backgroundColor: theme.button.primary.background },
             ]}
+            onPress={() => loadMembers(true)}
           >
-            <View
+            <ThemedText
               style={[
-                styles.resetPasswordModalHeader,
-                { borderBottomColor: theme.border.secondary },
+                styles.retryButtonText,
+                { color: theme.button.primary.text },
               ]}
             >
-              <ThemedText style={styles.resetPasswordModalTitle}>
-                Reset Password
+              Retry
+            </ThemedText>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {!loadingMembers && !error && (
+        <ScrollView
+          style={styles.membersScrollView}
+          contentContainerStyle={styles.membersScrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true);
+                loadMembers(true).finally(() => setRefreshing(false));
+              }}
+              colors={[theme.primary]}
+            />
+          }
+        >
+          {members.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <View style={[styles.emptyIconWrap, { backgroundColor: theme.primary + '18' }]}>
+                <Ionicons name="people-outline" size={48} color={theme.primary} />
+              </View>
+              <ThemedText style={styles.emptyText}>No members yet</ThemedText>
+              <ThemedText style={[styles.emptySubtext, { color: theme.text.secondary }]}>
+                Add your first member to get started
               </ThemedText>
-              <TouchableOpacity onPress={handleCancelResetPassword}>
-                <Ionicons name='close' size={24} color={theme.icon.secondary} />
+              <TouchableOpacity
+                style={[styles.emptyAddButton, { backgroundColor: theme.button.primary.background }]}
+                onPress={handleOpenAddModal}
+              >
+                <Ionicons name="add" size={20} color={theme.button.primary.text} />
+                <ThemedText style={[styles.emptyAddButtonText, { color: theme.button.primary.text }]}>
+                  Add Member
+                </ThemedText>
               </TouchableOpacity>
             </View>
-
-            <View style={styles.resetPasswordModalBody}>
-              <ThemedText
-                style={[
-                  styles.resetPasswordModalText,
-                  { color: theme.text.secondary },
-                ]}
-              >
-                Enter a new password for this member (minimum 6 characters):
-              </ThemedText>
-              <View style={styles.resetPasswordInputContainer}>
-                <TextInput
+          ) : (
+            members.map((member) => {
+              const isDeleting = deletingMemberId === member.id;
+              return (
+                <TouchableOpacity
+                  key={member.id}
+                  activeOpacity={0.7}
                   style={[
-                    styles.resetPasswordInput,
+                    styles.memberCard,
                     {
-                      backgroundColor: theme.input.background,
-                      borderColor: theme.input.border,
-                      color: theme.input.text,
+                      backgroundColor: theme.cardBackground,
+                      borderColor: theme.border.secondary,
+                      shadowColor: theme.shadow?.light ?? theme.cardShadow,
+                      opacity: isDeleting ? 0.6 : 1,
                     },
                   ]}
-                  placeholder='New password (min 6 characters)'
-                  placeholderTextColor={theme.text.tertiary}
-                  value={newPassword}
-                  onChangeText={setNewPassword}
-                  secureTextEntry={!showResetPassword}
-                  autoFocus
-                  maxLength={128}
-                  autoCapitalize='none'
-                  autoCorrect={false}
-                />
-                <TouchableOpacity
-                  style={styles.resetPasswordEyeButton}
-                  onPress={() => setShowResetPassword(!showResetPassword)}
-                  activeOpacity={0.7}
+                  onPress={() => !isDeleting && handleOpenViewModal(member)}
+                  disabled={isDeleting}
                 >
-                  <Ionicons
-                    name={showResetPassword ? 'eye-off' : 'eye'}
-                    size={20}
-                    color={theme.text.secondary}
-                  />
+                  <View style={styles.memberCardInner}>
+                    <View
+                      style={[
+                        styles.memberAvatar,
+                        {
+                          backgroundColor: theme.primary,
+                          borderColor: theme.cardBackground,
+                        },
+                      ]}
+                    >
+                      <ThemedText style={[styles.memberAvatarText, { color: theme.onPrimary?.text ?? theme.text?.inverse }]}>
+                        {member.name.trim().charAt(0).toUpperCase() || '?'}
+                      </ThemedText>
+                    </View>
+                    <View style={styles.memberMain}>
+                      <ThemedText style={styles.memberName} numberOfLines={1}>
+                        {member.name}
+                      </ThemedText>
+                      <ThemedText
+                        style={[styles.memberEmail, { color: theme.text.secondary }]}
+                        numberOfLines={1}
+                      >
+                        {member.email}
+                      </ThemedText>
+                      {member.phone ? (
+                        <ThemedText
+                          style={[styles.memberPhone, { color: theme.text.secondary }]}
+                          numberOfLines={1}
+                        >
+                          {member.phone}
+                        </ThemedText>
+                      ) : null}
+                      <View style={styles.roleContainer}>
+                        <View
+                          style={[
+                            styles.roleBadge,
+                            {
+                              backgroundColor:
+                                member.role === 'admin'
+                                  ? theme.status.info + '22'
+                                  : theme.status.success + '22',
+                            },
+                          ]}
+                        >
+                          <ThemedText
+                            style={[
+                              styles.roleText,
+                              {
+                                color:
+                                  member.role === 'admin'
+                                    ? theme.status.info
+                                    : theme.status.success,
+                              },
+                            ]}
+                          >
+                            {member.role}
+                          </ThemedText>
+                        </View>
+                        <View
+                          style={[
+                            styles.statusBadge,
+                            {
+                              backgroundColor:
+                                member.status === 'active'
+                                  ? theme.status.success + '22'
+                                  : theme.status.error + '22',
+                            },
+                          ]}
+                        >
+                          <ThemedText
+                            style={[
+                              styles.statusText,
+                              {
+                                color:
+                                  member.status === 'active'
+                                    ? theme.status.success
+                                    : theme.status.error,
+                              },
+                            ]}
+                          >
+                            {member.status}
+                          </ThemedText>
+                        </View>
+                      </View>
+                    </View>
+                    <View style={[styles.memberActions, { borderLeftColor: theme.border.secondary }]}>
+                      <TouchableOpacity
+                        style={[styles.memberActionBtn, { backgroundColor: theme.button.secondary.background + '99' }]}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          handleOpenViewModal(member);
+                        }}
+                      >
+                        <Ionicons name="eye-outline" size={22} color={theme.button.secondary.text} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.memberActionBtn, { backgroundColor: theme.button.secondary.background + '99' }]}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          handleOpenEditModal(member);
+                        }}
+                      >
+                        <Ionicons name="create-outline" size={22} color={theme.button.secondary.text} />
+                      </TouchableOpacity>
+                      {user?.role === 'super_admin' && (
+                        <TouchableOpacity
+                          style={[styles.memberActionBtn, styles.memberActionBtnDanger, { backgroundColor: theme.status.error + '22' }]}
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            handleDeleteMember(member.id);
+                          }}
+                        >
+                          <Ionicons name="trash-outline" size={22} color={theme.status.error} />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </View>
+                  {isDeleting && (
+                    <View style={[styles.memberCardOverlay, { backgroundColor: theme.cardBackground + 'ee' }]}>
+                      <ThemedText style={[styles.memberCardOverlayText, { color: theme.text.secondary }]}>
+                        Deleting...
+                      </ThemedText>
+                    </View>
+                  )}
                 </TouchableOpacity>
-              </View>
-              {newPassword.length > 0 && newPassword.length < 6 && (
-                <ThemedText
-                  style={[
-                    styles.passwordErrorText,
-                    { color: theme.status.error },
-                  ]}
-                >
-                  Password must be at least 6 characters
-                </ThemedText>
-              )}
-            </View>
-
-            <View
-              style={[
-                styles.resetPasswordModalFooter,
-                { borderTopColor: theme.border.secondary },
-              ]}
-            >
-              <TouchableOpacity
-                style={[
-                  styles.resetPasswordCancelButton,
-                  { borderColor: theme.border.secondary },
-                ]}
-                onPress={handleCancelResetPassword}
-                disabled={resettingPassword}
-              >
-                <ThemedText
-                  style={[
-                    styles.resetPasswordCancelText,
-                    { color: theme.text.secondary },
-                  ]}
-                >
-                  Cancel
-                </ThemedText>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.resetPasswordConfirmButton,
-                  { backgroundColor: theme.status.warning },
-                ]}
-                onPress={handleConfirmResetPassword}
-                disabled={
-                  resettingPassword || !newPassword || newPassword.length < 6
-                }
-              >
-                {resettingPassword ? (
-                  <ModernLoader size='small' overlay={false} />
-                ) : (
-                  <ThemedText style={styles.resetPasswordConfirmText}>
-                    Reset Password
-                  </ThemedText>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+              );
+            })
+          )}
+        </ScrollView>
+      )}
     </View>
   );
 
+  const renderReports = () => (
+    <View style={styles.tabContent}>
+      <ThemedText style={styles.tabTitle}>Monthly Reports</ThemedText>
+      <ThemedText style={styles.tabSubtitle}>
+        View month-wise meal and expense reports
+      </ThemedText>
+      <MonthlyReportDashboard />
+    </View>
+    );
   return (
     <ThemedView style={styles.container}>
       {/* Tab Navigation */}
@@ -1115,7 +1017,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
             styles.tabButton,
             activeTab === 'overview' && [
               styles.activeTab,
-              { backgroundColor: theme.surface },
+              { backgroundColor: theme.surface, shadowColor: theme.shadow?.light ?? theme.cardShadow },
             ],
           ]}
           onPress={() => setActiveTab('overview')}
@@ -1148,7 +1050,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
             styles.tabButton,
             activeTab === 'meals' && [
               styles.activeTab,
-              { backgroundColor: theme.surface },
+              { backgroundColor: theme.surface, shadowColor: theme.shadow?.light ?? theme.cardShadow },
             ],
           ]}
           onPress={() => setActiveTab('meals')}
@@ -1179,7 +1081,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
             styles.tabButton,
             activeTab === 'members' && [
               styles.activeTab,
-              { backgroundColor: theme.surface },
+              { backgroundColor: theme.surface, shadowColor: theme.shadow?.light ?? theme.cardShadow },
             ],
           ]}
           onPress={() => setActiveTab('members')}
@@ -1206,12 +1108,191 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
             Members
           </ThemedText>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.tabButton,
+            activeTab === 'reports' && [
+              styles.activeTab,
+              { backgroundColor: theme.surface, shadowColor: theme.shadow?.light ?? theme.cardShadow },
+            ],
+          ]}
+          onPress={() => setActiveTab('reports')}
+        >
+          <Ionicons
+            name='stats-chart'
+            size={20}
+            color={
+              activeTab === 'reports' ? theme.tab.active : theme.tab.inactive
+            }
+          />
+          <ThemedText
+            style={[
+              styles.tabText,
+              {
+                color:
+                  activeTab === 'reports'
+                    ? theme.tab.active
+                    : theme.tab.inactive,
+              },
+              activeTab === 'reports' && styles.activeTabText,
+            ]}
+          >
+            Reports
+          </ThemedText>
+        </TouchableOpacity>
       </View>
 
       {/* Tab Content */}
       {activeTab === 'overview' && renderOverview()}
       {activeTab === 'meals' && renderMeals()}
       {activeTab === 'members' && renderMembers()}
+      {activeTab === 'reports' && renderReports()}
+
+      {/* Member View Modal */}
+      <MemberViewModal
+        visible={showViewModal}
+        member={viewingMember}
+        onClose={handleCloseViewModal}
+        onEdit={handleEditFromView}
+        onResetPassword={handleResetPassword}
+      />
+
+      {/* Member Add/Edit Modal */}
+      <MemberFormModal
+        visible={showMemberModal}
+        mode={modalMode}
+        member={editingMember}
+        onClose={handleCloseModal}
+        onSubmit={handleSubmitMember}
+        loading={submittingMember}
+      />
+
+      {/* Reset Password Modal */}
+      <Modal
+        visible={showResetPasswordModal}
+        transparent
+        animationType="fade"
+        onRequestClose={handleCancelResetPassword}
+      >
+        <View style={[styles.resetPasswordModalOverlay, { backgroundColor: theme.overlay?.medium }]}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={handleCancelResetPassword}
+          />
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={styles.resetPasswordModalContentWrap}
+          >
+            <View
+              style={[
+                styles.resetPasswordModalContent,
+                {
+                  backgroundColor: theme.modal || theme.cardBackground,
+                  borderColor: theme.border.secondary,
+                },
+              ]}
+            >
+              <View
+                style={[
+                  styles.resetPasswordModalHeader,
+                  { borderBottomColor: theme.border.secondary },
+                ]}
+              >
+                <ThemedText style={styles.resetPasswordModalTitle}>
+                  {resetPasswordMember ? `Reset password for ${resetPasswordMember.name}` : 'Reset Password'}
+                </ThemedText>
+                <TouchableOpacity
+                  onPress={handleCancelResetPassword}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                >
+                  <Ionicons name="close" size={24} color={theme.icon?.secondary || theme.text.secondary} />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.resetPasswordModalBody}>
+                <ThemedText style={[styles.resetPasswordModalText, { color: theme.text.secondary }]}>
+                  Enter a new password (at least 6 characters). The member will use this to sign in.
+                </ThemedText>
+                <View style={styles.resetPasswordInputContainer}>
+                  <TextInput
+                    style={[
+                      styles.resetPasswordInput,
+                      {
+                        backgroundColor: theme.surface || theme.cardBackground,
+                        borderColor: theme.border.secondary,
+                        color: theme.text.primary,
+                      },
+                    ]}
+                    placeholder="New password"
+                    placeholderTextColor={theme.text.secondary}
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    secureTextEntry={!showResetPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    editable={!resettingPassword}
+                  />
+                  <TouchableOpacity
+                    style={[styles.resetPasswordEyeButton, { right: 12, top: 14 }]}
+                    onPress={() => setShowResetPassword((prev) => !prev)}
+                  >
+                    <Ionicons
+                      name={showResetPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={22}
+                      color={theme.text.secondary}
+                    />
+                  </TouchableOpacity>
+                </View>
+                {newPassword.length > 0 && newPassword.length < 6 && (
+                  <ThemedText style={[styles.passwordErrorText, { color: theme.status.error }]}>
+                    Password must be at least 6 characters
+                  </ThemedText>
+                )}
+              </View>
+              <View
+                style={[
+                  styles.resetPasswordModalFooter,
+                  { borderTopColor: theme.border.secondary },
+                ]}
+              >
+                <TouchableOpacity
+                  style={[
+                    styles.resetPasswordCancelButton,
+                    { borderColor: theme.border.secondary },
+                  ]}
+                  onPress={handleCancelResetPassword}
+                  disabled={resettingPassword}
+                >
+                  <ThemedText style={[styles.resetPasswordCancelText, { color: theme.text.primary }]}>
+                    Cancel
+                  </ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.resetPasswordConfirmButton,
+                    {
+                      backgroundColor: resettingPassword || newPassword.length < 6
+                        ? theme.text.secondary + '60'
+                        : theme.button.primary.background,
+                    },
+                  ]}
+                  onPress={handleConfirmResetPassword}
+                  disabled={resettingPassword || newPassword.length < 6}
+                >
+                  {resettingPassword ? (
+                    <ActivityIndicator size="small" color={theme.onPrimary?.text ?? theme.button?.primary?.text} />
+                  ) : (
+                    <ThemedText style={[styles.resetPasswordConfirmText, { color: theme.onPrimary?.text ?? theme.button?.primary?.text }]}>
+                      Reset Password
+                    </ThemedText>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
     </ThemedView>
   );
 };
@@ -1234,13 +1315,11 @@ const styles = StyleSheet.create({
   accessDeniedTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
     marginTop: 20,
     marginBottom: 10,
   },
   accessDeniedText: {
     fontSize: 16,
-    color: '#fff',
     textAlign: 'center',
     paddingHorizontal: 40,
     opacity: 0.9,
@@ -1260,7 +1339,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   activeTab: {
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -1290,45 +1368,13 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  header: {
-    paddingHorizontal: 20,
-    paddingVertical: 30,
-    marginBottom: 20,
+  overviewScrollContent: {
+    paddingBottom: 28,
   },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerIconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 15,
-  },
-  headerText: {
+  overviewLoader: {
     flex: 1,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 5,
-  },
-  headerSubtitle: {
-    fontSize: 16,
-    color: '#fff',
-    opacity: 0.9,
-  },
-  loadingContainer: {
-    padding: 40,
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
+    minHeight: 200,
+    justifyContent: 'center',
   },
   errorContainer: {
     padding: 40,
@@ -1348,74 +1394,23 @@ const styles = StyleSheet.create({
   retryButtonText: {
     fontWeight: '600',
   },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  statCard: {
-    width: (width - 60) / 2,
-    marginBottom: 15,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  statGradient: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#fff',
-    opacity: 0.9,
-    textAlign: 'center',
-  },
   section: {
-    paddingHorizontal: 20,
     marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 15,
-  },
-  actionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  actionCard: {
-    width: (width - 60) / 2,
-    marginBottom: 15,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  actionGradient: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  actionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  actionSubtitle: {
-    fontSize: 12,
-    color: '#fff',
-    opacity: 0.9,
-    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 14,
+    letterSpacing: 0.2,
   },
   summaryCard: {
     borderRadius: 16,
     overflow: 'hidden',
+    padding: 20,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
   summaryGradient: {
     padding: 20,
@@ -1456,7 +1451,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+  },
+  membersHeaderLeft: {
+    flex: 1,
+  },
+  memberCountBadge: {
+    fontSize: 14,
+    marginTop: 2,
   },
   addButton: {
     borderRadius: 12,
@@ -1470,23 +1474,69 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   addButtonText: {
-    color: '#fff',
     fontWeight: '600',
     fontSize: 14,
   },
-  membersList: {
+  membersLoaderWrap: {
+    minHeight: 200,
+    justifyContent: 'center',
+  },
+  membersScrollView: {
     flex: 1,
   },
+  membersScrollContent: {
+    paddingBottom: 24,
+  },
   memberCard: {
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 16,
+    padding: 0,
+    marginBottom: 14,
     borderWidth: 1,
-    shadowColor: '#000',
+    overflow: 'hidden',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
     elevation: 3,
+  },
+  memberCardInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  memberCardOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  memberCardOverlayText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  memberAvatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+    borderWidth: 2,
+  },
+  memberMain: {
+    flex: 1,
+    minWidth: 0,
+  },
+  memberName: {
+    fontSize: 17,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  memberEmail: {
+    fontSize: 13,
+    marginBottom: 1,
+  },
+  memberPhone: {
+    fontSize: 12,
+    marginBottom: 6,
   },
   memberInfo: {
     flexDirection: 'row',
@@ -1494,10 +1544,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   memberActions: {
-    flexDirection: 'row',
-    gap: 8,
+    flexDirection: 'column',
+    gap: 10,
     marginLeft: 12,
+    paddingLeft: 12,
+    borderLeftWidth: 1,
   },
+  memberActionBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  memberActionBtnDanger: {},
   actionButton: {
     width: 36,
     height: 36,
@@ -1505,35 +1565,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  editButton: {
-    // Styled via backgroundColor in component
-  },
-  deleteButton: {
-    // Styled via backgroundColor in component
-  },
-  memberAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
   memberDetails: {
     flex: 1,
-  },
-  memberName: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  memberEmail: {
-    fontSize: 14,
-    marginBottom: 2,
-  },
-  memberPhone: {
-    fontSize: 12,
-    marginBottom: 4,
   },
   memberStatus: {
     flexDirection: 'row',
@@ -1547,37 +1580,63 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   statusText: {
-    fontSize: 12,
+    fontSize: 11,
+    fontWeight: '600',
     textTransform: 'capitalize',
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 60,
+    paddingVertical: 48,
+    paddingHorizontal: 24,
+  },
+  emptyIconWrap: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
   },
   emptyText: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginTop: 16,
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 8,
+    textAlign: 'center',
   },
   emptySubtext: {
-    fontSize: 14,
-    marginTop: 8,
+    fontSize: 15,
     textAlign: 'center',
-    paddingHorizontal: 40,
+    marginBottom: 24,
+  },
+  emptyAddButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+  },
+  emptyAddButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   resetPasswordModalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  resetPasswordModalContent: {
+  resetPasswordModalContentWrap: {
     width: '90%',
     maxWidth: 400,
+    alignSelf: 'center',
+  },
+  resetPasswordModalContent: {
+    width: '100%',
     borderRadius: 16,
     overflow: 'hidden',
+    borderWidth: 1,
   },
   resetPasswordModalHeader: {
     flexDirection: 'row',
@@ -1644,8 +1703,43 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   resetPasswordConfirmText: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  addMemberButton: {
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 8,
+  },
+  addMemberButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  memberAvatarText: {
+    fontSize: 22,
+    fontWeight: '700',
+  },
+  roleContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+  },
+  roleBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+  },
+  roleText: {
+    fontSize: 12,
+    fontWeight: '500',
+    textTransform: 'capitalize',
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
   },
 });

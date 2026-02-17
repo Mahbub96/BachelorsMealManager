@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { StyleSheet, View, Dimensions } from 'react-native';
 import Animated, {
@@ -6,18 +5,14 @@ import Animated, {
   useSharedValue,
   withRepeat,
   withTiming,
-  withSequence,
   Easing,
   cancelAnimation,
-  interpolate,
-  Extrapolation
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur'; // Make sure expo-blur is installed, logic below handles if it's not available or desired styling
 import { useTheme } from '@/context/ThemeContext';
 import { ThemedText } from '../ThemedText';
 
-const { width, height } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface ModernLoaderProps {
   visible?: boolean;
@@ -32,130 +27,128 @@ export const ModernLoader: React.FC<ModernLoaderProps> = ({
   overlay = true,
   size = 'large',
 }) => {
-  const { theme, isDark } = useTheme();
-  
-  // Dimensions based on size
-  const getDimensions = () => {
-    switch(size) {
-      case 'small': return { size: 40, stroke: 3 };
-      case 'medium': return { size: 60, stroke: 4 };
-      case 'large': default: return { size: 80, stroke: 4 };
-    }
-  };
+  const { theme } = useTheme();
 
-  const { size: spinnerSize, stroke } = getDimensions();
-  
-  // Animation values
+  const ringSize = size === 'small' ? 32 : size === 'medium' ? 48 : 56;
+  const strokeWidth = size === 'small' ? 3 : size === 'medium' ? 4 : 4;
+  const padding = size === 'small' ? 16 : size === 'medium' ? 20 : 24;
+  const textSize = size === 'small' ? 12 : size === 'medium' ? 14 : 15;
+
   const rotation = useSharedValue(0);
-  const scale = useSharedValue(1);
   const opacity = useSharedValue(0);
+  const scale = useSharedValue(0.92);
 
   useEffect(() => {
     if (visible) {
-      // Fade in
-      opacity.value = withTiming(1, { duration: 300 });
-      
-      // Start rotation
+      opacity.value = withTiming(1, { duration: 220, easing: Easing.out(Easing.ease) });
+      scale.value = withTiming(1, { duration: 220, easing: Easing.out(Easing.ease) });
       rotation.value = withRepeat(
-        withTiming(360, {
-          duration: 1500,
-          easing: Easing.linear,
-        }),
-        -1 // Infinite
-      );
-
-      // Pulse effect
-      scale.value = withRepeat(
-        withSequence(
-          withTiming(1.1, { duration: 800, easing: Easing.inOut(Easing.ease) }),
-          withTiming(1, { duration: 800, easing: Easing.inOut(Easing.ease) })
-        ),
+        withTiming(360, { duration: 1000, easing: Easing.linear }),
         -1,
-        true
       );
     } else {
-      // Fade out
-      opacity.value = withTiming(0, { duration: 300 });
+      opacity.value = withTiming(0, { duration: 180 });
       cancelAnimation(rotation);
-      cancelAnimation(scale);
     }
   }, [visible]);
 
-  const animatedContainerStyle = useAnimatedStyle(() => {
-    return {
-      opacity: opacity.value,
-      transform: [{ scale: interpolate(opacity.value, [0, 1], [0.8, 1], Extrapolation.CLAMP) }],
-    };
-  });
+  const containerAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ scale: scale.value }],
+  }));
 
-  const animatedSpinnerStyle = useAnimatedStyle(() => {
-    return {
-      transform: [
-        { rotate: `${rotation.value}deg` },
-        { scale: scale.value }
-      ],
-    };
-  });
-  
-  // If not visible and opacity is 0, don't render (can add logic to unmount if needed, but opacity 0 with pointerEvents none is often enough)
+  const ringAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotation.value}deg` }],
+  }));
+
   if (!visible) return null;
 
+  const gradientColors = (theme.gradient?.primary || [theme.primary, theme.secondary]) as [string, string];
+
   return (
-    <View style={[styles.container, overlay && styles.overlay]} pointerEvents={visible ? 'auto' : 'none'}>
+    <View
+      style={[styles.container, overlay && styles.overlay]}
+      pointerEvents={visible ? 'auto' : 'none'}
+    >
       {overlay && (
-         <BlurView intensity={20} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundColor: theme.overlay?.medium,
+            },
+          ]}
+        />
       )}
-      
-      <Animated.View style={[
-          styles.loaderContent, 
-          animatedContainerStyle, 
-          { 
-              backgroundColor: theme.cardBackground,
-              padding: size === 'small' ? 12 : 24,
-              borderRadius: size === 'small' ? 8 : 16
-          }
-      ]}>
-        <View style={[styles.spinnerContainer, { width: spinnerSize, height: spinnerSize }]}>
-           {/* Outer rotating gradient ring */}
-          <Animated.View style={[
-              styles.spinnerRing, 
-              animatedSpinnerStyle,
-              { width: spinnerSize, height: spinnerSize, borderRadius: spinnerSize / 2, padding: stroke }
-          ]}>
+
+      <Animated.View
+        style={[
+          styles.card,
+          containerAnimatedStyle,
+          {
+            backgroundColor: theme.modal ?? theme.cardBackground,
+            borderColor: theme.border?.secondary ?? theme.cardBorder,
+            shadowColor: theme.shadow?.light ?? theme.cardShadow,
+            padding,
+            borderRadius: size === 'small' ? 12 : 16,
+            maxWidth: SCREEN_WIDTH * 0.85,
+          },
+        ]}
+      >
+        <View style={[styles.ringWrap, { width: ringSize + strokeWidth * 2, height: ringSize + strokeWidth * 2 }]}>
+          <Animated.View
+            style={[
+              styles.ringOuter,
+              ringAnimatedStyle,
+              {
+                width: ringSize + strokeWidth * 2,
+                height: ringSize + strokeWidth * 2,
+                borderRadius: (ringSize + strokeWidth * 2) / 2,
+              },
+            ]}
+          >
             <LinearGradient
-              colors={[theme.primary, theme.secondary, theme.accent || theme.primary]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[styles.gradient, { borderRadius: spinnerSize / 2 }]}
+              colors={[
+                'transparent',
+                gradientColors[0],
+                gradientColors[1],
+                'transparent',
+              ]}
+              start={{ x: 0.2, y: 0 }}
+              end={{ x: 0.8, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <View
+              style={[
+                styles.ringInner,
+                {
+                  width: ringSize,
+                  height: ringSize,
+                  borderRadius: ringSize / 2,
+                  backgroundColor: theme.modal ?? theme.cardBackground,
+                  top: strokeWidth,
+                  left: strokeWidth,
+                },
+              ]}
             />
           </Animated.View>
-          
-           {/* Inner mask to create the ring effect */}
-          <View style={[
-              styles.innerCircle, 
-              { 
-                  backgroundColor: theme.cardBackground,
-                  width: spinnerSize - stroke * 2,
-                  height: spinnerSize - stroke * 2,
-                  borderRadius: (spinnerSize - stroke * 2) / 2
-              }
-          ]} />
-          
-          {/* Central Logo/Icon or Pulse */}
-           <View style={[
-               styles.coreCircle, 
-               { 
-                   backgroundColor: theme.primary,
-                   width: spinnerSize * 0.15,
-                   height: spinnerSize * 0.15,
-                   borderRadius: (spinnerSize * 0.15) / 2
-               }
-           ]} />
         </View>
 
-        {text && (
-            <ThemedText style={[styles.loadingText, { fontSize: size === 'small' ? 12 : 16, marginTop: size === 'small' ? 4 : 8 }]}>{text}</ThemedText>
-        )}
+        {text ? (
+          <ThemedText
+            style={[
+              styles.text,
+              {
+                color: theme.text?.secondary ?? theme.text?.primary,
+                fontSize: textSize,
+                marginTop: size === 'small' ? 6 : 10,
+              },
+            ]}
+            numberOfLines={2}
+          >
+            {text}
+          </ThemedText>
+        ) : null}
       </Animated.View>
     </View>
   );
@@ -169,64 +162,32 @@ const styles = StyleSheet.create({
     zIndex: 9999,
   },
   overlay: {
-    backgroundColor: 'rgba(0,0,0,0.1)', // Subtle fallback/overlay on top of blur
+    // Overlay color applied by child View
   },
-  loaderContent: {
+  card: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
-    borderRadius: 16,
-    // Add subtle shadow/elevation
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 5,
+    borderWidth: 1,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 6,
   },
-  spinnerContainer: {
-    width: 80,
-    height: 80,
+  ringWrap: {
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
   },
-  spinnerRing: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+  ringOuter: {
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
-    // Apply padding to create the thickness of the ring when masked by innerCircle
-    padding: 4, 
   },
-  gradient: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 40,
-  },
-  innerCircle: {
+  ringInner: {
     position: 'absolute',
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
-  coreCircle: {
-      width: 12,
-      height: 12,
-      borderRadius: 6,
-      opacity: 0.8,
-  },
-  loadingText: {
-    marginTop: 8,
-    fontSize: 16,
-    fontWeight: '600',
-    letterSpacing: 0.5,
+  text: {
+    fontWeight: '500',
     textAlign: 'center',
+    letterSpacing: 0.2,
   },
 });

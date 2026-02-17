@@ -1,12 +1,13 @@
 import { useAuth } from '@/context/AuthContext';
+import { useTheme } from '@/context/ThemeContext';
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
-import { ThemedText } from '@/components/ThemedText';
 import { ModernLoader } from '@/components/ui/ModernLoader';
 
 export default function AuthScreen() {
   const { user, isLoading } = useAuth();
+  const { theme } = useTheme();
   const router = useRouter();
 
   useEffect(() => {
@@ -21,7 +22,7 @@ export default function AuthScreen() {
 
   if (isLoading) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
         <ModernLoader size='large' text='Checking authentication...' overlay={false} />
       </View>
     );
@@ -35,11 +36,5 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#666',
   },
 });

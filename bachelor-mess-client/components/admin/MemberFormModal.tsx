@@ -115,7 +115,7 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
       transparent={true}
       onRequestClose={handleClose}
     >
-      <View style={styles.modalOverlay}>
+      <View style={[styles.modalOverlay, { backgroundColor: theme.overlay?.medium }]}>
         <View style={[styles.modalContent, { backgroundColor: theme.modal }]}>
           <View style={[styles.modalHeader, { borderBottomColor: theme.border.secondary }]}>
             <ThemedText style={styles.modalTitle}>
@@ -254,7 +254,7 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
               {loading ? (
                 <ModernLoader size="small" />
               ) : (
-                <ThemedText style={styles.submitButtonText}>
+                <ThemedText style={[styles.submitButtonText, { color: theme.button?.primary?.text }]}>
                   {isEditMode ? 'Update Member' : 'Create Member'}
                 </ThemedText>
               )}
@@ -269,7 +269,6 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
   modalContent: {
@@ -334,7 +333,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   submitButtonText: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },

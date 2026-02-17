@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   StyleSheet,
@@ -14,18 +14,23 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from 'expo-router';
 import { ThemedText } from '../ThemedText';
 import { ThemedView } from '../ThemedView';
 import { ActivityCard } from '../cards';
+import {
+  DashboardHeader,
+  StatsGrid,
+  QuickActions,
+  type StatItem,
+  type ActionItem,
+} from '../dashboard';
 import { useAppRefresh } from '../../context/AppRefreshContext';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { useMealManagement } from '../../hooks/useMealManagement';
 import mealService from '../../services/mealService';
 import { useThemeColor } from '../../hooks/useThemeColor';
-
-const { width } = Dimensions.get('window');
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -37,8 +42,8 @@ export const MealManagement: React.FC<MealManagementProps> = ({
   onNavigate,
 }) => {
   useAuth();
+  const { theme } = useTheme();
 
-  // Theme colors
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
   const iconColor = useThemeColor({}, 'icon');
@@ -93,6 +98,82 @@ export const MealManagement: React.FC<MealManagementProps> = ({
   const handleViewHistory = () => {
     setActiveTab('history');
   };
+
+  const mealStatsForGrid: StatItem[] = useMemo(
+    () => [
+      {
+        title: 'Total Meals',
+        value: mealStats?.totalMeals ?? meals?.length ?? 0,
+        icon: 'fast-food',
+        colors: (theme.gradient?.info ?? [theme.primary, theme.primary]) as [string, string],
+        period: 'all time',
+      },
+      {
+        title: 'Pending',
+        value: meals?.filter(m => m?.status === 'pending').length ?? 0,
+        icon: 'time',
+        colors: (theme.gradient?.warning ?? [theme.primary, theme.primary]) as [string, string],
+        period: 'to approve',
+      },
+      {
+        title: 'Approved',
+        value: meals?.filter(m => m?.status === 'approved').length ?? 0,
+        icon: 'checkmark-circle',
+        colors: (theme.gradient?.success ?? [theme.primary, theme.primary]) as [string, string],
+        period: 'meals',
+      },
+      {
+        title: 'Today',
+        value:
+          meals?.filter(m => {
+            if (!m?.date) return false;
+            return new Date(m.date).toDateString() === new Date().toDateString();
+          }).length ?? 0,
+        icon: 'calendar',
+        colors: (theme.gradient?.secondary ?? [theme.primary, theme.primary]) as [string, string],
+        period: 'today',
+      },
+    ],
+    [mealStats?.totalMeals, meals, theme]
+  );
+
+  const quickActionsList: ActionItem[] = useMemo(
+    () => [
+      {
+        id: 'add-meal',
+        title: 'Add Meal',
+        subtitle: 'Record new meal',
+        icon: 'add-circle',
+        color: theme.gradient?.success?.[0] ?? theme.primary,
+        onPress: handleAddMeal,
+      },
+      {
+        id: 'history',
+        title: 'Meal History',
+        subtitle: 'View past meals',
+        icon: 'time',
+        color: theme.gradient?.warning?.[0] ?? theme.primary,
+        onPress: handleViewHistory,
+      },
+      {
+        id: 'profile',
+        title: 'My Profile',
+        subtitle: 'Update profile',
+        icon: 'person',
+        color: theme.gradient?.primary?.[0] ?? theme.primary,
+        onPress: () => onNavigate?.('profile'),
+      },
+      {
+        id: 'settings',
+        title: 'Settings',
+        subtitle: 'App preferences',
+        icon: 'settings',
+        color: theme.gradient?.secondary?.[0] ?? theme.primary,
+        onPress: () => onNavigate?.('settings'),
+      },
+    ],
+    [theme, onNavigate]
+  );
 
   const toggleMeal = (mealType: 'breakfast' | 'lunch' | 'dinner') => {
     setSelectedMeals(prev => ({
@@ -175,283 +256,149 @@ export const MealManagement: React.FC<MealManagementProps> = ({
     return (
       <ScrollView
         style={styles.scrollView}
+        contentContainerStyle={styles.overviewScrollContent}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
       >
-        {/* Header */}
-        <LinearGradient colors={['#10b981', '#059669']} style={styles.header}>
-          <View style={styles.headerContent}>
-            <View style={styles.headerIconContainer}>
-              <Ionicons name='restaurant' size={40} color='#fff' />
-            </View>
-            <View style={styles.headerText}>
-              <ThemedText style={styles.headerTitle}>
-                Meal Management
-              </ThemedText>
-              <ThemedText style={styles.headerSubtitle}>
-                Track and manage your meals
-              </ThemedText>
-            </View>
-          </View>
-        </LinearGradient>
+        <DashboardHeader
+          title="Meal Management"
+          subtitle="Track and manage your meals"
+          icon="restaurant"
+        />
+        <StatsGrid
+          stats={mealStatsForGrid}
+          columns={2}
+          isSmallScreen={isSmallScreen}
+        />
+        <QuickActions
+          actions={quickActionsList}
+          title="Quick Actions"
+          subtitle="Manage your meals"
+          columns={2}
+          isSmallScreen={isSmallScreen}
+        />
 
-        {/* Quick Stats */}
-        <View
-          style={[styles.statsGrid, isSmallScreen && styles.statsGridSmall]}
-        >
-          <View style={styles.statCard}>
-            <LinearGradient
-              colors={['#3b82f6', '#1d4ed8']}
-              style={styles.statGradient}
-            >
-              <Ionicons name='fast-food' size={28} color='#fff' />
-              <ThemedText style={styles.statValue}>
-                {mealStats?.totalMeals || meals?.length || 0}
-              </ThemedText>
-              <ThemedText style={styles.statLabel}>Total Meals</ThemedText>
-            </LinearGradient>
-          </View>
-
-          <View style={styles.statCard}>
-            <LinearGradient
-              colors={['#f59e0b', '#d97706']}
-              style={styles.statGradient}
-            >
-              <Ionicons name='time' size={28} color='#fff' />
-              <ThemedText style={styles.statValue}>
-                {meals?.filter(m => m?.status === 'pending').length || 0}
-              </ThemedText>
-              <ThemedText style={styles.statLabel}>Pending</ThemedText>
-            </LinearGradient>
-          </View>
-
-          <View style={styles.statCard}>
-            <LinearGradient
-              colors={['#8b5cf6', '#7c3aed']}
-              style={styles.statGradient}
-            >
-              <Ionicons name='checkmark-circle' size={28} color='#fff' />
-              <ThemedText style={styles.statValue}>
-                {meals?.filter(m => m?.status === 'approved').length || 0}
-              </ThemedText>
-              <ThemedText style={styles.statLabel}>Approved</ThemedText>
-            </LinearGradient>
-          </View>
-
-          <View style={styles.statCard}>
-            <LinearGradient
-              colors={['#06b6d4', '#0891b2']}
-              style={styles.statGradient}
-            >
-              <Ionicons name='calendar' size={28} color='#fff' />
-              <ThemedText style={styles.statValue}>
-                {meals?.filter(m => {
-                  if (!m?.date) return false;
-                  const today = new Date().toDateString();
-                  const mealDate = new Date(m.date).toDateString();
-                  return mealDate === today;
-                }).length || 0}
-              </ThemedText>
-              <ThemedText style={styles.statLabel}>Today</ThemedText>
-            </LinearGradient>
-          </View>
-        </View>
-
-        {/* Quick Actions */}
-        <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Quick Actions</ThemedText>
-          <View
-            style={[
-              styles.actionsGrid,
-              isSmallScreen && styles.actionsGridSmall,
-            ]}
-          >
-            <TouchableOpacity style={styles.actionCard} onPress={handleAddMeal}>
-              <LinearGradient
-                colors={['#10b981', '#059669']}
-                style={styles.actionGradient}
-              >
-                <Ionicons name='add-circle' size={36} color='#fff' />
-                <ThemedText style={styles.actionTitle}>Add Meal</ThemedText>
-                <ThemedText style={styles.actionSubtitle}>
-                  Record new meal
-                </ThemedText>
-              </LinearGradient>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.actionCard}
-              onPress={handleViewHistory}
-            >
-              <LinearGradient
-                colors={['#f59e0b', '#d97706']}
-                style={styles.actionGradient}
-              >
-                <Ionicons name='time' size={36} color='#fff' />
-                <ThemedText style={styles.actionTitle}>Meal History</ThemedText>
-                <ThemedText style={styles.actionSubtitle}>
-                  View past meals
-                </ThemedText>
-              </LinearGradient>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.actionCard}
-              onPress={() => onNavigate?.('profile')}
-            >
-              <LinearGradient
-                colors={['#8b5cf6', '#7c3aed']}
-                style={styles.actionGradient}
-              >
-                <Ionicons name='person' size={36} color='#fff' />
-                <ThemedText style={styles.actionTitle}>My Profile</ThemedText>
-                <ThemedText style={styles.actionSubtitle}>
-                  Update profile
-                </ThemedText>
-              </LinearGradient>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.actionCard}
-              onPress={() => onNavigate?.('settings')}
-            >
-              <LinearGradient
-                colors={['#ec4899', '#be185d']}
-                style={styles.actionGradient}
-              >
-                <Ionicons name='settings' size={36} color='#fff' />
-                <ThemedText style={styles.actionTitle}>Settings</ThemedText>
-                <ThemedText style={styles.actionSubtitle}>
-                  App preferences
-                </ThemedText>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Meal Summary */}
-        <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Meal Summary</ThemedText>
+        {/* Meal Summary - modern card style */}
+        <View style={[styles.section, { paddingHorizontal: 16 }]}>
+          <ThemedText style={[styles.sectionTitle, { color: theme.text?.primary }]}>
+            Meal Summary
+          </ThemedText>
           <View style={styles.summaryGrid}>
-            <View style={styles.summaryCard}>
-              <Ionicons name='sunny' size={24} color='#f59e0b' />
-              <ThemedText style={styles.summaryValue}>
+            <View
+              style={[
+                styles.summaryCard,
+                {
+                  backgroundColor: theme.cardBackground ?? theme.surface,
+                  borderColor: theme.border?.secondary ?? theme.cardBorder,
+                  borderWidth: 1,
+                  shadowColor: theme.shadow?.light ?? theme.cardShadow,
+                },
+              ]}
+            >
+              <View style={[styles.summaryIconWrap, { backgroundColor: (theme.status?.warning ?? theme.primary) + '18' }]}>
+                <Ionicons name="sunny" size={22} color={theme.status?.warning ?? theme.primary} />
+              </View>
+              <ThemedText style={[styles.summaryValue, { color: theme.text?.primary }]}>
                 {meals?.filter(m => m?.breakfast).length || 0}
               </ThemedText>
-              <ThemedText style={styles.summaryLabel}>Breakfast</ThemedText>
+              <ThemedText style={[styles.summaryLabel, { color: theme.text?.secondary }]}>Breakfast</ThemedText>
             </View>
-            <View style={styles.summaryCard}>
-              <Ionicons name='partly-sunny' size={24} color='#10b981' />
-              <ThemedText style={styles.summaryValue}>
+            <View
+              style={[
+                styles.summaryCard,
+                {
+                  backgroundColor: theme.cardBackground ?? theme.surface,
+                  borderColor: theme.border?.secondary ?? theme.cardBorder,
+                  borderWidth: 1,
+                  shadowColor: theme.shadow?.light ?? theme.cardShadow,
+                },
+              ]}
+            >
+              <View style={[styles.summaryIconWrap, { backgroundColor: (theme.status?.success ?? theme.primary) + '18' }]}>
+                <Ionicons name="partly-sunny" size={22} color={theme.status?.success ?? theme.primary} />
+              </View>
+              <ThemedText style={[styles.summaryValue, { color: theme.text?.primary }]}>
                 {meals?.filter(m => m?.lunch).length || 0}
               </ThemedText>
-              <ThemedText style={styles.summaryLabel}>Lunch</ThemedText>
+              <ThemedText style={[styles.summaryLabel, { color: theme.text?.secondary }]}>Lunch</ThemedText>
             </View>
-            <View style={styles.summaryCard}>
-              <Ionicons name='moon' size={24} color='#8b5cf6' />
-              <ThemedText style={styles.summaryValue}>
+            <View
+              style={[
+                styles.summaryCard,
+                {
+                  backgroundColor: theme.cardBackground ?? theme.surface,
+                  borderColor: theme.border?.secondary ?? theme.cardBorder,
+                  borderWidth: 1,
+                  shadowColor: theme.shadow?.light ?? theme.cardShadow,
+                },
+              ]}
+            >
+              <View style={[styles.summaryIconWrap, { backgroundColor: (theme.primary ?? theme.secondary) + '18' }]}>
+                <Ionicons name="moon" size={22} color={theme.primary ?? theme.secondary} />
+              </View>
+              <ThemedText style={[styles.summaryValue, { color: theme.text?.primary }]}>
                 {meals?.filter(m => m?.dinner).length || 0}
               </ThemedText>
-              <ThemedText style={styles.summaryLabel}>Dinner</ThemedText>
+              <ThemedText style={[styles.summaryLabel, { color: theme.text?.secondary }]}>Dinner</ThemedText>
             </View>
           </View>
         </View>
 
-        {/* Recent Meals */}
-        <View style={styles.section}>
+        {/* Recent Meals - modern card container */}
+        <View style={[styles.section, { paddingHorizontal: 16, marginBottom: 28 }]}>
           <View style={styles.sectionHeader}>
-            <ThemedText style={styles.sectionTitle}>Recent Meals</ThemedText>
+            <ThemedText style={[styles.sectionTitle, { color: theme.text?.primary }]}>Recent Meals</ThemedText>
             <TouchableOpacity
-              style={styles.monthFilterButton}
+              style={[styles.monthFilterButton, { backgroundColor: (theme.status?.success ?? theme.primary) + '18', borderColor: theme.status?.success ?? theme.primary }]}
               onPress={() => {
-                // Filter for current month
                 const currentMonth = new Date().getMonth();
                 const currentYear = new Date().getFullYear();
                 const filteredMeals = meals?.filter(meal => {
                   const mealDate = new Date(meal.date);
-                  return (
-                    mealDate.getMonth() === currentMonth &&
-                    mealDate.getFullYear() === currentYear
-                  );
+                  return mealDate.getMonth() === currentMonth && mealDate.getFullYear() === currentYear;
                 });
-                // You can implement a state to show filtered meals
-                Alert.alert(
-                  'Current Month',
-                  `Showing ${
-                    filteredMeals?.length || 0
-                  } meals for current month`
-                );
+                Alert.alert('Current Month', `Showing ${filteredMeals?.length || 0} meals for current month`);
               }}
             >
-              <Ionicons name='calendar' size={20} color='#10b981' />
-              <ThemedText style={styles.monthFilterText}>
-                Current Month
-              </ThemedText>
+              <Ionicons name="calendar" size={20} color={theme.status?.success ?? theme.primary} />
+              <ThemedText style={[styles.monthFilterText, { color: theme.status?.success ?? theme.primary }]}>Current Month</ThemedText>
             </TouchableOpacity>
           </View>
-          <View style={styles.mealsList}>
+          <View
+            style={[
+              styles.mealsList,
+              {
+                backgroundColor: theme.cardBackground ?? theme.surface,
+                borderColor: theme.border?.secondary ?? theme.cardBorder,
+                borderWidth: 1,
+                shadowColor: theme.shadow?.light ?? theme.cardShadow,
+              },
+            ]}
+          >
             {meals?.slice(0, 5).map((meal, index) => (
               <ActivityCard
                 key={meal.id || `meal-${index}`}
-                title={`Meal on ${new Date(
-                  meal.date || new Date()
-                ).toLocaleDateString()}`}
+                title={`Meal on ${new Date(meal.date || new Date()).toLocaleDateString()}`}
                 description={getMealSummary(meal)}
-                icon='restaurant'
-                iconBackgroundColor='#10b981'
+                icon="restaurant"
+                iconBackgroundColor={theme.status?.success ?? theme.primary}
                 timestamp={meal.date || new Date().toISOString()}
-                amount={`${meal?.breakfast ? 1 : 0}${meal?.lunch ? 1 : 0}${
-                  meal?.dinner ? 1 : 0
-                } meals`}
-                status={
-                  meal?.status === 'approved'
-                    ? 'success'
-                    : meal?.status === 'rejected'
-                      ? 'error'
-                      : 'warning'
-                }
+                amount={`${meal?.breakfast ? 1 : 0}${meal?.lunch ? 1 : 0}${meal?.dinner ? 1 : 0} meals`}
+                status={meal?.status === 'approved' ? 'success' : meal?.status === 'rejected' ? 'error' : 'warning'}
                 onPress={() => handleMealPress(meal)}
-                variant='compact'
+                variant="compact"
                 isSmallScreen={isSmallScreen}
               />
             ))}
             {(!meals || meals.length === 0) && (
               <View style={styles.emptyState}>
-                <Ionicons name='restaurant-outline' size={48} color='#9ca3af' />
-                <ThemedText style={styles.emptyStateText}>
-                  No meals recorded yet
-                </ThemedText>
-                <ThemedText style={styles.emptyStateSubtext}>
-                  Add your first meal to get started
-                </ThemedText>
+                <Ionicons name="restaurant-outline" size={48} color={theme.text?.secondary ?? theme.icon?.secondary} />
+                <ThemedText style={[styles.emptyStateText, { color: theme.text?.secondary }]}>No meals recorded yet</ThemedText>
+                <ThemedText style={[styles.emptyStateSubtext, { color: theme.text?.tertiary }]}>Add your first meal to get started</ThemedText>
               </View>
             )}
-          </View>
-        </View>
-
-        {/* Quick Stats */}
-        <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Quick Stats</ThemedText>
-          <View style={styles.quickStatsGrid}>
-            <View style={styles.quickStatCard}>
-              <ThemedText style={styles.quickStatValue}>
-                {meals?.filter(m => m?.status === 'approved').length || 0}
-              </ThemedText>
-              <ThemedText style={styles.quickStatLabel}>Approved</ThemedText>
-            </View>
-            <View style={styles.quickStatCard}>
-              <ThemedText style={styles.quickStatValue}>
-                {meals?.filter(m => m?.status === 'pending').length || 0}
-              </ThemedText>
-              <ThemedText style={styles.quickStatLabel}>Pending</ThemedText>
-            </View>
-            <View style={styles.quickStatCard}>
-              <ThemedText style={styles.quickStatValue}>
-                {meals?.filter(m => m?.status === 'rejected').length || 0}
-              </ThemedText>
-              <ThemedText style={styles.quickStatLabel}>Rejected</ThemedText>
-            </View>
           </View>
         </View>
       </ScrollView>
@@ -484,21 +431,12 @@ export const MealManagement: React.FC<MealManagementProps> = ({
   };
 
   const renderAddMeal = () => (
-    <ScrollView style={styles.scrollView}>
-      <LinearGradient colors={['#10b981', '#059669']} style={styles.header}>
-        <View style={styles.headerContent}>
-          <View style={styles.headerIconContainer}>
-            <Ionicons name='add-circle' size={40} color='#fff' />
-          </View>
-          <View style={styles.headerText}>
-            <ThemedText style={styles.headerTitle}>Add New Meal</ThemedText>
-            <ThemedText style={styles.headerSubtitle}>
-              Record your meal for today
-            </ThemedText>
-          </View>
-        </View>
-      </LinearGradient>
-
+    <ScrollView style={styles.scrollView} contentContainerStyle={styles.addMealScrollContent} showsVerticalScrollIndicator={false}>
+      <DashboardHeader
+        title="Add New Meal"
+        subtitle="Record your meal for today"
+        icon="add-circle"
+      />
       <View style={styles.addMealForm}>
         {/* Date Selection */}
         <View style={styles.formSection}>
@@ -614,21 +552,24 @@ export const MealManagement: React.FC<MealManagementProps> = ({
         <TouchableOpacity
           style={[
             styles.submitButton,
+            {
+              backgroundColor: theme.button?.primary?.background ?? theme.primary,
+            },
             submitting && styles.submitButtonDisabled,
           ]}
           onPress={handleSubmitMeal}
           disabled={submitting}
         >
-          <ThemedText style={styles.submitButtonText}>
+          <ThemedText style={[styles.submitButtonText, { color: theme.button?.primary?.text ?? theme.text?.inverse }]}>
             {submitting ? 'Submitting...' : 'Submit Meal'}
           </ThemedText>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.backButton}
+          style={[styles.backButton, { backgroundColor: theme.button?.secondary?.background ?? theme.surface, borderColor: theme.border?.secondary }]}
           onPress={() => setActiveTab('overview')}
         >
-          <ThemedText style={styles.backButtonText}>
+          <ThemedText style={[styles.backButtonText, { color: theme.text?.primary }]}>
             Back to Overview
           </ThemedText>
         </TouchableOpacity>
@@ -686,35 +627,46 @@ export const MealManagement: React.FC<MealManagementProps> = ({
 
   const renderHistory = () => (
     <View style={styles.container}>
-      <LinearGradient colors={['#f59e0b', '#d97706']} style={styles.header}>
-        <View style={styles.headerContent}>
-          <View style={styles.headerIconContainer}>
-            <Ionicons name='time' size={40} color='#fff' />
-          </View>
-          <View style={styles.headerText}>
-            <ThemedText style={styles.headerTitle}>Meal History</ThemedText>
-            <ThemedText style={styles.headerSubtitle}>
-              View all your past meals
-            </ThemedText>
-          </View>
-        </View>
-      </LinearGradient>
-
+      <DashboardHeader
+        title="Meal History"
+        subtitle="View all your past meals"
+        icon="time"
+      />
       <View style={styles.historyContent}>
         <View style={styles.historyStats}>
-          <View style={[styles.historyStatCard, { backgroundColor }]}>
-            <ThemedText style={[styles.historyStatValue, { color: textColor }]}>
+          <View
+            style={[
+              styles.historyStatCard,
+              {
+                backgroundColor: theme.cardBackground ?? theme.surface,
+                borderColor: theme.border?.secondary ?? theme.cardBorder,
+                borderWidth: 1,
+                shadowColor: theme.shadow?.light ?? theme.cardShadow,
+              },
+            ]}
+          >
+            <ThemedText style={[styles.historyStatValue, { color: theme.text?.primary }]}>
               {meals?.length || 0}
             </ThemedText>
-            <ThemedText style={[styles.historyStatLabel, { color: iconColor }]}>
+            <ThemedText style={[styles.historyStatLabel, { color: theme.text?.secondary }]}>
               Total Meals
             </ThemedText>
           </View>
-          <View style={[styles.historyStatCard, { backgroundColor }]}>
-            <ThemedText style={[styles.historyStatValue, { color: textColor }]}>
+          <View
+            style={[
+              styles.historyStatCard,
+              {
+                backgroundColor: theme.cardBackground ?? theme.surface,
+                borderColor: theme.border?.secondary ?? theme.cardBorder,
+                borderWidth: 1,
+                shadowColor: theme.shadow?.light ?? theme.cardShadow,
+              },
+            ]}
+          >
+            <ThemedText style={[styles.historyStatValue, { color: theme.text?.primary }]}>
               {meals?.filter(m => m?.status === 'approved').length || 0}
             </ThemedText>
-            <ThemedText style={[styles.historyStatLabel, { color: iconColor }]}>
+            <ThemedText style={[styles.historyStatLabel, { color: theme.text?.secondary }]}>
               Approved
             </ThemedText>
           </View>
@@ -725,37 +677,23 @@ export const MealManagement: React.FC<MealManagementProps> = ({
           keyExtractor={(item, index) => item.id || `meal-${index}`}
           renderItem={({ item: meal, index }) => (
             <ActivityCard
-              title={`Meal on ${new Date(
-                meal.date || new Date()
-              ).toLocaleDateString()}`}
+              title={`Meal on ${new Date(meal.date || new Date()).toLocaleDateString()}`}
               description={getMealSummary(meal)}
-              icon='restaurant'
-              iconBackgroundColor='#10b981'
+              icon="restaurant"
+              iconBackgroundColor={theme.status?.success ?? theme.primary}
               timestamp={meal.date || new Date().toISOString()}
-              amount={`${meal?.breakfast ? 1 : 0}${meal?.lunch ? 1 : 0}${
-                meal?.dinner ? 1 : 0
-              } meals`}
-              status={
-                meal?.status === 'approved'
-                  ? 'success'
-                  : meal?.status === 'rejected'
-                    ? 'error'
-                    : 'warning'
-              }
+              amount={`${meal?.breakfast ? 1 : 0}${meal?.lunch ? 1 : 0}${meal?.dinner ? 1 : 0} meals`}
+              status={meal?.status === 'approved' ? 'success' : meal?.status === 'rejected' ? 'error' : 'warning'}
               onPress={() => handleMealPress(meal)}
-              variant='compact'
+              variant="compact"
               isSmallScreen={isSmallScreen}
             />
           )}
           ListEmptyComponent={() => (
             <View style={styles.emptyState}>
-              <Ionicons name='restaurant-outline' size={48} color={iconColor} />
-              <ThemedText style={styles.emptyStateText}>
-                No meal history found
-              </ThemedText>
-              <ThemedText style={styles.emptyStateSubtext}>
-                Start adding meals to see your history
-              </ThemedText>
+              <Ionicons name="restaurant-outline" size={48} color={theme.text?.secondary ?? theme.icon?.secondary} />
+              <ThemedText style={[styles.emptyStateText, { color: theme.text?.secondary }]}>No meal history found</ThemedText>
+              <ThemedText style={[styles.emptyStateSubtext, { color: theme.text?.tertiary }]}>Start adding meals to see your history</ThemedText>
             </View>
           )}
           contentContainerStyle={styles.historyList}
@@ -763,10 +701,10 @@ export const MealManagement: React.FC<MealManagementProps> = ({
         />
 
         <TouchableOpacity
-          style={styles.backButton}
+          style={[styles.backButton, { backgroundColor: theme.button?.primary?.background ?? theme.primary, borderWidth: 0 }]}
           onPress={() => setActiveTab('overview')}
         >
-          <ThemedText style={styles.backButtonText}>
+          <ThemedText style={[styles.backButtonText, { color: theme.button?.primary?.text ?? theme.text?.inverse }]}>
             Back to Overview
           </ThemedText>
         </TouchableOpacity>
@@ -790,96 +728,13 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  header: {
-    padding: 20,
-    marginBottom: 20,
+  overviewScrollContent: {
+    paddingBottom: 28,
   },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerIconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  headerText: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.9)',
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    paddingHorizontal: 20,
-    marginBottom: 24,
-    justifyContent: 'space-between',
-  },
-  statsGridSmall: {
-    gap: 12,
-    paddingHorizontal: 16,
-  },
-  statCard: {
-    width: (width - 60) / 2,
-    marginBottom: 15,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  statGradient: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#fff',
-    opacity: 0.9,
-    textAlign: 'center',
-  },
-  actionCard: {
-    width: (width - 60) / 2,
-    marginBottom: 15,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  actionGradient: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  actionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  actionSubtitle: {
-    fontSize: 12,
-    color: '#fff',
-    opacity: 0.9,
-    textAlign: 'center',
+  addMealScrollContent: {
+    paddingBottom: 28,
   },
   section: {
-    paddingHorizontal: 20,
     marginBottom: 24,
   },
   sectionHeader: {
@@ -890,98 +745,61 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1f2937',
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
   monthFilterButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f0fdf4',
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#10b981',
   },
   monthFilterText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#10b981',
     marginLeft: 6,
-  },
-
-  actionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    justifyContent: 'space-between',
-  },
-  actionsGridSmall: {
-    gap: 12,
   },
   summaryGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 16,
+    gap: 12,
   },
   summaryCard: {
     flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    padding: 14,
     alignItems: 'center',
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  summaryIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
   },
   summaryValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginTop: 8,
-    marginBottom: 4,
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: 2,
   },
   summaryLabel: {
     fontSize: 12,
-    color: '#6b7280',
-    fontWeight: '500',
-  },
-  quickStatsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 16,
-  },
-  quickStatCard: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  quickStatValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 4,
-  },
-  quickStatLabel: {
-    fontSize: 12,
-    color: '#6b7280',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   mealsList: {
-    backgroundColor: '#fff',
     borderRadius: 16,
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 3,
   },
   emptyState: {
     alignItems: 'center',
@@ -1054,21 +872,18 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   submitButton: {
-    backgroundColor: '#10b981',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
     alignItems: 'center',
     marginBottom: 16,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
   submitButtonText: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontWeight: '700',
   },
   submitButtonDisabled: {
     opacity: 0.6,
@@ -1084,35 +899,34 @@ const styles = StyleSheet.create({
   },
   historyStatCard: {
     flex: 1,
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    padding: 14,
     alignItems: 'center',
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
   historyStatValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 22,
+    fontWeight: '700',
     marginBottom: 4,
   },
   historyStatLabel: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   historyList: {
     marginBottom: 24,
   },
   backButton: {
-    backgroundColor: '#667eea',
     paddingHorizontal: 20,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
   },
   backButtonText: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },

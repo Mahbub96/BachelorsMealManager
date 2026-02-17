@@ -2,7 +2,6 @@ import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { IconName } from '@/constants/IconTypes';
-import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '../ThemedText';
 import { useTheme } from '@/context/ThemeContext';
 
@@ -33,94 +32,66 @@ export const QuickActions: React.FC<QuickActionsProps> = ({
   columns = 2,
 }) => {
   const { theme } = useTheme();
-  const getGridStyle = () => {
-    const containerPadding = 32; // Account for container padding (16 on each side)
-    const availableWidth = screenWidth - containerPadding;
-    const gap = isSmallScreen ? 12 : 16;
-    const totalGaps = columns - 1;
-    const cardWidth = (availableWidth - totalGaps * gap) / columns;
-
-    return { width: cardWidth };
-  };
+  const padding = 16;
+  const gap = 12;
+  const availableWidth = screenWidth - padding * 2 - gap * (columns - 1);
+  const cardWidth = availableWidth / columns;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.wrap, { paddingHorizontal: padding, marginBottom: 28 }]}>
       {(title || subtitle) && (
         <View style={styles.sectionHeader}>
-          {title && (
-            <ThemedText
-              style={[
-                styles.sectionTitle,
-                { color: theme.text.primary },
-                isSmallScreen && styles.sectionTitleSmall,
-              ]}
-            >
-              {title}
-            </ThemedText>
-          )}
+          <ThemedText style={[styles.sectionTitle, { color: theme.text?.primary }]}>
+            {title}
+          </ThemedText>
           {subtitle && (
-            <ThemedText
-              style={[
-                styles.sectionSubtitle,
-                { color: theme.text.secondary },
-                isSmallScreen && styles.sectionSubtitleSmall,
-              ]}
-            >
+            <ThemedText style={[styles.sectionSubtitle, { color: theme.text?.secondary }]}>
               {subtitle}
             </ThemedText>
           )}
         </View>
       )}
-
-      <View
-        style={[styles.actionsGrid, isSmallScreen && styles.actionsGridSmall]}
-      >
-        {(actions || []).map(action => (
+      <View style={styles.grid}>
+        {(actions || []).map((action) => (
           <TouchableOpacity
             key={action.id}
             style={[
-              styles.actionCard,
-              getGridStyle(),
-              isSmallScreen && styles.actionCardSmall,
+              styles.card,
+              {
+                width: cardWidth,
+                backgroundColor: theme.cardBackground ?? theme.surface,
+                borderWidth: 1,
+                borderColor: theme.border?.secondary ?? theme.cardBorder ?? 'transparent',
+                shadowColor: theme.shadow?.light ?? theme.cardShadow,
+              },
             ]}
             onPress={action.onPress}
-            activeOpacity={0.8}
+            activeOpacity={0.7}
           >
-            <LinearGradient
-              colors={[action.color, `${action.color}dd`]}
-              style={styles.actionGradient}
+            <View
+              style={[
+                styles.iconWrap,
+                { backgroundColor: (action.color || theme.primary) + '18' },
+              ]}
             >
-              <View
-                style={[
-                  styles.actionIconContainer,
-                  isSmallScreen && styles.actionIconContainerSmall,
-                ]}
-              >
-                <Ionicons
-                  name={action.icon as IconName}
-                  size={isSmallScreen ? 24 : 28}
-                  color={theme.text.inverse}
-                />
-              </View>
-              <View style={styles.actionContent}>
-                <ThemedText
-                  style={[
-                    styles.actionTitle,
-                    isSmallScreen && styles.actionTitleSmall,
-                  ]}
-                >
-                  {action.title}
-                </ThemedText>
-                <ThemedText
-                  style={[
-                    styles.actionSubtitle,
-                    isSmallScreen && styles.actionSubtitleSmall,
-                  ]}
-                >
-                  {action.subtitle}
-                </ThemedText>
-              </View>
-            </LinearGradient>
+              <Ionicons
+                name={action.icon as IconName}
+                size={isSmallScreen ? 24 : 26}
+                color={action.color || theme.primary}
+              />
+            </View>
+            <ThemedText
+              style={[styles.actionTitle, { color: theme.text?.primary }]}
+              numberOfLines={1}
+            >
+              {action.title}
+            </ThemedText>
+            <ThemedText
+              style={[styles.actionSubtitle, { color: theme.text?.secondary }]}
+              numberOfLines={1}
+            >
+              {action.subtitle}
+            </ThemedText>
           </TouchableOpacity>
         ))}
       </View>
@@ -129,89 +100,49 @@ export const QuickActions: React.FC<QuickActionsProps> = ({
 };
 
 const styles = StyleSheet.create({
-  container: {
-    marginBottom: 24,
-  },
+  wrap: {},
   sectionHeader: {
-    marginBottom: 16,
+    marginBottom: 14,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  sectionTitleSmall: {
-    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+    marginBottom: 2,
   },
   sectionSubtitle: {
-    fontSize: 14,
+    fontSize: 13,
+    fontWeight: '500',
   },
-  sectionSubtitleSmall: {
-    fontSize: 12,
-  },
-  actionsGrid: {
+  grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 16,
-    justifyContent: 'center',
-  },
-  actionsGridSmall: {
     gap: 12,
   },
-  actionCard: {
-    aspectRatio: 1.2,
+  card: {
     borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  actionCardSmall: {
-    aspectRatio: 1.5,
-    borderRadius: 12,
-  },
-  actionGradient: {
-    flex: 1,
     padding: 16,
-    justifyContent: 'space-between',
+    minHeight: 100,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  actionIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  iconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
   },
-  actionIconContainerSmall: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginBottom: 8,
-  },
-  actionContent: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
   actionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  actionTitleSmall: {
-    fontSize: 14,
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 2,
   },
   actionSubtitle: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
-    lineHeight: 16,
-  },
-  actionSubtitleSmall: {
-    fontSize: 10,
-    lineHeight: 14,
+    fontWeight: '500',
   },
 });

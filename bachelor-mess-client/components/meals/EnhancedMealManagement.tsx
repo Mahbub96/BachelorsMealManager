@@ -158,7 +158,6 @@ export const EnhancedMealManagement: React.FC<EnhancedMealManagementProps> = ({
   const [selectedMeal, setSelectedMeal] = useState<MealEntry | null>(null);
   const [selectedMeals, setSelectedMeals] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [currentView, setCurrentView] = useState<'meals' | 'analytics'>(
     'meals'
@@ -369,11 +368,9 @@ export const EnhancedMealManagement: React.FC<EnhancedMealManagementProps> = ({
     </View>
   );
 
-  // Render admin interface
+  // Render admin interface (no big header - parent tab already shows "Meal Management")
   const renderAdminInterface = () => (
     <View style={styles.container}>
-      <MealHeader {...headerConfig} />
-
       <MealTabNavigation
         tabs={tabs}
         activeTab={
@@ -383,6 +380,14 @@ export const EnhancedMealManagement: React.FC<EnhancedMealManagementProps> = ({
         }
         onTabPress={handleTabPress}
         pendingCount={pendingMealsCount}
+        rightElement={
+          <MealAdvancedFilters
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            dateRange={dateRange}
+            onDateRangeChange={handleDateRangeChange}
+          />
+        }
       />
 
       {currentView === 'analytics' && canViewAnalytics ? (
@@ -411,15 +416,6 @@ export const EnhancedMealManagement: React.FC<EnhancedMealManagementProps> = ({
               }}
             />
           )}
-
-          <MealAdvancedFilters
-            isExpanded={showAdvancedFilters}
-            onToggle={() => setShowAdvancedFilters(!showAdvancedFilters)}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            dateRange={dateRange}
-            onDateRangeChange={handleDateRangeChange}
-          />
 
           {canBulkOperate && (
           <MealBulkActions

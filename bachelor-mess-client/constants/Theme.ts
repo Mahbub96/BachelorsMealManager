@@ -131,6 +131,12 @@ export interface ThemeColors {
     medium: string;
     heavy: string;
   };
+
+  // Content on primary/gradient (e.g. header on purple)
+  onPrimary?: {
+    text: string;
+    overlay: string;
+  };
 }
 
 export const LightTheme: ThemeColors = {
@@ -255,6 +261,10 @@ export const LightTheme: ThemeColors = {
     medium: 'rgba(0, 0, 0, 0.3)',
     heavy: 'rgba(0, 0, 0, 0.7)',
   },
+  onPrimary: {
+    text: '#ffffff',
+    overlay: 'rgba(255, 255, 255, 0.2)',
+  },
 };
 
 export const DarkTheme: ThemeColors = {
@@ -378,6 +388,10 @@ export const DarkTheme: ThemeColors = {
     light: 'rgba(255, 255, 255, 0.1)',
     medium: 'rgba(255, 255, 255, 0.3)',
     heavy: 'rgba(255, 255, 255, 0.7)',
+  },
+  onPrimary: {
+    text: '#ffffff',
+    overlay: 'rgba(255, 255, 255, 0.2)',
   },
 };
 

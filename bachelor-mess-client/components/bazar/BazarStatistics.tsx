@@ -364,7 +364,7 @@ export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
             styles.modernCard,
             {
               backgroundColor: theme.cardBackground,
-              shadowColor: '#000',
+              shadowColor: theme.shadow?.light ?? theme.cardShadow,
               shadowOffset: { width: 0, height: 2 },
               shadowOpacity: 0.06,
               shadowRadius: 8,

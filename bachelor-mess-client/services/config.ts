@@ -59,6 +59,8 @@ export interface ApiResponse<T = any> {
   error?: string;
   message?: string;
   statusCode?: number;
+  /** True when response was served from cache (e.g. when offline) */
+  fromCache?: boolean;
 }
 
 // HTTP Status codes

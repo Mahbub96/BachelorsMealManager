@@ -813,11 +813,10 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 20,
-    paddingBottom: 140, // Extra padding for fixed bottom actions
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: 40, // Additional padding for scroll content
+    paddingBottom: 200, // Space so items don't sit under fixed bottom actions (approve/reject + delete)
   },
   bottomActions: {
     position: 'absolute',

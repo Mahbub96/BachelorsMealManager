@@ -1,4 +1,6 @@
+const mongoose = require('mongoose');
 const Statistics = require('../models/Statistics');
+const { getGroupMemberIds } = require('../utils/groupHelper');
 const logger = require('../utils/logger');
 
 class StatisticsService {
@@ -77,8 +79,8 @@ class StatisticsService {
           budgetUsed:
             stats.monthly.currentMonth.bazar.totalAmount > 0
               ? Math.round(
-                  (stats.monthly.currentMonth.bazar.totalAmount / 40000) * 100
-                )
+                (stats.monthly.currentMonth.bazar.totalAmount / 40000) * 100,
+              )
               : 0,
         },
       };
@@ -253,7 +255,7 @@ class StatisticsService {
           logger.error('Error in periodic statistics update:', error);
         }
       },
-      5 * 60 * 1000
+      5 * 60 * 1000,
     ); // 5 minutes
 
     // Update monthly statistics every hour
@@ -266,8 +268,169 @@ class StatisticsService {
           logger.error('Error in periodic monthly statistics update:', error);
         }
       },
-      60 * 60 * 1000
+      60 * 60 * 1000,
     ); // 1 hour
+  }
+  /**
+   * Get monthly report (group-scoped for admin/member, app-wide for super_admin).
+   * @param {number} month - 1-12
+   * @param {number} year - Full year (e.g. 2024)
+   * @param {Object} [user] - req.user for group scoping (admin sees his group only)
+   */
+  static async getMonthlyReport(month, year, user = null) {
+    const Meal = mongoose.model('Meal');
+    const Bazar = mongoose.model('Bazar');
+    const User = mongoose.model('User');
+
+    try {
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+
+      const groupMemberIds = user ? await getGroupMemberIds(user) : null;
+      const mealMatch = {
+        date: { $gte: startDate, $lte: endDate },
+        status: 'approved',
+      };
+      if (Array.isArray(groupMemberIds) && groupMemberIds.length > 0) {
+        mealMatch.userId = { $in: groupMemberIds };
+      }
+
+      const mealStats = await Meal.aggregate([
+        {
+          $match: mealMatch,
+        },
+        {
+          $group: {
+            _id: '$userId',
+            totalMeals: {
+              $sum: {
+                $add: [
+                  { $cond: ['$breakfast', 1, 0] },
+                  { $cond: ['$lunch', 1, 0] },
+                  { $cond: ['$dinner', 1, 0] },
+                ],
+              },
+            },
+            totalBreakfast: { $sum: { $cond: ['$breakfast', 1, 0] } },
+            totalLunch: { $sum: { $cond: ['$lunch', 1, 0] } },
+            totalDinner: { $sum: { $cond: ['$dinner', 1, 0] } },
+          },
+        },
+      ]);
+
+      const bazarMatch = {
+        date: { $gte: startDate, $lte: endDate },
+        status: 'approved',
+      };
+      if (Array.isArray(groupMemberIds) && groupMemberIds.length > 0) {
+        bazarMatch.userId = { $in: groupMemberIds };
+      }
+
+      const bazarStats = await Bazar.aggregate([
+        {
+          $match: bazarMatch,
+        },
+        {
+          $group: {
+            _id: '$userId',
+            totalAmount: { $sum: '$totalAmount' },
+            entryCount: { $sum: 1 },
+          },
+        },
+      ]);
+
+      const participantIds = new Set([
+        ...mealStats.map(m => m._id.toString()),
+        ...bazarStats.map(b => b._id.toString()),
+      ]);
+
+      const userQuery = Array.isArray(groupMemberIds) && groupMemberIds.length > 0
+        ? { _id: { $in: groupMemberIds } }
+        : {
+          $or: [
+            { _id: { $in: Array.from(participantIds) } },
+            { status: 'active' },
+          ],
+        };
+      const users = await User.find(userQuery)
+        .select('name email phone profileImage status')
+        .lean();
+
+      // Calculate totals
+      const totalMeals = mealStats.reduce((sum, item) => sum + item.totalMeals, 0);
+      const totalCost = bazarStats.reduce((sum, item) => sum + item.totalAmount, 0);
+
+      // Calculate Meal Rate (Cost / Total Meals)
+      // If no meals, rate is 0 to avoid division by zero
+      const mealRate = totalMeals > 0 ? totalCost / totalMeals : 0;
+
+      // Map data to users
+      const memberReports = users.map(user => {
+        const userMeal = mealStats.find(m => m._id.toString() === user._id.toString()) || {
+          totalMeals: 0,
+          totalBreakfast: 0,
+          totalLunch: 0,
+          totalDinner: 0,
+        };
+
+        const userBazar = bazarStats.find(b => b._id.toString() === user._id.toString()) || {
+          totalAmount: 0,
+          entryCount: 0,
+        };
+
+        const mealCost = userMeal.totalMeals * mealRate;
+        const balance = userBazar.totalAmount - mealCost; // Deposit - Cost
+
+        return {
+          user: {
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            profileImage: user.profileImage,
+          },
+          meals: {
+            total: userMeal.totalMeals,
+            breakfast: userMeal.totalBreakfast,
+            lunch: userMeal.totalLunch,
+            dinner: userMeal.totalDinner,
+          },
+          bazar: {
+            totalAmount: userBazar.totalAmount,
+            entryCount: userBazar.entryCount,
+          },
+          financial: {
+            mealCost: Number(mealCost.toFixed(2)),
+            balance: Number(balance.toFixed(2)),
+          },
+        };
+      });
+
+      return {
+        success: true,
+        data: {
+          period: {
+            month,
+            year,
+            startDate,
+            endDate,
+          },
+          summary: {
+            totalMeals,
+            totalCost,
+            mealRate: Number(mealRate.toFixed(2)),
+            totalMembers: users.length,
+          },
+          members: memberReports,
+        },
+      };
+
+    } catch (error) {
+      logger.error('Error generating monthly report:', error);
+      return {
+        success: false,
+        error: 'Failed to generate monthly report',
+      };
+    }
   }
 }
 
