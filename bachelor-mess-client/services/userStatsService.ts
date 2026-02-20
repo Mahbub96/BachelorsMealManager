@@ -5,6 +5,8 @@ import errorHandler from './errorHandler';
 export interface UserDashboardStats {
   meals: {
     total: number;
+    /** Guest meals count (included in total); shown on dashboard when > 0 */
+    guestMeals?: number;
     approved: number;
     pending: number;
     rejected: number;
@@ -49,8 +51,7 @@ class UserStatsServiceImpl implements UserStatsService {
       const response = await httpClient.get<UserDashboardStats>(
         API_ENDPOINTS.USER_STATS.DASHBOARD,
         {
-          cache: true,
-          cacheKey: 'user_dashboard_stats',
+          cache: false,
           retries: 3,
           timeout: 15000,
         }

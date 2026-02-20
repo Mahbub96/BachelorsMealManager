@@ -6,6 +6,7 @@ import errorHandler from '@/services/errorHandler';
 import userStatsService, {
   UserDashboardStats,
 } from '@/services/userStatsService';
+import logger from '@/utils/logger';
 import { useRouter, useFocusEffect } from 'expo-router';
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
@@ -70,33 +71,21 @@ export const UserDashboard: React.FC = () => {
         setError(null);
       }
 
-      console.log('🔄 Loading user dashboard data...');
-
-      // First test API connection (but don't block if it fails - try to fetch data anyway)
-      console.log('🧪 Testing API connection...');
       const isConnected = await userStatsService.testApiConnection();
       if (isMounted.current) setApiConnected(isConnected);
-
-      if (!isConnected) {
-        console.warn('⚠️ API connection test failed, but attempting to fetch data anyway...');
-        // Don't return early - try to fetch data anyway as the connection test might be too strict
-      } else {
-        console.log('✅ API connection successful, fetching dashboard data...');
-      }
 
       const response = await userStatsService.getUserDashboardStats();
 
       if (response.success && response.data) {
         if (isMounted.current) {
           setDashboardData(response.data);
-          console.log('✅ Dashboard data loaded successfully');
         }
       } else {
         const errorMessage = response.error || 'Failed to load dashboard data';
         if (isMounted.current) {
           setError(errorMessage);
         }
-        console.error('❌ Failed to load dashboard data:', errorMessage);
+        logger.error('Failed to load dashboard data', errorMessage);
 
         // Show user-friendly error
         const appError = errorHandler.handleError(
@@ -111,7 +100,7 @@ export const UserDashboard: React.FC = () => {
       if (isMounted.current) {
         setError(errorMessage);
       }
-      console.error('❌ Error loading dashboard data:', err);
+      logger.error('Error loading dashboard data', err);
 
       // Show user-friendly error
       const appError = errorHandler.handleError(err, 'Dashboard Data');
@@ -130,27 +119,22 @@ export const UserDashboard: React.FC = () => {
         setActivitiesError(null);
       }
 
-      console.log('📋 Loading recent activities...');
       const response = await activityService.getRecentActivities({}, 1, 10);
 
       if (response.success && response.data) {
         if (isMounted.current) {
           setActivities(response.data.activities);
-          console.log(
-            '✅ Activities loaded successfully:',
-            response.data.activities.length
-          );
         }
       } else {
         const errorMsg = response.error || 'Failed to load activities';
         if (isMounted.current) setActivitiesError(errorMsg);
-        console.error('❌ Failed to load activities:', response.error);
+        logger.error('Failed to load activities', response.error);
       }
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : 'Failed to load activities';
       if (isMounted.current) setActivitiesError(errorMessage);
-      console.error('❌ Error loading activities:', err);
+      logger.error('Error loading activities', err);
     } finally {
       if (isMounted.current) setActivitiesLoading(false);
     }
@@ -190,7 +174,7 @@ export const UserDashboard: React.FC = () => {
       const { default: dashboardService } = await import('@/services/dashboardService');
       await dashboardService.refreshDashboard();
     } catch (error) {
-      console.log('⚠️ Could not refresh dashboard service cache:', error);
+        logger.warn('Could not refresh dashboard service cache', error);
     }
     await loadDashboardData();
     await loadActivities();
@@ -240,6 +224,7 @@ export const UserDashboard: React.FC = () => {
     }
 
     switch (statType) {
+      case 'Meals + Guest':
       case 'Total Meals':
         router.push('/(tabs)/meals');
         break;
@@ -298,17 +283,19 @@ export const UserDashboard: React.FC = () => {
   const dashboardStats: StatItem[] = stats
     ? [
         {
-          title: 'Total Meals',
+          title: 'Meals + Guest',
           value: stats.meals?.total ?? 0,
           icon: 'fast-food',
           colors: theme.gradient.primary as [string, string],
           trend: stats.meals?.efficiency > 70 ? 'up' : 'neutral',
           change:
-            stats.meals?.efficiency !== undefined
-              ? `${stats.meals.efficiency}% approved`
-              : 'N/A',
+            (stats.meals?.guestMeals ?? 0) > 0
+              ? `${(stats.meals?.total ?? 0) - (stats.meals?.guestMeals ?? 0)} meals + ${stats.meals.guestMeals} guest`
+              : stats.meals?.efficiency !== undefined
+                ? `${stats.meals.efficiency}% approved`
+                : 'N/A',
           period: 'this month',
-          onPress: () => handleStatCardClick('Total Meals'),
+          onPress: () => handleStatCardClick('Meals + Guest'),
         },
         {
           title: 'Bazar Total',
@@ -363,14 +350,14 @@ export const UserDashboard: React.FC = () => {
     : [
         // Default stats when no data available
         {
-          title: 'Total Meals',
+          title: 'Meals + Guest',
           value: 'N/A',
           icon: 'fast-food',
           colors: theme.gradient.primary as [string, string],
           trend: 'neutral',
           change: 'Login required',
           period: 'this month',
-          onPress: () => handleStatCardClick('Total Meals'),
+          onPress: () => handleStatCardClick('Meals + Guest'),
         },
         {
           title: 'Bazar Total',
