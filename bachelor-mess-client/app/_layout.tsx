@@ -35,14 +35,7 @@ function AppContent() {
       <Stack.Screen name='(tabs)' options={{ headerShown: false }} />
       <Stack.Screen name='LoginScreen' options={{ headerShown: false }} />
       <Stack.Screen name='SignupScreen' options={{ headerShown: false }} />
-      <Stack.Screen
-        name='notifications'
-        options={{
-          headerShown: true,
-          title: 'Notifications',
-          headerBackTitle: 'Back',
-        }}
-      />
+      <Stack.Screen name='notifications' options={{ headerShown: false }} />
       <Stack.Screen
         name='settings'
         options={{ headerShown: false }}
@@ -51,14 +44,13 @@ function AppContent() {
         name='profile'
         options={{ headerShown: false }}
       />
-      <Stack.Screen
-        name='help'
-        options={{
-          headerShown: true,
-          title: 'Help & Support',
-          headerBackTitle: 'Back',
-        }}
-      />
+      <Stack.Screen name='help' options={{ headerShown: false }} />
+      <Stack.Screen name='edit-profile' options={{ headerShown: false }} />
+      <Stack.Screen name='new-bazar' options={{ headerShown: false }} />
+      <Stack.Screen name='bazar-details' options={{ headerShown: false }} />
+      <Stack.Screen name='stat-details' options={{ headerShown: false }} />
+      <Stack.Screen name='line-details' options={{ headerShown: false }} />
+      <Stack.Screen name='meals' options={{ headerShown: false }} />
       <Stack.Screen
         name='recent-activity'
         options={{
@@ -95,6 +87,8 @@ function AppContent() {
           headerShown: false,
         }}
       />
+      <Stack.Screen name='super-admin' options={{ headerShown: false }} />
+      <Stack.Screen name='+not-found' options={{ headerShown: false }} />
     </Stack>
   );
 }

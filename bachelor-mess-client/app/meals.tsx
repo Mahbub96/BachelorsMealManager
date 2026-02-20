@@ -7,9 +7,10 @@ import {
   StyleSheet,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
+import { ScreenLayout } from '@/components/layout';
+import { useTheme } from '@/context/ThemeContext';
 import { useActivity } from '@/hooks/useActivity';
 
 interface MealStats {
@@ -40,6 +41,7 @@ const statusFilters: StatusFilter[] = [
 
 export default function MealsScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [, setCurrentPage] = useState(1);
 
@@ -198,28 +200,19 @@ export default function MealsScreen() {
     }) || [];
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <LinearGradient
-        colors={['#667eea', '#764ba2']}
-        style={styles.headerGradient}
-      >
-        <View style={styles.header}>
-          <View style={styles.headerContent}>
-            <ThemedText style={styles.headerTitle}>
-              Current Month Meals
-            </ThemedText>
-            <ThemedText style={styles.headerSubtitle}>
-              Manage and track your meals
-            </ThemedText>
-          </View>
-          <Pressable style={styles.addButton} onPress={handleAddMeal}>
-            <Ionicons name='add' size={24} color='#fff' />
-          </Pressable>
-        </View>
-      </LinearGradient>
-
-      <ScrollView
+    <ScreenLayout
+      title="Current Month Meals"
+      subtitle="Manage and track your meals"
+      showBack
+      onBackPress={() => router.back()}
+      rightElement={
+        <Pressable onPress={handleAddMeal} style={{ padding: 8 }}>
+          <Ionicons name="add" size={24} color={theme?.text?.primary ?? '#11181C'} />
+        </Pressable>
+      }
+    >
+      <View style={styles.container}>
+        <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -399,8 +392,9 @@ export default function MealsScreen() {
             </ThemedText>
           </View>
         )}
-      </ScrollView>
-    </View>
+        </ScrollView>
+      </View>
+    </ScreenLayout>
   );
 }
 
@@ -408,34 +402,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8fafc',
-  },
-  headerGradient: {
-    paddingTop: 50,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  headerContent: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
-  },
-  addButton: {
-    padding: 12,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
   content: {
     flex: 1,

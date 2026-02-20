@@ -1,6 +1,6 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { ScreenBackButton } from '@/components/ui/ScreenBackButton';
+import { ScreenLayout } from '@/components/layout';
 import { featureManager, FeatureConfig, offlineStorage } from '@/services';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -297,9 +297,15 @@ export default function SettingsScreen() {
     );
   }
 
+  const handleBack = () => router.navigate('/(tabs)/meals');
+
   return (
-    <ThemedView style={styles.container}>
-      <ScreenBackButton onPress={() => router.back()} />
+    <ScreenLayout
+      title="Settings"
+      subtitle="App preferences"
+      showBack
+      onBackPress={handleBack}
+    >
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
@@ -398,7 +404,7 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </ThemedView>
+    </ScreenLayout>
   );
 }
 

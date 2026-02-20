@@ -29,6 +29,7 @@ export const ScreenBackButton: React.FC<ScreenBackButtonProps> = ({
       style={[styles.row, { borderColor }, style]}
       onPress={onPress}
       activeOpacity={0.7}
+      hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
     >
       <Ionicons name="chevron-back" size={24} color={iconColor} />
       <ThemedText style={[styles.text, { color: textColor }]}>{label}</ThemedText>

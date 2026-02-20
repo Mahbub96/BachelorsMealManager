@@ -1,4 +1,5 @@
 import { ThemedText } from '@/components/ThemedText';
+import { ScreenLayout } from '@/components/layout';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -8,13 +9,19 @@ export default function StatDetailsPage() {
   const params = useLocalSearchParams<{ title?: string; value?: string; icon?: string; details?: string }>();
 
   return (
-    <View style={styles.container}>
-      <ThemedText style={styles.title}>{params.title ?? 'Stat details'}</ThemedText>
-      <ThemedText>Value: {params.value}</ThemedText>
-      <TouchableOpacity style={styles.button} onPress={() => router.back()}>
-        <ThemedText>Back</ThemedText>
-      </TouchableOpacity>
-    </View>
+    <ScreenLayout
+      title={params.title ?? 'Stat details'}
+      showBack
+      onBackPress={() => router.back()}
+    >
+      <View style={styles.container}>
+        <ThemedText style={styles.title}>{params.title ?? 'Stat details'}</ThemedText>
+        <ThemedText>Value: {params.value}</ThemedText>
+        <TouchableOpacity style={styles.button} onPress={() => router.back()}>
+          <ThemedText>Back</ThemedText>
+        </TouchableOpacity>
+      </View>
+    </ScreenLayout>
   );
 }
 

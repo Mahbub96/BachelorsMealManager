@@ -1,14 +1,9 @@
 import { ThemedText } from "@/components/ThemedText";
+import { ScreenLayout } from "@/components/layout";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
-import {
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 
 export default function PieDetailsPage() {
   const router = useRouter();
@@ -78,23 +73,11 @@ export default function PieDetailsPage() {
   ];
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <LinearGradient colors={data.gradient} style={styles.header}>
-        <View style={styles.headerContent}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.backButton}
-          >
-            <Ionicons name="arrow-back" size={24} color="#fff" />
-          </TouchableOpacity>
-          <ThemedText style={styles.headerTitle}>{data.label}</ThemedText>
-          <TouchableOpacity style={styles.shareButton}>
-            <Ionicons name="share-outline" size={24} color="#fff" />
-          </TouchableOpacity>
-        </View>
-      </LinearGradient>
-
+    <ScreenLayout
+      title={data.label}
+      showBack
+      onBackPress={() => router.back()}
+    >
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Category Overview */}
         <View style={styles.categoryOverview}>
@@ -457,7 +440,7 @@ export default function PieDetailsPage() {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </View>
+    </ScreenLayout>
   );
 }
 
@@ -466,33 +449,6 @@ const formatValue = (value: number) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f8fafc",
-  },
-  header: {
-    paddingTop: 50,
-    paddingBottom: 16,
-    paddingHorizontal: 16,
-  },
-  headerContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  backButton: {
-    padding: 4,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#fff",
-    flex: 1,
-    textAlign: "center",
-  },
-  shareButton: {
-    padding: 4,
-  },
   content: {
     flex: 1,
     padding: 16,

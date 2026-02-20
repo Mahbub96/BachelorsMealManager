@@ -9,9 +9,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { IconName } from '@/constants/IconTypes';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
+import { ScreenLayout } from '@/components/layout';
 import { ModernLoader } from '@/components/ui/ModernLoader';
 import { useTheme } from '@/context/ThemeContext';
 import { activityService , Activity as ActivityItem } from '@/services/activityService';
@@ -139,138 +139,78 @@ export default function ActivityDetailsScreen(_props: ActivityDetailsScreenProps
 
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-            <Ionicons name='arrow-back' size={24} color={theme.text.primary} />
-          </TouchableOpacity>
-          <ThemedText
-            style={[styles.headerTitle, { color: theme.text.primary }]}
-          >
-            Loading...
-          </ThemedText>
-          <View style={styles.placeholderButton} />
+      <ScreenLayout title="Loading..." showBack onBackPress={handleBack}>
+        <View style={[styles.container, { backgroundColor: theme.background }]}>
+          <View style={styles.loadingContainer}>
+            <ModernLoader size="large" text="Loading activity details..." overlay={false} />
+          </View>
         </View>
-        <View style={styles.loadingContainer}>
-          <ModernLoader size='large' text="Loading activity details..." overlay={false} />
-        </View>
-      </View>
+      </ScreenLayout>
     );
   }
 
   if (error) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-            <Ionicons name='arrow-back' size={24} color={theme.text.primary} />
-          </TouchableOpacity>
-          <ThemedText
-            style={[styles.headerTitle, { color: theme.text.primary }]}
-          >
-            Error
-          </ThemedText>
-          <View style={styles.placeholderButton} />
-        </View>
-        <View style={styles.errorContainer}>
-          <Ionicons
-            name='alert-circle-outline'
-            size={64}
-            color={theme.status.error}
-          />
-          <ThemedText
-            style={[styles.errorTitle, { color: theme.text.primary }]}
-          >
-            Error Loading Activity
-          </ThemedText>
-          <ThemedText
-            style={[styles.errorText, { color: theme.text.secondary }]}
-          >
-            {error}
-          </ThemedText>
-          <TouchableOpacity
-            style={[styles.retryButton, { backgroundColor: theme.primary }]}
-            onPress={loadActivityDetails}
-          >
-            <ThemedText
-              style={[styles.retryButtonText, { color: theme.text.inverse }]}
-            >
-              Try Again
+      <ScreenLayout title="Error" showBack onBackPress={handleBack}>
+        <View style={[styles.container, { backgroundColor: theme.background }]}>
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle-outline" size={64} color={theme.status.error} />
+            <ThemedText style={[styles.errorTitle, { color: theme.text.primary }]}>
+              Error Loading Activity
             </ThemedText>
-          </TouchableOpacity>
+            <ThemedText style={[styles.errorText, { color: theme.text.secondary }]}>{error}</ThemedText>
+            <TouchableOpacity
+              style={[styles.retryButton, { backgroundColor: theme.primary }]}
+              onPress={loadActivityDetails}
+            >
+              <ThemedText style={[styles.retryButtonText, { color: theme.text.inverse }]}>Try Again</ThemedText>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
+      </ScreenLayout>
     );
   }
 
   if (!activity) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-            <Ionicons name='arrow-back' size={24} color={theme.text.primary} />
-          </TouchableOpacity>
-          <ThemedText
-            style={[styles.headerTitle, { color: theme.text.primary }]}
-          >
-            Activity Not Found
-          </ThemedText>
-          <View style={styles.placeholderButton} />
+      <ScreenLayout title="Activity Not Found" showBack onBackPress={handleBack}>
+        <View style={[styles.container, { backgroundColor: theme.background }]}>
+          <View style={styles.errorContainer}>
+            <Ionicons name="help-circle-outline" size={64} color={theme.status.warning} />
+            <ThemedText style={[styles.errorTitle, { color: theme.text.primary }]}>Activity Not Found</ThemedText>
+            <ThemedText style={[styles.errorText, { color: theme.text.secondary }]}>
+              The requested activity could not be found.
+            </ThemedText>
+          </View>
         </View>
-        <View style={styles.errorContainer}>
-          <Ionicons
-            name='help-circle-outline'
-            size={64}
-            color={theme.status.warning}
-          />
-          <ThemedText
-            style={[styles.errorTitle, { color: theme.text.primary }]}
-          >
-            Activity Not Found
-          </ThemedText>
-          <ThemedText
-            style={[styles.errorText, { color: theme.text.secondary }]}
-          >
-            The requested activity could not be found.
-          </ThemedText>
-        </View>
-      </View>
+      </ScreenLayout>
     );
   }
 
   const activityColors = getActivityColors(activity.type);
   const activityIcon = getActivityIcon(activity.type);
 
-  return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Header */}
-      <LinearGradient colors={activityColors} style={styles.header}>
-        <View style={styles.headerContent}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-            <Ionicons name='arrow-back' size={24} color='#fff' />
-          </TouchableOpacity>
-          <View style={styles.headerInfo}>
-            <ThemedText style={styles.headerTitle}>{activity.title}</ThemedText>
-            <ThemedText style={styles.headerSubtitle}>
-              {activity.description}
-            </ThemedText>
-          </View>
-          <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.actionButton} onPress={handleEdit}>
-              <Ionicons name='create-outline' size={20} color='#fff' />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={handleDelete}
-            >
-              <Ionicons name='trash-outline' size={20} color='#fff' />
-            </TouchableOpacity>
-          </View>
-        </View>
-      </LinearGradient>
+  const rightElement = (
+    <View style={styles.headerActions}>
+      <TouchableOpacity style={styles.actionButton} onPress={handleEdit}>
+        <Ionicons name="create-outline" size={20} color={theme.text.primary} />
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.actionButton} onPress={handleDelete}>
+        <Ionicons name="trash-outline" size={20} color={theme.text.primary} />
+      </TouchableOpacity>
+    </View>
+  );
 
-      {/* Content */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+  return (
+    <ScreenLayout
+      title={activity.title}
+      subtitle={activity.description}
+      showBack
+      onBackPress={handleBack}
+      rightElement={rightElement}
+    >
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Activity Icon */}
         <View style={styles.iconContainer}>
           <View
@@ -391,8 +331,9 @@ export default function ActivityDetailsScreen(_props: ActivityDetailsScreenProps
             </ThemedText>
           </View>
         )}
-      </ScrollView>
-    </View>
+        </ScrollView>
+      </View>
+    </ScreenLayout>
   );
 }
 
@@ -400,42 +341,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    paddingTop: 50,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  backButton: {
-    padding: 8,
-  },
-  headerInfo: {
-    flex: 1,
-    marginHorizontal: 16,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginTop: 4,
-  },
   headerActions: {
     flexDirection: 'row',
     gap: 8,
   },
   actionButton: {
     padding: 8,
-  },
-  placeholderButton: {
-    width: 40,
   },
   loadingContainer: {
     flex: 1,

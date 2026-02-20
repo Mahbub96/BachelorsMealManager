@@ -512,8 +512,11 @@ class OfflineStorageService {
       if (this.isOnline && !forceRefresh) {
         try {
           const networkData = await fetchFunction();
-          await this.setCacheData(key, networkData);
-          return { data: networkData, source: 'network' };
+          if (networkData != null) {
+            await this.setCacheData(key, networkData);
+            return { data: networkData, source: 'network' };
+          }
+          // API returned no data (e.g. 404); fall through to cache/offline
         } catch (error) {
           // Network failed, try cache
         }
@@ -550,9 +553,8 @@ class OfflineStorageService {
 
   // Offline data storage using SQLite
   async setOfflineData(key: string, data: any): Promise<void> {
+    if (data === undefined || data === null) return;
     try {
-      // Don't stringify here - saveData will handle it if needed
-      // But we need to ensure it's a string for the data field
       const offlineData = {
         id: key,
         table_name: 'dashboard_data',

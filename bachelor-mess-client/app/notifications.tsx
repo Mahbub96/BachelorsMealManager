@@ -1,10 +1,13 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { ScreenLayout } from '@/components/layout';
 import { Ionicons } from '@expo/vector-icons';
 import type { IconName } from '@/constants/IconTypes';
+import { useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 export default function NotificationsScreen() {
+  const router = useRouter();
   const notifications = [
     {
       id: '1',
@@ -43,15 +46,14 @@ export default function NotificationsScreen() {
   };
 
   return (
-    <ThemedView style={styles.container}>
-      <View style={styles.header}>
-        <ThemedText style={styles.title}>Notifications</ThemedText>
-        <ThemedText style={styles.subtitle}>
-          Stay updated with flat activities
-        </ThemedText>
-      </View>
-
-      <View style={styles.notificationsList}>
+    <ScreenLayout
+      title="Notifications"
+      subtitle="Stay updated with flat activities"
+      showBack
+      onBackPress={() => router.back()}
+    >
+      <ThemedView style={styles.container}>
+        <View style={styles.notificationsList}>
         {notifications.map(notification => (
           <View key={notification.id} style={styles.notificationItem}>
             <View style={styles.iconContainer}>
@@ -74,8 +76,9 @@ export default function NotificationsScreen() {
             </View>
           </View>
         ))}
-      </View>
-    </ThemedView>
+        </View>
+      </ThemedView>
+    </ScreenLayout>
   );
 }
 
@@ -83,23 +86,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8fafc',
-  },
-  header: {
-    padding: 20,
-    paddingTop: 40,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6b7280',
   },
   notificationsList: {
     flex: 1,

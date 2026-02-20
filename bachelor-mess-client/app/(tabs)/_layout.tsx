@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs, usePathname } from 'expo-router';
 import React from 'react';
-import { View, StyleSheet, Text } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 
 import { HapticTab } from '@/components/HapticTab';
 import { AuthAvatar } from '@/components/AuthAvatar';
 import { LoginButton } from '@/components/LoginButton';
 import { OfflineBanner } from '@/components/OfflineBanner';
+import { AppTopBar } from '@/components/layout';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 
@@ -62,33 +63,13 @@ export default function TabLayout() {
         tabBarInactiveTintColor: tabInactiveColor,
         headerShown: true,
         header: () => (
-          <View
-            style={[
-              styles.header,
-              { backgroundColor, borderBottomColor: borderColor },
-            ]}
-          >
+          <View style={styles.header} pointerEvents="box-none">
             <OfflineBanner />
-            <View style={styles.headerRow}>
-              <View style={styles.headerLeft} pointerEvents="box-none">
-                {user ? (
-                  <Text style={[styles.welcomeLabel, { color: textColor }]} numberOfLines={1}>
-                    {headerLabel === 'Welcome' ? `Welcome, ${user.name?.split(' ')[0] || 'User'}` : headerLabel}
-                  </Text>
-                ) : (
-                  <Text style={[styles.welcomeLabel, { color: textSecondary }]} numberOfLines={1}>
-                    {headerLabel}
-                  </Text>
-                )}
-              </View>
-              <View style={styles.profileCorner}>
-                {user ? (
-                  <AuthAvatar size={32} showDropdown={true} />
-                ) : (
-                  <LoginButton size={32} />
-                )}
-              </View>
-            </View>
+            <AppTopBar
+              title={user && headerLabel === 'Welcome' ? `Welcome, ${user.name?.split(' ')[0] || 'User'}` : headerLabel}
+              rightElement={user ? <AuthAvatar size={32} showDropdown /> : <LoginButton size={32} />}
+              safeEdges={false}
+            />
           </View>
         ),
         tabBarButton: HapticTab,
@@ -194,27 +175,7 @@ export default function TabLayout() {
 const styles = StyleSheet.create({
   header: {
     paddingTop: 48,
-    paddingHorizontal: 12,
-    paddingBottom: 8,
     borderBottomWidth: 1,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minHeight: 40,
-    marginTop: 2,
-  },
-  headerLeft: {
-    flex: 1,
-    marginRight: 12,
-    minWidth: 0,
-    justifyContent: 'center',
-  },
-  welcomeLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  profileCorner: {
-    flexShrink: 0,
+    zIndex: 10,
   },
 });

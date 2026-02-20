@@ -12,6 +12,7 @@ import {
   View,
   Dimensions,
   Animated,
+  ScrollView,
 } from 'react-native';
 import { ThemedText } from './ThemedText';
 import { useAuth } from '@/context/AuthContext';
@@ -243,16 +244,17 @@ export const AuthAvatar: React.FC<AuthAvatarProps> = ({
       <Modal
         visible={showModal}
         transparent
-        animationType='none'
+        animationType="none"
         onRequestClose={handleCloseModal}
+        statusBarTranslucent
       >
         <Animated.View
           style={[
             styles.modalOverlay,
-            {
-              opacity: fadeAnim,
-            },
+            styles.modalOverlayFullScreen,
+            { opacity: fadeAnim },
           ]}
+          pointerEvents={showModal ? 'auto' : 'none'}
         >
           <Pressable style={styles.backdrop} onPress={handleCloseModal}>
             <Animated.View
@@ -263,89 +265,96 @@ export const AuthAvatar: React.FC<AuthAvatarProps> = ({
                 },
               ]}
             >
-              <Pressable style={styles.modalContent} onPress={() => {}}>
-                {/* User Info Header */}
-                <View style={styles.userInfoHeader}>
-                  <View style={styles.userAvatar}>
-                    <LinearGradient
-                      colors={['#667eea', '#764ba2']}
-                      style={styles.userAvatarGradient}
-                    >
-                      <ThemedText style={styles.userAvatarText}>
-                        {getInitials(getUserDisplayName())}
-                      </ThemedText>
-                    </LinearGradient>
-                  </View>
-                  <View style={styles.userInfo}>
-                    <ThemedText style={styles.userName}>
-                      {getUserDisplayName()}
-                    </ThemedText>
-                    <ThemedText style={styles.userRole}>
-                      {getUserRole()}
-                    </ThemedText>
-                  </View>
-                </View>
-
-                {/* Menu Items */}
-                <View style={styles.menuItems}>
-                  {menuItems.map((item, index) => (
-                    <TouchableOpacity
-                      key={item.id}
-                      style={styles.menuItem}
-                      onPress={item.onPress}
-                    >
-                      <View
-                        style={[
-                          styles.menuIcon,
-                          { backgroundColor: item.color },
-                        ]}
+              <ScrollView
+                style={styles.modalScroll}
+                contentContainerStyle={styles.modalScrollContent}
+                showsVerticalScrollIndicator={true}
+                bounces={false}
+              >
+                <Pressable style={styles.modalContent} onPress={() => {}}>
+                  {/* User Info Header */}
+                  <View style={styles.userInfoHeader}>
+                    <View style={styles.userAvatar}>
+                      <LinearGradient
+                        colors={['#667eea', '#764ba2']}
+                        style={styles.userAvatarGradient}
                       >
-                        <Ionicons
-                          name={item.icon as IconName}
-                          size={20}
-                          color='#fff'
-                        />
-                      </View>
-                      <View style={styles.menuContent}>
-                        <ThemedText style={styles.menuTitle}>
-                          {item.title}
+                        <ThemedText style={styles.userAvatarText}>
+                          {getInitials(getUserDisplayName())}
                         </ThemedText>
-                        <ThemedText style={styles.menuSubtitle}>
-                          {item.subtitle}
-                        </ThemedText>
-                      </View>
-                      <Ionicons
-                        name='chevron-forward'
-                        size={16}
-                        color='#9ca3af'
-                      />
-                    </TouchableOpacity>
-                  ))}
-                </View>
+                      </LinearGradient>
+                    </View>
+                    <View style={styles.userInfo}>
+                      <ThemedText style={styles.userName}>
+                        {getUserDisplayName()}
+                      </ThemedText>
+                      <ThemedText style={styles.userRole}>
+                        {getUserRole()}
+                      </ThemedText>
+                    </View>
+                  </View>
 
-                {/* Logout Button */}
-                <TouchableOpacity
-                  style={styles.logoutButton}
-                  onPress={handleLogout}
-                >
-                  <View
-                    style={[styles.menuIcon, { backgroundColor: '#ef4444' }]}
+                  {/* Menu Items */}
+                  <View style={styles.menuItems}>
+                    {menuItems.map((item) => (
+                      <TouchableOpacity
+                        key={item.id}
+                        style={styles.menuItem}
+                        onPress={item.onPress}
+                      >
+                        <View
+                          style={[
+                            styles.menuIcon,
+                            { backgroundColor: item.color },
+                          ]}
+                        >
+                          <Ionicons
+                            name={item.icon as IconName}
+                            size={20}
+                            color='#fff'
+                          />
+                        </View>
+                        <View style={styles.menuContent}>
+                          <ThemedText style={styles.menuTitle}>
+                            {item.title}
+                          </ThemedText>
+                          <ThemedText style={styles.menuSubtitle}>
+                            {item.subtitle}
+                          </ThemedText>
+                        </View>
+                        <Ionicons
+                          name='chevron-forward'
+                          size={16}
+                          color='#9ca3af'
+                        />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  {/* Logout Button */}
+                  <TouchableOpacity
+                    style={styles.logoutButton}
+                    onPress={handleLogout}
                   >
-                    <Ionicons name='log-out-outline' size={20} color='#fff' />
-                  </View>
-                  <View style={styles.menuContent}>
-                    <ThemedText
-                      style={[styles.menuTitle, { color: '#ef4444' }]}
+                    <View
+                      style={[styles.menuIcon, { backgroundColor: '#ef4444' }]}
                     >
-                      Logout
-                    </ThemedText>
-                    <ThemedText style={styles.menuSubtitle}>
-                      Sign out of your account
-                    </ThemedText>
-                  </View>
-                  <Ionicons name='chevron-forward' size={16} color='#9ca3af' />
-                </TouchableOpacity>
-              </Pressable>
+                      <Ionicons name='log-out-outline' size={20} color='#fff' />
+                    </View>
+                    <View style={styles.menuContent}>
+                      <ThemedText
+                        style={[styles.menuTitle, { color: '#ef4444' }]}
+                      >
+                        Logout
+                      </ThemedText>
+                      <ThemedText style={styles.menuSubtitle}>
+                        Sign out of your account
+                      </ThemedText>
+                    </View>
+                    <Ionicons name='chevron-forward' size={16} color='#9ca3af' />
+                  </TouchableOpacity>
+                </Pressable>
+              </ScrollView>
             </Animated.View>
           </Pressable>
         </Animated.View>
@@ -358,6 +367,8 @@ const styles = StyleSheet.create({
   avatar: {
     borderRadius: 24,
     overflow: 'hidden',
+    zIndex: 12,
+    elevation: 10,
   },
   avatarGradient: {
     flex: 1,
@@ -373,19 +384,32 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
+  modalOverlayFullScreen: {
+    elevation: 999,
+    zIndex: 9999,
+  },
   backdrop: {
     flex: 1,
+    justifyContent: 'flex-end',
   },
   modalContainer: {
     backgroundColor: '#fff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingTop: 20,
+    height: screenHeight * 0.7,
+    elevation: 1000,
+    zIndex: 10000,
+  },
+  modalScroll: {
+    flex: 1,
+  },
+  modalScrollContent: {
     paddingBottom: 40,
-    maxHeight: screenHeight * 0.7,
+    paddingHorizontal: 20,
   },
   modalContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 0,
   },
   userInfoHeader: {
     flexDirection: 'row',

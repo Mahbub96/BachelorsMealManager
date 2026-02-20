@@ -1,4 +1,5 @@
 import { ThemedText } from '@/components/ThemedText';
+import { ScreenLayout } from '@/components/layout';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -15,15 +16,17 @@ export default function LineDetailsPage() {
   };
 
   return (
-    <View style={styles.container}>
-      <ThemedText style={styles.title}>Line chart details</ThemedText>
-      <ThemedText>Date: {data.date}</ThemedText>
-      <ThemedText>Value: {data.value}</ThemedText>
-      <ThemedText>Forecast: {data.forecast}</ThemedText>
-      <TouchableOpacity style={styles.button} onPress={() => router.back()}>
-        <ThemedText>Back</ThemedText>
-      </TouchableOpacity>
-    </View>
+    <ScreenLayout title="Line chart details" showBack onBackPress={() => router.back()}>
+      <View style={styles.container}>
+        <ThemedText style={styles.title}>Line chart details</ThemedText>
+        <ThemedText>Date: {data.date}</ThemedText>
+        <ThemedText>Value: {data.value}</ThemedText>
+        <ThemedText>Forecast: {data.forecast}</ThemedText>
+        <TouchableOpacity style={styles.button} onPress={() => router.back()}>
+          <ThemedText>Back</ThemedText>
+        </TouchableOpacity>
+      </View>
+    </ScreenLayout>
   );
 }
 

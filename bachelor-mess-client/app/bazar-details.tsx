@@ -10,13 +10,13 @@ import {
   TextInput,
   FlatList,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { IconName } from '@/constants/IconTypes';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { ScreenLayout } from '@/components/layout';
 import { ModernLoader } from '@/components/ui/ModernLoader';
 import bazarService, { BazarEntry, BazarItem } from '@/services/bazarService';
 import { useAuth } from '@/context/AuthContext';
@@ -327,80 +327,59 @@ export default function BazarDetailsScreen() {
 
   if (loading) {
     return (
-      <ThemedView style={styles.loadingContainer}>
-        <ModernLoader size='large' text='Loading bazar details...' overlay={false} />
-      </ThemedView>
+      <ScreenLayout title="Bazar Details" showBack onBackPress={() => router.back()}>
+        <ThemedView style={styles.loadingContainer}>
+          <ModernLoader size="large" text="Loading bazar details..." overlay={false} />
+        </ThemedView>
+      </ScreenLayout>
     );
   }
 
   if (error || !bazar) {
     return (
-      <ThemedView style={styles.errorContainer}>
-        <Ionicons name='alert-circle' size={64} color='#ef4444' />
-        <ThemedText style={styles.errorTitle}>Bazar Not Found</ThemedText>
-        <ThemedText style={styles.errorText}>
-          {error || 'This bazar entry does not exist or has been deleted.'}
-        </ThemedText>
-        <ThemedText style={styles.errorDetails}>ID: {bazarId}</ThemedText>
-        <View style={styles.errorActions}>
-          <TouchableOpacity
-            style={styles.retryButton}
-            onPress={loadBazarDetails}
-          >
-            <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.errorBackButton}
-            onPress={() => router.back()}
-          >
-            <ThemedText style={styles.backButtonText}>Go Back</ThemedText>
-          </TouchableOpacity>
-        </View>
-      </ThemedView>
+      <ScreenLayout title="Bazar Not Found" showBack onBackPress={() => router.back()}>
+        <ThemedView style={styles.errorContainer}>
+          <Ionicons name="alert-circle" size={64} color="#ef4444" />
+          <ThemedText style={styles.errorTitle}>Bazar Not Found</ThemedText>
+          <ThemedText style={styles.errorText}>
+            {error || 'This bazar entry does not exist or has been deleted.'}
+          </ThemedText>
+          <ThemedText style={styles.errorDetails}>ID: {bazarId}</ThemedText>
+          <View style={styles.errorActions}>
+            <TouchableOpacity style={styles.retryButton} onPress={loadBazarDetails}>
+              <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.errorBackButton} onPress={() => router.back()}>
+              <ThemedText style={styles.backButtonText}>Go Back</ThemedText>
+            </TouchableOpacity>
+          </View>
+        </ThemedView>
+      </ScreenLayout>
     );
   }
 
-  return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <Stack.Screen
-        options={{
-          headerShown: false,
-        }}
-      />
-      {/* Header */}
-      <LinearGradient
-        colors={['#667eea', '#764ba2']}
-        style={styles.headerGradient}
-      >
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <Ionicons name='arrow-back' size={24} color='#fff' />
-          </TouchableOpacity>
-          <View style={styles.headerContent}>
-            <ThemedText style={styles.headerTitle}>Bazar Details</ThemedText>
-            <ThemedText style={styles.headerSubtitle}>
-              {formatDate(bazar.date)}
-            </ThemedText>
-          </View>
-          <View style={styles.headerActions}>
-            {(user?.role === 'admin' ||
-              (typeof bazar.userId === 'string' && user?.id === bazar.userId) ||
-              (typeof bazar.userId === 'object' &&
-                user?.id === bazar.userId._id)) && (
-              <TouchableOpacity
-                style={styles.editButton}
-                onPress={() => setShowEditModal(true)}
-              >
-                <Ionicons name='create' size={24} color='#fff' />
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-      </LinearGradient>
+  const canEdit =
+    user?.role === 'admin' ||
+    (typeof bazar.userId === 'string' && user?.id === bazar.userId) ||
+    (typeof bazar.userId === 'object' && user?.id === bazar.userId._id);
 
+  return (
+    <ScreenLayout
+      title="Bazar Details"
+      subtitle={formatDate(bazar.date)}
+      showBack
+      onBackPress={() => router.back()}
+      rightElement={
+        canEdit ? (
+          <TouchableOpacity
+            onPress={() => setShowEditModal(true)}
+            style={{ padding: 8 }}
+          >
+            <Ionicons name="create" size={24} color="#6b7280" />
+          </TouchableOpacity>
+        ) : undefined
+      }
+    >
       <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
@@ -705,7 +684,7 @@ export default function BazarDetailsScreen() {
           </View>
         </ThemedView>
       </Modal>
-    </SafeAreaView>
+    </ScreenLayout>
   );
 }
 

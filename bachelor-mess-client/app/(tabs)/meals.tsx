@@ -1,4 +1,5 @@
 import { View, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
 import { ThemedView } from '../../components/ThemedView';
 import { ThemedText } from '../../components/ThemedText';
 import { MealManagement } from '../../components/meals/MealManagement';
@@ -7,14 +8,13 @@ import { useThemeColor } from '@/hooks/useThemeColor';
 
 export default function MealsScreen() {
   const { user } = useAuth();
+  const router = useRouter();
 
-  // Theme colors
   const textColor = useThemeColor({}, 'text');
 
   const handleNavigate = (screen: string) => {
-    // Handle navigation to different screens
-    console.log('Navigate to:', screen);
-    // You can implement navigation logic here
+    if (screen === 'profile') router.push('/profile');
+    else if (screen === 'settings') router.push('/settings');
   };
 
   // Add error boundary for unauthenticated users

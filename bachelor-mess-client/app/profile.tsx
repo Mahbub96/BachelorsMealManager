@@ -19,7 +19,7 @@ import { useUsers } from '@/hooks/useUsers';
 import { useMeals } from '@/hooks/useMeals';
 import { useBazar } from '@/hooks/useBazar';
 import userStatsService from '@/services/userStatsService';
-import { ScreenBackButton } from '@/components/ui/ScreenBackButton';
+import { ScreenLayout } from '@/components/layout';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
@@ -292,6 +292,10 @@ export default function ProfileScreen() {
     }
   }, [loadUserData]);
 
+  const handleBack = useCallback(() => {
+    router.navigate('/(tabs)/meals');
+  }, [router]);
+
   useEffect(() => {
     const initialLoad = async () => {
       try {
@@ -518,8 +522,12 @@ export default function ProfileScreen() {
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <ScreenBackButton onPress={() => router.back()} />
+    <ScreenLayout
+      title="Profile"
+      subtitle="Manage your account and preferences"
+      showBack
+      onBackPress={handleBack}
+    >
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
@@ -527,13 +535,6 @@ export default function ProfileScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        <View style={styles.header}>
-          <ThemedText style={styles.headerTitle}>Profile</ThemedText>
-          <ThemedText style={styles.headerSubtitle}>
-            Manage your account and preferences
-          </ThemedText>
-        </View>
-
         <View style={styles.content}>
           <ProfileCard user={user} showStats={true} stats={userStats} />
 
@@ -590,7 +591,7 @@ export default function ProfileScreen() {
           </View>
         </View>
       </ScrollView>
-    </ThemedView>
+    </ScreenLayout>
   );
 }
 
@@ -601,24 +602,6 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 16,
-    color: '#6b7280',
   },
   content: {
     padding: 20,

@@ -19,6 +19,8 @@ export interface InfoModalProps {
   onClose: () => void;
   variant?: InfoModalVariant;
   buttonText?: string;
+  /** When set, primary button calls onConfirm then onClose; X/overlay only call onClose */
+  onConfirm?: () => void;
 }
 
 const variantConfig = (
@@ -49,9 +51,15 @@ export const InfoModal: React.FC<InfoModalProps> = ({
   onClose,
   variant = 'info',
   buttonText = 'OK',
+  onConfirm,
 }) => {
   const { theme } = useTheme();
   const config = variantConfig(theme)[variant];
+
+  const handlePrimaryPress = () => {
+    onConfirm?.();
+    onClose();
+  };
 
   if (!visible) return null;
 
@@ -104,7 +112,7 @@ export const InfoModal: React.FC<InfoModalProps> = ({
           >
             <TouchableOpacity
               style={[styles.primaryButton, { backgroundColor: theme.primary }]}
-              onPress={onClose}
+              onPress={handlePrimaryPress}
               activeOpacity={0.85}
             >
               <ThemedText style={styles.primaryButtonText}>{buttonText}</ThemedText>

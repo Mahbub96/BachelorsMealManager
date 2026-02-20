@@ -36,6 +36,30 @@ import { MealDetailModal } from './MealDetailModal';
 
 const { width: screenWidth } = Dimensions.get('window');
 
+type MealLike = {
+  breakfast?: boolean;
+  lunch?: boolean;
+  dinner?: boolean;
+  userId?: string | { _id?: string };
+  status?: string;
+  date?: string;
+};
+
+function getMealSlots(meal: MealLike): number {
+  return (
+    (meal?.breakfast ? 1 : 0) + (meal?.lunch ? 1 : 0) + (meal?.dinner ? 1 : 0)
+  );
+}
+
+function countMealSlots<T extends MealLike>(
+  meals: T[],
+  predicate?: (m: T) => boolean
+): number {
+  const list = meals ?? [];
+  const fn = predicate ?? (() => true);
+  return list.reduce((sum, m) => sum + (fn(m) ? getMealSlots(m) : 0), 0);
+}
+
 interface MealManagementProps {
   onNavigate?: (screen: string) => void;
 }
@@ -85,7 +109,6 @@ export const MealManagement: React.FC<MealManagementProps> = ({
 
   const {
     meals,
-    mealStats,
     refreshMeals,
     handleMealPress,
     selectedMeal,
@@ -143,12 +166,12 @@ export const MealManagement: React.FC<MealManagementProps> = ({
     setActiveTab('history');
   };
 
-  const mealStatsForGrid: StatItem[] = useMemo(
-    () => [
+  const mealStatsForGrid: StatItem[] = useMemo(() => {
+    const todayStr = new Date().toDateString();
+    return [
       {
         title: 'Total Meals',
-        value:
-          mealStats?.totalMeals ?? (meals || []).filter(isMyMeal).length ?? 0,
+        value: countMealSlots(meals ?? [], isMyMeal),
         icon: 'fast-food',
         colors: (theme.gradient?.info ?? [theme.primary, theme.primary]) as [
           string,
@@ -158,7 +181,10 @@ export const MealManagement: React.FC<MealManagementProps> = ({
       },
       {
         title: 'Pending',
-        value: meals?.filter(m => m?.status === 'pending').length ?? 0,
+        value: countMealSlots(
+          meals ?? [],
+          m => isMyMeal(m) && m?.status === 'pending'
+        ),
         icon: 'time',
         colors: (theme.gradient?.warning ?? [theme.primary, theme.primary]) as [
           string,
@@ -168,21 +194,11 @@ export const MealManagement: React.FC<MealManagementProps> = ({
       },
       {
         title: 'Approved',
-        value:
-          // approved should me how many meals are approved for the current user not how many days are approved
-
-          (meals || [])
-            .filter(m => isMyMeal(m) && m?.status === 'approved')
-            .reduce(
-              (acc, m) => {
-                acc.totalMeals += m?.breakfast ? 1 : 0;
-                acc.totalMeals += m?.lunch ? 1 : 0;
-                acc.totalMeals += m?.dinner ? 1 : 0;
-                return acc;
-              },
-              { totalMeals: 0 }
-            ).totalMeals,
-        icon: 'fast-food',
+        value: countMealSlots(
+          meals ?? [],
+          m => isMyMeal(m) && m?.status === 'approved'
+        ),
+        icon: 'checkmark-circle',
         colors: (theme.gradient?.success ?? [theme.primary, theme.primary]) as [
           string,
           string,
@@ -191,24 +207,11 @@ export const MealManagement: React.FC<MealManagementProps> = ({
       },
       {
         title: 'Today',
-        value:
-          // how many meals are approved for the current user today
-          (meals || [])
-            .filter(
-              m =>
-                isMyMeal(m) &&
-                m?.status === 'approved' &&
-                new Date(m.date).toDateString() === new Date().toDateString()
-            )
-            .reduce(
-              (acc, m) => {
-                acc.totalMeals += m?.breakfast ? 1 : 0;
-                acc.totalMeals += m?.lunch ? 1 : 0;
-                acc.totalMeals += m?.dinner ? 1 : 0;
-                return acc;
-              },
-              { totalMeals: 0 }
-            ).totalMeals,
+        value: countMealSlots(meals ?? [], m => {
+          if (!isMyMeal(m) || m?.status !== 'approved' || !m?.date)
+            return false;
+          return new Date(m.date).toDateString() === todayStr;
+        }),
         icon: 'calendar',
         colors: (theme.gradient?.secondary ?? [
           theme.primary,
@@ -216,9 +219,8 @@ export const MealManagement: React.FC<MealManagementProps> = ({
         ]) as [string, string],
         period: 'Today',
       },
-    ],
-    [mealStats?.totalMeals, meals, theme]
-  );
+    ];
+  }, [meals, isMyMeal, theme]);
 
   const quickActionsList: ActionItem[] = useMemo(
     () => [
@@ -517,14 +519,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
                     mealDate.getFullYear() === currentYear
                   );
                 });
-                const totalSlots = filteredMeals.reduce(
-                  (sum, m) =>
-                    sum +
-                    (m.breakfast ? 1 : 0) +
-                    (m.lunch ? 1 : 0) +
-                    (m.dinner ? 1 : 0),
-                  0
-                );
+                const totalSlots = countMealSlots(filteredMeals);
                 showAlert(
                   'Current Month',
                   `Showing ${totalSlots} meals (${filteredMeals.length} ${filteredMeals.length === 1 ? 'day' : 'days'}) for current month`,
@@ -566,7 +561,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
                 icon='restaurant'
                 iconBackgroundColor={theme.status?.success ?? theme.primary}
                 timestamp={meal.date || new Date().toISOString()}
-                amount={`${(meal?.breakfast ? 1 : 0) + (meal?.lunch ? 1 : 0) + (meal?.dinner ? 1 : 0)} meals`}
+                amount={`${getMealSlots(meal)} meals`}
                 status={
                   meal?.status === 'approved'
                     ? 'success'
@@ -952,7 +947,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
             <ThemedText
               style={[styles.historyStatValue, { color: theme.text?.primary }]}
             >
-              {(meals || []).length}
+              {countMealSlots(meals ?? [])}
             </ThemedText>
             <ThemedText
               style={[
@@ -982,7 +977,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
             <ThemedText
               style={[styles.historyStatValue, { color: theme.text?.primary }]}
             >
-              {(meals || []).filter(isMyMeal).length}
+              {countMealSlots(meals ?? [], isMyMeal)}
             </ThemedText>
             <ThemedText
               style={[
@@ -997,6 +992,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
 
         <FlatList
           data={historyMeals}
+          style={styles.historyFlatList}
           keyExtractor={(item, index) => item.id || `meal-${index}`}
           renderItem={({ item: meal, index }) => (
             <ActivityCard
@@ -1005,7 +1001,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
               icon='restaurant'
               iconBackgroundColor={theme.status?.success ?? theme.primary}
               timestamp={meal.date || new Date().toISOString()}
-              amount={`${(meal?.breakfast ? 1 : 0) + (meal?.lunch ? 1 : 0) + (meal?.dinner ? 1 : 0)} meals`}
+              amount={`${getMealSlots(meal)} meals`}
               status={
                 meal?.status === 'approved'
                   ? 'success'
@@ -1046,27 +1042,6 @@ export const MealManagement: React.FC<MealManagementProps> = ({
           contentContainerStyle={styles.historyList}
           showsVerticalScrollIndicator={false}
         />
-
-        <TouchableOpacity
-          style={[
-            styles.backButton,
-            {
-              backgroundColor:
-                theme.button?.primary?.background ?? theme.primary,
-              borderWidth: 0,
-            },
-          ]}
-          onPress={() => setActiveTab('overview')}
-        >
-          <ThemedText
-            style={[
-              styles.backButtonText,
-              { color: theme.button?.primary?.text ?? theme.text?.inverse },
-            ]}
-          >
-            Back to Overview
-          </ThemedText>
-        </TouchableOpacity>
       </View>
     </View>
   );
@@ -1120,6 +1095,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     letterSpacing: 0.2,
+    marginBottom: 24,
   },
   monthFilterButton: {
     flexDirection: 'row',
@@ -1262,7 +1238,11 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   historyContent: {
+    flex: 1,
     padding: 20,
+  },
+  historyFlatList: {
+    flex: 1,
   },
   historyStats: {
     flexDirection: 'row',
@@ -1290,18 +1270,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   historyList: {
-    marginBottom: 24,
-  },
-  backButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-  },
-  backButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+    flexGrow: 1,
+    paddingBottom: 24,
   },
   dateButton: {
     flexDirection: 'row',

@@ -11,6 +11,7 @@ import {
  TextInput } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { ScreenLayout } from '@/components/layout';
 import { Ionicons } from '@expo/vector-icons';
 import type { IconName } from '@/constants/IconTypes';
 import { useAuth } from '@/context/AuthContext';
@@ -809,33 +810,21 @@ export default function EditProfileScreen() {
   );
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    <ScreenLayout
+      title="Edit Profile"
+      showBack
+      onBackPress={() => router.back()}
     >
-      <ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <ThemedView style={styles.container}>
-          {/* Header */}
-          <LinearGradient
-            colors={['#667eea', '#764ba2']}
-            style={styles.headerGradient}
-          >
-            <View style={styles.header}>
-              <TouchableOpacity
-                style={styles.backButton}
-                onPress={() => router.back()}
-              >
-                <Ionicons name='arrow-back' size={24} color='#fff' />
-              </TouchableOpacity>
-              <ThemedText style={styles.headerTitle}>Edit Profile</ThemedText>
-              <View style={styles.placeholder} />
-            </View>
-          </LinearGradient>
-
-          <View style={styles.content}>
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+        >
+          <ThemedView style={styles.container}>
+            <View style={styles.content}>
             {/* Profile Picture Section */}
             <View style={styles.profileSection}>
               <TouchableOpacity
@@ -897,10 +886,11 @@ export default function EditProfileScreen() {
                 </ThemedText>
               </LinearGradient>
             </TouchableOpacity>
-          </View>
-        </ThemedView>
-      </ScrollView>
-    </KeyboardAvoidingView>
+            </View>
+          </ThemedView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </ScreenLayout>
   );
 }
 
@@ -910,27 +900,6 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-  },
-  headerGradient: {
-    paddingTop: 60,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  backButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  placeholder: {
-    width: 40,
   },
   content: {
     padding: 20,

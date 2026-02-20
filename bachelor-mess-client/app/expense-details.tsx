@@ -1,20 +1,16 @@
 import { DetailCard, MetricCard } from '@/components/DetailCard';
 import { DetailPageTemplate } from '@/components/DetailPageTemplate';
+import { ScreenLayout } from '@/components/layout';
 import { SwappableLineChart } from '@/components/ModernCharts';
 import { ThemedText } from '@/components/ThemedText';
+import { ModernLoader } from '@/components/ui/ModernLoader';
 import { Ionicons } from '@expo/vector-icons';
 import type { IconName } from '@/constants/IconTypes';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState, useEffect } from 'react';
-import {
-  StyleSheet,
-  TouchableOpacity,
-  View,
-  // ActivityIndicator,
-} from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import statisticsService from '@/services/statisticsService';
 import { useTheme } from '@/context/ThemeContext';
-import { ModernLoader } from '@/components/ui/ModernLoader';
 
 interface ExpenseDetailsData {
   monthlyExpenses?: number;
@@ -30,6 +26,7 @@ interface ExpenseDetailsData {
 
 export default function ExpenseDetailsPage() {
   const params = useLocalSearchParams();
+  const router = useRouter();
   const { theme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -150,32 +147,33 @@ export default function ExpenseDetailsPage() {
 
   if (loading) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
-        <ModernLoader visible={true} text="Loading expense details..." />
-
-      </View>
+      <ScreenLayout title="Monthly Expenses" showBack onBackPress={() => router.back()}>
+        <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
+          <ModernLoader visible={true} text="Loading expense details..." />
+        </View>
+      </ScreenLayout>
     );
   }
 
   if (error) {
     return (
-      <View style={[styles.errorContainer, { backgroundColor: theme.background }]}>
-        <Ionicons name='alert-circle-outline' size={64} color={theme.status.error} />
-        <ThemedText style={[styles.errorTitle, { color: theme.text.primary }]}>
-          Error Loading Expenses
-        </ThemedText>
-        <ThemedText style={[styles.errorText, { color: theme.text.secondary }]}>
-          {error}
-        </ThemedText>
-        <TouchableOpacity
-          style={[styles.retryButton, { backgroundColor: theme.primary }]}
-          onPress={loadExpenseData}
-        >
-          <ThemedText style={[styles.retryButtonText, { color: theme.text.inverse }]}>
-            Try Again
+      <ScreenLayout title="Error" showBack onBackPress={() => router.back()}>
+        <View style={[styles.errorContainer, { backgroundColor: theme.background }]}>
+          <Ionicons name="alert-circle-outline" size={64} color={theme.status.error} />
+          <ThemedText style={[styles.errorTitle, { color: theme.text.primary }]}>
+            Error Loading Expenses
           </ThemedText>
-        </TouchableOpacity>
-      </View>
+          <ThemedText style={[styles.errorText, { color: theme.text.secondary }]}>{error}</ThemedText>
+          <TouchableOpacity
+            style={[styles.retryButton, { backgroundColor: theme.primary }]}
+            onPress={loadExpenseData}
+          >
+            <ThemedText style={[styles.retryButtonText, { color: theme.text.inverse }]}>
+              Try Again
+            </ThemedText>
+          </TouchableOpacity>
+        </View>
+      </ScreenLayout>
     );
   }
 

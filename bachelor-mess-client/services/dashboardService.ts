@@ -286,26 +286,42 @@ class DashboardServiceImpl implements DashboardService {
       .getDataWithOfflineFallback(
         cacheKey,
         async () => {
-          console.log('📈 Dashboard Service - Fetching analytics from API...');
-          const queryParams = this.buildQueryParams(filters);
-          const response = await httpClient.get(
-            `${API_ENDPOINTS.DASHBOARD.ANALYTICS}?${queryParams}`
-          );
+          try {
+            console.log('📈 Dashboard Service - Fetching analytics from API...');
+            const queryParams = this.buildQueryParams(filters);
+            const response = await httpClient.get(
+              `${API_ENDPOINTS.DASHBOARD.ANALYTICS}?${queryParams}`
+            );
 
-          if (response.success && response.data) {
-            console.log(
-              '✅ Dashboard Service - Analytics fetched successfully'
-            );
-            // Store offline data for future use
-            await offlineStorage.setOfflineData(cacheKey, response.data);
-          } else {
-            console.error(
-              '❌ Dashboard Service - Failed to fetch analytics:',
-              response.error
-            );
+            if (response.success && response.data != null) {
+              console.log(
+                '✅ Dashboard Service - Analytics fetched successfully'
+              );
+              await offlineStorage.setOfflineData(cacheKey, response.data);
+              return response.data;
+            }
+            // 404 or missing endpoint: log as warn and return null so cache/offline can be used
+            if (response.error?.includes('Resource not found') || response.error?.includes('not found')) {
+              console.warn(
+                '⚠️ Dashboard Service - Analytics endpoint not available:',
+                response.error
+              );
+            } else {
+              console.error(
+                '❌ Dashboard Service - Failed to fetch analytics:',
+                response.error
+              );
+            }
+            return null;
+          } catch (error) {
+            const msg = error instanceof Error ? error.message : 'Unknown error';
+            if (msg.includes('Resource not found')) {
+              console.warn('⚠️ Dashboard Service - Analytics endpoint not available');
+            } else {
+              console.error('❌ Dashboard Service - Analytics fetch error:', msg);
+            }
+            return null;
           }
-
-          return response.data;
         },
         { useCache: true, forceRefresh: false }
       )

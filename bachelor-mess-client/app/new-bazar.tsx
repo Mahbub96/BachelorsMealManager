@@ -1,14 +1,14 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ModernLoader } from '@/components/ui/ModernLoader';
+import { ScreenLayout } from '@/components/layout';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import bazarService, { BazarItem } from '@/services/bazarService';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Stack, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
-  // ActivityIndicator,
   Alert,
   Image,
   KeyboardAvoidingView,
@@ -19,7 +19,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function NewBazarScreen() {
   const router = useRouter();
@@ -223,38 +222,12 @@ export default function NewBazarScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <Stack.Screen
-        options={{
-          headerShown: false,
-        }}
-      />
-      {/* Header */}
-      <LinearGradient
-        colors={['#667eea', '#764ba2']}
-        style={styles.headerGradient}
-      >
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <Ionicons name='arrow-back' size={24} color='#fff' />
-          </TouchableOpacity>
-          <View style={styles.headerContent}>
-            <ThemedText style={styles.headerTitle}>
-              New Shopping Entry
-            </ThemedText>
-            <ThemedText style={styles.headerSubtitle}>
-              Add your shopping items and expenses
-            </ThemedText>
-          </View>
-          <View style={styles.headerIcon}>
-            <Ionicons name='add-circle' size={24} color='#fff' />
-          </View>
-        </View>
-      </LinearGradient>
-
+    <ScreenLayout
+      title="New Shopping Entry"
+      subtitle="Add your shopping items and expenses"
+      showBack
+      onBackPress={() => router.back()}
+    >
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -536,7 +509,7 @@ export default function NewBazarScreen() {
           minimumDate={new Date(2020, 0, 1)}
         />
       )}
-    </SafeAreaView>
+    </ScreenLayout>
   );
 }
 
@@ -544,39 +517,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  headerGradient: {
-    paddingTop: 16,
-    paddingBottom: 20,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  backButton: {
-    padding: 8,
-  },
-  headerContent: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#e0e7ff',
-    marginTop: 2,
-  },
-  headerIcon: {
-    padding: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-
   keyboardView: {
     flex: 1,
   },

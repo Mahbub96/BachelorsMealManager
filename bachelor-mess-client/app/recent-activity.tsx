@@ -9,12 +9,12 @@ import {
   // ActivityIndicator,
   StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { IconName } from '@/constants/IconTypes';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
+import { ScreenLayout } from '@/components/layout';
 import { useTheme } from '@/context/ThemeContext';
 import { ModernLoader } from '@/components/ui/ModernLoader';
 import { activityService , Activity as ActivityItem } from '@/services/activityService';
@@ -333,76 +333,39 @@ export default function RecentActivityScreen() {
     </View>
   );
 
+  const refreshButton = (
+    <TouchableOpacity onPress={onRefresh} style={{ padding: 8 }} activeOpacity={0.7}>
+      <Ionicons name="refresh" size={24} color={safeTheme?.text?.primary || '#11181C'} />
+    </TouchableOpacity>
+  );
+
   if (loading && activities.length === 0) {
     return (
-      <SafeAreaView
-        edges={['top', 'left', 'right']}
-        style={[
-          styles.container,
-          styles.centerContent,
-          { backgroundColor: safeTheme?.background || '#ffffff' },
-        ]}
+      <ScreenLayout
+        title="Recent Activities"
+        showBack
+        onBackPress={() => router.back()}
+        rightElement={refreshButton}
       >
-        <StatusBar
-          barStyle='dark-content'
-          backgroundColor='transparent'
-          translucent={false}
-        />
-        <ModernLoader visible={true} text="Loading activities..." />
-
-      </SafeAreaView>
+        <View style={[styles.container, styles.centerContent, { backgroundColor: safeTheme?.background || '#ffffff' }]}>
+          <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent={false} />
+          <ModernLoader visible={true} text="Loading activities..." />
+        </View>
+      </ScreenLayout>
     );
   }
 
   return (
-    <SafeAreaView
-      edges={['top', 'left', 'right']}
-      style={[
-        styles.container,
-        { backgroundColor: safeTheme?.background || '#ffffff' },
-      ]}
+    <ScreenLayout
+      title="Recent Activities"
+      showBack
+      onBackPress={() => router.back()}
+      rightElement={refreshButton}
     >
-      <StatusBar
-        barStyle='dark-content'
-        backgroundColor={safeTheme?.background || '#ffffff'}
-        translucent={false}
-      />
-      {/* Header */}
-      <View
-        style={[
-          styles.header,
-          {
-            borderBottomColor: safeTheme?.border?.secondary || '#e5e7eb',
-          },
-        ]}
-      >
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-          activeOpacity={0.7}
-        >
-          <Ionicons
-            name='arrow-back'
-            size={24}
-            color={safeTheme?.text?.primary || '#11181C'}
-          />
-        </TouchableOpacity>
-        <ThemedText style={styles.headerTitle}>Recent Activities</ThemedText>
-        <TouchableOpacity
-          style={styles.refreshButton}
-          onPress={onRefresh}
-          activeOpacity={0.7}
-        >
-          <Ionicons
-            name='refresh'
-            size={24}
-            color={safeTheme?.text?.primary || '#11181C'}
-          />
-        </TouchableOpacity>
-      </View>
-
-      {/* Filter Buttons */}
-      <View style={styles.filterContainer}>
+      <View style={[styles.container, { backgroundColor: safeTheme?.background || '#ffffff' }]}>
+        <StatusBar barStyle="dark-content" backgroundColor={safeTheme?.background || '#ffffff'} translucent={false} />
+        {/* Filter Buttons */}
+        <View style={styles.filterContainer}>
         {renderFilterButton('all', 'All', 'list')}
         {renderFilterButton('meals', 'Meals', 'restaurant')}
         {renderFilterButton('bazar', 'Bazar', 'cart')}
@@ -430,7 +393,8 @@ export default function RecentActivityScreen() {
         maxToRenderPerBatch={10}
         windowSize={10}
       />
-    </SafeAreaView>
+      </View>
+    </ScreenLayout>
   );
 }
 
@@ -446,25 +410,6 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     opacity: 0.7,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-  },
-  backButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  refreshButton: {
-    padding: 8,
   },
   filterContainer: {
     flexDirection: 'row',

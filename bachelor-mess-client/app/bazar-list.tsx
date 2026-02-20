@@ -8,11 +8,11 @@ import {
   Alert,
   StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '../components/ThemedText';
+import { ScreenLayout } from '../components/layout';
 import { BazarCard, type BazarCardBazar } from '../components/cards/BazarCard';
 import { BazarFilters } from '../components/bazar/BazarFilters';
 import { BazarSearchBar } from '../components/bazar/BazarSearchBar';
@@ -189,41 +189,8 @@ export default function BazarListScreen(_props: BazarListScreenProps) {
     </View>
   );
 
-  const renderHeader = () => (
-    <View style={[styles.header, { backgroundColor: theme.background }]}>
-      {/* Top Navigation Bar */}
-      <View style={styles.headerTop}>
-        <TouchableOpacity
-          style={[styles.backButton, { backgroundColor: theme.cardBackground }]}
-          onPress={() => router.back()}
-          activeOpacity={0.7}
-        >
-          <Ionicons name='arrow-back' size={24} color={theme.text.primary} />
-        </TouchableOpacity>
-        <View style={styles.headerTitleContainer}>
-          <ThemedText
-            style={[styles.headerTitle, { color: theme.text.primary }]}
-          >
-            All Bazar Items
-          </ThemedText>
-          <ThemedText
-            style={[styles.headerSubtitle, { color: theme.text.secondary }]}
-          >
-            {filteredEntries?.length || 0} items found
-          </ThemedText>
-        </View>
-        <TouchableOpacity
-          style={[
-            styles.refreshButton,
-            { backgroundColor: theme.cardBackground },
-          ]}
-          onPress={handleRefresh}
-          activeOpacity={0.7}
-        >
-          <Ionicons name='refresh' size={24} color={theme.text.primary} />
-        </TouchableOpacity>
-      </View>
-
+  const renderListHeader = () => (
+    <View style={[styles.listHeader, { backgroundColor: theme.background }]}>
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <BazarSearchBar
@@ -266,31 +233,35 @@ export default function BazarListScreen(_props: BazarListScreenProps) {
   );
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.background }]}
-      edges={['top']}
+    <ScreenLayout
+      title="All Bazar Items"
+      subtitle={`${filteredEntries?.length ?? 0} items found`}
+      showBack
+      onBackPress={() => router.back()}
+      rightElement={
+        <TouchableOpacity onPress={handleRefresh} style={styles.refreshButton} activeOpacity={0.7}>
+          <Ionicons name="refresh" size={24} color={theme.text.primary} />
+        </TouchableOpacity>
+      }
     >
-      <StatusBar
-        barStyle='dark-content'
-        backgroundColor='transparent'
-        translucent
-      />
-      <FlatList
-        data={filteredEntries || []}
-        renderItem={renderBazarItem}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.listContainer}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            colors={[theme.primary]}
-            tintColor={theme.primary}
-            progressBackgroundColor={theme.cardBackground}
-          />
-        }
-        ListHeaderComponent={renderHeader}
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+        <FlatList
+          data={filteredEntries || []}
+          renderItem={renderBazarItem}
+          keyExtractor={item => item.id}
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              colors={[theme.primary]}
+              tintColor={theme.primary}
+              progressBackgroundColor={theme.cardBackground}
+            />
+          }
+          ListHeaderComponent={renderListHeader}
         ListEmptyComponent={entriesError ? renderErrorState : renderEmptyState}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         ListFooterComponent={<View style={styles.footer} />}
@@ -304,7 +275,8 @@ export default function BazarListScreen(_props: BazarListScreenProps) {
           index,
         })}
       />
-    </SafeAreaView>
+      </View>
+    </ScreenLayout>
   );
 }
 
@@ -315,57 +287,13 @@ const styles = StyleSheet.create({
   listContainer: {
     flexGrow: 1,
   },
-  header: {
+  listHeader: {
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
-  },
-  headerTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  headerTitleContainer: {
-    flex: 1,
-    alignItems: 'center',
-    marginHorizontal: 16,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    marginTop: 4,
-    textAlign: 'center',
   },
   refreshButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    padding: 8,
   },
   searchContainer: {
     marginBottom: 16,
