@@ -192,11 +192,23 @@ export const MealManagement: React.FC<MealManagementProps> = ({
       {
         title: 'Today',
         value:
-          meals?.filter(
-            m =>
-              isMyMeal(m) &&
-              new Date(m.date).toDateString() === new Date().toDateString()
-          ).length ?? 0,
+          // how many meals are approved for the current user today
+          (meals || [])
+            .filter(
+              m =>
+                isMyMeal(m) &&
+                m?.status === 'approved' &&
+                new Date(m.date).toDateString() === new Date().toDateString()
+            )
+            .reduce(
+              (acc, m) => {
+                acc.totalMeals += m?.breakfast ? 1 : 0;
+                acc.totalMeals += m?.lunch ? 1 : 0;
+                acc.totalMeals += m?.dinner ? 1 : 0;
+                return acc;
+              },
+              { totalMeals: 0 }
+            ).totalMeals,
         icon: 'calendar',
         colors: (theme.gradient?.secondary ?? [
           theme.primary,
