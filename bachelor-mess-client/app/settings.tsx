@@ -1,5 +1,6 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { ScreenBackButton } from '@/components/ui/ScreenBackButton';
 import { featureManager, FeatureConfig, offlineStorage } from '@/services';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -298,6 +299,7 @@ export default function SettingsScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      <ScreenBackButton onPress={() => router.back()} />
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}

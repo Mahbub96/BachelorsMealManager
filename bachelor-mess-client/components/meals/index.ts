@@ -22,7 +22,7 @@ export { MealAdvancedFilters } from './MealAdvancedFilters';
 
 // Modal and detail components
 export { MealModal } from './MealModal';
-export { MealDetailsView } from './MealDetailsView';
+export { MealDetailModal } from './MealDetailModal';
 
 // State components
 export { MealEmptyState } from './MealEmptyState';

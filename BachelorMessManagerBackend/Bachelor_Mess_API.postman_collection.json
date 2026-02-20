@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "bachelor-mess-api-collection-2024",
     "name": "Bachelor Mess Manager API",
-    "description": "Complete API documentation for Bachelor Mess Manager Backend. Import this collection to Postman to test all endpoints. Configure BASE_URL variable for your environment (local/cloud).\n\n**Key Features:**\n- User authentication and authorization\n- Meal management (one entry per user per day, can be updated once)\n- Bazar (grocery) management with admin controls\n- Comprehensive user statistics (dashboard, meals, bazar, payments)\n- Activity tracking and analytics\n- Admin and super-admin endpoints\n\n**Important Notes:**\n- All meal statistics now correctly count individual meals (breakfast + lunch + dinner), not just entries\n- User can submit one meal entry per day; updates are allowed once per day\n- Use /api/user-stats/dashboard for comprehensive dashboard statistics\n- Use /api/user-stats/meals for detailed meal statistics\n- Authentication token is auto-populated after login",
+    "description": "Production-ready API collection aligned with all backend route files.\n\n**Route files covered:** auth.js, meals.js, bazar.js, dashboard.js, users.js, analytics.js, activity.js, statistics.js, userStats.js, superAdmin.js, uiConfig.js, monitoring.js; plus server.js health/docs.\n\n**Setup:**\n- Set BASE_URL (e.g. https://api.yourdomain.com for production). Use Postman Environments for dev/staging/prod.\n- Run \"Login User\" first; AUTH_TOKEN and USER_ID are auto-saved.\n- For path params (e.g. :mealId, :bazarId), set the matching collection variable from API responses.\n\n**Sections match route files:** 1 Auth, 2 Meals, 3 Bazar, 4 Dashboard, 5 Users, 6 Analytics, 7 Activity, 8 Statistics, 9 User Stats, 10 Super Admin, 11 UI Config, 12 Monitoring, 13 Health Check.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "bachelor-mess-api"
   },
@@ -85,16 +85,22 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "if (pm.response.code === 200) {",
-                  "    var jsonData = pm.response.json();",
-                  "    if (jsonData.data && jsonData.data.token) {",
-                  "        pm.collectionVariables.set('AUTH_TOKEN', jsonData.data.token);",
-                  "        pm.collectionVariables.set('REFRESH_TOKEN', jsonData.data.refreshToken || '');",
-                  "        if (jsonData.data.user && jsonData.data.user.id) {",
-                  "            pm.collectionVariables.set('USER_ID', jsonData.data.user.id);",
+                  "try {",
+                  "    if (pm.response.code === 200) {",
+                  "        var jsonData = pm.response.json();",
+                  "        if (jsonData && jsonData.data) {",
+                  "            if (jsonData.data.token) {",
+                  "                pm.collectionVariables.set('AUTH_TOKEN', jsonData.data.token);",
+                  "            }",
+                  "            if (jsonData.data.refreshToken !== undefined) {",
+                  "                pm.collectionVariables.set('REFRESH_TOKEN', jsonData.data.refreshToken);",
+                  "            }",
+                  "            if (jsonData.data.user && jsonData.data.user.id) {",
+                  "                pm.collectionVariables.set('USER_ID', jsonData.data.user.id);",
+                  "            }",
                   "        }",
                   "    }",
-                  "}"
+                  "} catch (e) { /* ignore parse errors on non-JSON or error responses */ }"
                 ],
                 "type": "text/javascript"
               }
@@ -351,10 +357,10 @@
                 "reset-password"
               ]
             },
-            "description": "Reset password using reset token",
+            "description": "Reset password using token from forgot-password email. Set RESET_TOKEN variable from email link/query param.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"token\": \"reset-token-here\",\n  \"newPassword\": \"newpassword123\"\n}",
+              "raw": "{\n  \"token\": \"{{RESET_TOKEN}}\",\n  \"newPassword\": \"newpassword123\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -410,46 +416,6 @@
           "response": []
         },
         {
-          "name": "Submit Daily Meals (Alternative)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{AUTH_TOKEN}}",
-                "type": "text"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{BASE_URL}}{{API_PREFIX}}/meals/submit",
-              "host": [
-                "{{BASE_URL}}"
-              ],
-              "path": [
-                "api",
-                "meals",
-                "submit"
-              ]
-            },
-            "description": "Alternative endpoint for submitting meals",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"date\": \"2024-01-15\",\n  \"breakfast\": true,\n  \"lunch\": true,\n  \"dinner\": false\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
           "name": "Get User Meals",
           "request": {
             "method": "GET",
@@ -471,32 +437,6 @@
               ]
             },
             "description": "Get current user's meal entries"
-          },
-          "response": []
-        },
-        {
-          "name": "Get User Meals (Alternative)",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{AUTH_TOKEN}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{BASE_URL}}{{API_PREFIX}}/meals/user",
-              "host": [
-                "{{BASE_URL}}"
-              ],
-              "path": [
-                "api",
-                "meals",
-                "user"
-              ]
-            },
-            "description": "Alternative endpoint for getting user meals"
           },
           "response": []
         },
@@ -714,33 +654,6 @@
           "response": []
         },
         {
-          "name": "Get User Meal Statistics (Alternative)",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{AUTH_TOKEN}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{BASE_URL}}{{API_PREFIX}}/meals/user/stats",
-              "host": [
-                "{{BASE_URL}}"
-              ],
-              "path": [
-                "api",
-                "meals",
-                "user",
-                "stats"
-              ]
-            },
-            "description": "Alternative endpoint for user meal statistics"
-          },
-          "response": []
-        },
-        {
           "name": "Bulk Approve Meals (Admin)",
           "request": {
             "method": "POST",
@@ -846,12 +759,12 @@
                 "bazar"
               ]
             },
-            "description": "Get current user's bazar entries"
+            "description": "Get current user's bazar entries (GET /api/bazar)"
           },
           "response": []
         },
         {
-          "name": "Get User Bazar Entries (Alternative)",
+          "name": "Get User Bazar Entries (path /user)",
           "request": {
             "method": "GET",
             "header": [
@@ -872,7 +785,7 @@
                 "user"
               ]
             },
-            "description": "Alternative endpoint for getting user bazar entries"
+            "description": "Same as GET /bazar; alternate path GET /api/bazar/user (bazar.js)"
           },
           "response": []
         },
@@ -1566,6 +1479,177 @@
             "description": "Get current user's dashboard data"
           },
           "response": []
+        },
+        {
+          "name": "Get All Users (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/users",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            },
+            "description": "Get all users with pagination (admin/super_admin only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Create User (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/users",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            },
+            "description": "Create user (admin/super_admin only)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New User\",\n  \"email\": \"newuser@example.com\",\n  \"password\": \"password123\",\n  \"phone\": \"+1234567890\",\n  \"role\": \"member\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update User (Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/users/:id",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                ":id"
+              ]
+            },
+            "description": "Update user (admin/super_admin only)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Name\",\n  \"email\": \"updated@example.com\",\n  \"phone\": \"+1234567890\",\n  \"role\": \"member\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete User (Admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/users/:id",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                ":id"
+              ]
+            },
+            "description": "Delete user (admin/super_admin only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Reset User Password (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/users/:id/reset-password",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                ":id",
+                "reset-password"
+              ]
+            },
+            "description": "Reset user password (admin/super_admin only)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"newPassword\": \"newpassword123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
         }
       ]
     },
@@ -1733,6 +1817,32 @@
               ]
             },
             "description": "Get activity statistics"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Activity by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/activity/:id",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "activity",
+                ":id"
+              ]
+            },
+            "description": "Get activity by ID (supports meal, bazar, or user activities)"
           },
           "response": []
         }
@@ -1973,6 +2083,42 @@
               ]
             },
             "description": "Get combined dashboard statistics"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Monthly Report",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{AUTH_TOKEN}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/statistics/report?month=1&year=2024",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "statistics",
+                "report"
+              ],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "1"
+                },
+                {
+                  "key": "year",
+                  "value": "2024"
+                }
+              ]
+            },
+            "description": "Get monthly report (month and year query params required)"
           },
           "response": []
         }
@@ -3665,17 +3811,16 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{BASE_URL}}{{API_PREFIX}}/health/detailed",
+              "raw": "{{BASE_URL}}/health/detailed",
               "host": [
                 "{{BASE_URL}}"
               ],
               "path": [
-                "api",
                 "health",
                 "detailed"
               ]
             },
-            "description": "Detailed health check with system information"
+            "description": "Detailed health check with system information (mounted at root, not under /api)"
           },
           "response": []
         },
@@ -3706,42 +3851,97 @@
       "key": "BASE_URL",
       "value": "http://localhost:3000",
       "type": "string",
-      "description": "Base URL for the API. Change this to your cloud URL when testing from cloud."
+      "description": "API base URL. Production: https://api.yourdomain.com. Use Environments for dev/staging/prod."
     },
     {
       "key": "API_PREFIX",
       "value": "/api",
-      "type": "string"
+      "type": "string",
+      "description": "API path prefix. Usually /api. Set empty if API is at root."
     },
     {
       "key": "AUTH_TOKEN",
       "value": "",
       "type": "string",
-      "description": "JWT token for authenticated requests. Auto-populated after login."
+      "description": "JWT access token. Auto-set after Login User."
     },
     {
       "key": "REFRESH_TOKEN",
       "value": "",
       "type": "string",
-      "description": "Refresh token for getting new access tokens."
+      "description": "Refresh token. Auto-set after Login User."
     },
     {
       "key": "USER_ID",
       "value": "",
       "type": "string",
-      "description": "Current user ID. Auto-populated after login."
+      "description": "Current user ID. Auto-set after Login. Use for users/:id or set 'id' variable."
     },
     {
       "key": "MEAL_ID",
       "value": "",
       "type": "string",
-      "description": "Meal ID for testing meal-specific endpoints."
+      "description": "Meal ID for /meals/:mealId. Set 'mealId' from Get User Meals response."
     },
     {
       "key": "BAZAR_ID",
       "value": "",
       "type": "string",
-      "description": "Bazar ID for testing bazar-specific endpoints."
+      "description": "Bazar ID for /bazar/:bazarId. Set 'bazarId' from Get User Bazar response."
+    },
+    {
+      "key": "id",
+      "value": "",
+      "type": "string",
+      "description": "Path param for users/:id, activity/:id. Set to USER_ID for user endpoints."
+    },
+    {
+      "key": "mealId",
+      "value": "",
+      "type": "string",
+      "description": "Path param for /meals/:mealId. Set from Get User Meals or use MEAL_ID."
+    },
+    {
+      "key": "bazarId",
+      "value": "",
+      "type": "string",
+      "description": "Path param for /bazar/:bazarId. Set from Get User Bazar or use BAZAR_ID."
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string",
+      "description": "Path param for /users/stats/:userId, /analytics/user/:userId, /super-admin/users/:userId. Use USER_ID."
+    },
+    {
+      "key": "configId",
+      "value": "",
+      "type": "string",
+      "description": "Path param for /ui-config/:configId. Set from Get All Configurations response."
+    },
+    {
+      "key": "appId",
+      "value": "bachelor-mess",
+      "type": "string",
+      "description": "Path param for /ui-config/version/:appId/:version."
+    },
+    {
+      "key": "version",
+      "value": "1.0.0",
+      "type": "string",
+      "description": "Path param for /ui-config/version/:appId/:version."
+    },
+    {
+      "key": "fileName",
+      "value": "",
+      "type": "string",
+      "description": "Path param for /monitoring/backups/:fileName/restore and /verify. Set from Get Backup List."
+    },
+    {
+      "key": "RESET_TOKEN",
+      "value": "",
+      "type": "string",
+      "description": "Token from forgot-password email. Required for Reset Password request body."
     }
   ]
 }

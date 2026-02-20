@@ -43,13 +43,16 @@ class Logger {
    */
   private sanitize(data: unknown): unknown {
     if (data === null) return data;
-    if (data instanceof Error) return { name: data.name, message: data.message };
+    if (data instanceof Error)
+      return { name: data.name, message: data.message };
 
     if (typeof data === 'string') {
       try {
         const parsed = JSON.parse(data);
         if (typeof parsed === 'object' && parsed !== null) {
-          return JSON.stringify(this.sanitize(parsed) as Record<string, unknown>);
+          return JSON.stringify(
+            this.sanitize(parsed) as Record<string, unknown>
+          );
         }
       } catch {
         // Not JSON — leave as-is; callers must avoid passing raw request bodies as strings
@@ -58,12 +61,14 @@ class Logger {
     }
 
     if (typeof data !== 'object') return data;
-    if (Array.isArray(data)) return data.map((item) => this.sanitize(item));
+    if (Array.isArray(data)) return data.map(item => this.sanitize(item));
 
     const sanitized: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(data)) {
       const lowerKey = key.toLowerCase();
-      const isSensitive = Logger.SENSITIVE_KEYS.some((sk) => lowerKey.includes(sk));
+      const isSensitive = Logger.SENSITIVE_KEYS.some(sk =>
+        lowerKey.includes(sk)
+      );
 
       if (isSensitive && value !== undefined && value !== null) {
         sanitized[key] = '[REDACTED]';
@@ -102,7 +107,7 @@ class Logger {
    */
   error(message: string, ...args: unknown[]): void {
     const sanitizedArgs = args.map(arg => this.sanitize(arg));
-    console.error(message, ...sanitizedArgs);
+    console.log(`[ERROR] ${message}`, ...sanitizedArgs);
   }
 
   /**
@@ -131,18 +136,29 @@ class Logger {
   apiRequest(method: string, url: string, data?: unknown): void {
     if (this.isDevelopment) {
       const sanitizedData = data ? this.sanitize(data) : undefined;
-      console.log(`🌐 [${method}] ${url}`, sanitizedData ? { data: sanitizedData } : '');
+      console.log(
+        `🌐 [${method}] ${url}`,
+        sanitizedData ? { data: sanitizedData } : ''
+      );
     }
   }
 
   /**
    * Log API response (sanitized, only in development)
    */
-  apiResponse(method: string, url: string, success: boolean, data?: unknown): void {
+  apiResponse(
+    method: string,
+    url: string,
+    success: boolean,
+    data?: unknown
+  ): void {
     if (this.isDevelopment) {
       const sanitizedData = data ? this.sanitize(data) : undefined;
       const icon = success ? '✅' : '❌';
-      console.log(`${icon} [${method}] ${url}`, sanitizedData ? { data: sanitizedData } : '');
+      console.log(
+        `${icon} [${method}] ${url}`,
+        sanitizedData ? { data: sanitizedData } : ''
+      );
     }
   }
 }

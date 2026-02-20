@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '../ThemedText';
+import { useTheme } from '../../context/ThemeContext';
 
 interface MealModalProps {
   visible: boolean;
@@ -16,17 +17,18 @@ export const MealModal: React.FC<MealModalProps> = ({
   onClose,
   children,
 }) => {
+  const { theme } = useTheme();
   return (
     <Modal
       visible={visible}
-      animationType='slide'
-      presentationStyle='pageSheet'
+      animationType="slide"
+      presentationStyle="pageSheet"
     >
-      <View style={styles.modalContainer}>
-        <View style={styles.modalHeader}>
-          <ThemedText style={styles.modalTitle}>{title}</ThemedText>
+      <View style={[styles.modalContainer, { backgroundColor: theme.modal ?? theme.background ?? '#fff' }]}>
+        <View style={[styles.modalHeader, { borderBottomColor: theme.border?.secondary ?? '#e5e7eb' }]}>
+          <ThemedText style={[styles.modalTitle, { color: theme.text?.primary ?? '#1f2937' }]}>{title}</ThemedText>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Ionicons name='close' size={24} color='#6b7280' />
+            <Ionicons name="close" size={24} color={theme.icon?.secondary ?? '#6b7280'} />
           </TouchableOpacity>
         </View>
         {children}
@@ -38,7 +40,6 @@ export const MealModal: React.FC<MealModalProps> = ({
 const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -46,12 +47,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#1f2937',
   },
   closeButton: {
     padding: 4,

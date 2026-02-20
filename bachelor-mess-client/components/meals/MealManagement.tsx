@@ -4,7 +4,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   RefreshControl,
   Dimensions,
   TextInput,
@@ -31,6 +30,9 @@ import { useTheme } from '../../context/ThemeContext';
 import { useMealManagement } from '../../hooks/useMealManagement';
 import mealService from '../../services/mealService';
 import { useThemeColor } from '../../hooks/useThemeColor';
+import { ScreenBackButton } from '../ui/ScreenBackButton';
+import { InfoModal, type InfoModalVariant } from '../ui';
+import { MealDetailModal } from './MealDetailModal';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -41,7 +43,8 @@ interface MealManagementProps {
 export const MealManagement: React.FC<MealManagementProps> = ({
   onNavigate,
 }) => {
-  useAuth();
+  const { user } = useAuth();
+
   const { theme } = useTheme();
 
   const backgroundColor = useThemeColor({}, 'background');
@@ -65,10 +68,51 @@ export const MealManagement: React.FC<MealManagementProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [historyFilter, setHistoryFilter] = useState<'total' | 'my'>('total');
+  const [infoModal, setInfoModal] = useState<{
+    title: string;
+    message: string;
+    variant: InfoModalVariant;
+  } | null>(null);
   const isSmallScreen = screenWidth < 375;
 
-  const { meals, mealStats, refreshMeals, handleMealPress } =
-    useMealManagement();
+  const showAlert = useCallback(
+    (title: string, message: string, variant: InfoModalVariant = 'info') => {
+      setInfoModal({ title, message, variant });
+    },
+    []
+  );
+
+  const {
+    meals,
+    mealStats,
+    refreshMeals,
+    handleMealPress,
+    selectedMeal,
+    closeMealDetail,
+  } = useMealManagement({ showAlert });
+
+  const isMyMeal = useCallback(
+    (m: { userId?: string | { _id?: string } }) => {
+      if (!user?.id) return false;
+      const uid = m.userId;
+      if (typeof uid === 'string') return uid === user.id;
+      return uid?._id === user.id;
+    },
+    [user?.id]
+  );
+
+  const historyMeals = useMemo(() => {
+    const list = meals || [];
+    if (historyFilter === 'my') return list.filter(isMyMeal);
+    return list;
+  }, [meals, historyFilter, isMyMeal]);
+
+  const recentMyMeals = useMemo(
+    () => (meals || []).filter(isMyMeal).slice(0, 5),
+    [meals, isMyMeal]
+  );
+
   const { register, unregister, refreshAll } = useAppRefresh();
 
   useFocusEffect(
@@ -103,35 +147,62 @@ export const MealManagement: React.FC<MealManagementProps> = ({
     () => [
       {
         title: 'Total Meals',
-        value: mealStats?.totalMeals ?? meals?.length ?? 0,
+        value:
+          mealStats?.totalMeals ?? (meals || []).filter(isMyMeal).length ?? 0,
         icon: 'fast-food',
-        colors: (theme.gradient?.info ?? [theme.primary, theme.primary]) as [string, string],
-        period: 'all time',
+        colors: (theme.gradient?.info ?? [theme.primary, theme.primary]) as [
+          string,
+          string,
+        ],
+        period: 'My Meals',
       },
       {
         title: 'Pending',
         value: meals?.filter(m => m?.status === 'pending').length ?? 0,
         icon: 'time',
-        colors: (theme.gradient?.warning ?? [theme.primary, theme.primary]) as [string, string],
-        period: 'to approve',
+        colors: (theme.gradient?.warning ?? [theme.primary, theme.primary]) as [
+          string,
+          string,
+        ],
+        period: 'Pending Approval',
       },
       {
         title: 'Approved',
-        value: meals?.filter(m => m?.status === 'approved').length ?? 0,
-        icon: 'checkmark-circle',
-        colors: (theme.gradient?.success ?? [theme.primary, theme.primary]) as [string, string],
-        period: 'meals',
+        value:
+          // approved should me how many meals are approved for the current user not how many days are approved
+
+          (meals || [])
+            .filter(m => isMyMeal(m) && m?.status === 'approved')
+            .reduce(
+              (acc, m) => {
+                acc.totalMeals += m?.breakfast ? 1 : 0;
+                acc.totalMeals += m?.lunch ? 1 : 0;
+                acc.totalMeals += m?.dinner ? 1 : 0;
+                return acc;
+              },
+              { totalMeals: 0 }
+            ).totalMeals,
+        icon: 'fast-food',
+        colors: (theme.gradient?.success ?? [theme.primary, theme.primary]) as [
+          string,
+          string,
+        ],
+        period: 'Approved Meals',
       },
       {
         title: 'Today',
         value:
-          meals?.filter(m => {
-            if (!m?.date) return false;
-            return new Date(m.date).toDateString() === new Date().toDateString();
-          }).length ?? 0,
+          meals?.filter(
+            m =>
+              isMyMeal(m) &&
+              new Date(m.date).toDateString() === new Date().toDateString()
+          ).length ?? 0,
         icon: 'calendar',
-        colors: (theme.gradient?.secondary ?? [theme.primary, theme.primary]) as [string, string],
-        period: 'today',
+        colors: (theme.gradient?.secondary ?? [
+          theme.primary,
+          theme.primary,
+        ]) as [string, string],
+        period: 'Today',
       },
     ],
     [mealStats?.totalMeals, meals, theme]
@@ -189,7 +260,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
       !selectedMeals.lunch &&
       !selectedMeals.dinner
     ) {
-      Alert.alert('Error', 'Please select at least one meal');
+      showAlert('Error', 'Please select at least one meal', 'error');
       return;
     }
 
@@ -205,8 +276,10 @@ export const MealManagement: React.FC<MealManagementProps> = ({
 
       const response = await mealService.submitMeal(mealData);
 
+      console.log('response from submitMeal', response);
+
       if (response.success) {
-        Alert.alert('Success', 'Meal submitted successfully!');
+        showAlert('Success', 'Meal submitted successfully!', 'success');
         setSelectedMeals({ breakfast: false, lunch: false, dinner: false });
         setNotes('');
         setSelectedDate(new Date());
@@ -219,16 +292,17 @@ export const MealManagement: React.FC<MealManagementProps> = ({
           err.includes('already have a meal entry') ||
           err.includes('already exists for this date')
         ) {
-          Alert.alert(
+          showAlert(
             'Meal Already Exists',
-            'You already have a meal entry for this date. You can update it from the meal list.'
+            'You already have a meal entry for this date. You can update it from the meal list.',
+            'warning'
           );
         } else {
-          Alert.alert('Error', err);
+          showAlert('Error', err, 'error');
         }
       }
     } catch {
-      Alert.alert('Error', 'An unexpected error occurred');
+      showAlert('Error', 'An unexpected error occurred', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -263,9 +337,9 @@ export const MealManagement: React.FC<MealManagementProps> = ({
         }
       >
         <DashboardHeader
-          title="Meal Management"
-          subtitle="Track and manage your meals"
-          icon="restaurant"
+          title='Meal Management'
+          subtitle='Track and manage My Meals'
+          icon='restaurant'
         />
         <StatsGrid
           stats={mealStatsForGrid}
@@ -274,16 +348,18 @@ export const MealManagement: React.FC<MealManagementProps> = ({
         />
         <QuickActions
           actions={quickActionsList}
-          title="Quick Actions"
-          subtitle="Manage your meals"
+          title='My Meals Actions'
+          subtitle='Manage My Meals'
           columns={2}
           isSmallScreen={isSmallScreen}
         />
 
         {/* Meal Summary - modern card style */}
         <View style={[styles.section, { paddingHorizontal: 16 }]}>
-          <ThemedText style={[styles.sectionTitle, { color: theme.text?.primary }]}>
-            Meal Summary
+          <ThemedText
+            style={[styles.sectionTitle, { color: theme.text?.primary }]}
+          >
+            My Meals Summary
           </ThemedText>
           <View style={styles.summaryGrid}>
             <View
@@ -297,13 +373,31 @@ export const MealManagement: React.FC<MealManagementProps> = ({
                 },
               ]}
             >
-              <View style={[styles.summaryIconWrap, { backgroundColor: (theme.status?.warning ?? theme.primary) + '18' }]}>
-                <Ionicons name="sunny" size={22} color={theme.status?.warning ?? theme.primary} />
+              <View
+                style={[
+                  styles.summaryIconWrap,
+                  {
+                    backgroundColor:
+                      (theme.status?.warning ?? theme.primary) + '18',
+                  },
+                ]}
+              >
+                <Ionicons
+                  name='sunny'
+                  size={22}
+                  color={theme.status?.warning ?? theme.primary}
+                />
               </View>
-              <ThemedText style={[styles.summaryValue, { color: theme.text?.primary }]}>
-                {meals?.filter(m => m?.breakfast).length || 0}
+              <ThemedText
+                style={[styles.summaryValue, { color: theme.text?.primary }]}
+              >
+                {(meals || []).filter(m => isMyMeal(m) && m?.breakfast).length}
               </ThemedText>
-              <ThemedText style={[styles.summaryLabel, { color: theme.text?.secondary }]}>Breakfast</ThemedText>
+              <ThemedText
+                style={[styles.summaryLabel, { color: theme.text?.secondary }]}
+              >
+                Breakfast
+              </ThemedText>
             </View>
             <View
               style={[
@@ -316,13 +410,31 @@ export const MealManagement: React.FC<MealManagementProps> = ({
                 },
               ]}
             >
-              <View style={[styles.summaryIconWrap, { backgroundColor: (theme.status?.success ?? theme.primary) + '18' }]}>
-                <Ionicons name="partly-sunny" size={22} color={theme.status?.success ?? theme.primary} />
+              <View
+                style={[
+                  styles.summaryIconWrap,
+                  {
+                    backgroundColor:
+                      (theme.status?.success ?? theme.primary) + '18',
+                  },
+                ]}
+              >
+                <Ionicons
+                  name='partly-sunny'
+                  size={22}
+                  color={theme.status?.success ?? theme.primary}
+                />
               </View>
-              <ThemedText style={[styles.summaryValue, { color: theme.text?.primary }]}>
-                {meals?.filter(m => m?.lunch).length || 0}
+              <ThemedText
+                style={[styles.summaryValue, { color: theme.text?.primary }]}
+              >
+                {(meals || []).filter(m => isMyMeal(m) && m?.lunch).length}
               </ThemedText>
-              <ThemedText style={[styles.summaryLabel, { color: theme.text?.secondary }]}>Lunch</ThemedText>
+              <ThemedText
+                style={[styles.summaryLabel, { color: theme.text?.secondary }]}
+              >
+                Lunch
+              </ThemedText>
             </View>
             <View
               style={[
@@ -335,35 +447,92 @@ export const MealManagement: React.FC<MealManagementProps> = ({
                 },
               ]}
             >
-              <View style={[styles.summaryIconWrap, { backgroundColor: (theme.primary ?? theme.secondary) + '18' }]}>
-                <Ionicons name="moon" size={22} color={theme.primary ?? theme.secondary} />
+              <View
+                style={[
+                  styles.summaryIconWrap,
+                  {
+                    backgroundColor: (theme.primary ?? theme.secondary) + '18',
+                  },
+                ]}
+              >
+                <Ionicons
+                  name='moon'
+                  size={22}
+                  color={theme.primary ?? theme.secondary}
+                />
               </View>
-              <ThemedText style={[styles.summaryValue, { color: theme.text?.primary }]}>
-                {meals?.filter(m => m?.dinner).length || 0}
+              <ThemedText
+                style={[styles.summaryValue, { color: theme.text?.primary }]}
+              >
+                {(meals || []).filter(m => isMyMeal(m) && m?.dinner).length}
               </ThemedText>
-              <ThemedText style={[styles.summaryLabel, { color: theme.text?.secondary }]}>Dinner</ThemedText>
+              <ThemedText
+                style={[styles.summaryLabel, { color: theme.text?.secondary }]}
+              >
+                Dinner
+              </ThemedText>
             </View>
           </View>
         </View>
 
         {/* Recent Meals - modern card container */}
-        <View style={[styles.section, { paddingHorizontal: 16, marginBottom: 28 }]}>
+        <View
+          style={[styles.section, { paddingHorizontal: 16, marginBottom: 28 }]}
+        >
           <View style={styles.sectionHeader}>
-            <ThemedText style={[styles.sectionTitle, { color: theme.text?.primary }]}>Recent Meals</ThemedText>
+            <ThemedText
+              style={[styles.sectionTitle, { color: theme.text?.primary }]}
+            >
+              Recent My Meals
+            </ThemedText>
             <TouchableOpacity
-              style={[styles.monthFilterButton, { backgroundColor: (theme.status?.success ?? theme.primary) + '18', borderColor: theme.status?.success ?? theme.primary }]}
+              style={[
+                styles.monthFilterButton,
+                {
+                  backgroundColor:
+                    (theme.status?.success ?? theme.primary) + '18',
+                  borderColor: theme.status?.success ?? theme.primary,
+                },
+              ]}
               onPress={() => {
                 const currentMonth = new Date().getMonth();
                 const currentYear = new Date().getFullYear();
-                const filteredMeals = meals?.filter(meal => {
+                const filteredMeals = (meals || []).filter(meal => {
+                  if (!isMyMeal(meal)) return false;
                   const mealDate = new Date(meal.date);
-                  return mealDate.getMonth() === currentMonth && mealDate.getFullYear() === currentYear;
+                  return (
+                    mealDate.getMonth() === currentMonth &&
+                    mealDate.getFullYear() === currentYear
+                  );
                 });
-                Alert.alert('Current Month', `Showing ${filteredMeals?.length || 0} meals for current month`);
+                const totalSlots = filteredMeals.reduce(
+                  (sum, m) =>
+                    sum +
+                    (m.breakfast ? 1 : 0) +
+                    (m.lunch ? 1 : 0) +
+                    (m.dinner ? 1 : 0),
+                  0
+                );
+                showAlert(
+                  'Current Month',
+                  `Showing ${totalSlots} meals (${filteredMeals.length} ${filteredMeals.length === 1 ? 'day' : 'days'}) for current month`,
+                  'info'
+                );
               }}
             >
-              <Ionicons name="calendar" size={20} color={theme.status?.success ?? theme.primary} />
-              <ThemedText style={[styles.monthFilterText, { color: theme.status?.success ?? theme.primary }]}>Current Month</ThemedText>
+              <Ionicons
+                name='calendar'
+                size={20}
+                color={theme.status?.success ?? theme.primary}
+              />
+              <ThemedText
+                style={[
+                  styles.monthFilterText,
+                  { color: theme.status?.success ?? theme.primary },
+                ]}
+              >
+                Current Month
+              </ThemedText>
             </TouchableOpacity>
           </View>
           <View
@@ -377,26 +546,50 @@ export const MealManagement: React.FC<MealManagementProps> = ({
               },
             ]}
           >
-            {meals?.slice(0, 5).map((meal, index) => (
+            {recentMyMeals.map((meal, index) => (
               <ActivityCard
                 key={meal.id || `meal-${index}`}
                 title={`Meal on ${new Date(meal.date || new Date()).toLocaleDateString()}`}
                 description={getMealSummary(meal)}
-                icon="restaurant"
+                icon='restaurant'
                 iconBackgroundColor={theme.status?.success ?? theme.primary}
                 timestamp={meal.date || new Date().toISOString()}
-                amount={`${meal?.breakfast ? 1 : 0}${meal?.lunch ? 1 : 0}${meal?.dinner ? 1 : 0} meals`}
-                status={meal?.status === 'approved' ? 'success' : meal?.status === 'rejected' ? 'error' : 'warning'}
+                amount={`${(meal?.breakfast ? 1 : 0) + (meal?.lunch ? 1 : 0) + (meal?.dinner ? 1 : 0)} meals`}
+                status={
+                  meal?.status === 'approved'
+                    ? 'success'
+                    : meal?.status === 'rejected'
+                      ? 'error'
+                      : 'warning'
+                }
                 onPress={() => handleMealPress(meal)}
-                variant="compact"
+                variant='compact'
                 isSmallScreen={isSmallScreen}
               />
             ))}
-            {(!meals || meals.length === 0) && (
+            {recentMyMeals.length === 0 && (
               <View style={styles.emptyState}>
-                <Ionicons name="restaurant-outline" size={48} color={theme.text?.secondary ?? theme.icon?.secondary} />
-                <ThemedText style={[styles.emptyStateText, { color: theme.text?.secondary }]}>No meals recorded yet</ThemedText>
-                <ThemedText style={[styles.emptyStateSubtext, { color: theme.text?.tertiary }]}>Add your first meal to get started</ThemedText>
+                <Ionicons
+                  name='restaurant-outline'
+                  size={48}
+                  color={theme.text?.secondary ?? theme.icon?.secondary}
+                />
+                <ThemedText
+                  style={[
+                    styles.emptyStateText,
+                    { color: theme.text?.secondary },
+                  ]}
+                >
+                  No My Meals recorded yet
+                </ThemedText>
+                <ThemedText
+                  style={[
+                    styles.emptyStateSubtext,
+                    { color: theme.text?.tertiary },
+                  ]}
+                >
+                  Add your first My Meal to get started
+                </ThemedText>
               </View>
             )}
           </View>
@@ -416,7 +609,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
       today.setHours(23, 59, 59, 999);
 
       if (date > today) {
-        Alert.alert('Invalid Date', 'Cannot select future dates');
+        showAlert('Invalid Date', 'Cannot select future dates', 'error');
         return;
       }
 
@@ -431,22 +624,31 @@ export const MealManagement: React.FC<MealManagementProps> = ({
   };
 
   const renderAddMeal = () => (
-    <ScrollView style={styles.scrollView} contentContainerStyle={styles.addMealScrollContent} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.scrollView}
+      contentContainerStyle={styles.addMealScrollContent}
+      showsVerticalScrollIndicator={false}
+    >
+      <ScreenBackButton onPress={() => setActiveTab('overview')} />
       <DashboardHeader
-        title="Add New Meal"
-        subtitle="Record your meal for today"
-        icon="add-circle"
+        title='Add New Meal'
+        subtitle='Record My Meals for today'
+        icon='add-circle'
       />
       <View style={styles.addMealForm}>
         {/* Date Selection */}
         <View style={styles.formSection}>
-          <ThemedText style={styles.formSectionTitle}>Date</ThemedText>
+          <ThemedText
+            style={[styles.formSectionTitle, { color: theme.text?.primary }]}
+          >
+            Date
+          </ThemedText>
           <TouchableOpacity
             style={[styles.dateButton, { backgroundColor, borderColor }]}
             onPress={() => setShowDatePicker(true)}
             activeOpacity={0.7}
           >
-            <Ionicons name='calendar' size={20} color='#667eea' />
+            <Ionicons name='calendar' size={20} color={theme.primary} />
             <ThemedText style={[styles.dateButtonText, { color: textColor }]}>
               {selectedDate.toLocaleDateString('en-US', {
                 weekday: 'long',
@@ -459,25 +661,56 @@ export const MealManagement: React.FC<MealManagementProps> = ({
         </View>
 
         <View style={styles.formSection}>
-          <ThemedText style={styles.formSectionTitle}>Select Meals</ThemedText>
+          <ThemedText
+            style={[styles.formSectionTitle, { color: theme.text?.primary }]}
+          >
+            Select Meals
+          </ThemedText>
           <View style={styles.mealOptions}>
             <TouchableOpacity
               style={[
                 styles.mealOption,
-                selectedMeals.breakfast && styles.mealOptionSelected,
+                !selectedMeals.breakfast && {
+                  backgroundColor:
+                    theme.cardBackground ?? theme.surface ?? '#fff',
+                  borderColor: theme.border?.secondary ?? '#e5e7eb',
+                },
+                selectedMeals.breakfast && [
+                  styles.mealOptionSelected,
+                  {
+                    backgroundColor:
+                      theme.status?.success ??
+                      theme.gradient?.success?.[0] ??
+                      '#10b981',
+                    borderColor:
+                      theme.status?.success ??
+                      theme.gradient?.success?.[0] ??
+                      '#10b981',
+                  },
+                ],
               ]}
               onPress={() => toggleMeal('breakfast')}
             >
               <Ionicons
                 name='sunny'
                 size={24}
-                color={selectedMeals.breakfast ? '#fff' : '#f59e0b'}
+                color={
+                  selectedMeals.breakfast
+                    ? (theme.text?.inverse ?? '#fff')
+                    : (theme.status?.warning ??
+                      theme.gradient?.warning?.[0] ??
+                      '#f59e0b')
+                }
               />
               <ThemedText
                 style={[
                   styles.mealOptionText,
                   selectedMeals.breakfast && styles.mealOptionTextSelected,
-                  { color: selectedMeals.breakfast ? '#fff' : textColor },
+                  {
+                    color: selectedMeals.breakfast
+                      ? (theme.text?.inverse ?? '#fff')
+                      : textColor,
+                  },
                 ]}
               >
                 Breakfast
@@ -486,20 +719,47 @@ export const MealManagement: React.FC<MealManagementProps> = ({
             <TouchableOpacity
               style={[
                 styles.mealOption,
-                selectedMeals.lunch && styles.mealOptionSelected,
+                !selectedMeals.lunch && {
+                  backgroundColor:
+                    theme.cardBackground ?? theme.surface ?? '#fff',
+                  borderColor: theme.border?.secondary ?? '#e5e7eb',
+                },
+                selectedMeals.lunch && [
+                  styles.mealOptionSelected,
+                  {
+                    backgroundColor:
+                      theme.status?.success ??
+                      theme.gradient?.success?.[0] ??
+                      '#10b981',
+                    borderColor:
+                      theme.status?.success ??
+                      theme.gradient?.success?.[0] ??
+                      '#10b981',
+                  },
+                ],
               ]}
               onPress={() => toggleMeal('lunch')}
             >
               <Ionicons
                 name='partly-sunny'
                 size={24}
-                color={selectedMeals.lunch ? '#fff' : '#10b981'}
+                color={
+                  selectedMeals.lunch
+                    ? (theme.text?.inverse ?? '#fff')
+                    : (theme.status?.success ??
+                      theme.gradient?.success?.[0] ??
+                      '#10b981')
+                }
               />
               <ThemedText
                 style={[
                   styles.mealOptionText,
                   selectedMeals.lunch && styles.mealOptionTextSelected,
-                  { color: selectedMeals.lunch ? '#fff' : textColor },
+                  {
+                    color: selectedMeals.lunch
+                      ? (theme.text?.inverse ?? '#fff')
+                      : textColor,
+                  },
                 ]}
               >
                 Lunch
@@ -508,20 +768,47 @@ export const MealManagement: React.FC<MealManagementProps> = ({
             <TouchableOpacity
               style={[
                 styles.mealOption,
-                selectedMeals.dinner && styles.mealOptionSelected,
+                !selectedMeals.dinner && {
+                  backgroundColor:
+                    theme.cardBackground ?? theme.surface ?? '#fff',
+                  borderColor: theme.border?.secondary ?? '#e5e7eb',
+                },
+                selectedMeals.dinner && [
+                  styles.mealOptionSelected,
+                  {
+                    backgroundColor:
+                      theme.primary ??
+                      theme.gradient?.primary?.[0] ??
+                      '#8b5cf6',
+                    borderColor:
+                      theme.primary ??
+                      theme.gradient?.primary?.[0] ??
+                      '#8b5cf6',
+                  },
+                ],
               ]}
               onPress={() => toggleMeal('dinner')}
             >
               <Ionicons
                 name='moon'
                 size={24}
-                color={selectedMeals.dinner ? '#fff' : '#8b5cf6'}
+                color={
+                  selectedMeals.dinner
+                    ? (theme.text?.inverse ?? '#fff')
+                    : (theme.primary ??
+                      theme.gradient?.primary?.[0] ??
+                      '#8b5cf6')
+                }
               />
               <ThemedText
                 style={[
                   styles.mealOptionText,
                   selectedMeals.dinner && styles.mealOptionTextSelected,
-                  { color: selectedMeals.dinner ? '#fff' : textColor },
+                  {
+                    color: selectedMeals.dinner
+                      ? (theme.text?.inverse ?? '#fff')
+                      : textColor,
+                  },
                 ]}
               >
                 Dinner
@@ -531,7 +818,9 @@ export const MealManagement: React.FC<MealManagementProps> = ({
         </View>
 
         <View style={styles.formSection}>
-          <ThemedText style={styles.formSectionTitle}>
+          <ThemedText
+            style={[styles.formSectionTitle, { color: theme.text?.primary }]}
+          >
             Notes (Optional)
           </ThemedText>
           <TextInput
@@ -553,24 +842,21 @@ export const MealManagement: React.FC<MealManagementProps> = ({
           style={[
             styles.submitButton,
             {
-              backgroundColor: theme.button?.primary?.background ?? theme.primary,
+              backgroundColor:
+                theme.button?.primary?.background ?? theme.primary,
             },
             submitting && styles.submitButtonDisabled,
           ]}
           onPress={handleSubmitMeal}
           disabled={submitting}
         >
-          <ThemedText style={[styles.submitButtonText, { color: theme.button?.primary?.text ?? theme.text?.inverse }]}>
+          <ThemedText
+            style={[
+              styles.submitButtonText,
+              { color: theme.button?.primary?.text ?? theme.text?.inverse },
+            ]}
+          >
             {submitting ? 'Submitting...' : 'Submit Meal'}
-          </ThemedText>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.backButton, { backgroundColor: theme.button?.secondary?.background ?? theme.surface, borderColor: theme.border?.secondary }]}
-          onPress={() => setActiveTab('overview')}
-        >
-          <ThemedText style={[styles.backButtonText, { color: theme.text?.primary }]}>
-            Back to Overview
           </ThemedText>
         </TouchableOpacity>
       </View>
@@ -593,7 +879,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
                   onPress={confirmDateSelection}
                   style={styles.closeButton}
                 >
-                  <Ionicons name='checkmark' size={24} color='#667eea' />
+                  <Ionicons name='checkmark' size={24} color={theme.primary} />
                 </TouchableOpacity>
               </View>
               <View style={styles.datePickerContainer}>
@@ -627,73 +913,122 @@ export const MealManagement: React.FC<MealManagementProps> = ({
 
   const renderHistory = () => (
     <View style={styles.container}>
+      <ScreenBackButton onPress={() => setActiveTab('overview')} />
       <DashboardHeader
-        title="Meal History"
-        subtitle="View all your past meals"
-        icon="time"
+        title='My Meals History'
+        subtitle='View all my past Meals'
+        icon='time'
       />
       <View style={styles.historyContent}>
         <View style={styles.historyStats}>
-          <View
+          <TouchableOpacity
             style={[
               styles.historyStatCard,
               {
                 backgroundColor: theme.cardBackground ?? theme.surface,
-                borderColor: theme.border?.secondary ?? theme.cardBorder,
-                borderWidth: 1,
+                borderColor:
+                  historyFilter === 'total'
+                    ? (theme.status?.success ?? theme.primary)
+                    : (theme.border?.secondary ?? theme.cardBorder),
+                borderWidth: historyFilter === 'total' ? 2 : 1,
                 shadowColor: theme.shadow?.light ?? theme.cardShadow,
               },
             ]}
+            onPress={() => setHistoryFilter('total')}
+            activeOpacity={0.7}
           >
-            <ThemedText style={[styles.historyStatValue, { color: theme.text?.primary }]}>
-              {meals?.length || 0}
+            <ThemedText
+              style={[styles.historyStatValue, { color: theme.text?.primary }]}
+            >
+              {(meals || []).length}
             </ThemedText>
-            <ThemedText style={[styles.historyStatLabel, { color: theme.text?.secondary }]}>
+            <ThemedText
+              style={[
+                styles.historyStatLabel,
+                { color: theme.text?.secondary },
+              ]}
+            >
               Total Meals
             </ThemedText>
-          </View>
-          <View
+          </TouchableOpacity>
+          <TouchableOpacity
             style={[
               styles.historyStatCard,
               {
                 backgroundColor: theme.cardBackground ?? theme.surface,
-                borderColor: theme.border?.secondary ?? theme.cardBorder,
-                borderWidth: 1,
+                borderColor:
+                  historyFilter === 'my'
+                    ? (theme.status?.success ?? theme.primary)
+                    : (theme.border?.secondary ?? theme.cardBorder),
+                borderWidth: historyFilter === 'my' ? 2 : 1,
                 shadowColor: theme.shadow?.light ?? theme.cardShadow,
               },
             ]}
+            onPress={() => setHistoryFilter('my')}
+            activeOpacity={0.7}
           >
-            <ThemedText style={[styles.historyStatValue, { color: theme.text?.primary }]}>
-              {meals?.filter(m => m?.status === 'approved').length || 0}
+            <ThemedText
+              style={[styles.historyStatValue, { color: theme.text?.primary }]}
+            >
+              {(meals || []).filter(isMyMeal).length}
             </ThemedText>
-            <ThemedText style={[styles.historyStatLabel, { color: theme.text?.secondary }]}>
-              Approved
+            <ThemedText
+              style={[
+                styles.historyStatLabel,
+                { color: theme.text?.secondary },
+              ]}
+            >
+              My Meals
             </ThemedText>
-          </View>
+          </TouchableOpacity>
         </View>
 
         <FlatList
-          data={meals || []}
+          data={historyMeals}
           keyExtractor={(item, index) => item.id || `meal-${index}`}
           renderItem={({ item: meal, index }) => (
             <ActivityCard
               title={`Meal on ${new Date(meal.date || new Date()).toLocaleDateString()}`}
               description={getMealSummary(meal)}
-              icon="restaurant"
+              icon='restaurant'
               iconBackgroundColor={theme.status?.success ?? theme.primary}
               timestamp={meal.date || new Date().toISOString()}
-              amount={`${meal?.breakfast ? 1 : 0}${meal?.lunch ? 1 : 0}${meal?.dinner ? 1 : 0} meals`}
-              status={meal?.status === 'approved' ? 'success' : meal?.status === 'rejected' ? 'error' : 'warning'}
+              amount={`${(meal?.breakfast ? 1 : 0) + (meal?.lunch ? 1 : 0) + (meal?.dinner ? 1 : 0)} meals`}
+              status={
+                meal?.status === 'approved'
+                  ? 'success'
+                  : meal?.status === 'rejected'
+                    ? 'error'
+                    : 'warning'
+              }
               onPress={() => handleMealPress(meal)}
-              variant="compact"
+              variant='compact'
               isSmallScreen={isSmallScreen}
             />
           )}
           ListEmptyComponent={() => (
             <View style={styles.emptyState}>
-              <Ionicons name="restaurant-outline" size={48} color={theme.text?.secondary ?? theme.icon?.secondary} />
-              <ThemedText style={[styles.emptyStateText, { color: theme.text?.secondary }]}>No meal history found</ThemedText>
-              <ThemedText style={[styles.emptyStateSubtext, { color: theme.text?.tertiary }]}>Start adding meals to see your history</ThemedText>
+              <Ionicons
+                name='restaurant-outline'
+                size={48}
+                color={theme.text?.secondary ?? theme.icon?.secondary}
+              />
+              <ThemedText
+                style={[
+                  styles.emptyStateText,
+                  { color: theme.text?.secondary },
+                ]}
+              >
+                No meal history found
+              </ThemedText>
+              <ThemedText
+                style={[
+                  styles.emptyStateSubtext,
+                  { color: theme.text?.tertiary },
+                ]}
+              >
+                Start adding meals to see your history
+              </ThemedText>
             </View>
           )}
           contentContainerStyle={styles.historyList}
@@ -701,10 +1036,22 @@ export const MealManagement: React.FC<MealManagementProps> = ({
         />
 
         <TouchableOpacity
-          style={[styles.backButton, { backgroundColor: theme.button?.primary?.background ?? theme.primary, borderWidth: 0 }]}
+          style={[
+            styles.backButton,
+            {
+              backgroundColor:
+                theme.button?.primary?.background ?? theme.primary,
+              borderWidth: 0,
+            },
+          ]}
           onPress={() => setActiveTab('overview')}
         >
-          <ThemedText style={[styles.backButtonText, { color: theme.button?.primary?.text ?? theme.text?.inverse }]}>
+          <ThemedText
+            style={[
+              styles.backButtonText,
+              { color: theme.button?.primary?.text ?? theme.text?.inverse },
+            ]}
+          >
             Back to Overview
           </ThemedText>
         </TouchableOpacity>
@@ -717,6 +1064,20 @@ export const MealManagement: React.FC<MealManagementProps> = ({
       {activeTab === 'overview' && renderOverview()}
       {activeTab === 'add' && renderAddMeal()}
       {activeTab === 'history' && renderHistory()}
+      <MealDetailModal
+        visible={!!selectedMeal}
+        meal={selectedMeal}
+        onClose={closeMealDetail}
+      />
+      {infoModal && (
+        <InfoModal
+          visible
+          title={infoModal.title}
+          message={infoModal.message}
+          variant={infoModal.variant}
+          onClose={() => setInfoModal(null)}
+        />
+      )}
     </ThemedView>
   );
 };

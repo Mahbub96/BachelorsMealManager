@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -19,11 +19,14 @@ import { ThemedView } from './ThemedView';
 import mealService, { MealSubmission } from '../services/mealService';
 import { useAuth } from '../context/AuthContext';
 
+type ShowAlertVariant = 'info' | 'success' | 'error' | 'warning';
+
 interface MealFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
   initialDate?: string;
   showCancel?: boolean;
+  onShowAlert?: (title: string, message: string, variant?: ShowAlertVariant) => void;
 }
 
 export const MealForm: React.FC<MealFormProps> = ({
@@ -31,7 +34,15 @@ export const MealForm: React.FC<MealFormProps> = ({
   onCancel,
   initialDate,
   showCancel = true,
+  onShowAlert,
 }) => {
+  const alertOrModal = useCallback(
+    (title: string, message: string, variant?: ShowAlertVariant) => {
+      if (onShowAlert) onShowAlert(title, message, variant);
+      else Alert.alert(title, message);
+    },
+    [onShowAlert]
+  );
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -147,11 +158,12 @@ export const MealForm: React.FC<MealFormProps> = ({
       }
 
       if (response.success) {
-        Alert.alert(
+        alertOrModal(
           'Success',
           isUpdating
             ? 'Meal entry updated successfully!'
-            : 'Meal entry submitted successfully!'
+            : 'Meal entry submitted successfully!',
+          'success'
         );
         clearWarnings(); // Clear warnings on success
         onSuccess?.();
@@ -183,19 +195,19 @@ export const MealForm: React.FC<MealFormProps> = ({
                   });
                   setLoading(false);
                   if (updateRes.success) {
-                    Alert.alert('Success', 'Meal entry updated successfully!');
+                    alertOrModal('Success', 'Meal entry updated successfully!', 'success');
                     clearWarnings();
                     onSuccess?.();
                     resetForm();
                   } else {
-                    Alert.alert('Error', updateRes.error || 'Failed to update meal');
+                    alertOrModal('Error', updateRes.error || 'Failed to update meal', 'error');
                   }
                 },
               },
             ]
           );
         } else if (isDuplicateMeal) {
-          Alert.alert('Meal Already Exists', response.error || 'You already have a meal entry for this date.');
+          alertOrModal('Meal Already Exists', response.error || 'You already have a meal entry for this date.', 'warning');
         } else if (
           response.error?.includes('offline') ||
           response.error?.includes('network')
@@ -215,11 +227,11 @@ export const MealForm: React.FC<MealFormProps> = ({
             ]
           );
         } else {
-          Alert.alert('Error', response.error || 'Failed to submit meal');
+          alertOrModal('Error', response.error || 'Failed to submit meal', 'error');
         }
       }
     } catch {
-      Alert.alert('Error', 'An unexpected error occurred');
+      alertOrModal('Error', 'An unexpected error occurred', 'error');
     } finally {
       setLoading(false);
       setIsSubmitting(false);
@@ -314,7 +326,7 @@ export const MealForm: React.FC<MealFormProps> = ({
       today.setHours(23, 59, 59, 999);
       
       if (date > today) {
-        Alert.alert('Invalid Date', 'Cannot select future dates');
+        alertOrModal('Invalid Date', 'Cannot select future dates', 'error');
         if (Platform.OS === 'android') {
           return;
         }

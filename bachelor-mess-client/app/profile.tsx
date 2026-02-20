@@ -19,6 +19,7 @@ import { useUsers } from '@/hooks/useUsers';
 import { useMeals } from '@/hooks/useMeals';
 import { useBazar } from '@/hooks/useBazar';
 import userStatsService from '@/services/userStatsService';
+import { ScreenBackButton } from '@/components/ui/ScreenBackButton';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
@@ -518,6 +519,7 @@ export default function ProfileScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      <ScreenBackButton onPress={() => router.back()} />
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}

@@ -86,7 +86,7 @@ class DatabaseInitializer {
         return;
       } catch (error) {
         this.consecutiveFailures++;
-        console.error(
+        console.log(
           `❌ DatabaseInitializer - Initialization failed (attempt ${attempt}):`,
           error
         );
@@ -101,7 +101,7 @@ class DatabaseInitializer {
             this.consecutiveFailures = 0;
             // Continue with next attempt
           } catch (resetError) {
-            console.error(
+            console.log(
               '❌ DatabaseInitializer - Emergency reset failed:',
               resetError
             );
@@ -109,7 +109,7 @@ class DatabaseInitializer {
         }
 
         if (attempt >= this.config.maxRetries) {
-          console.error(
+          console.log(
             '❌ DatabaseInitializer - Max retries reached, giving up'
           );
           throw error;
@@ -220,7 +220,7 @@ class DatabaseInitializer {
         '✅ DatabaseInitializer - Test operations completed successfully'
       );
     } catch (error) {
-      console.error('❌ DatabaseInitializer - Test operations failed:', error);
+      console.log('❌ DatabaseInitializer - Test operations failed:', error);
       throw new Error(
         `Test operations failed: ${
           error instanceof Error ? error.message : 'Unknown error'
@@ -255,7 +255,7 @@ class DatabaseInitializer {
       await sqliteDatabase.resetDatabase();
       await this.initialize();
     } catch (error) {
-      console.error(
+      console.log(
         '❌ DatabaseInitializer - Force reinitialization failed:',
         error
       );
@@ -294,7 +294,7 @@ class DatabaseInitializer {
       const isHealthy = await sqliteDatabase.healthCheck();
       return isHealthy;
     } catch (error) {
-      console.error('❌ DatabaseInitializer - Health check failed:', error);
+      console.log('❌ DatabaseInitializer - Health check failed:', error);
       return false;
     }
   }

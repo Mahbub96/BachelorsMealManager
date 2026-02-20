@@ -4,4 +4,7 @@ export { ThemeInput } from './ThemeInput';
 export { DataDisplay } from './DataDisplay';
 export { ErrorMessage } from './ErrorMessage';
 export { BazarItemCard } from './BazarItemCard';
-export { ModernLoader } from './ModernLoader'; 
+export { ModernLoader } from './ModernLoader';
+export { ScreenBackButton } from './ScreenBackButton';
+export { InfoModal } from './InfoModal';
+export type { InfoModalProps, InfoModalVariant } from './InfoModal';

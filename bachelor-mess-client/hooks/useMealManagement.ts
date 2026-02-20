@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Alert } from 'react-native';
 import mealService, {
   MealFilters,
@@ -6,6 +6,16 @@ import mealService, {
   MealEntry,
 } from '../services/mealService';
 import { useAuth } from '../context/AuthContext';
+
+export type MealManagementShowAlert = (
+  title: string,
+  message: string,
+  variant?: 'info' | 'success' | 'error' | 'warning'
+) => void;
+
+export interface UseMealManagementOptions {
+  showAlert?: MealManagementShowAlert;
+}
 
 interface UseMealManagementReturn {
   // State
@@ -15,6 +25,7 @@ interface UseMealManagementReturn {
   loading: boolean;
   refreshing: boolean;
   error: string | null;
+  selectedMeal: MealEntry | null;
 
   // Actions
   loadMeals: () => Promise<void>;
@@ -22,6 +33,7 @@ interface UseMealManagementReturn {
   refreshMeals: () => Promise<void>;
   updateFilters: (newFilters: MealFilters) => void;
   handleMealPress: (meal: MealEntry) => void;
+  closeMealDetail: () => void;
   handleStatusUpdate: (
     mealId: string,
     status: 'approved' | 'rejected'
@@ -36,9 +48,19 @@ interface UseMealManagementReturn {
   pendingMealsCount: number;
 }
 
-export const useMealManagement = (): UseMealManagementReturn => {
+export const useMealManagement = (
+  options?: UseMealManagementOptions
+): UseMealManagementReturn => {
   const { user } = useAuth();
-  const [meals, setMeals] = useState<MealEntry[]>([]);
+  const showAlert = options?.showAlert;
+  const alert = useCallback(
+    (title: string, message: string, variant?: 'info' | 'success' | 'error' | 'warning') => {
+      if (showAlert) showAlert(title, message, variant);
+      else Alert.alert(title, message);
+    },
+    [showAlert]
+  );
+  const [meals, setMeals] = useState<MealEntry[] | unknown[]>([]);
   const [mealStats, setMealStats] = useState<MealStats | null>(null);
   const [filters, setFilters] = useState<MealFilters>({
     status: 'approved',
@@ -47,7 +69,8 @@ export const useMealManagement = (): UseMealManagementReturn => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [lastFetchTime, setLastFetchTime] = useState<number>(0);
+  const [selectedMeal, setSelectedMeal] = useState<MealEntry | null>(null);
+  const lastFetchTimeRef = useRef<number>(0);
 
   const isAdmin = user?.role === 'admin';
   const useGroupApi =
@@ -60,7 +83,7 @@ export const useMealManagement = (): UseMealManagementReturn => {
       try {
         // Prevent excessive API calls - only fetch if forced or if last fetch was more than 30 seconds ago
         const now = Date.now();
-        if (!forceRefresh && now - lastFetchTime < 30000) {
+        if (!forceRefresh && now - lastFetchTimeRef.current < 30000) {
           return;
         }
 
@@ -77,7 +100,10 @@ export const useMealManagement = (): UseMealManagementReturn => {
           let mealsData: MealEntry[] = [];
           if (Array.isArray(response.data)) {
             mealsData = response.data as MealEntry[];
-          } else if (response.data.meals && Array.isArray(response.data.meals)) {
+          } else if (
+            response.data.meals &&
+            Array.isArray(response.data.meals)
+          ) {
             mealsData = response.data.meals as MealEntry[];
           } else if (response.data && typeof response.data === 'object') {
             // Fallback: try to extract meals from any structure
@@ -86,38 +112,45 @@ export const useMealManagement = (): UseMealManagementReturn => {
 
           // Ensure all meals have id field (transform _id to id if needed)
           type RawMeal = Partial<MealEntry> & { _id?: string };
-          const transformedMeals: MealEntry[] = mealsData.map((meal: RawMeal) => ({
-            id: meal.id || meal._id || '',
-            userId: meal.userId ?? '',
-            date: meal.date ?? new Date().toISOString().split('T')[0],
-            breakfast: meal.breakfast ?? false,
-            lunch: meal.lunch ?? false,
-            dinner: meal.dinner ?? false,
-            status: meal.status ?? 'pending',
-            notes: meal.notes,
-            approvedBy: meal.approvedBy,
-            approvedAt: meal.approvedAt,
-            createdAt: meal.createdAt ?? new Date().toISOString(),
-            updatedAt: meal.updatedAt ?? new Date().toISOString(),
-            totalMeals: meal.totalMeals,
-            mealSummary: meal.mealSummary,
-            approvalInfo: meal.approvalInfo,
-          }));
+          const transformedMeals: MealEntry[] = mealsData.map(
+            (meal: RawMeal) => ({
+              id: meal.id || meal._id || '',
+              userId: meal?.userId ?? { name: '', email: '' },
+              date: meal?.date ?? new Date().toISOString().split('T')[0],
+              breakfast: meal?.breakfast ?? false,
+              lunch: meal.lunch ?? false,
+              dinner: meal?.dinner ?? false,
+              status: meal?.status ?? 'pending',
+              notes: meal?.notes ?? '',
+              approvedBy: meal?.approvedBy ?? '',
+              approvedAt: meal.approvedAt,
+              createdAt: meal.createdAt ?? new Date().toISOString(),
+              updatedAt: meal.updatedAt ?? new Date().toISOString(),
+              totalMeals: meal?.totalMeals ?? 0,
+              mealSummary: meal?.mealSummary ?? '',
+              approvalInfo: meal?.approvalInfo ?? {
+                status: '',
+                message: '',
+              },
+            })
+          );
 
           setMeals(transformedMeals);
-          setLastFetchTime(now);
+          lastFetchTimeRef.current = now;
         } else {
-          setError(response.message || response.error || 'Failed to load meals');
+          setError(
+            response.message || response.error || 'Failed to load meals'
+          );
           setMeals([]);
         }
-        } catch (error) {
-          setError('Failed to load meals. Please try again.');
-          setMeals([]);
-        } finally {
+      } catch (error) {
+        setError('Failed to load meals. Please try again.');
+        setMeals([]);
+      } finally {
         setLoading(false);
       }
     },
-    [filters, lastFetchTime, useGroupApi]
+    [filters, useGroupApi]
   );
 
   const loadMealStats = useCallback(
@@ -125,7 +158,7 @@ export const useMealManagement = (): UseMealManagementReturn => {
       try {
         // Prevent excessive API calls for stats
         const now = Date.now();
-        if (!forceRefresh && now - lastFetchTime < 60000) {
+        if (!forceRefresh && now - lastFetchTimeRef.current < 60000) {
           // 1 minute cache for stats
           return;
         }
@@ -133,13 +166,13 @@ export const useMealManagement = (): UseMealManagementReturn => {
         const response = await mealService.getUserMealStats();
         if (response.success && response.data) {
           setMealStats(response.data);
-          setLastFetchTime(now);
+          lastFetchTimeRef.current = now;
         }
       } catch (error) {
         // Silently handle stats loading errors
       }
     },
-    [lastFetchTime]
+    []
   );
 
   const refreshMeals = useCallback(async () => {
@@ -154,16 +187,15 @@ export const useMealManagement = (): UseMealManagementReturn => {
   const updateFilters = useCallback((newFilters: MealFilters) => {
     setFilters(newFilters);
     // Reset last fetch time to allow immediate fetch with new filters
-    setLastFetchTime(0);
+    lastFetchTimeRef.current = 0;
   }, []);
 
   const handleMealPress = useCallback((meal: MealEntry) => {
-    Alert.alert(
-      'Meal Details',
-      `Date: ${mealService.formatMealDate(meal.date)}\nStatus: ${
-        meal.status
-      }\n${meal.notes ? `Notes: ${meal.notes}` : ''}`
-    );
+    setSelectedMeal(meal);
+  }, []);
+
+  const closeMealDetail = useCallback(() => {
+    setSelectedMeal(null);
   }, []);
 
   const handleStatusUpdate = useCallback(
@@ -176,19 +208,20 @@ export const useMealManagement = (): UseMealManagementReturn => {
               meal.id === mealId ? { ...meal, status } : meal
             )
           );
-          Alert.alert('Success', `Meal ${status} successfully`);
+          alert('Success', `Meal ${status} successfully`, 'success');
           await loadMealStats(); // Refresh stats after status update
         } else {
-          Alert.alert(
+          alert(
             'Error',
-            response.message || 'Failed to update meal status'
+            response.message || 'Failed to update meal status',
+            'error'
           );
         }
-      } catch (error) {
-        Alert.alert('Error', 'Failed to update meal status');
+      } catch {
+        alert('Error', 'Failed to update meal status', 'error');
       }
     },
-    [loadMealStats]
+    [loadMealStats, alert]
   );
 
   const handleDeleteMeal = useCallback(
@@ -205,28 +238,31 @@ export const useMealManagement = (): UseMealManagementReturn => {
                 setMeals(prevMeals =>
                   prevMeals.filter(meal => meal.id !== mealId)
                 );
-                Alert.alert('Success', 'Meal deleted successfully');
+                if (showAlert) showAlert('Success', 'Meal deleted successfully', 'success');
+                else Alert.alert('Success', 'Meal deleted successfully');
                 await loadMealStats(); // Refresh stats after deletion
               } else {
-                Alert.alert(
-                  'Error',
-                  response.message || 'Failed to delete meal'
-                );
+                if (showAlert) showAlert('Error', response.message || 'Failed to delete meal', 'error');
+                else Alert.alert('Error', response.message || 'Failed to delete meal');
               }
-            } catch (error) {
-              Alert.alert('Error', 'Failed to delete meal');
+            } catch {
+              if (showAlert) showAlert('Error', 'Failed to delete meal', 'error');
+              else Alert.alert('Error', 'Failed to delete meal');
             }
           },
         },
       ]);
     },
-    [loadMealStats]
+    [loadMealStats, showAlert]
   );
 
-  const handleEditMeal = useCallback((mealId: string) => {
-    // Navigate to edit meal screen or open edit modal
-    Alert.alert('Edit Meal', 'Edit functionality coming soon');
-  }, []);
+  const handleEditMeal = useCallback(
+    (mealId: string) => {
+      if (showAlert) showAlert('Edit Meal', 'Edit functionality coming soon', 'info');
+      else Alert.alert('Edit Meal', 'Edit functionality coming soon');
+    },
+    [showAlert]
+  );
 
   const handleMealSubmitted = useCallback(async () => {
     await Promise.all([loadMeals(), loadMealStats()]);
@@ -259,6 +295,7 @@ export const useMealManagement = (): UseMealManagementReturn => {
     loading,
     refreshing,
     error,
+    selectedMeal,
 
     // Actions
     loadMeals,
@@ -266,6 +303,7 @@ export const useMealManagement = (): UseMealManagementReturn => {
     refreshMeals,
     updateFilters,
     handleMealPress,
+    closeMealDetail,
     handleStatusUpdate,
     handleDeleteMeal,
     handleEditMeal,

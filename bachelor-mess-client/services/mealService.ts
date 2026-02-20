@@ -4,7 +4,7 @@ import httpClient from './httpClient';
 // Type definitions for meal management
 export interface MealEntry {
   id: string;
-  userId: string | { name: string; email: string };
+  userId: string | { _id: string; name: string; email: string };
   date: string;
   breakfast: boolean;
   lunch: boolean;
@@ -123,7 +123,10 @@ class MealServiceImpl implements MealService {
 
       // Remove userId from data if present - backend should use authenticated user's ID from token
       // This prevents "userId already exists" errors when different users submit meals
-      const { userId, user_id, ...mealData } = data as unknown as Record<string, unknown> & { userId?: string; user_id?: string };
+      const { userId, user_id, ...mealData } = data as unknown as Record<
+        string,
+        unknown
+      > & { userId?: string; user_id?: string };
 
       const response = await httpClient.post<MealEntry>(
         API_ENDPOINTS.MEALS.SUBMIT,
@@ -230,14 +233,13 @@ class MealServiceImpl implements MealService {
           ...response,
           data: {
             meals: transformedMeals,
-            pagination:
-              pagination ||
-              (response.data.pagination || {
+            pagination: pagination ||
+              response.data.pagination || {
                 page: 1,
                 limit: filters.limit || 20,
                 total: transformedMeals.length,
                 pages: 1,
-              }),
+              },
           },
         } as unknown as ApiResponse<MealResponse>;
       }

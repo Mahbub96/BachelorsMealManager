@@ -81,8 +81,30 @@ class SQLiteDatabaseService implements DatabaseService {
   // Helper method to check if SQLite is available
   private isSQLiteAvailable(): boolean {
     // #region agent log
-    const logData = {location:'sqliteDatabase.ts:68',message:'Checking SQLite availability',data:{platform:Platform.OS,SQLiteIsNull:SQLite===null,SQLiteType:typeof SQLite,SQLiteKeys:SQLite?Object.keys(SQLite):null},timestamp:Date.now(),sessionId:'debug-session',runId:'sqlite-check',hypothesisId:'A'};
-    try { fetch('http://127.0.0.1:7243/ingest/039fbe99-77d0-456c-8c69-082177214fc6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch(()=>{}); } catch(e){}
+    const logData = {
+      location: 'sqliteDatabase.ts:68',
+      message: 'Checking SQLite availability',
+      data: {
+        platform: Platform.OS,
+        SQLiteIsNull: SQLite === null,
+        SQLiteType: typeof SQLite,
+        SQLiteKeys: SQLite ? Object.keys(SQLite) : null,
+      },
+      timestamp: Date.now(),
+      sessionId: 'debug-session',
+      runId: 'sqlite-check',
+      hypothesisId: 'A',
+    };
+    try {
+      fetch(
+        'http://127.0.0.1:7243/ingest/039fbe99-77d0-456c-8c69-082177214fc6',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(logData),
+        }
+      ).catch(() => {});
+    } catch (e) {}
     // #endregion
     if (Platform.OS === 'web') {
       return false;
@@ -90,8 +112,25 @@ class SQLiteDatabaseService implements DatabaseService {
     // SQLite is loaded via platform-specific import (sqliteLoader.native.ts or sqliteLoader.ts)
     const available = SQLite !== null;
     // #region agent log
-    const logData2 = {location:'sqliteDatabase.ts:75',message:'SQLite availability result',data:{available,platform:Platform.OS},timestamp:Date.now(),sessionId:'debug-session',runId:'sqlite-check',hypothesisId:'A'};
-    try { fetch('http://127.0.0.1:7243/ingest/039fbe99-77d0-456c-8c69-082177214fc6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData2)}).catch(()=>{}); } catch(e){}
+    const logData2 = {
+      location: 'sqliteDatabase.ts:75',
+      message: 'SQLite availability result',
+      data: { available, platform: Platform.OS },
+      timestamp: Date.now(),
+      sessionId: 'debug-session',
+      runId: 'sqlite-check',
+      hypothesisId: 'A',
+    };
+    try {
+      fetch(
+        'http://127.0.0.1:7243/ingest/039fbe99-77d0-456c-8c69-082177214fc6',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(logData2),
+        }
+      ).catch(() => {});
+    } catch (e) {}
     // #endregion
     return available;
   }
@@ -99,8 +138,29 @@ class SQLiteDatabaseService implements DatabaseService {
   // Helper method to throw error if SQLite is not available
   private ensureSQLiteAvailable(): void {
     // #region agent log
-    const logData = {location:'sqliteDatabase.ts:82',message:'Ensuring SQLite available',data:{platform:Platform.OS,SQLiteIsNull:SQLite===null,isAvailable:this.isSQLiteAvailable()},timestamp:Date.now(),sessionId:'debug-session',runId:'sqlite-check',hypothesisId:'B'};
-    try { fetch('http://127.0.0.1:7243/ingest/039fbe99-77d0-456c-8c69-082177214fc6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch(()=>{}); } catch(e){}
+    const logData = {
+      location: 'sqliteDatabase.ts:82',
+      message: 'Ensuring SQLite available',
+      data: {
+        platform: Platform.OS,
+        SQLiteIsNull: SQLite === null,
+        isAvailable: this.isSQLiteAvailable(),
+      },
+      timestamp: Date.now(),
+      sessionId: 'debug-session',
+      runId: 'sqlite-check',
+      hypothesisId: 'B',
+    };
+    try {
+      fetch(
+        'http://127.0.0.1:7243/ingest/039fbe99-77d0-456c-8c69-082177214fc6',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(logData),
+        }
+      ).catch(() => {});
+    } catch (e) {}
     // #endregion
     if (!this.isSQLiteAvailable()) {
       throw new Error('SQLite is not available on web platform');
@@ -119,7 +179,9 @@ class SQLiteDatabaseService implements DatabaseService {
 
     // CRITICAL FIX: Wait for close to complete before initializing
     if (this.isClosing && this.closingPromise) {
-      console.log('⏳ SQLite Database - Waiting for close to complete before init...');
+      console.log(
+        '⏳ SQLite Database - Waiting for close to complete before init...'
+      );
       try {
         await this.closingPromise;
         // Small delay to ensure close is fully complete
@@ -139,7 +201,9 @@ class SQLiteDatabaseService implements DatabaseService {
         return; // Successfully waited for initialization
       } catch (error) {
         // If previous init failed, we'll retry below
-        console.log('⚠️ SQLite Database - Previous initialization failed, will retry');
+        console.log(
+          '⚠️ SQLite Database - Previous initialization failed, will retry'
+        );
       }
     }
 
@@ -158,9 +222,9 @@ class SQLiteDatabaseService implements DatabaseService {
         // Quick health check with timeout
         const healthCheck = Promise.race([
           this.db.getAllAsync('SELECT 1'),
-          new Promise((_, reject) => 
+          new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Health check timeout')), 3000)
-          )
+          ),
         ]);
         await healthCheck;
         console.log('✅ SQLite Database - Already initialized and healthy');
@@ -169,11 +233,11 @@ class SQLiteDatabaseService implements DatabaseService {
         console.log(
           '⚠️ SQLite Database - Database connection lost, reinitializing...'
         );
-      this.isInitialized = false;
-      this.db = null;
-      this.tablesCreated = false; // Reset tables flag on reinit
-      this.isCreatingTables = false; // Reset table creation flag
-      this.tablesCreationPromise = null; // Clear table creation promise
+        this.isInitialized = false;
+        this.db = null;
+        this.tablesCreated = false; // Reset tables flag on reinit
+        this.isCreatingTables = false; // Reset table creation flag
+        this.tablesCreationPromise = null; // Clear table creation promise
       }
     }
 
@@ -186,7 +250,7 @@ class SQLiteDatabaseService implements DatabaseService {
         await this.emergencyReset();
         this.consecutiveErrors = 0;
       } catch (resetError) {
-        console.error('❌ SQLite Database - Emergency reset failed:', resetError);
+        console.log('❌ SQLite Database - Emergency reset failed:', resetError);
         // Continue anyway
       }
     }
@@ -200,7 +264,7 @@ class SQLiteDatabaseService implements DatabaseService {
       await this.initializationPromise;
       this.isInitialized = true;
     } catch (error) {
-      console.error('❌ SQLite Database - Initialization failed:', error);
+      console.log('❌ SQLite Database - Initialization failed:', error);
       this.isInitialized = false;
       this.consecutiveErrors++;
       throw error;
@@ -233,47 +297,163 @@ class SQLiteDatabaseService implements DatabaseService {
       console.log('🔄 SQLite Database - Opening database...');
 
       // #region agent log
-      const preOpenLog = {location:'sqliteDatabase.ts:172',message:'Before opening database',data:{databaseName:this.DATABASE_NAME,SQLiteAvailable:this.isSQLiteAvailable(),SQLiteType:typeof SQLite,hasOpenDatabaseAsync:!!(SQLite&&typeof (SQLite as SQLiteModuleType).openDatabaseAsync==='function'),SQLiteMethods:SQLite?Object.keys(SQLite as Record<string, unknown>).filter((k:string)=>typeof (SQLite as Record<string, unknown>)[k]==='function'):[]},timestamp:Date.now(),sessionId:'debug-session',runId:'sqlite-open',hypothesisId:'B'};
-      try { fetch('http://127.0.0.1:7243/ingest/039fbe99-77d0-456c-8c69-082177214fc6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(preOpenLog)}).catch(()=>{}); } catch(e){}
+      const preOpenLog = {
+        location: 'sqliteDatabase.ts:172',
+        message: 'Before opening database',
+        data: {
+          databaseName: this.DATABASE_NAME,
+          SQLiteAvailable: this.isSQLiteAvailable(),
+          SQLiteType: typeof SQLite,
+          hasOpenDatabaseAsync: !!(
+            SQLite &&
+            typeof (SQLite as SQLiteModuleType).openDatabaseAsync === 'function'
+          ),
+          SQLiteMethods: SQLite
+            ? Object.keys(SQLite as Record<string, unknown>).filter(
+                (k: string) =>
+                  typeof (SQLite as Record<string, unknown>)[k] === 'function'
+              )
+            : [],
+        },
+        timestamp: Date.now(),
+        sessionId: 'debug-session',
+        runId: 'sqlite-open',
+        hypothesisId: 'B',
+      };
+      try {
+        fetch(
+          'http://127.0.0.1:7243/ingest/039fbe99-77d0-456c-8c69-082177214fc6',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(preOpenLog),
+          }
+        ).catch(() => {});
+      } catch (e) {}
       // #endregion
 
       // Try to open database with error handling
       try {
         // #region agent log
-        const tryOpenLog = {location:'sqliteDatabase.ts:178',message:'Attempting to open database',data:{databaseName:this.DATABASE_NAME},timestamp:Date.now(),sessionId:'debug-session',runId:'sqlite-open',hypothesisId:'B'};
-        try { fetch('http://127.0.0.1:7243/ingest/039fbe99-77d0-456c-8c69-082177214fc6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(tryOpenLog)}).catch(()=>{}); } catch(e){}
+        const tryOpenLog = {
+          location: 'sqliteDatabase.ts:178',
+          message: 'Attempting to open database',
+          data: { databaseName: this.DATABASE_NAME },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'sqlite-open',
+          hypothesisId: 'B',
+        };
+        try {
+          fetch(
+            'http://127.0.0.1:7243/ingest/039fbe99-77d0-456c-8c69-082177214fc6',
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(tryOpenLog),
+            }
+          ).catch(() => {});
+        } catch (e) {}
         // #endregion
         this.db = await SQLite!.openDatabaseAsync(this.DATABASE_NAME);
-        
+
         // Verify database object is valid and has required methods
         if (!this.db) {
           throw new Error('Database object is null after opening');
         }
-        
-        if (typeof this.db.getAllAsync !== 'function' || typeof this.db.execAsync !== 'function') {
-          throw new Error('Database object is missing required methods (getAllAsync, execAsync)');
+
+        if (
+          typeof this.db.getAllAsync !== 'function' ||
+          typeof this.db.execAsync !== 'function'
+        ) {
+          throw new Error(
+            'Database object is missing required methods (getAllAsync, execAsync)'
+          );
         }
-        
+
         // #region agent log
-        const successLog = {location:'sqliteDatabase.ts:181',message:'Database opened successfully',data:{databaseName:this.DATABASE_NAME,dbExists:!!this.db,dbType:typeof this.db,hasGetAllAsync:typeof this.db.getAllAsync==='function',hasExecAsync:typeof this.db.execAsync==='function'},timestamp:Date.now(),sessionId:'debug-session',runId:'sqlite-open',hypothesisId:'B'};
-        try { fetch('http://127.0.0.1:7243/ingest/039fbe99-77d0-456c-8c69-082177214fc6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(successLog)}).catch(()=>{}); } catch(e){}
+        const successLog = {
+          location: 'sqliteDatabase.ts:181',
+          message: 'Database opened successfully',
+          data: {
+            databaseName: this.DATABASE_NAME,
+            dbExists: !!this.db,
+            dbType: typeof this.db,
+            hasGetAllAsync: typeof this.db.getAllAsync === 'function',
+            hasExecAsync: typeof this.db.execAsync === 'function',
+          },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'sqlite-open',
+          hypothesisId: 'B',
+        };
+        try {
+          fetch(
+            'http://127.0.0.1:7243/ingest/039fbe99-77d0-456c-8c69-082177214fc6',
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(successLog),
+            }
+          ).catch(() => {});
+        } catch (e) {}
         // #endregion
       } catch (openError) {
         // #region agent log
-        const errorLog = {location:'sqliteDatabase.ts:184',message:'Failed to open database',data:{databaseName:this.DATABASE_NAME,errorMessage:openError instanceof Error?openError.message:String(openError),errorName:openError instanceof Error?openError.name:'Unknown',errorStack:openError instanceof Error?openError.stack:undefined},timestamp:Date.now(),sessionId:'debug-session',runId:'sqlite-open',hypothesisId:'C'};
-        try { fetch('http://127.0.0.1:7243/ingest/039fbe99-77d0-456c-8c69-082177214fc6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(errorLog)}).catch(()=>{}); } catch(e){}
+        const errorLog = {
+          location: 'sqliteDatabase.ts:184',
+          message: 'Failed to open database',
+          data: {
+            databaseName: this.DATABASE_NAME,
+            errorMessage:
+              openError instanceof Error
+                ? openError.message
+                : String(openError),
+            errorName: openError instanceof Error ? openError.name : 'Unknown',
+            errorStack:
+              openError instanceof Error ? openError.stack : undefined,
+          },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'sqlite-open',
+          hypothesisId: 'C',
+        };
+        try {
+          fetch(
+            'http://127.0.0.1:7243/ingest/039fbe99-77d0-456c-8c69-082177214fc6',
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(errorLog),
+            }
+          ).catch(() => {});
+        } catch (e) {}
         // #endregion
-        console.error(
-          '❌ SQLite Database - Failed to open database:',
-          openError
-        );
+        console.log('❌ SQLite Database - Failed to open database:', openError);
 
         // If opening fails, try to delete and recreate
         await this.deleteDatabaseFile();
         await new Promise(resolve => setTimeout(resolve, 500));
         // #region agent log
-        const retryLog = {location:'sqliteDatabase.ts:192',message:'Retrying database open after delete',data:{databaseName:this.DATABASE_NAME},timestamp:Date.now(),sessionId:'debug-session',runId:'sqlite-open',hypothesisId:'C'};
-        try { fetch('http://127.0.0.1:7243/ingest/039fbe99-77d0-456c-8c69-082177214fc6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(retryLog)}).catch(()=>{}); } catch(e){}
+        const retryLog = {
+          location: 'sqliteDatabase.ts:192',
+          message: 'Retrying database open after delete',
+          data: { databaseName: this.DATABASE_NAME },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'sqlite-open',
+          hypothesisId: 'C',
+        };
+        try {
+          fetch(
+            'http://127.0.0.1:7243/ingest/039fbe99-77d0-456c-8c69-082177214fc6',
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(retryLog),
+            }
+          ).catch(() => {});
+        } catch (e) {}
         // #endregion
         this.db = await SQLite!.openDatabaseAsync(this.DATABASE_NAME);
       }
@@ -287,15 +467,26 @@ class SQLiteDatabaseService implements DatabaseService {
       try {
         await this.db.getAllAsync('SELECT 1');
       } catch (testError) {
-        console.error('❌ SQLite Database - Database not ready after opening:', testError);
+        console.log(
+          '❌ SQLite Database - Database not ready after opening:',
+          testError
+        );
         // If we get NullPointerException, the native module isn't working properly
         // Enable bypass mode to prevent app crashes
-        if (testError instanceof Error && testError.message.includes('NullPointerException')) {
-          console.error('🚨 SQLite Database - Native module error detected, enabling bypass mode');
+        if (
+          testError instanceof Error &&
+          testError.message.includes('NullPointerException')
+        ) {
+          console.log(
+            '🚨 SQLite Database - Native module error detected, enabling bypass mode'
+          );
           await this.bypassDatabase();
           return; // Exit initialization - bypass mode is active
         }
-        throw new Error('Database not ready: ' + (testError instanceof Error ? testError.message : String(testError)));
+        throw new Error(
+          'Database not ready: ' +
+            (testError instanceof Error ? testError.message : String(testError))
+        );
       }
 
       // Add longer delay after opening database
@@ -327,12 +518,19 @@ class SQLiteDatabaseService implements DatabaseService {
       this.lastError =
         error instanceof Error ? error : new Error(String(error));
 
-      console.error('❌ SQLite Database - Failed to initialize:', error);
+      console.log('❌ SQLite Database - Failed to initialize:', error);
 
       // Check if error is NullPointerException - indicates native module issue
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      if (errorMessage.includes('NullPointerException') || errorMessage.includes('prepareAsync') || errorMessage.includes('execAsync')) {
-        console.error('🚨 SQLite Database - Native module error detected, enabling bypass mode to prevent app crashes');
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      if (
+        errorMessage.includes('NullPointerException') ||
+        errorMessage.includes('prepareAsync') ||
+        errorMessage.includes('execAsync')
+      ) {
+        console.log(
+          '🚨 SQLite Database - Native module error detected, enabling bypass mode to prevent app crashes'
+        );
         await this.bypassDatabase();
         return; // Exit - bypass mode is now active
       }
@@ -362,11 +560,19 @@ class SQLiteDatabaseService implements DatabaseService {
             '✅ SQLite Database - Reset and reinitialized successfully'
           );
         } catch (resetError) {
-          console.error('❌ SQLite Database - Reset also failed:', resetError);
+          console.log('❌ SQLite Database - Reset also failed:', resetError);
           // If reset also fails with native errors, enable bypass mode
-          const resetErrorMessage = resetError instanceof Error ? resetError.message : String(resetError);
-          if (resetErrorMessage.includes('NullPointerException') || resetErrorMessage.includes('prepareAsync')) {
-            console.error('🚨 SQLite Database - Reset failed with native error, enabling bypass mode');
+          const resetErrorMessage =
+            resetError instanceof Error
+              ? resetError.message
+              : String(resetError);
+          if (
+            resetErrorMessage.includes('NullPointerException') ||
+            resetErrorMessage.includes('prepareAsync')
+          ) {
+            console.log(
+              '🚨 SQLite Database - Reset failed with native error, enabling bypass mode'
+            );
             await this.bypassDatabase();
             return;
           }
@@ -414,20 +620,25 @@ class SQLiteDatabaseService implements DatabaseService {
     if (!SQLite) return;
     try {
       // Try to check if database file exists and is accessible
-      const testDb = await SQLite!.openDatabaseAsync(this.DATABASE_NAME) as { getAllAsync?: (sql: string) => Promise<unknown>; closeAsync?: () => Promise<void> } | null;
-      
+      const testDb = (await SQLite!.openDatabaseAsync(this.DATABASE_NAME)) as {
+        getAllAsync?: (sql: string) => Promise<unknown>;
+        closeAsync?: () => Promise<void>;
+      } | null;
+
       // Verify test database is ready
       if (testDb && typeof testDb.getAllAsync === 'function') {
         try {
           await testDb.getAllAsync('SELECT 1');
         } catch (testError) {
-          console.log('⚠️ SQLite Database - Test database not ready, will recreate');
+          console.log(
+            '⚠️ SQLite Database - Test database not ready, will recreate'
+          );
           await testDb.closeAsync?.().catch(() => {});
           await this.deleteDatabaseFile();
           return;
         }
       }
-      
+
       await testDb?.closeAsync?.();
       console.log('✅ SQLite Database - Database file integrity check passed');
     } catch (error) {
@@ -454,14 +665,14 @@ class SQLiteDatabaseService implements DatabaseService {
   // Configure database with minimal settings
   private async configureDatabaseMinimal(): Promise<void> {
     if (!this.db) {
-      console.error('❌ SQLite Database - Cannot configure: database is null');
+      console.log('❌ SQLite Database - Cannot configure: database is null');
       return;
     }
 
     try {
       // Verify database is still valid
       await this.db.getAllAsync('SELECT 1');
-      
+
       // Only essential PRAGMA settings
       await this.db.execAsync('PRAGMA journal_mode = WAL');
       await this.db.execAsync('PRAGMA synchronous = NORMAL');
@@ -470,7 +681,7 @@ class SQLiteDatabaseService implements DatabaseService {
 
       console.log('✅ SQLite Database - Minimal configuration applied');
     } catch (error) {
-      console.error(
+      console.log(
         '❌ SQLite Database - Failed to apply minimal configuration:',
         error instanceof Error ? error.message : String(error)
       );
@@ -571,7 +782,7 @@ class SQLiteDatabaseService implements DatabaseService {
       this.consecutiveErrors = 0;
       console.log('✅ SQLite Database - Aggressive reset completed');
     } catch (error) {
-      console.error('❌ SQLite Database - Aggressive reset failed:', error);
+      console.log('❌ SQLite Database - Aggressive reset failed:', error);
       throw error;
     }
   }
@@ -636,7 +847,7 @@ class SQLiteDatabaseService implements DatabaseService {
 
       console.log('✅ SQLite Database - Reset successfully');
     } catch (error) {
-      console.error('❌ SQLite Database - Failed to reset:', error);
+      console.log('❌ SQLite Database - Failed to reset:', error);
 
       // Try to reinitialize without deleting
       try {
@@ -645,7 +856,7 @@ class SQLiteDatabaseService implements DatabaseService {
         await this.createTables();
         console.log('✅ SQLite Database - Reinitialized successfully');
       } catch (reinitError) {
-        console.error(
+        console.log(
           '❌ SQLite Database - Failed to reinitialize:',
           reinitError
         );
@@ -671,7 +882,7 @@ class SQLiteDatabaseService implements DatabaseService {
 
       console.log('✅ SQLite Database - Soft reset completed');
     } catch (error) {
-      console.error('❌ SQLite Database - Soft reset failed:', error);
+      console.log('❌ SQLite Database - Soft reset failed:', error);
       throw error;
     }
   }
@@ -717,7 +928,7 @@ class SQLiteDatabaseService implements DatabaseService {
       this.isInitialized = true;
       console.log('✅ SQLite Database - Force reset completed');
     } catch (error) {
-      console.error('❌ SQLite Database - Force reset failed:', error);
+      console.log('❌ SQLite Database - Force reset failed:', error);
       throw error;
     }
   }
@@ -760,7 +971,9 @@ class SQLiteDatabaseService implements DatabaseService {
     }
 
     if (this.activeOperations > 0) {
-      console.warn('⚠️ SQLite Database - Closing with active operations, may cause issues');
+      console.warn(
+        '⚠️ SQLite Database - Closing with active operations, may cause issues'
+      );
     }
 
     // Prevent new initializations during close
@@ -769,7 +982,7 @@ class SQLiteDatabaseService implements DatabaseService {
         // Wait a bit for init to complete, but don't wait too long
         await Promise.race([
           this.initializationPromise,
-          new Promise(resolve => setTimeout(resolve, 2000))
+          new Promise(resolve => setTimeout(resolve, 2000)),
         ]);
       } catch {
         // Ignore init errors during close
@@ -789,11 +1002,19 @@ class SQLiteDatabaseService implements DatabaseService {
           await this.db.execAsync('COMMIT');
         } catch (commitError: unknown) {
           // Ignore "no transaction is active" errors - this is expected if no transaction was started
-          const errorMessage = commitError instanceof Error ? commitError.message : String(commitError);
-          if (!errorMessage.includes('no transaction is active') && 
-              !errorMessage.includes('cannot commit')) {
+          const errorMessage =
+            commitError instanceof Error
+              ? commitError.message
+              : String(commitError);
+          if (
+            !errorMessage.includes('no transaction is active') &&
+            !errorMessage.includes('cannot commit')
+          ) {
             // Only log if it's a different error
-            console.log('⚠️ SQLite Database - Commit error (non-critical):', errorMessage);
+            console.log(
+              '⚠️ SQLite Database - Commit error (non-critical):',
+              errorMessage
+            );
           }
         }
 
@@ -829,7 +1050,11 @@ class SQLiteDatabaseService implements DatabaseService {
     }
 
     // If in bypass mode, don't try to initialize
-    if (this.isInitialized && this.db && typeof this.db.getAllAsync !== 'function') {
+    if (
+      this.isInitialized &&
+      this.db &&
+      typeof this.db.getAllAsync !== 'function'
+    ) {
       // We're in bypass mode (mock database object)
       return;
     }
@@ -843,7 +1068,9 @@ class SQLiteDatabaseService implements DatabaseService {
         }
       } catch (error) {
         // Initialization failed, continue to try init below
-        console.log('⚠️ SQLite Database - Previous initialization failed in ensureConnection');
+        console.log(
+          '⚠️ SQLite Database - Previous initialization failed in ensureConnection'
+        );
       }
     }
 
@@ -861,7 +1088,10 @@ class SQLiteDatabaseService implements DatabaseService {
         await this.init();
       } catch (error) {
         // If init fails during ensureConnection, don't crash - enable bypass mode
-        console.error('❌ SQLite Database - Init failed in ensureConnection, enabling bypass mode:', error);
+        console.log(
+          '❌ SQLite Database - Init failed in ensureConnection, enabling bypass mode:',
+          error
+        );
         await this.bypassDatabase();
         return;
       }
@@ -876,15 +1106,18 @@ class SQLiteDatabaseService implements DatabaseService {
     try {
       const healthCheck = Promise.race([
         this.db.getAllAsync('SELECT 1'),
-        new Promise((_, reject) => 
+        new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Health check timeout')), 3000)
-        )
+        ),
       ]);
       await healthCheck;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       if (errorMessage.includes('NullPointerException')) {
-        console.error('🚨 SQLite Database - Native error in ensureConnection, enabling bypass mode');
+        console.log(
+          '🚨 SQLite Database - Native error in ensureConnection, enabling bypass mode'
+        );
         await this.bypassDatabase();
         return;
       }
@@ -896,7 +1129,9 @@ class SQLiteDatabaseService implements DatabaseService {
         this.db = null;
         await this.init();
       } else {
-        console.log('⏳ SQLite Database - Connection check failed but in cooldown, skipping reinit');
+        console.log(
+          '⏳ SQLite Database - Connection check failed but in cooldown, skipping reinit'
+        );
       }
     }
   }
@@ -1247,7 +1482,7 @@ class SQLiteDatabaseService implements DatabaseService {
       console.log('✅ SQLite Database - Health check passed');
       return true;
     } catch (error) {
-      console.error(
+      console.log(
         '❌ SQLite Database - Health check failed:',
         error instanceof Error ? error.message : 'Unknown error'
       );
@@ -1275,7 +1510,7 @@ class SQLiteDatabaseService implements DatabaseService {
     try {
       await this.softResetDatabase();
     } catch (resetError) {
-      console.error(
+      console.log(
         '❌ SQLite Database - Soft reset failed:',
         resetError instanceof Error ? resetError.message : 'Unknown error'
       );
@@ -1285,10 +1520,7 @@ class SQLiteDatabaseService implements DatabaseService {
   }
 
   private async handleCriticalError(error: Error): Promise<void> {
-    console.error(
-      '🚨 SQLite Database - Critical error detected:',
-      error.message
-    );
+    console.log('🚨 SQLite Database - Critical error detected:', error.message);
 
     // Increment consecutive error count
     this.consecutiveErrors++;
@@ -1309,12 +1541,16 @@ class SQLiteDatabaseService implements DatabaseService {
   private async createTables(): Promise<void> {
     // PERFECT FIX: If tables are being created, wait for that promise
     if (this.isCreatingTables && this.tablesCreationPromise) {
-      console.log('🔄 SQLite Database - Tables creation already in progress, waiting...');
+      console.log(
+        '🔄 SQLite Database - Tables creation already in progress, waiting...'
+      );
       try {
         await this.tablesCreationPromise;
         return;
       } catch (error) {
-        console.log('⚠️ SQLite Database - Previous table creation failed, will retry');
+        console.log(
+          '⚠️ SQLite Database - Previous table creation failed, will retry'
+        );
       }
     }
 
@@ -1325,7 +1561,9 @@ class SQLiteDatabaseService implements DatabaseService {
           "SELECT name FROM sqlite_master WHERE type='table' AND name='sync_queue'"
         );
         if (verifyTables.length > 0) {
-          console.log('✅ SQLite Database - Tables already created and verified');
+          console.log(
+            '✅ SQLite Database - Tables already created and verified'
+          );
           return;
         } else {
           // Tables flag was set but tables don't exist, reset flag
@@ -1378,8 +1616,14 @@ class SQLiteDatabaseService implements DatabaseService {
       try {
         await this.db!.getAllAsync('SELECT 1');
       } catch (testError) {
-        console.error('❌ SQLite Database - Database not ready for queries:', testError);
-        throw new Error('Database not ready: ' + (testError instanceof Error ? testError.message : String(testError)));
+        console.log(
+          '❌ SQLite Database - Database not ready for queries:',
+          testError
+        );
+        throw new Error(
+          'Database not ready: ' +
+            (testError instanceof Error ? testError.message : String(testError))
+        );
       }
 
       // Check if tables already exist
@@ -1431,7 +1675,7 @@ class SQLiteDatabaseService implements DatabaseService {
         try {
           await this.createMissingTables(missingTables);
           await this.db!.execAsync('COMMIT');
-          
+
           // PERFECT FIX: Wait and verify tables were actually created
           await new Promise(resolve => setTimeout(resolve, 150));
           const verifyTables = await this.db!.getAllAsync(
@@ -1441,26 +1685,29 @@ class SQLiteDatabaseService implements DatabaseService {
           const stillMissing = requiredTables.filter(
             table => !verifiedTableNames.includes(table)
           );
-          
+
           if (stillMissing.length > 0) {
-            throw new Error(`Tables still missing after creation: ${stillMissing.join(', ')}`);
+            throw new Error(
+              `Tables still missing after creation: ${stillMissing.join(', ')}`
+            );
           }
-          
-          console.log('✅ SQLite Database - Tables created and verified successfully');
+
+          console.log(
+            '✅ SQLite Database - Tables created and verified successfully'
+          );
         } catch (error) {
           try {
             await this.db!.execAsync('ROLLBACK');
           } catch (rollbackError) {
-            console.error('❌ SQLite Database - Rollback failed:', rollbackError);
+            console.log('❌ SQLite Database - Rollback failed:', rollbackError);
           }
           throw error;
         }
       } else {
         console.log('✅ SQLite Database - All required tables already exist');
       }
-
     } catch (error) {
-      console.error('❌ SQLite Database - Failed to create tables:', error);
+      console.log('❌ SQLite Database - Failed to create tables:', error);
       throw error;
     } finally {
       this.releaseLock();
@@ -1808,7 +2055,7 @@ class SQLiteDatabaseService implements DatabaseService {
         );
       }
     } catch (error) {
-      console.error(
+      console.log(
         '❌ SQLite Database - Migration failed:',
         error instanceof Error ? error.message : 'Unknown error'
       );
@@ -1823,76 +2070,78 @@ class SQLiteDatabaseService implements DatabaseService {
         await this.acquireLock();
         this.updateActivity();
 
-      // Validate table name to prevent SQL injection
-      if (!this.isValidTableName(table)) {
-        throw new Error(`Invalid table name: ${table}`);
-      }
-
-      const timestamp = Date.now();
-      const id =
-        data.id ||
-        `${table}_${timestamp}_${Math.random().toString(36).substr(2, 9)}`;
-      const dataKeys = Object.keys(data).filter(key => key !== 'id');
-
-      // Validate data keys to prevent SQL injection
-      dataKeys.forEach(key => {
-        if (!this.isValidColumnName(key)) {
-          throw new Error(`Invalid column name: ${key}`);
+        // Validate table name to prevent SQL injection
+        if (!this.isValidTableName(table)) {
+          throw new Error(`Invalid table name: ${table}`);
         }
-      });
 
-      // Use prepared statement for better performance and security
-      const query = `
+        const timestamp = Date.now();
+        const id =
+          data.id ||
+          `${table}_${timestamp}_${Math.random().toString(36).substr(2, 9)}`;
+        const dataKeys = Object.keys(data).filter(key => key !== 'id');
+
+        // Validate data keys to prevent SQL injection
+        dataKeys.forEach(key => {
+          if (!this.isValidColumnName(key)) {
+            throw new Error(`Invalid column name: ${key}`);
+          }
+        });
+
+        // Use prepared statement for better performance and security
+        const query = `
         INSERT OR REPLACE INTO ${table} 
         (id, ${dataKeys.join(', ')}, created_at, updated_at)
         VALUES (?, ${dataKeys.map(() => '?').join(', ')}, ?, ?)
       `;
 
-      const params = [
-        id,
-        ...dataKeys.map(key =>
-          typeof data[key] === 'object' ? JSON.stringify(data[key]) : data[key]
-        ),
-        timestamp,
-        timestamp,
-      ];
+        const params = [
+          id,
+          ...dataKeys.map(key =>
+            typeof data[key] === 'object'
+              ? JSON.stringify(data[key])
+              : data[key]
+          ),
+          timestamp,
+          timestamp,
+        ];
 
-      // Use transaction for better performance and atomicity
-      await this.executeWithRetry(async () => {
-        // Check if we're already in a transaction
-        const inTransaction = await this.isInTransaction();
-        if (!inTransaction) {
-          await this.db!.execAsync('BEGIN TRANSACTION');
+        // Use transaction for better performance and atomicity
+        await this.executeWithRetry(async () => {
+          // Check if we're already in a transaction
+          const inTransaction = await this.isInTransaction();
+          if (!inTransaction) {
+            await this.db!.execAsync('BEGIN TRANSACTION');
+          }
+
+          try {
+            await this.db!.runAsync(query, params);
+            if (!inTransaction) {
+              await this.db!.execAsync('COMMIT');
+            }
+          } catch (error) {
+            if (!inTransaction) {
+              await this.db!.execAsync('ROLLBACK');
+            }
+            throw error;
+          }
+        }, `save data to ${table}`);
+
+        console.log(`💾 SQLite Database - Saved data to ${table}: ${id}`);
+      } catch (error) {
+        console.log(
+          `❌ SQLite Database - Failed to save data to ${table}:`,
+          error instanceof Error ? error.message : 'Unknown error'
+        );
+
+        if (error instanceof Error && this.shouldResetDatabase(error.message)) {
+          await this.handleCriticalError(error);
         }
 
-        try {
-          await this.db!.runAsync(query, params);
-          if (!inTransaction) {
-            await this.db!.execAsync('COMMIT');
-          }
-        } catch (error) {
-          if (!inTransaction) {
-            await this.db!.execAsync('ROLLBACK');
-          }
-          throw error;
-        }
-      }, `save data to ${table}`);
-
-      console.log(`💾 SQLite Database - Saved data to ${table}: ${id}`);
-    } catch (error) {
-      console.error(
-        `❌ SQLite Database - Failed to save data to ${table}:`,
-        error instanceof Error ? error.message : 'Unknown error'
-      );
-
-      if (error instanceof Error && this.shouldResetDatabase(error.message)) {
-        await this.handleCriticalError(error);
+        throw error; // Re-throw to allow caller to handle
+      } finally {
+        this.releaseLock();
       }
-
-      throw error; // Re-throw to allow caller to handle
-    } finally {
-      this.releaseLock();
-    }
     });
   }
 
@@ -1918,111 +2167,112 @@ class SQLiteDatabaseService implements DatabaseService {
         await this.acquireLock();
         this.updateActivity();
 
-      // Validate table name to prevent SQL injection
-      if (!this.isValidTableName(table)) {
-        throw new Error(`Invalid table name: ${table}`);
-      }
-
-      // Check if table exists first
-      const tableExists = await this.executeWithRetry(async () => {
-        const result = await this.db!.getAllAsync(
-          "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
-          [table]
-        );
-        return result.length > 0;
-      }, `check table ${table} exists`);
-
-      if (!tableExists) {
-        console.log(
-          `⚠️ SQLite Database - Table ${table} does not exist, creating missing tables...`
-        );
-        await this.createTables();
-        return [];
-      }
-
-      // Check if table has created_at column before using it in ORDER BY
-      let defaultOrderBy = 'id DESC';
-      try {
-        const tableInfo = await this.db!.getAllAsync(
-          `PRAGMA table_info(${table})`
-        );
-        const hasCreatedAt = tableInfo.some(
-          (column: any) => column.name === 'created_at'
-        );
-        if (hasCreatedAt) {
-          defaultOrderBy = 'created_at DESC';
+        // Validate table name to prevent SQL injection
+        if (!this.isValidTableName(table)) {
+          throw new Error(`Invalid table name: ${table}`);
         }
+
+        // Check if table exists first
+        const tableExists = await this.executeWithRetry(async () => {
+          const result = await this.db!.getAllAsync(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+            [table]
+          );
+          return result.length > 0;
+        }, `check table ${table} exists`);
+
+        if (!tableExists) {
+          console.log(
+            `⚠️ SQLite Database - Table ${table} does not exist, creating missing tables...`
+          );
+          await this.createTables();
+          return [];
+        }
+
+        // Check if table has created_at column before using it in ORDER BY
+        let defaultOrderBy = 'id DESC';
+        try {
+          const tableInfo = await this.db!.getAllAsync(
+            `PRAGMA table_info(${table})`
+          );
+          const hasCreatedAt = tableInfo.some(
+            (column: any) => column.name === 'created_at'
+          );
+          if (hasCreatedAt) {
+            defaultOrderBy = 'created_at DESC';
+          }
+        } catch (error) {
+          console.log(
+            `⚠️ SQLite Database - Could not check columns for ${table}, using default ordering`
+          );
+        }
+
+        // Use safe query construction
+        const sql =
+          query || `SELECT * FROM ${table} ORDER BY ${defaultOrderBy}`;
+
+        // Validate custom query to prevent SQL injection
+        if (query && !this.isValidSelectQuery(query)) {
+          throw new Error('Invalid query format');
+        }
+
+        // Use transaction for read operations to ensure consistency
+        const result = await this.executeWithRetry(async () => {
+          const inTransaction = await this.isInTransaction();
+          if (!inTransaction) {
+            await this.db!.execAsync('BEGIN TRANSACTION');
+          }
+
+          try {
+            const data = await this.db!.getAllAsync(sql, params || []);
+            if (!inTransaction) {
+              await this.db!.execAsync('COMMIT');
+            }
+            return data;
+          } catch (error) {
+            if (!inTransaction) {
+              await this.db!.execAsync('ROLLBACK');
+            }
+            throw error;
+          }
+        }, `get data from ${table}`);
+
+        // Parse JSON fields
+        const parsedResult = result.map((row: any) => {
+          const parsed = { ...row };
+          Object.keys(parsed).forEach(key => {
+            if (
+              typeof parsed[key] === 'string' &&
+              (parsed[key].startsWith('{') || parsed[key].startsWith('['))
+            ) {
+              try {
+                parsed[key] = JSON.parse(parsed[key]);
+              } catch (e) {
+                // Keep as string if parsing fails
+              }
+            }
+          });
+          return parsed;
+        });
+
+        console.log(
+          `📦 SQLite Database - Retrieved ${parsedResult.length} records from ${table}`
+        );
+        return parsedResult;
       } catch (error) {
         console.log(
-          `⚠️ SQLite Database - Could not check columns for ${table}, using default ordering`
+          `❌ SQLite Database - Failed to get data from ${table}:`,
+          error instanceof Error ? error.message : 'Unknown error'
         );
-      }
 
-      // Use safe query construction
-      const sql = query || `SELECT * FROM ${table} ORDER BY ${defaultOrderBy}`;
-
-      // Validate custom query to prevent SQL injection
-      if (query && !this.isValidSelectQuery(query)) {
-        throw new Error('Invalid query format');
-      }
-
-      // Use transaction for read operations to ensure consistency
-      const result = await this.executeWithRetry(async () => {
-        const inTransaction = await this.isInTransaction();
-        if (!inTransaction) {
-          await this.db!.execAsync('BEGIN TRANSACTION');
+        if (error instanceof Error && this.shouldResetDatabase(error.message)) {
+          await this.handleCriticalError(error);
         }
 
-        try {
-          const data = await this.db!.getAllAsync(sql, params || []);
-          if (!inTransaction) {
-            await this.db!.execAsync('COMMIT');
-          }
-          return data;
-        } catch (error) {
-          if (!inTransaction) {
-            await this.db!.execAsync('ROLLBACK');
-          }
-          throw error;
-        }
-      }, `get data from ${table}`);
-
-      // Parse JSON fields
-      const parsedResult = result.map((row: any) => {
-        const parsed = { ...row };
-        Object.keys(parsed).forEach(key => {
-          if (
-            typeof parsed[key] === 'string' &&
-            (parsed[key].startsWith('{') || parsed[key].startsWith('['))
-          ) {
-            try {
-              parsed[key] = JSON.parse(parsed[key]);
-            } catch (e) {
-              // Keep as string if parsing fails
-            }
-          }
-        });
-        return parsed;
-      });
-
-      console.log(
-        `📦 SQLite Database - Retrieved ${parsedResult.length} records from ${table}`
-      );
-      return parsedResult;
-    } catch (error) {
-      console.error(
-        `❌ SQLite Database - Failed to get data from ${table}:`,
-        error instanceof Error ? error.message : 'Unknown error'
-      );
-
-      if (error instanceof Error && this.shouldResetDatabase(error.message)) {
-        await this.handleCriticalError(error);
+        throw error; // Re-throw to allow caller to handle
+      } finally {
+        this.releaseLock();
       }
-
-      throw error; // Re-throw to allow caller to handle
-    } finally {
-      this.releaseLock();
-    }
     });
   }
 
@@ -2068,7 +2318,7 @@ class SQLiteDatabaseService implements DatabaseService {
 
       console.log(`🔄 SQLite Database - Updated data in ${table}: ${id}`);
     } catch (error) {
-      console.error(
+      console.log(
         `❌ SQLite Database - Failed to update data in ${table}:`,
         error instanceof Error ? error.message : 'Unknown error'
       );
@@ -2097,7 +2347,7 @@ class SQLiteDatabaseService implements DatabaseService {
 
       console.log(`🗑️ SQLite Database - Deleted data from ${table}: ${id}`);
     } catch (error) {
-      console.error(
+      console.log(
         `❌ SQLite Database - Failed to delete data from ${table}:`,
         error instanceof Error ? error.message : 'Unknown error'
       );
@@ -2126,7 +2376,7 @@ class SQLiteDatabaseService implements DatabaseService {
 
       console.log(`🧹 SQLite Database - Cleared table: ${table}`);
     } catch (error) {
-      console.error(
+      console.log(
         `❌ SQLite Database - Failed to clear table ${table}:`,
         error instanceof Error ? error.message : 'Unknown error'
       );
@@ -2149,10 +2399,14 @@ class SQLiteDatabaseService implements DatabaseService {
         'check sync_queue exists'
       );
       if ((tableCheck as { length: number }).length === 0) return 0;
-      const result = await this.executeWithRetry(
-        () => this.db!.getAllAsync('SELECT COUNT(*) as count FROM sync_queue WHERE status = ?', ['pending']),
+      const result = (await this.executeWithRetry(
+        () =>
+          this.db!.getAllAsync(
+            'SELECT COUNT(*) as count FROM sync_queue WHERE status = ?',
+            ['pending']
+          ),
         'get pending sync count'
-      ) as { count: number }[];
+      )) as { count: number }[];
       return result[0]?.count ?? 0;
     } catch {
       return 0;
@@ -2184,19 +2438,20 @@ class SQLiteDatabaseService implements DatabaseService {
       }
 
       const query = `SELECT * FROM sync_queue WHERE status = 'pending' ORDER BY timestamp ASC`;
-      const result = await this.executeWithRetry(
+      const result = (await this.executeWithRetry(
         () => this.db!.getAllAsync(query),
         'get pending sync items'
-      ) as Record<string, unknown>[];
+      )) as Record<string, unknown>[];
 
       const parsedResult = result.map((row: Record<string, unknown>) => {
         try {
           return {
             ...row,
-            data: typeof row.data === 'string' ? JSON.parse(row.data) : row.data,
+            data:
+              typeof row.data === 'string' ? JSON.parse(row.data) : row.data,
           };
         } catch (e) {
-          console.error('❌ SQLite Database - Failed to parse row data:', e);
+          console.log('❌ SQLite Database - Failed to parse row data:', e);
           return row; // Return unparsed row if parsing fails
         }
       });
@@ -2206,7 +2461,7 @@ class SQLiteDatabaseService implements DatabaseService {
       );
       return parsedResult;
     } catch (error) {
-      console.error(
+      console.log(
         '❌ SQLite Database - Failed to get pending sync:',
         error instanceof Error ? error.message : 'Unknown error'
       );
@@ -2235,7 +2490,7 @@ class SQLiteDatabaseService implements DatabaseService {
 
       logger.debug(`SQLite Database - Marked sync item as synced: ${id}`);
     } catch (error) {
-      console.error('❌ SQLite Database - Failed to mark sync item:', error);
+      console.log('❌ SQLite Database - Failed to mark sync item:', error);
       throw error;
     } finally {
       this.releaseLock();
@@ -2253,7 +2508,10 @@ class SQLiteDatabaseService implements DatabaseService {
         await this.db!.runAsync(query, [endpoint]);
       }, 'remove pending sync by endpoint');
     } catch (error) {
-      console.error('❌ SQLite Database - Failed to remove pending sync by endpoint:', error);
+      console.log(
+        '❌ SQLite Database - Failed to remove pending sync by endpoint:',
+        error
+      );
       throw error;
     } finally {
       this.releaseLock();
@@ -2317,7 +2575,7 @@ class SQLiteDatabaseService implements DatabaseService {
         `📝 SQLite Database - Added to sync queue: ${item.action} ${item.endpoint}`
       );
     } catch (error) {
-      console.error('❌ SQLite Database - Failed to add to sync queue:', error);
+      console.log('❌ SQLite Database - Failed to add to sync queue:', error);
       throw error;
     } finally {
       this.releaseLock();
@@ -2344,7 +2602,7 @@ class SQLiteDatabaseService implements DatabaseService {
       console.log(`📊 SQLite Database - Retrieved table info for ${table}`);
       return result;
     } catch (error) {
-      console.error(
+      console.log(
         `❌ SQLite Database - Failed to get table info for ${table}:`,
         error instanceof Error ? error.message : 'Unknown error'
       );
@@ -2358,38 +2616,38 @@ class SQLiteDatabaseService implements DatabaseService {
     return this.trackOperation(async () => {
       try {
         await this.ensureConnection();
-        
+
         // Double-check database is available after ensureConnection
         if (!this.db || typeof this.db.getAllAsync !== 'function') {
           throw new Error('Database connection is not available');
         }
-        
+
         await this.acquireLock();
         this.updateActivity();
 
-      // Validate query to prevent dangerous operations
-      if (!this.isValidQuery(query)) {
-        throw new Error('Invalid or dangerous query detected');
-      }
-
-      const result = await this.executeWithRetry(async () => {
-        // Check again before executing query
-        if (!this.db || typeof this.db.getAllAsync !== 'function') {
-          throw new Error('Database connection lost during query execution');
+        // Validate query to prevent dangerous operations
+        if (!this.isValidQuery(query)) {
+          throw new Error('Invalid or dangerous query detected');
         }
-        return await this.db.getAllAsync(query, params || []);
-      }, 'execute custom query');
 
-      console.log(
-        `🔍 SQLite Database - Executed query: ${query.substring(0, 50)}...`
-      );
-      return result;
-    } catch (error) {
-      console.error('❌ SQLite Database - Failed to execute query:', error);
-      throw error;
-    } finally {
-      this.releaseLock();
-    }
+        const result = await this.executeWithRetry(async () => {
+          // Check again before executing query
+          if (!this.db || typeof this.db.getAllAsync !== 'function') {
+            throw new Error('Database connection lost during query execution');
+          }
+          return await this.db.getAllAsync(query, params || []);
+        }, 'execute custom query');
+
+        console.log(
+          `🔍 SQLite Database - Executed query: ${query.substring(0, 50)}...`
+        );
+        return result;
+      } catch (error) {
+        console.log('❌ SQLite Database - Failed to execute query:', error);
+        throw error;
+      } finally {
+        this.releaseLock();
+      }
     });
   }
 
@@ -2481,10 +2739,11 @@ class SQLiteDatabaseService implements DatabaseService {
     expiryMinutes: number = 60
   ): Promise<void> {
     // Ensure data is always a valid JSON string (not null/undefined)
-    const dataString = data !== undefined && data !== null 
-      ? JSON.stringify(data) 
-      : JSON.stringify({});
-    
+    const dataString =
+      data !== undefined && data !== null
+        ? JSON.stringify(data)
+        : JSON.stringify({});
+
     const cacheData = {
       key,
       data: dataString,
@@ -2839,7 +3098,7 @@ class SQLiteDatabaseService implements DatabaseService {
           [table]
         );
         if (result.length === 0) {
-          console.error(`❌ SQLite Database - Missing table: ${table}`);
+          console.log(`❌ SQLite Database - Missing table: ${table}`);
           return false;
         }
       }
@@ -2850,7 +3109,7 @@ class SQLiteDatabaseService implements DatabaseService {
       console.log('✅ SQLite Database - Data integrity check passed');
       return true;
     } catch (error) {
-      console.error('❌ SQLite Database - Data integrity check failed:', error);
+      console.log('❌ SQLite Database - Data integrity check failed:', error);
       return false;
     }
   }
@@ -3000,7 +3259,7 @@ class SQLiteDatabaseService implements DatabaseService {
             );
             return;
           } catch (memoryError) {
-            console.error(
+            console.log(
               '❌ SQLite Database - All emergency reset approaches failed, using bypass mode'
             );
             await this.bypassDatabase();
@@ -3017,7 +3276,7 @@ class SQLiteDatabaseService implements DatabaseService {
 
       console.log('✅ SQLite Database - Emergency reset completed');
     } catch (error) {
-      console.error('❌ SQLite Database - Emergency reset failed:', error);
+      console.log('❌ SQLite Database - Emergency reset failed:', error);
       throw error;
     }
   }
@@ -3039,7 +3298,9 @@ class SQLiteDatabaseService implements DatabaseService {
       execAsync: (sql: string) => Promise<void>;
       getAllAsync: (sql: string) => Promise<unknown[]>;
       getFirstAsync: (sql: string) => Promise<null>;
-      runAsync: (sql: string) => Promise<{ lastInsertRowId: number; changes: number }>;
+      runAsync: (
+        sql: string
+      ) => Promise<{ lastInsertRowId: number; changes: number }>;
     };
     this.db = {
       closeAsync: async () => {},
@@ -3116,7 +3377,7 @@ class SQLiteDatabaseService implements DatabaseService {
       console.log('🎉 All SQLite database tests completed successfully!');
       return true;
     } catch (error) {
-      console.error('❌ SQLite database tests failed:', error);
+      console.log('❌ SQLite database tests failed:', error);
       return false;
     }
   }
@@ -3167,10 +3428,10 @@ class SQLiteDatabaseService implements DatabaseService {
         return true;
       }
 
-      console.error('❌ SQLite Database - All recovery attempts failed');
+      console.log('❌ SQLite Database - All recovery attempts failed');
       return false;
     } catch (error) {
-      console.error('❌ SQLite Database - Graceful recovery failed:', error);
+      console.log('❌ SQLite Database - Graceful recovery failed:', error);
       return false;
     }
   }
@@ -3185,7 +3446,7 @@ class SQLiteDatabaseService implements DatabaseService {
       await this.db!.execAsync('VACUUM');
       console.log('✅ SQLite Database - VACUUM completed successfully');
     } catch (error) {
-      console.error('❌ SQLite Database - VACUUM failed:', error);
+      console.log('❌ SQLite Database - VACUUM failed:', error);
       throw error;
     } finally {
       this.releaseLock();
@@ -3210,7 +3471,7 @@ class SQLiteDatabaseService implements DatabaseService {
 
       console.log('✅ SQLite Database - Optimization completed');
     } catch (error) {
-      console.error('❌ SQLite Database - Optimization failed:', error);
+      console.log('❌ SQLite Database - Optimization failed:', error);
       throw error;
     } finally {
       this.releaseLock();

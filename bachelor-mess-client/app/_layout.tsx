@@ -45,19 +45,11 @@ function AppContent() {
       />
       <Stack.Screen
         name='settings'
-        options={{
-          headerShown: true,
-          title: 'Settings',
-          headerBackTitle: 'Back',
-        }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name='profile'
-        options={{
-          headerShown: true,
-          title: 'Profile',
-          headerBackTitle: 'Back',
-        }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name='help'

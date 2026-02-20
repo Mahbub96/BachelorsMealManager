@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { View, StyleSheet, Alert, TouchableOpacity } from 'react-native';
+import type { InfoModalVariant } from '../ui';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ModernLoader } from '../ui/ModernLoader';
@@ -12,7 +13,8 @@ import { MealAdvancedFilters } from './MealAdvancedFilters';
 import { MealBulkActions } from './MealBulkActions';
 import { MealList } from './MealList';
 import { MealModal } from './MealModal';
-import { MealDetailsView } from './MealDetailsView';
+import { MealDetailModal } from './MealDetailModal';
+import { InfoModal } from '../ui';
 import { MealForm } from '../MealForm';
 import { MealStats } from './MealStats';
 import { AddMealButton } from './AddMealButton';
@@ -133,6 +135,18 @@ export const EnhancedMealManagement: React.FC<EnhancedMealManagementProps> = ({
   const { theme } = useTheme();
   const role = userRole || user?.role;
 
+  const [infoModal, setInfoModal] = useState<{
+    title: string;
+    message: string;
+    variant: InfoModalVariant;
+  } | null>(null);
+  const showAlert = useCallback(
+    (title: string, message: string, variant: InfoModalVariant = 'info') => {
+      setInfoModal({ title, message, variant });
+    },
+    []
+  );
+
   const {
     meals,
     mealStats,
@@ -150,7 +164,7 @@ export const EnhancedMealManagement: React.FC<EnhancedMealManagementProps> = ({
     isAdmin,
     hasMeals,
     pendingMealsCount,
-  } = useMealManagement();
+  } = useMealManagement({ showAlert });
 
   // State management
   const [showAddMealModal, setShowAddMealModal] = useState(false);
@@ -211,14 +225,14 @@ export const EnhancedMealManagement: React.FC<EnhancedMealManagementProps> = ({
                 setSelectedMeals([]);
                 await refreshMeals();
               } catch {
-                Alert.alert('Error', `Failed to ${actionText} meals`);
+                showAlert('Error', `Failed to ${actionText} meals`, 'error');
               }
             },
           },
         ]
       );
     },
-    [selectedMeals, handleDeleteMeal, handleStatusUpdate, refreshMeals]
+    [selectedMeals, handleDeleteMeal, handleStatusUpdate, refreshMeals, showAlert]
   );
 
   const handleEnhancedMealPress = useCallback((meal: MealEntry) => {
@@ -475,16 +489,27 @@ export const EnhancedMealManagement: React.FC<EnhancedMealManagementProps> = ({
             setShowAddMealModal(false);
           }}
           onCancel={() => setShowAddMealModal(false)}
+          onShowAlert={showAlert}
         />
       </MealModal>
 
-      <MealModal
+      <MealDetailModal
         visible={showMealDetails}
-        title='Meal Details'
-        onClose={() => setShowMealDetails(false)}
-      >
-        {selectedMeal && <MealDetailsView meal={selectedMeal} />}
-      </MealModal>
+        meal={selectedMeal}
+        onClose={() => {
+          setShowMealDetails(false);
+          setSelectedMeal(null);
+        }}
+      />
+      {infoModal && (
+        <InfoModal
+          visible
+          title={infoModal.title}
+          message={infoModal.message}
+          variant={infoModal.variant}
+          onClose={() => setInfoModal(null)}
+        />
+      )}
     </ThemedView>
   );
 };

@@ -1,6 +1,7 @@
 const multer = require('multer');
-const cloudinary = require('cloudinary').v2;
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const cloudinaryRoot = require('cloudinary');
+const cloudinary = cloudinaryRoot.v2;
+const createCloudinaryStorage = require('multer-storage-cloudinary');
 const path = require('path');
 const fs = require('fs');
 
@@ -28,9 +29,9 @@ const localStorage = multer.diskStorage({
   }
 });
 
-// Configure Cloudinary storage for production
-const cloudinaryStorage = new CloudinaryStorage({
-  cloudinary: cloudinary,
+// Configure Cloudinary storage for production (package exports a factory, not a class)
+const cloudinaryStorage = createCloudinaryStorage({
+  cloudinary: cloudinaryRoot,
   params: {
     folder: 'bachelor-mess',
     allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],

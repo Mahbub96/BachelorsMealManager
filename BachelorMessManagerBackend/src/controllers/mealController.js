@@ -172,10 +172,11 @@ class MealController {
     }
   }
 
-  // Get user meals (group-scoped for admin/member: returns all group members' meals)
+  // Get user meals (group-scoped for admin/member: returns all group members' meals) <- GET /api/meals
   async getUserMeals(req, res, next) {
     try {
       let userId = req.user._id || req.user.id;
+
       if (typeof userId === 'string') {
         userId = new mongoose.Types.ObjectId(userId);
       }
