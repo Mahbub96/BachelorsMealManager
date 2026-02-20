@@ -9,6 +9,10 @@ import { Ionicons } from '@expo/vector-icons';
 import type { IconName } from '@/constants/IconTypes';
 import { ThemedText } from '../ThemedText';
 import { useTheme } from '../../context/ThemeContext';
+import { logger } from '../../utils/logger';
+import { getStatusColor, getStatusBgColor, getStatusIcon } from '../../utils/statusUtils';
+import { formatDate, formatDateAndTime } from '../../utils/dateUtils';
+import { formatCurrency } from '../../utils/formatUtils';
 
 export type BazarCardBazar = {
   id: string;
@@ -17,6 +21,8 @@ export type BazarCardBazar = {
   totalAmount: number;
   date: string;
   status: 'pending' | 'approved' | 'rejected';
+  /** When the bazar entry was added (ISO string). */
+  createdAt?: string;
   userId:
     | string
     | {
@@ -57,7 +63,7 @@ export const BazarCard: React.FC<BazarCardProps> = memo(
 
     // Validate bazar data (use theme from top-level hook only)
     if (!bazar || !bazar.id) {
-      console.warn('⚠️ Invalid bazar data:', bazar);
+      logger.warn('Invalid bazar data', bazar);
       return (
         <View
           style={[
@@ -78,48 +84,8 @@ export const BazarCard: React.FC<BazarCardProps> = memo(
       );
     }
 
-    const getStatusColor = (status: string) => {
-      switch (status) {
-        case 'approved':
-          return theme.status?.success || theme.gradient?.success?.[0] || '#10b981';
-        case 'pending':
-          return theme.status?.warning || theme.gradient?.warning?.[0] || '#f59e0b';
-        case 'rejected':
-          return theme.status?.error || theme.gradient?.error?.[0] || '#ef4444';
-        default:
-          return theme.text.tertiary || '#9ca3af';
-      }
-    };
-
-    const getStatusBgColor = (status: string) => {
-      const successColor = theme.status?.success || theme.gradient?.success?.[0] || '#10b981';
-      const warningColor = theme.status?.warning || theme.gradient?.warning?.[0] || '#f59e0b';
-      const errorColor = theme.status?.error || theme.gradient?.error?.[0] || '#ef4444';
-      
-      switch (status) {
-        case 'approved':
-          return successColor + '20';
-        case 'pending':
-          return warningColor + '20';
-        case 'rejected':
-          return errorColor + '20';
-        default:
-          return theme.cardBackground || theme.surface || '#f8fafc';
-      }
-    };
-
-    const getStatusIcon = (status: string) => {
-      switch (status) {
-        case 'approved':
-          return 'checkmark-circle';
-        case 'pending':
-          return 'time';
-        case 'rejected':
-          return 'close-circle';
-        default:
-          return 'help-circle';
-      }
-    };
+    const statusColor = (s: string) => getStatusColor(s, theme);
+    const statusBgColor = (s: string) => getStatusBgColor(s, theme);
 
     const getItemsSummary = (items: { name: string }[]) => {
       if (!items || items.length === 0) return 'No items';
@@ -187,7 +153,7 @@ export const BazarCard: React.FC<BazarCardProps> = memo(
               <ThemedText
                 style={[styles.amountValue, { color: theme.text.primary }]}
               >
-                ৳{bazar.totalAmount.toLocaleString()}
+                {formatCurrency(bazar.totalAmount)}
               </ThemedText>
               <View style={styles.headerLabels}>
                 <ThemedText
@@ -207,20 +173,20 @@ export const BazarCard: React.FC<BazarCardProps> = memo(
               style={[
                 styles.statusBadge,
                 {
-                  backgroundColor: getStatusBgColor(bazar.status),
-                  borderColor: getStatusColor(bazar.status),
+                  backgroundColor: statusBgColor(bazar.status),
+                  borderColor: statusColor(bazar.status),
                 },
               ]}
             >
               <Ionicons
                 name={getStatusIcon(bazar.status) as IconName}
                 size={14}
-                color={getStatusColor(bazar.status)}
+                color={statusColor(bazar.status)}
               />
               <ThemedText
                 style={[
                   styles.statusText,
-                  { color: getStatusColor(bazar.status) },
+                  { color: statusColor(bazar.status) },
                 ]}
               >
                 {bazar.status.charAt(0).toUpperCase() + bazar.status.slice(1)}
@@ -259,7 +225,7 @@ export const BazarCard: React.FC<BazarCardProps> = memo(
                         { color: theme.text.secondary },
                       ]}
                     >
-                      {item.quantity} x ৳{item.price.toLocaleString()}
+                      {item.quantity} x {formatCurrency(item.price)}
                     </ThemedText>
                   </View>
                 ))}
@@ -292,10 +258,23 @@ export const BazarCard: React.FC<BazarCardProps> = memo(
                 <ThemedText
                   style={[styles.metaText, { color: theme.text.secondary }]}
                 >
-                  {new Date(bazar.date).toLocaleDateString()}
+                  {formatDate(bazar.date, { month: 'numeric', day: 'numeric', year: 'numeric' })}
                 </ThemedText>
               </View>
-
+              {bazar.createdAt && (
+                <View style={styles.metaItem}>
+                  <Ionicons
+                    name='time-outline'
+                    size={14}
+                    color={theme.text.tertiary}
+                  />
+                  <ThemedText
+                    style={[styles.metaText, { color: theme.text.secondary }]}
+                  >
+                    Added {formatDateAndTime(bazar.createdAt)}
+                  </ThemedText>
+                </View>
+              )}
               {typeof bazar.userId === 'object' && bazar.userId.name && (
                 <View style={styles.metaItem}>
                   <Ionicons

@@ -8,6 +8,7 @@ const logger = require('../utils/logger');
 const { getGroupMemberIds } = require('../utils/groupHelper');
 const {
   getCurrentMonthRange,
+  buildCurrentMonthDateFilter,
   aggregateStatsAmounts,
   mealBazarMatch,
   flatBazarMatch,
@@ -17,7 +18,6 @@ const {
 const { aggregateMealStats, aggregateMealLastDate } = require('../utils/mealHelper');
 const {
   normalizeUserId,
-  currentMonthDateFilter,
   daysSince,
   ratioPercent,
   safeAverage,
@@ -38,7 +38,7 @@ router.get('/dashboard', protect, async (req, res) => {
 
     const currentDate = new Date();
     const monthRange = getCurrentMonthRange();
-    const dateFilter = currentMonthDateFilter(monthRange);
+    const dateFilter = buildCurrentMonthDateFilter(monthRange);
     const mealOnlyFilter = mealBazarMatch();
 
     let groupMemberIds = null;
@@ -65,15 +65,15 @@ router.get('/dashboard', protect, async (req, res) => {
       lastMealDate: null,
     };
     const scopeMatch = buildUserScopeMatch(userId, groupMemberIds);
-    const mealMatchMonth = { ...mealOnlyFilter, ...scopeMatch, date: dateFilter };
+    const mealMatchMonth = { ...mealOnlyFilter, ...scopeMatch, ...dateFilter };
 
     if (useGroup) {
-      const mealMatchMonthGroup = { userId: { $in: groupMemberIds }, date: dateFilter };
+      const mealMatchMonthGroup = { userId: { $in: groupMemberIds }, ...dateFilter };
       mealData = await aggregateMealStats(Meal, mealMatchMonthGroup);
       mealData.lastMealDate = await aggregateMealLastDate(Meal, { userId: { $in: groupMemberIds } });
       finalTotalMeals = mealData.totalMeals;
     } else {
-      const mealMatchMonthUser = { userId, date: dateFilter };
+      const mealMatchMonthUser = { userId, ...dateFilter };
       mealData = await aggregateMealStats(Meal, mealMatchMonthUser);
       mealData.lastMealDate = await aggregateMealLastDate(Meal, { userId });
       finalTotalMeals = mealData.totalMeals;

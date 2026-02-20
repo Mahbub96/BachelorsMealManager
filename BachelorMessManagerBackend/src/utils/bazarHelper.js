@@ -50,17 +50,38 @@ async function getBazarSumInMonth(Bazar, typeFilter, userId, groupMemberIds, mon
  */
 function getCurrentMonthRange() {
   const now = new Date();
-  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-  const lastDay = new Date(
-    now.getFullYear(),
-    now.getMonth() + 1,
-    0,
-    23,
-    59,
-    59,
-    999
-  );
+  return buildDateRangeForMonth(now.getMonth() + 1, now.getFullYear());
+}
+
+/**
+ * Date range for a given calendar month (month 1-12, full year).
+ * @param {number} month - 1-12
+ * @param {number} year - Full year
+ * @returns {{ firstDay: Date, lastDay: Date }}
+ */
+function buildDateRangeForMonth(month, year) {
+  const firstDay = new Date(year, month - 1, 1);
+  const lastDay = new Date(year, month, 0, 23, 59, 59, 999);
   return { firstDay, lastDay };
+}
+
+/**
+ * Current month date filter for MongoDB (value for "date" field).
+ * @param {{ firstDay: Date, lastDay: Date }} [monthRange] - From getCurrentMonthRange() or buildDateRangeForMonth()
+ * @returns {{ $gte: Date, $lte: Date }}
+ */
+function currentMonthDateFilterValue(monthRange) {
+  const range = monthRange || getCurrentMonthRange();
+  return { $gte: range.firstDay, $lte: range.lastDay };
+}
+
+/**
+ * Full match object for "date in current month": { date: { $gte, $lte } }.
+ * @param {{ firstDay: Date, lastDay: Date }} [monthRange]
+ * @returns {{ date: { $gte: Date, $lte: Date } }}
+ */
+function buildCurrentMonthDateFilter(monthRange) {
+  return { date: currentMonthDateFilterValue(monthRange) };
 }
 
 /**
@@ -257,6 +278,9 @@ async function findBazarEntriesPaginated(Bazar, query, { limit = 20, page = 1 } 
 
 module.exports = {
   getCurrentMonthRange,
+  buildDateRangeForMonth,
+  currentMonthDateFilterValue,
+  buildCurrentMonthDateFilter,
   buildDateMatch,
   buildStatsFilters,
   buildBazarMatchStage,

@@ -8,6 +8,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '../ThemedText';
+import { useTheme } from '../../context/ThemeContext';
+import { formatDate, formatDateAndTime } from '../../utils/dateUtils';
+import { formatCurrency } from '../../utils/formatUtils';
 
 type MealCardMeal = {
   id: string;
@@ -22,6 +25,8 @@ type MealCardMeal = {
   guestBreakfast?: number;
   guestLunch?: number;
   guestDinner?: number;
+  /** When the meal entry was added (ISO string). */
+  createdAt?: string;
 };
 
 export interface MealCardProps {
@@ -47,6 +52,10 @@ export const MealCard: React.FC<MealCardProps> = ({
   isAdmin = false,
   isSmallScreen = false,
 }) => {
+  const { theme } = useTheme();
+  const iconColor = theme.icon?.secondary ?? theme.text?.tertiary ?? '#6b7280';
+  const detailTextColor = theme.text?.secondary ?? theme.text?.tertiary ?? '#6b7280';
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'approved':
@@ -180,23 +189,31 @@ export const MealCard: React.FC<MealCardProps> = ({
         {/* Details */}
         <View style={styles.details}>
           <View style={styles.detailRow}>
-            <Ionicons name='calendar' size={16} color='#6b7280' />
-            <ThemedText style={styles.detailText}>
-              {new Date(meal.date).toLocaleDateString()}
+            <Ionicons name='calendar-outline' size={16} color={iconColor} />
+            <ThemedText style={[styles.detailText, { color: detailTextColor }]}>
+              {formatDate(meal.date, { month: 'numeric', day: 'numeric', year: 'numeric' })}
             </ThemedText>
           </View>
+          {meal.createdAt && (
+            <View style={styles.detailRow}>
+              <Ionicons name='time-outline' size={16} color={iconColor} />
+              <ThemedText style={[styles.detailText, { color: detailTextColor }]}>
+                Added {formatDateAndTime(meal.createdAt)}
+              </ThemedText>
+            </View>
+          )}
           {meal.cost && (
             <View style={styles.detailRow}>
-              <Ionicons name='cash' size={16} color='#6b7280' />
-              <ThemedText style={styles.detailText}>
-                ৳{meal.cost.toLocaleString()}
+              <Ionicons name='cash-outline' size={16} color={iconColor} />
+              <ThemedText style={[styles.detailText, { color: detailTextColor }]}>
+                {formatCurrency(meal.cost)}
               </ThemedText>
             </View>
           )}
           {meal.userId && (
             <View style={styles.detailRow}>
-              <Ionicons name='person' size={16} color='#6b7280' />
-              <ThemedText style={styles.detailText}>{meal.userId}</ThemedText>
+              <Ionicons name='person-outline' size={16} color={iconColor} />
+              <ThemedText style={[styles.detailText, { color: detailTextColor }]}>{meal.userId}</ThemedText>
             </View>
           )}
         </View>
@@ -343,7 +360,6 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontSize: 14,
-    color: '#6b7280',
     marginLeft: 8,
   },
   actions: {

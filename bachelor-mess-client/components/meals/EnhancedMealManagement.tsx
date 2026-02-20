@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { View, StyleSheet, Alert, TouchableOpacity } from 'react-native';
 import type { InfoModalVariant } from '../ui';
 import { Ionicons } from '@expo/vector-icons';
@@ -143,6 +143,8 @@ interface EnhancedMealManagementProps {
   showAnalytics?: boolean;
   showBulkOperations?: boolean;
   showUserManagement?: boolean;
+  /** When set, open with this status filter (e.g. 'pending') once. */
+  initialStatus?: string;
 }
 
 export const EnhancedMealManagement: React.FC<EnhancedMealManagementProps> = ({
@@ -150,6 +152,7 @@ export const EnhancedMealManagement: React.FC<EnhancedMealManagementProps> = ({
   showAnalytics = true,
   showBulkOperations = true,
   showUserManagement = true,
+  initialStatus,
 }) => {
   const { user } = useAuth();
   const { theme } = useTheme();
@@ -203,6 +206,14 @@ export const EnhancedMealManagement: React.FC<EnhancedMealManagementProps> = ({
   const canViewAllMeals = role === 'admin' || role === 'super_admin';
   const canBulkOperate = role === 'admin' || role === 'super_admin';
   const canViewAnalytics = role === 'admin' || role === 'super_admin';
+
+  const appliedInitialStatusRef = useRef(false);
+  useEffect(() => {
+    if (initialStatus && !appliedInitialStatusRef.current) {
+      appliedInitialStatusRef.current = true;
+      updateFilters({ ...filters, status: initialStatus as 'pending' | 'approved' | 'rejected' });
+    }
+  }, [initialStatus, filters, updateFilters]);
 
   // Event handlers
   const handleMealSelection = useCallback((mealId: string) => {

@@ -33,6 +33,7 @@ import { useThemeColor } from '../../hooks/useThemeColor';
 import { ScreenBackButton } from '../ui/ScreenBackButton';
 import { InfoModal, type InfoModalVariant } from '../ui';
 import { MealDetailModal } from './MealDetailModal';
+import { toLocalDateString, formatDate } from '../../utils/dateUtils';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -306,7 +307,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
         breakfast: selectedMeals.breakfast,
         lunch: selectedMeals.lunch,
         dinner: selectedMeals.dinner,
-        date: selectedDate.toISOString().split('T')[0],
+        date: toLocalDateString(selectedDate),
         notes: notes.trim(),
         guestBreakfast: guestMeals.breakfast || 0,
         guestLunch: guestMeals.lunch || 0,
@@ -611,7 +612,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
             {recentMyMeals.map((meal, index) => (
               <ActivityCard
                 key={meal.id || `meal-${index}`}
-                title={`Meal on ${new Date(meal.date || new Date()).toLocaleDateString()}`}
+                title={`Meal on ${formatDate(meal.date || new Date().toISOString())}`}
                 description={getMealSummary(meal)}
                 icon='restaurant'
                 iconBackgroundColor={theme.status?.success ?? theme.primary}
@@ -661,24 +662,8 @@ export const MealManagement: React.FC<MealManagementProps> = ({
   };
 
   const handleDateChange = (_event: unknown, date?: Date) => {
-    if (Platform.OS === 'android') {
-      setShowDatePicker(false);
-    }
-
-    if (date) {
-      // Don't allow future dates
-      const today = new Date();
-      today.setHours(23, 59, 59, 999);
-
-      if (date > today) {
-        showAlert('Invalid Date', 'Cannot select future dates', 'error');
-        return;
-      }
-
-      setSelectedDate(date);
-    } else if (Platform.OS === 'android') {
-      setShowDatePicker(false);
-    }
+    if (Platform.OS === 'android') setShowDatePicker(false);
+    if (date) setSelectedDate(date);
   };
 
   const confirmDateSelection = () => {
@@ -712,12 +697,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
           >
             <Ionicons name='calendar' size={20} color={theme.primary} />
             <ThemedText style={[styles.dateButtonText, { color: textColor }]}>
-              {selectedDate.toLocaleDateString('en-US', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
+              {formatDate(toLocalDateString(selectedDate))}
             </ThemedText>
           </TouchableOpacity>
         </View>
@@ -1076,7 +1056,6 @@ export const MealManagement: React.FC<MealManagementProps> = ({
                   mode='date'
                   display='spinner'
                   onChange={handleDateChange}
-                  maximumDate={new Date()}
                   minimumDate={new Date(2020, 0, 1)}
                   themeVariant='light'
                 />
@@ -1091,7 +1070,6 @@ export const MealManagement: React.FC<MealManagementProps> = ({
             mode='date'
             display='default'
             onChange={handleDateChange}
-            maximumDate={new Date()}
             minimumDate={new Date(2020, 0, 1)}
           />
         )
@@ -1177,7 +1155,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
           keyExtractor={(item, index) => item.id || `meal-${index}`}
           renderItem={({ item: meal, index }) => (
             <ActivityCard
-              title={`Meal on ${new Date(meal.date || new Date()).toLocaleDateString()}`}
+              title={`Meal on ${formatDate(meal.date || new Date().toISOString())}`}
               description={getMealSummary(meal)}
               icon='restaurant'
               iconBackgroundColor={theme.status?.success ?? theme.primary}

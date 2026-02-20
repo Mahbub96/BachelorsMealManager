@@ -4,71 +4,65 @@ const Bazar = require('../models/Bazar');
 const { config } = require('../config/config');
 const logger = require('../utils/logger');
 const { sendSuccessResponse } = require('../utils/responseHandler');
-const { mealBazarMatch } = require('../utils/bazarHelper');
+const {
+  resolveScope,
+  buildMealMatch,
+  buildBazarMatch,
+  getScopeMemberCount,
+  countTodayMeals,
+  getTodayMealsBreakdown,
+  buildCurrentMonthDateFilter,
+  mealBazarMatch,
+} = require('../utils/scopeHelper');
+const { aggregateMealStats } = require('../utils/mealHelper');
 
 class DashboardController {
-  // Get dashboard statistics - Simplified version to fix hanging issue
   async getDashboardStats(req, res, next) {
     try {
-      const userId = req.user.id;
-      const isAdmin = req.user.role === 'admin';
+      const scope = await resolveScope(req.user);
+      const dateFilter = buildCurrentMonthDateFilter();
 
-      logger.info(
-        `Getting dashboard stats for user: ${userId}, isAdmin: ${isAdmin}`
-      );
+      const mealMatchMonth = buildMealMatch(scope, dateFilter);
+      const bazarMatchMonth = buildBazarMatch(scope, dateFilter, mealBazarMatch());
 
-      const userCount = await User.countDocuments({ status: 'active' });
-      const mealCount = await Meal.countDocuments(isAdmin ? {} : { userId });
-
-      // Get pending counts
-      const pendingMeals = await Meal.countDocuments({
-        ...(isAdmin ? {} : { userId }),
-        status: 'pending',
-      });
-
-      const pendingBazar = await Bazar.countDocuments({
-        ...(isAdmin ? {} : { userId }),
-        status: 'pending',
-      });
-
-      // Calculate total meal bazar amount only (excludes flat; used for meal rate)
-      const mealOnlyFilter = mealBazarMatch();
-      const baseMatch = isAdmin ? mealOnlyFilter : { ...mealOnlyFilter, userId };
-      const bazarAmounts = await Bazar.aggregate([
-        { $match: baseMatch },
-        { $group: { _id: null, totalAmount: { $sum: '$totalAmount' } } },
+      const [mealData, totalBazarResult, pendingMeals, pendingBazar, todayBreakdown, userCount] = await Promise.all([
+        aggregateMealStats(Meal, mealMatchMonth),
+        Bazar.aggregate([
+          { $match: bazarMatchMonth },
+          { $group: { _id: null, totalAmount: { $sum: '$totalAmount' } } },
+        ]),
+        Meal.countDocuments({ ...mealMatchMonth, status: 'pending' }),
+        Bazar.countDocuments({ ...bazarMatchMonth, status: 'pending' }),
+        getTodayMealsBreakdown(Meal, scope),
+        getScopeMemberCount(scope),
       ]);
 
-      const totalBazarAmount = bazarAmounts[0]?.totalAmount || 0;
-
-      // Calculate average meals per user
-      const averageMeals =
-        userCount > 0 ? (mealCount / userCount).toFixed(1) : 0;
-
-      // Calculate budget usage
+      const totalMeals = mealData.totalMeals;
+      const totalBazarAmount = totalBazarResult[0]?.totalAmount ?? 0;
+      const averageMeals = userCount > 0 ? Number((totalMeals / userCount).toFixed(1)) : 0;
       const monthlyBudget = config.business?.monthlyBudget || 40000;
-      const budgetUsed =
-        monthlyBudget > 0
-          ? Math.round((totalBazarAmount / monthlyBudget) * 100)
-          : 0;
+      const budgetUsed = monthlyBudget > 0 ? Math.round((totalBazarAmount / monthlyBudget) * 100) : 0;
 
       const stats = {
         totalMembers: userCount,
         activeMembers: userCount,
-        totalMeals: mealCount,
-        pendingMeals: pendingMeals,
-        totalBazarAmount: totalBazarAmount,
-        pendingBazar: pendingBazar,
+        totalMeals,
+        pendingMeals,
+        approvedMeals: mealData.approvedCount ?? 0,
+        totalBazarAmount,
+        pendingBazar,
         monthlyExpense: totalBazarAmount,
-        averageMeals: parseFloat(averageMeals),
-        balance: 0, // This would be calculated based on your business logic
-        monthlyBudget: monthlyBudget,
-        budgetUsed: budgetUsed,
+        averageMeals,
+        balance: 0,
+        monthlyBudget,
+        budgetUsed,
+        todayMeals: todayBreakdown.total,
+        todayBreakfast: todayBreakdown.breakfast,
+        todayLunch: todayBreakdown.lunch,
+        todayDinner: todayBreakdown.dinner,
       };
 
-      logger.info(
-        `Dashboard stats calculated successfully for user: ${userId}`
-      );
+      logger.info(`Dashboard stats calculated successfully for user: ${scope.userId}`);
 
       return sendSuccessResponse(
         res,

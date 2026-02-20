@@ -1,40 +1,16 @@
 import { MealEntry } from '../services/mealService';
+import { formatMealDate as formatMealDateFromUtils } from './dateUtils';
+import { getStatusColor, getStatusText as getStatusTextFromUtils } from './statusUtils';
 
 export const mealUtils = {
-  /**
-   * Format meal date for display
-   */
-  formatMealDate: (date: string): string => {
-    const mealDate = new Date(date);
-    return mealDate.toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-    });
-  },
+  /** Format meal date for display (e.g. "Fri, Feb 21") */
+  formatMealDate: formatMealDateFromUtils,
 
-  /**
-   * Get meal status color
-   */
-  getStatusColor: (status: string): string => {
-    switch (status) {
-      case 'approved':
-        return '#10b981';
-      case 'rejected':
-        return '#ef4444';
-      case 'pending':
-        return '#f59e0b';
-      default:
-        return '#6b7280';
-    }
-  },
+  /** Get meal status color (reuses statusUtils) */
+  getStatusColor,
 
-  /**
-   * Get meal status text
-   */
-  getStatusText: (status: string): string => {
-    return status.charAt(0).toUpperCase() + status.slice(1);
-  },
+  /** Get meal status text */
+  getStatusText: getStatusTextFromUtils,
 
   /**
    * Get meal types as array

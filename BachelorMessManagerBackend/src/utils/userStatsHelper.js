@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { currentMonthDateFilterValue, getCurrentMonthRange } = require('./bazarHelper');
 
 /**
  * Normalize req.user id to ObjectId. If missing or invalid, send 400 and return null.
@@ -23,15 +24,12 @@ function normalizeUserId(req, res) {
 }
 
 /**
- * Build current-month date filter for queries (Meal, Bazar).
- * @param {{ firstDay: Date, lastDay: Date }} monthRange - from getCurrentMonthRange()
+ * Current-month date filter value for "date" field: { $gte, $lte }. Re-export from bazarHelper (DRY).
+ * @param {{ firstDay: Date, lastDay: Date }} [monthRange] - from getCurrentMonthRange()
  * @returns {{ $gte: Date, $lte: Date }}
  */
 function currentMonthDateFilter(monthRange) {
-  return {
-    $gte: monthRange.firstDay,
-    $lte: monthRange.lastDay,
-  };
+  return currentMonthDateFilterValue(monthRange || getCurrentMonthRange());
 }
 
 /**

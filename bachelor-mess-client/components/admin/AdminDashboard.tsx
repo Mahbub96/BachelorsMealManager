@@ -1,4 +1,4 @@
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import React, {
   useState,
   useEffect,
@@ -35,7 +35,6 @@ import {
 } from '../dashboard';
 import { EnhancedMealManagement } from '../meals/EnhancedMealManagement';
 import dashboardService from '../../services/dashboardService';
-import statisticsService from '../../services/statisticsService';
 import { useUsers } from '../../hooks/useUsers';
 import userService, {
   User,
@@ -45,15 +44,20 @@ import userService, {
 import { MemberFormModal } from './MemberFormModal';
 import { MemberViewModal } from './MemberViewModal';
 import { MonthlyReportDashboard } from './reports/MonthlyReportDashboard';
+import { logger } from '../../utils/logger';
 
 type AdminDashboardProps = Record<string, never>;
 
 interface AdminStats {
   totalMeals: number;
-  pendingApprovals: number;
+  pendingMeals: number;
+  pendingBazar: number;
   approvedMeals: number;
   totalMembers: number;
   todayMeals: number;
+  todayBreakfast: number;
+  todayLunch: number;
+  todayDinner: number;
   mealRate: number;
   totalBazarAmount: number;
 }
@@ -62,12 +66,17 @@ interface AdminStats {
 export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   const { user } = useAuth();
   const { theme } = useTheme();
+  const router = useRouter();
   const [adminStats, setAdminStats] = useState<AdminStats>({
     totalMeals: 0,
-    pendingApprovals: 0,
+    pendingMeals: 0,
+    pendingBazar: 0,
     approvedMeals: 0,
     totalMembers: 0,
     todayMeals: 0,
+    todayBreakfast: 0,
+    todayLunch: 0,
+    todayDinner: 0,
     mealRate: 0,
     totalBazarAmount: 0,
   });
@@ -93,6 +102,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   const [newPassword, setNewPassword] = useState('');
   const [resettingPassword, setResettingPassword] = useState(false);
   const [showResetPassword, setShowResetPassword] = useState(false);
+  const [openPendingFor, setOpenPendingFor] = useState<'meals' | 'bazar' | null>(null);
   const { createUser } = useUsers();
   const isMountedRef = useRef(true);
 
@@ -106,11 +116,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
       setLoading(true);
       setError(null);
 
-      // Fetch dashboard stats and complete statistics in parallel
-      const [dashboardResponse, statisticsResponse] = await Promise.all([
-        dashboardService.getStats(),
-        statisticsService.getCompleteStatistics(),
-      ]);
+      const dashboardResponse = await dashboardService.getStats();
 
       if (!dashboardResponse.success || !dashboardResponse.data) {
         throw new Error(
@@ -119,33 +125,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
       }
 
       const stats = dashboardResponse.data;
-      const completeStats = statisticsResponse.success
-        ? statisticsResponse.data
-        : null;
 
-      // Calculate meal rate: totalBazarAmount / totalMeals
       const mealRate =
         stats.totalMeals > 0 && stats.totalBazarAmount > 0
           ? stats.totalBazarAmount / stats.totalMeals
           : 0;
 
-      // Get today's meals count from monthly statistics
-      const todayMeals =
-        completeStats?.monthly?.currentMonth?.meals?.total || 0;
-
-      // Get approved meals from statistics
-      const approvedMeals =
-        completeStats?.meals?.approvedMeals ||
-        stats.totalMeals - stats.pendingMeals;
-
       setAdminStats({
-        totalMeals: stats.totalMeals || 0,
-        pendingApprovals: stats.pendingMeals || 0,
-        approvedMeals: approvedMeals,
-        totalMembers: stats.totalMembers || 0,
-        todayMeals: todayMeals,
-        mealRate: mealRate,
-        totalBazarAmount: stats.totalBazarAmount || 0,
+        totalMeals: stats.totalMeals ?? 0,
+        pendingMeals: stats.pendingMeals ?? 0,
+        pendingBazar: stats.pendingBazar ?? 0,
+        approvedMeals: stats.approvedMeals ?? Math.max(0, (stats.totalMeals ?? 0) - (stats.pendingMeals ?? 0)),
+        totalMembers: stats.totalMembers ?? 0,
+        todayMeals: stats.todayMeals ?? 0,
+        todayBreakfast: stats.todayBreakfast ?? 0,
+        todayLunch: stats.todayLunch ?? 0,
+        todayDinner: stats.todayDinner ?? 0,
+        mealRate,
+        totalBazarAmount: stats.totalBazarAmount ?? 0,
       });
     } catch (err) {
       const errorMessage =
@@ -188,7 +185,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : 'Failed to load members';
-      console.error('AdminDashboard - Error loading members:', err);
+      logger.error('AdminDashboard - Error loading members', err);
       if (isMountedRef.current) {
         setError(errorMessage);
         setMembers([]);
@@ -220,6 +217,42 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
     }, [user?.role, activeTab, loadAdminStats, loadMembers])
   );
 
+  const handlePendingCardPress = useCallback(() => {
+    const total = adminStats.pendingMeals + adminStats.pendingBazar;
+    if (total === 0) {
+      setOpenPendingFor('meals');
+      setActiveTab('meals');
+      return;
+    }
+    if (adminStats.pendingMeals > 0 && adminStats.pendingBazar > 0) {
+      Alert.alert(
+        'Pending approvals',
+        'Open pending meals or bazar?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: `Meals (${adminStats.pendingMeals})`,
+            onPress: () => {
+              setOpenPendingFor('meals');
+              setActiveTab('meals');
+            },
+          },
+          {
+            text: `Bazar (${adminStats.pendingBazar})`,
+            onPress: () => router.push({ pathname: '/(tabs)/explore', params: { status: 'pending' } }),
+          },
+        ]
+      );
+      return;
+    }
+    if (adminStats.pendingMeals > 0) {
+      setOpenPendingFor('meals');
+      setActiveTab('meals');
+    } else {
+      router.push({ pathname: '/(tabs)/explore', params: { status: 'pending' } });
+    }
+  }, [adminStats.pendingMeals, adminStats.pendingBazar, router]);
+
   // Admin stats for shared StatsGrid (aligned with user dashboard)
   const adminStatsForGrid: StatItem[] = useMemo(
     () => [
@@ -232,12 +265,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
         period: 'this month',
       },
       {
-        title: 'Pending',
-        value: adminStats.pendingApprovals,
+        title: 'Pending approvals',
+        value: adminStats.pendingMeals + adminStats.pendingBazar,
         icon: 'time',
         colors: theme.gradient.warning as [string, string],
         trend: 'neutral',
-        period: 'to approve',
+        period: 'meals & bazar this month',
+        onPress: handlePendingCardPress,
       },
       {
         title: 'Approved',
@@ -274,8 +308,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
         period: 'today',
       },
     ],
-    [adminStats, theme]
+    [adminStats, theme, handlePendingCardPress]
   );
+
+  useEffect(() => {
+    if (activeTab === 'meals' && openPendingFor === 'meals') {
+      const id = setTimeout(() => setOpenPendingFor(null), 150);
+      return () => clearTimeout(id);
+    }
+  }, [activeTab, openPendingFor]);
 
   const handleQuickAction = useCallback((action: string) => {
     switch (action) {
@@ -424,6 +465,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
           style={styles.scrollView}
           contentContainerStyle={styles.overviewScrollContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          nestedScrollEnabled
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
@@ -464,21 +507,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                     <ThemedText style={[styles.summaryLabel, { color: theme.text.secondary }]}>
                       Breakfast
                     </ThemedText>
-                    <ThemedText style={[styles.summaryValue, { color: theme.text?.primary }]}>-</ThemedText>
+                    <ThemedText style={[styles.summaryValue, { color: theme.text?.primary }]}>
+                      {adminStats.todayBreakfast}
+                    </ThemedText>
                   </View>
                   <View style={styles.summaryItem}>
                     <Ionicons name='partly-sunny' size={24} color={theme.status.warning} />
                     <ThemedText style={[styles.summaryLabel, { color: theme.text.secondary }]}>
                       Lunch
                     </ThemedText>
-                    <ThemedText style={[styles.summaryValue, { color: theme.text?.primary }]}>-</ThemedText>
+                    <ThemedText style={[styles.summaryValue, { color: theme.text?.primary }]}>
+                      {adminStats.todayLunch}
+                    </ThemedText>
                   </View>
                   <View style={styles.summaryItem}>
                     <Ionicons name='moon' size={24} color={theme.primary} />
                     <ThemedText style={[styles.summaryLabel, { color: theme.text.secondary }]}>
                       Dinner
                     </ThemedText>
-                    <ThemedText style={[styles.summaryValue, { color: theme.text?.primary }]}>-</ThemedText>
+                    <ThemedText style={[styles.summaryValue, { color: theme.text?.primary }]}>
+                      {adminStats.todayDinner}
+                    </ThemedText>
                   </View>
                 </View>
                 <View
@@ -508,7 +557,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
       <ThemedText style={styles.tabSubtitle}>
         Manage and approve meal submissions
       </ThemedText>
-      <EnhancedMealManagement />
+      <EnhancedMealManagement initialStatus={openPendingFor === 'meals' ? 'pending' : undefined} />
     </View>
   );
 

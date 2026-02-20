@@ -10,6 +10,7 @@ export interface DashboardStats {
   activeMembers: number;
   totalMeals: number;
   pendingMeals: number;
+  approvedMeals?: number;
   totalBazarAmount: number;
   pendingBazar: number;
   monthlyExpense: number;
@@ -17,8 +18,12 @@ export interface DashboardStats {
   balance: number;
   monthlyBudget: number;
   budgetUsed: number;
-  lastUpdated: string;
-  mealRate: number;
+  lastUpdated?: string;
+  mealRate?: number;
+  todayMeals?: number;
+  todayBreakfast?: number;
+  todayLunch?: number;
+  todayDinner?: number;
 }
 
 export interface Activity {

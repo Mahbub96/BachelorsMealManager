@@ -18,6 +18,7 @@ import { ModernLoader } from './ui/ModernLoader';
 import { ThemedView } from './ThemedView';
 import mealService, { MealSubmission } from '../services/mealService';
 import { useAuth } from '../context/AuthContext';
+import { toLocalDateString, dateStringToDate, formatDate } from '../utils/dateUtils';
 
 type ShowAlertVariant = 'info' | 'success' | 'error' | 'warning';
 
@@ -47,7 +48,7 @@ export const MealForm: React.FC<MealFormProps> = ({
   const [loading, setLoading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(
-    initialDate ? new Date(initialDate) : new Date()
+    initialDate ? dateStringToDate(initialDate) : new Date()
   );
   const [existingMealWarning, setExistingMealWarning] = useState<string | null>(
     null
@@ -62,36 +63,36 @@ export const MealForm: React.FC<MealFormProps> = ({
     breakfast: false,
     lunch: false,
     dinner: false,
-    date: initialDate || new Date().toISOString().split('T')[0],
+    date: initialDate || toLocalDateString(new Date()),
     notes: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Check for existing meal when component mounts with initial date
+  // Check for existing meal when component mounts (always run for current form date so "today" is checked)
   useEffect(() => {
-    if (initialDate) {
-      checkExistingMeal(initialDate);
-      setSelectedDate(new Date(initialDate));
+    const dateToCheck = initialDate || formData.date;
+    if (dateToCheck) {
+      checkExistingMeal(dateToCheck);
     }
-
-    // Cleanup timeout on unmount
+    if (initialDate) {
+      setSelectedDate(dateStringToDate(initialDate));
+    }
     return () => {
       if (checkTimeout) {
         clearTimeout(checkTimeout);
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- run on initialDate, checkExistingMeal/checkTimeout are stable
-  }, [initialDate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
+  }, []);
 
   // Sync selectedDate with formData.date when formData.date changes externally (e.g., from initialDate prop)
   useEffect(() => {
     if (formData.date) {
-      const dateObj = new Date(formData.date);
+      const dateObj = dateStringToDate(formData.date);
       if (!isNaN(dateObj.getTime())) {
         const currentSelectedTime = selectedDate.getTime();
         const newDateTime = dateObj.getTime();
-        // Only update if dates are different (avoid unnecessary updates)
         if (Math.abs(currentSelectedTime - newDateTime) > 1000) {
           setSelectedDate(dateObj);
         }
@@ -111,16 +112,8 @@ export const MealForm: React.FC<MealFormProps> = ({
     // Validate date
     if (!formData.date) {
       newErrors.date = 'Date is required';
-    } else {
-      const selectedDate = new Date(formData.date);
-      const today = new Date();
-      today.setHours(23, 59, 59, 999);
-
-      if (isNaN(selectedDate.getTime())) {
-        newErrors.date = 'Invalid date format';
-      } else if (selectedDate > today) {
-        newErrors.date = 'Cannot submit meals for future dates';
-      }
+    } else if (isNaN(dateStringToDate(formData.date).getTime())) {
+      newErrors.date = 'Invalid date format';
     }
 
     setErrors(newErrors);
@@ -239,13 +232,15 @@ export const MealForm: React.FC<MealFormProps> = ({
   };
 
   const resetForm = () => {
+    const todayStr = toLocalDateString(new Date());
     setFormData({
       breakfast: false,
       lunch: false,
       dinner: false,
-      date: new Date().toISOString().split('T')[0],
+      date: todayStr,
       notes: '',
     });
+    setSelectedDate(dateStringToDate(todayStr));
     setErrors({});
     clearWarnings();
   };
@@ -269,14 +264,17 @@ export const MealForm: React.FC<MealFormProps> = ({
     }
 
     try {
-      // Format date properly for API call
-      const formattedDate = new Date(date).toISOString().split('T')[0];
+      // Use date as-is if already YYYY-MM-DD; otherwise parse in local context (avoid UTC shift)
+      const formattedDate = /^\d{4}-\d{2}-\d{2}$/.test(date)
+        ? date
+        : toLocalDateString(new Date(date));
 
-      // Check if there's already a meal for this date
+      // Check if the current user already has a meal for this date (only mine, not group)
       const response = await mealService.getUserMeals({
         startDate: formattedDate,
         endDate: formattedDate,
         limit: 1,
+        onlyMine: true,
       });
 
       if (
@@ -288,9 +286,7 @@ export const MealForm: React.FC<MealFormProps> = ({
         const existingMeal = response.data.meals[0];
         setExistingMealId(existingMeal.id);
         setExistingMealWarning(
-          `You already have a meal entry for ${new Date(
-            formattedDate
-          ).toLocaleDateString()}. Submitting will update your existing entry.`
+          `You already have a meal entry for ${formatDate(formattedDate, { month: 'numeric', day: 'numeric', year: 'numeric' })}. Submitting will update your existing entry.`
         );
       } else {
         setExistingMealId(null);
@@ -304,8 +300,7 @@ export const MealForm: React.FC<MealFormProps> = ({
   };
 
   const openDatePicker = () => {
-    // Set selected date to current form date when opening picker
-    setSelectedDate(new Date(formData.date));
+    setSelectedDate(dateStringToDate(formData.date));
     setShowDatePicker(true);
   };
 
@@ -321,38 +316,12 @@ export const MealForm: React.FC<MealFormProps> = ({
     }
 
     if (date) {
-      // Don't allow future dates
-      const today = new Date();
-      today.setHours(23, 59, 59, 999);
-      
-      if (date > today) {
-        alertOrModal('Invalid Date', 'Cannot select future dates', 'error');
-        if (Platform.OS === 'android') {
-          return;
-        }
-      } else {
-        setSelectedDate(date);
-        const dateString = date.toISOString().split('T')[0];
-        
-        // Clear date error if user selects a date
-        if (errors.date) {
-          setErrors(prev => ({ ...prev, date: '' }));
-        }
-
-        // Clear existing timeout
-        if (checkTimeout) {
-          clearTimeout(checkTimeout);
-        }
-
-        // Debounce the existing meal check
-        const timeout = setTimeout(() => {
-          checkExistingMeal(dateString);
-        }, 500); // Wait 500ms after user stops changing date
-
-        setCheckTimeout(timeout);
-        
-        setFormData(prev => ({ ...prev, date: dateString }));
-      }
+      setSelectedDate(date);
+      const dateString = toLocalDateString(date);
+      if (errors.date) setErrors(prev => ({ ...prev, date: '' }));
+      if (checkTimeout) clearTimeout(checkTimeout);
+      setCheckTimeout(setTimeout(() => checkExistingMeal(dateString), 500));
+      setFormData(prev => ({ ...prev, date: dateString }));
     }
   };
 
@@ -404,14 +373,7 @@ export const MealForm: React.FC<MealFormProps> = ({
           >
             <Ionicons name='calendar' size={20} color='#667eea' />
             <ThemedText style={styles.dateButtonText}>
-              {formData.date
-                ? new Date(formData.date).toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  })
-                : 'Select Date'}
+              {formData.date ? formatDate(formData.date) : 'Select Date'}
             </ThemedText>
           </TouchableOpacity>
           {errors.date && (
@@ -569,7 +531,6 @@ export const MealForm: React.FC<MealFormProps> = ({
                   mode="date"
                   display="spinner"
                   onChange={handleDateChange}
-                  maximumDate={new Date()}
                   minimumDate={new Date(2020, 0, 1)}
                   themeVariant="light"
                 />
@@ -583,10 +544,7 @@ export const MealForm: React.FC<MealFormProps> = ({
             value={selectedDate}
             mode="date"
             display="default"
-            onChange={(event, date) => {
-              handleDateChange(event, date);
-            }}
-            maximumDate={new Date()}
+            onChange={(event, date) => handleDateChange(event, date)}
             minimumDate={new Date(2020, 0, 1)}
           />
         )

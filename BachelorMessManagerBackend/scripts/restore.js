@@ -1,7 +1,8 @@
 const mongoose = require('mongoose');
 const fs = require('fs');
 const path = require('path');
-const { exec } = promisify(require('child_process').exec);
+const { promisify } = require('util');
+const execAsync = promisify(require('child_process').exec);
 require('dotenv').config();
 
 // Database connection

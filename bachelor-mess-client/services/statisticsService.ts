@@ -9,6 +9,7 @@ const API_ENDPOINTS = {
 };
 import httpClient from './httpClient';
 import errorHandler from './errorHandler';
+import { logger } from '../utils/logger';
 
 // Type definitions for statistics
 export interface GlobalStats {
@@ -185,7 +186,7 @@ class StatisticsServiceImpl implements StatisticsService {
     filters: StatisticsFilters = {}
   ): Promise<ApiResponse<CompleteStatistics>> {
     try {
-      console.log('📊 Fetching complete statistics...', filters);
+      logger.debug('📊 Fetching complete statistics...', filters);
       const queryParams = this.buildQueryParams(filters);
       const endpoint = `${API_ENDPOINTS.STATISTICS.COMPLETE}${queryParams}`;
 
@@ -201,12 +202,12 @@ class StatisticsServiceImpl implements StatisticsService {
           response,
           'Complete Statistics'
         );
-        console.error(
+        logger.error(
           '❌ Failed to fetch complete statistics:',
           appError?.message
         );
       } else {
-        console.log('✅ Complete statistics fetched successfully');
+        logger.debug('✅ Complete statistics fetched successfully');
       }
 
       return response;
@@ -223,7 +224,7 @@ class StatisticsServiceImpl implements StatisticsService {
     forceUpdate?: boolean
   ): Promise<ApiResponse<GlobalStats>> {
     try {
-      console.log('🌍 Fetching global statistics...', forceUpdate);
+      logger.debug('🌍 Fetching global statistics...', forceUpdate);
       const queryParams = this.buildQueryParams({ forceUpdate });
       const endpoint = `${API_ENDPOINTS.STATISTICS.GLOBAL}${queryParams}`;
 
@@ -239,12 +240,12 @@ class StatisticsServiceImpl implements StatisticsService {
           response,
           'Global Statistics'
         );
-        console.error(
+        logger.error(
           '❌ Failed to fetch global statistics:',
           appError?.message
         );
       } else {
-        console.log('✅ Global statistics fetched successfully');
+        logger.debug('✅ Global statistics fetched successfully');
       }
 
       return response;
@@ -259,7 +260,7 @@ class StatisticsServiceImpl implements StatisticsService {
 
   async getMealStats(forceUpdate?: boolean): Promise<ApiResponse<MealStats>> {
     try {
-      console.log('🍽️ Fetching meal statistics...', forceUpdate);
+      logger.debug('🍽️ Fetching meal statistics...', forceUpdate);
       const queryParams = this.buildQueryParams({ forceUpdate });
       const endpoint = `${API_ENDPOINTS.STATISTICS.MEALS}${queryParams}`;
 
@@ -275,9 +276,9 @@ class StatisticsServiceImpl implements StatisticsService {
           response,
           'Meal Statistics'
         );
-        console.error('❌ Failed to fetch meal statistics:', appError?.message);
+        logger.error('❌ Failed to fetch meal statistics:', appError?.message);
       } else {
-        console.log('✅ Meal statistics fetched successfully');
+        logger.debug('✅ Meal statistics fetched successfully');
       }
 
       return response;
@@ -292,7 +293,7 @@ class StatisticsServiceImpl implements StatisticsService {
 
   async getBazarStats(forceUpdate?: boolean): Promise<ApiResponse<BazarStats>> {
     try {
-      console.log('🛒 Fetching bazar statistics...', forceUpdate);
+      logger.debug('🛒 Fetching bazar statistics...', forceUpdate);
       const queryParams = this.buildQueryParams({ forceUpdate });
       const endpoint = `${API_ENDPOINTS.STATISTICS.BAZAR}${queryParams}`;
 
@@ -308,12 +309,12 @@ class StatisticsServiceImpl implements StatisticsService {
           response,
           'Bazar Statistics'
         );
-        console.error(
+        logger.error(
           '❌ Failed to fetch bazar statistics:',
           appError?.message
         );
       } else {
-        console.log('✅ Bazar statistics fetched successfully');
+        logger.debug('✅ Bazar statistics fetched successfully');
       }
 
       return response;
@@ -328,7 +329,7 @@ class StatisticsServiceImpl implements StatisticsService {
 
   async getUserStats(forceUpdate?: boolean): Promise<ApiResponse<UserStats>> {
     try {
-      console.log('👥 Fetching user statistics...', forceUpdate);
+      logger.debug('👥 Fetching user statistics...', forceUpdate);
       const queryParams = this.buildQueryParams({ forceUpdate });
       const endpoint = `${API_ENDPOINTS.STATISTICS.USERS}${queryParams}`;
 
@@ -344,9 +345,9 @@ class StatisticsServiceImpl implements StatisticsService {
           response,
           'User Statistics'
         );
-        console.error('❌ Failed to fetch user statistics:', appError?.message);
+        logger.error('❌ Failed to fetch user statistics:', appError?.message);
       } else {
-        console.log('✅ User statistics fetched successfully');
+        logger.debug('✅ User statistics fetched successfully');
       }
 
       return response;
@@ -363,7 +364,7 @@ class StatisticsServiceImpl implements StatisticsService {
     forceUpdate?: boolean
   ): Promise<ApiResponse<ActivityStats>> {
     try {
-      console.log('📈 Fetching activity statistics...', forceUpdate);
+      logger.debug('📈 Fetching activity statistics...', forceUpdate);
       const queryParams = this.buildQueryParams({ forceUpdate });
       const endpoint = `${API_ENDPOINTS.STATISTICS.ACTIVITY}${queryParams}`;
 
@@ -379,12 +380,12 @@ class StatisticsServiceImpl implements StatisticsService {
           response,
           'Activity Statistics'
         );
-        console.error(
+        logger.error(
           '❌ Failed to fetch activity statistics:',
           appError?.message
         );
       } else {
-        console.log('✅ Activity statistics fetched successfully');
+        logger.debug('✅ Activity statistics fetched successfully');
       }
 
       return response;
@@ -401,7 +402,7 @@ class StatisticsServiceImpl implements StatisticsService {
     forceUpdate?: boolean
   ): Promise<ApiResponse<MonthlyStats>> {
     try {
-      console.log('📅 Fetching monthly statistics...', forceUpdate);
+      logger.debug('📅 Fetching monthly statistics...', forceUpdate);
       const queryParams = this.buildQueryParams({ forceUpdate });
       const endpoint = `${API_ENDPOINTS.STATISTICS.MONTHLY}${queryParams}`;
 
@@ -417,12 +418,12 @@ class StatisticsServiceImpl implements StatisticsService {
           response,
           'Monthly Statistics'
         );
-        console.error(
+        logger.error(
           '❌ Failed to fetch monthly statistics:',
           appError?.message
         );
       } else {
-        console.log('✅ Monthly statistics fetched successfully');
+        logger.debug('✅ Monthly statistics fetched successfully');
       }
 
       return response;
@@ -454,7 +455,7 @@ class StatisticsServiceImpl implements StatisticsService {
           response,
           'Monthly Report'
         );
-        console.error('❌ Failed to fetch monthly report:', appError?.message);
+        logger.error('❌ Failed to fetch monthly report:', appError?.message);
       }
 
       return response;
@@ -469,7 +470,7 @@ class StatisticsServiceImpl implements StatisticsService {
 
   async refreshStatistics(): Promise<ApiResponse<void>> {
     try {
-      console.log('🔄 Refreshing all statistics...');
+      logger.debug('🔄 Refreshing all statistics...');
       const response = await httpClient.post<void>(
         API_ENDPOINTS.STATISTICS.REFRESH,
         {},
@@ -481,9 +482,9 @@ class StatisticsServiceImpl implements StatisticsService {
           response,
           'Statistics Refresh'
         );
-        console.error('❌ Failed to refresh statistics:', appError?.message);
+        logger.error('❌ Failed to refresh statistics:', appError?.message);
       } else {
-        console.log('✅ Statistics refreshed successfully');
+        logger.debug('✅ Statistics refreshed successfully');
       }
 
       return response;

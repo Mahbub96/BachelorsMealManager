@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '../ThemedText';
 import { useTheme } from '../../context/ThemeContext';
 import mealService, { MealEntry } from '../../services/mealService';
+import { formatDateAndTime } from '../../utils/dateUtils';
 
 interface MealDetailModalProps {
   visible: boolean;
@@ -79,6 +80,18 @@ export const MealDetailModal: React.FC<MealDetailModalProps> = ({
                 {mealService.formatMealDate(meal.date)}
               </ThemedText>
             </View>
+
+            {meal.createdAt && (
+              <View style={styles.detailRow}>
+                <View style={styles.detailLabelWrap}>
+                  <Ionicons name="time-outline" size={20} color={theme.icon?.secondary ?? '#6b7280'} />
+                  <ThemedText style={styles.detailLabel}>Added</ThemedText>
+                </View>
+                <ThemedText style={styles.detailValue}>
+                  {formatDateAndTime(meal.createdAt)}
+                </ThemedText>
+              </View>
+            )}
 
             <View style={styles.detailRow}>
               <View style={styles.detailLabelWrap}>

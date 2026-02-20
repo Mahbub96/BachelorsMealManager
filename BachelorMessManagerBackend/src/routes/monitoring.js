@@ -1,10 +1,11 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const AuthMiddleware = require('../middleware/auth');
 const metricsCollector = require('../utils/metrics');
 const backupManager = require('../utils/backup');
 const { checkDatabaseHealth, getDatabaseStats } = require('../config/database');
-const { config, isProduction } = require('../config/config');
+const { config } = require('../config/config');
 const logger = require('../utils/logger');
 
 // @desc    Get system health status
@@ -235,7 +236,7 @@ router.get(
   '/config',
   AuthMiddleware.protect(),
   AuthMiddleware.requireAdmin(),
-  (req, res) => {
+  (req, res, next) => {
     try {
       // Only return non-sensitive configuration
       const safeConfig = {

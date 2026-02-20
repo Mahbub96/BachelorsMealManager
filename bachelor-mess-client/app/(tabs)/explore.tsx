@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { BazarManagement } from '@/components/bazar';
 import { useBazar } from '@/context/BazarContext';
 import { useAuth } from '@/context/AuthContext';
@@ -7,6 +7,8 @@ import { useAuth } from '@/context/AuthContext';
 export default function BazarScreen() {
   const { user } = useAuth();
   const { refreshData } = useBazar();
+  const params = useLocalSearchParams<{ status?: string }>();
+  const initialStatus = params.status === 'pending' ? 'pending' : undefined;
 
   useFocusEffect(
     useCallback(() => {
@@ -14,5 +16,5 @@ export default function BazarScreen() {
     }, [user, refreshData])
   );
 
-  return <BazarManagement />;
+  return <BazarManagement initialStatus={initialStatus} />;
 }

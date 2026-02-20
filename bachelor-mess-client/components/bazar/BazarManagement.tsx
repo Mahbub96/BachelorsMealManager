@@ -41,6 +41,8 @@ interface BazarManagementProps {
   customBazarEntries?: BazarEntry[];
   customLoading?: boolean;
   customError?: string | null;
+  /** When set, open with this status filter (e.g. 'pending') once. */
+  initialStatus?: 'all' | 'pending' | 'approved' | 'rejected';
 }
 
 export const BazarManagement: React.FC<BazarManagementProps> = ({
@@ -57,6 +59,7 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
   customBazarEntries,
   customLoading,
   customError,
+  initialStatus,
 }) => {
   const router = useRouter();
   const { user } = useAuth();
@@ -109,6 +112,14 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
     return () => unregister('bazar');
   }, [register, unregister, refreshData]);
 
+  const appliedInitialStatusRef = React.useRef(false);
+  useEffect(() => {
+    if (initialStatus && !appliedInitialStatusRef.current) {
+      appliedInitialStatusRef.current = true;
+      updateFilters({ ...filters, status: initialStatus });
+    }
+  }, [initialStatus, filters, updateFilters]);
+
   const handlePullRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
@@ -160,19 +171,6 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
   const handleDelete = async (bazarId: string) => {
     await deleteBazar(bazarId);
   };
-
-  // Add error boundary for unauthenticated users
-  if (!user) {
-    return (
-      <ThemedView style={styles.container}>
-        <BazarErrorState
-          title='Authentication Required'
-          message='Please log in to view bazar items'
-          showRetry={false}
-        />
-      </ThemedView>
-    );
-  }
 
   const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
 
@@ -355,6 +353,18 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
       theme,
     ]
   );
+
+  if (!user) {
+    return (
+      <ThemedView style={styles.container}>
+        <BazarErrorState
+          title='Authentication Required'
+          message='Please log in to view bazar items'
+          showRetry={false}
+        />
+      </ThemedView>
+    );
+  }
 
   const isLoading =
     customLoading !== undefined ? customLoading : loadingEntries;

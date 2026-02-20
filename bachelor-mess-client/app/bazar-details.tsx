@@ -5,14 +5,12 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  ActivityIndicator,
   Modal,
   TextInput,
   FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { IconName } from '@/constants/IconTypes';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -20,11 +18,22 @@ import { ScreenLayout } from '@/components/layout';
 import { ModernLoader } from '@/components/ui/ModernLoader';
 import bazarService, { BazarEntry, BazarItem } from '@/services/bazarService';
 import { useAuth } from '@/context/AuthContext';
+import { useTheme } from '@/context/ThemeContext';
+import { logger } from '@/utils/logger';
+import { formatDate, formatDateAndTime } from '@/utils/dateUtils';
+import { getStatusColor, getStatusBgColor, getStatusIcon } from '@/utils/statusUtils';
+import { formatCurrency } from '@/utils/formatUtils';
 
 export default function BazarDetailsScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
   const { user } = useAuth();
+  const { theme } = useTheme();
+  const iconColor = theme.icon?.secondary ?? theme.text?.tertiary ?? '#6b7280';
+  const labelColor = theme.text?.secondary ?? theme.text?.tertiary ?? '#6b7280';
+  const valueColor = theme.text?.primary ?? '#1f2937';
+  const cardBg = theme.cardBackground ?? theme.surface ?? '#fff';
+  const cardBorder = theme.cardBorder ?? theme.border?.secondary;
   const [bazar, setBazar] = useState<BazarEntry | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,25 +55,19 @@ export default function BazarDetailsScreen() {
     setError(null);
 
     try {
-      console.log('🔍 Loading bazar details for ID:', bazarId);
+      logger.debug('Loading bazar details', { bazarId });
       const response = await bazarService.getBazarById(bazarId);
-
-      console.log('📥 Bazar details response:', {
-        success: response.success,
-        hasData: !!response.data,
-        error: response.error,
-      });
 
       if (response.success && response.data) {
         setBazar(response.data);
         setEditData(response.data);
       } else {
         const errorMessage = response.error || 'Failed to load bazar details';
-        console.error('❌ Bazar details error:', errorMessage);
+        logger.error('Bazar details failed', errorMessage);
         setError(errorMessage);
       }
     } catch (err) {
-      console.error('💥 Unexpected error loading bazar details:', err);
+      logger.error('Unexpected error loading bazar details', err);
       setError('An unexpected error occurred');
     } finally {
       setLoading(false);
@@ -74,10 +77,7 @@ export default function BazarDetailsScreen() {
   const handleStatusUpdate = async (status: 'approved' | 'rejected') => {
     if (!bazar) return;
 
-    console.log('🔄 BazarDetails - Updating status:', {
-      bazarId: bazar.id,
-      status,
-    });
+    logger.debug('Updating bazar status', { bazarId: bazar.id, status });
 
     try {
       const response = await bazarService.updateBazarStatus(bazar.id, {
@@ -85,25 +85,15 @@ export default function BazarDetailsScreen() {
         notes: `Status updated by ${user?.name || 'Admin'}`,
       });
 
-      console.log('📥 BazarDetails - Status update response:', {
-        success: response.success,
-        hasData: !!response.data,
-        error: response.error,
-      });
-
       if (response.success) {
-        console.log('✅ BazarDetails - Status updated successfully');
         setBazar(prev => (prev ? { ...prev, status } : null));
         Alert.alert('Success', `Bazar entry ${status} successfully`);
       } else {
-        console.error(
-          '❌ BazarDetails - Status update failed:',
-          response.error
-        );
+        logger.error('Status update failed', response.error);
         Alert.alert('Error', response.error || 'Failed to update status');
       }
     } catch (error) {
-      console.error('❌ BazarDetails - Status update error:', error);
+      logger.error('Status update error', error);
       Alert.alert('Error', 'An unexpected error occurred');
     }
   };
@@ -111,10 +101,7 @@ export default function BazarDetailsScreen() {
   const handleUpdateBazar = async () => {
     if (!bazar || !editData) return;
 
-    console.log('🔧 BazarDetails - Updating bazar entry:', {
-      bazarId: bazar.id,
-      userRole: user?.role,
-    });
+    logger.debug('Updating bazar entry', { bazarId: bazar.id });
 
     try {
       setEditing(true);
@@ -127,37 +114,22 @@ export default function BazarDetailsScreen() {
         date: editData.date || bazar.date,
       };
 
-      console.log('📤 BazarDetails - Update data:', {
-        itemsCount: updateData.items.length,
-        totalAmount: updateData.totalAmount,
-        hasDescription: !!updateData.description,
-        date: updateData.date,
-      });
-
-      // Use admin update for admins, regular update for users
       const response =
         user?.role === 'admin'
           ? await bazarService.adminUpdateBazar(bazar.id, updateData)
           : await bazarService.updateBazar(bazar.id, updateData);
 
-      console.log('📥 BazarDetails - Update response:', {
-        success: response.success,
-        hasData: !!response.data,
-        error: response.error,
-      });
-
       if (response.success && response.data) {
-        console.log('✅ BazarDetails - Bazar updated successfully');
         setBazar(response.data);
         setEditData(response.data);
         setShowEditModal(false);
         Alert.alert('Success', 'Bazar entry updated successfully');
       } else {
-        console.error('❌ BazarDetails - Update failed:', response.error);
+        logger.error('Bazar update failed', response.error);
         Alert.alert('Error', response.error || 'Failed to update bazar entry');
       }
     } catch (error) {
-      console.error('❌ BazarDetails - Update error:', error);
+      logger.error('Bazar update error', error);
       Alert.alert('Error', 'An unexpected error occurred');
     } finally {
       setEditing(false);
@@ -166,8 +138,6 @@ export default function BazarDetailsScreen() {
 
   const handleDelete = async () => {
     if (!bazar) return;
-
-    console.log('🗑️ BazarDetails - Delete confirmation for bazar:', bazar.id);
 
     Alert.alert(
       'Delete Bazar Entry',
@@ -178,34 +148,21 @@ export default function BazarDetailsScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            console.log(
-              '🗑️ BazarDetails - Proceeding with delete for bazar:',
-              bazar.id
-            );
-
             try {
               const response = await bazarService.deleteBazar(bazar.id);
-              console.log('📥 BazarDetails - Delete response:', {
-                success: response.success,
-                error: response.error,
-              });
 
               if (response.success) {
-                console.log('✅ BazarDetails - Bazar deleted successfully');
                 Alert.alert('Success', 'Bazar entry deleted successfully');
                 router.back();
               } else {
-                console.error(
-                  '❌ BazarDetails - Delete failed:',
-                  response.error
-                );
+                logger.error('Bazar delete failed', response.error);
                 Alert.alert(
                   'Error',
                   response.error || 'Failed to delete bazar entry'
                 );
               }
             } catch (error) {
-              console.error('❌ BazarDetails - Delete error:', error);
+              logger.error('Bazar delete error', error);
               Alert.alert('Error', 'An unexpected error occurred');
             }
           },
@@ -215,7 +172,6 @@ export default function BazarDetailsScreen() {
   };
 
   const addItem = () => {
-    console.log('➕ BazarDetails - Adding new item to edit');
     const newItem: BazarItem = {
       name: '',
       quantity: '1',
@@ -232,7 +188,6 @@ export default function BazarDetailsScreen() {
     field: keyof BazarItem,
     value: string | number
   ) => {
-    console.log('✏️ BazarDetails - Updating item:', { index, field, value });
     setEditData(prev => ({
       ...prev,
       items: prev.items?.map((item, i) =>
@@ -242,7 +197,6 @@ export default function BazarDetailsScreen() {
   };
 
   const removeItem = (index: number) => {
-    console.log('🗑️ BazarDetails - Removing item:', { index });
     setEditData(prev => ({
       ...prev,
       items: prev.items?.filter((_, i) => i !== index),
@@ -250,70 +204,9 @@ export default function BazarDetailsScreen() {
   };
 
   const calculateTotal = () => {
-    const total =
-      editData.items?.reduce((sum, item) => sum + (item.price || 0), 0) || 0;
-    console.log('💰 BazarDetails - Calculated total:', {
-      total,
-      itemsCount: editData.items?.length || 0,
-    });
-    return total;
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return '#f59e0b';
-      case 'approved':
-        return '#10b981';
-      case 'rejected':
-        return '#ef4444';
-      default:
-        return '#6b7280';
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return 'time';
-      case 'approved':
-        return 'checkmark-circle';
-      case 'rejected':
-        return 'close-circle';
-      default:
-        return 'help-circle';
-    }
-  };
-
-  const getStatusBgColor = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return '#fffbeb';
-      case 'approved':
-        return '#ecfdf5';
-      case 'rejected':
-        return '#fef2f2';
-      default:
-        return '#f3f4f6';
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
-
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return (
+      editData.items?.reduce((sum, item) => sum + (item.price || 0), 0) || 0
+    );
   };
 
   const getUserDisplayName = () => {
@@ -420,49 +313,49 @@ export default function BazarDetailsScreen() {
         </View>
 
         {/* Amount Card */}
-        <View style={styles.amountCard}>
-          <ThemedText style={styles.amountLabel}>Total Amount</ThemedText>
-          <ThemedText style={styles.amountValue}>
-            ৳{bazar.totalAmount.toLocaleString()}
+        <View style={[styles.amountCard, { backgroundColor: cardBg, borderWidth: cardBorder ? 1 : 0, borderColor: cardBorder }]}>
+          <ThemedText style={[styles.amountLabel, { color: labelColor }]}>Total Amount</ThemedText>
+          <ThemedText style={[styles.amountValue, { color: theme.status?.success ?? '#10b981' }]}>
+            {formatCurrency(bazar.totalAmount)}
           </ThemedText>
         </View>
 
         {/* User Info Card */}
-        <View style={styles.infoCard}>
+        <View style={[styles.infoCard, { backgroundColor: cardBg, borderWidth: cardBorder ? 1 : 0, borderColor: cardBorder }]}>
           <View style={styles.infoRow}>
-            <Ionicons name='person' size={20} color='#6b7280' />
+            <Ionicons name='person-outline' size={20} color={iconColor} />
             <View style={styles.infoContent}>
-              <ThemedText style={styles.infoLabel}>Submitted By</ThemedText>
-              <ThemedText style={styles.infoValue}>
+              <ThemedText style={[styles.infoLabel, { color: labelColor }]}>Submitted By</ThemedText>
+              <ThemedText style={[styles.infoValue, { color: valueColor }]}>
                 {getUserDisplayName()}
               </ThemedText>
             </View>
           </View>
           <View style={styles.infoRow}>
-            <Ionicons name='calendar' size={20} color='#6b7280' />
+            <Ionicons name='calendar-outline' size={20} color={iconColor} />
             <View style={styles.infoContent}>
-              <ThemedText style={styles.infoLabel}>Date</ThemedText>
-              <ThemedText style={styles.infoValue}>
+              <ThemedText style={[styles.infoLabel, { color: labelColor }]}>Date</ThemedText>
+              <ThemedText style={[styles.infoValue, { color: valueColor }]}>
                 {formatDate(bazar.date)}
               </ThemedText>
             </View>
           </View>
           <View style={styles.infoRow}>
-            <Ionicons name='time' size={20} color='#6b7280' />
+            <Ionicons name='time-outline' size={20} color={iconColor} />
             <View style={styles.infoContent}>
-              <ThemedText style={styles.infoLabel}>Created</ThemedText>
-              <ThemedText style={styles.infoValue}>
-                {formatDate(bazar.createdAt)} at {formatTime(bazar.createdAt)}
+              <ThemedText style={[styles.infoLabel, { color: labelColor }]}>Created</ThemedText>
+              <ThemedText style={[styles.infoValue, { color: valueColor }]}>
+                {formatDateAndTime(bazar.createdAt)}
               </ThemedText>
             </View>
           </View>
           {bazar.updatedAt !== bazar.createdAt && (
             <View style={styles.infoRow}>
-              <Ionicons name='refresh' size={20} color='#6b7280' />
+              <Ionicons name='refresh-outline' size={20} color={iconColor} />
               <View style={styles.infoContent}>
-                <ThemedText style={styles.infoLabel}>Last Updated</ThemedText>
-                <ThemedText style={styles.infoValue}>
-                  {formatDate(bazar.updatedAt)} at {formatTime(bazar.updatedAt)}
+                <ThemedText style={[styles.infoLabel, { color: labelColor }]}>Last Updated</ThemedText>
+                <ThemedText style={[styles.infoValue, { color: valueColor }]}>
+                  {formatDateAndTime(bazar.updatedAt)}
                 </ThemedText>
               </View>
             </View>
@@ -479,7 +372,7 @@ export default function BazarDetailsScreen() {
               <View style={styles.itemHeader}>
                 <ThemedText style={styles.itemName}>{item.name}</ThemedText>
                 <ThemedText style={styles.itemPrice}>
-                  ৳{item.price.toLocaleString()}
+                  {formatCurrency(item.price)}
                 </ThemedText>
               </View>
               <View style={styles.itemDetails}>
@@ -487,8 +380,7 @@ export default function BazarDetailsScreen() {
                   Quantity: {item.quantity}
                 </ThemedText>
                 <ThemedText style={styles.itemSubtotal}>
-                  Subtotal: ৳
-                  {(item.price * parseInt(item.quantity)).toLocaleString()}
+                  Subtotal: {formatCurrency(item.price * parseInt(item.quantity, 10) || 0)}
                 </ThemedText>
               </View>
             </View>
@@ -659,7 +551,7 @@ export default function BazarDetailsScreen() {
               <View style={styles.totalCard}>
                 <ThemedText style={styles.totalLabel}>Total Amount</ThemedText>
                 <ThemedText style={styles.totalValue}>
-                  ৳{calculateTotal().toLocaleString()}
+                  {formatCurrency(calculateTotal())}
                 </ThemedText>
               </View>
             </View>

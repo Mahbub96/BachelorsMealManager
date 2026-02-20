@@ -29,7 +29,7 @@ class MealController {
         return sendErrorResponse(res, 400, 'Date is required');
       }
 
-      // Validate date format and ensure it's not in the future
+      // Validate date format (past, today, and future dates allowed)
       const mealDate = new Date(date);
 
       if (isNaN(mealDate.getTime())) {
@@ -192,20 +192,27 @@ class MealController {
       if (typeof userId === 'string') {
         userId = new mongoose.Types.ObjectId(userId);
       }
-      const { startDate, endDate, status, limit = 10, page = 1 } = req.query;
+      const { startDate, endDate, status, limit = 10, page = 1, onlyMine } = req.query;
 
-      const groupMemberIds = await getGroupMemberIds(req.user);
-      const useGroup = Array.isArray(groupMemberIds) && groupMemberIds.length > 0;
-
-      const query = useGroup
-        ? { userId: { $in: groupMemberIds } }
-        : { userId };
+      // When onlyMine=true (e.g. "do I have a meal for this date?"), always filter to current user only
+      const queryCurrentUserOnly = onlyMine === 'true' || onlyMine === true;
+      let query;
+      let useGroup = false;
+      if (queryCurrentUserOnly) {
+        query = { userId };
+      } else {
+        const groupMemberIds = await getGroupMemberIds(req.user);
+        useGroup = Array.isArray(groupMemberIds) && groupMemberIds.length > 0;
+        query = useGroup ? { userId: { $in: groupMemberIds } } : { userId };
+      }
 
       if (startDate && endDate) {
-        query.date = {
-          $gte: new Date(startDate),
-          $lte: new Date(endDate),
-        };
+        const start = new Date(startDate);
+        let end = new Date(endDate);
+        if (startDate === endDate) {
+          end.setUTCHours(23, 59, 59, 999);
+        }
+        query.date = { $gte: start, $lte: end };
       }
       if (status) query.status = status;
 

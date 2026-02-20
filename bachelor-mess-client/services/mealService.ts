@@ -1,5 +1,6 @@
 import { API_ENDPOINTS, ApiResponse } from './config';
 import httpClient from './httpClient';
+import { formatMealDate as formatMealDateDisplay } from '../utils/dateUtils';
 
 // Type definitions for meal management
 export interface MealEntry {
@@ -63,6 +64,8 @@ export interface MealFilters {
   userId?: string;
   limit?: number;
   page?: number;
+  /** When true, return only the current user's meals (for "existing meal" check). */
+  onlyMine?: boolean;
 }
 
 export interface MealStats {
@@ -175,8 +178,8 @@ class MealServiceImpl implements MealService {
       const endpoint = `${API_ENDPOINTS.MEALS.USER}${queryParams}`;
 
       const response = await httpClient.get<MealResponse>(endpoint, {
-        cache: true,
-        cacheKey: `user_meals_${JSON.stringify(filters)}`,
+        cache: !filters.onlyMine,
+        cacheKey: filters.onlyMine ? undefined : `user_meals_${JSON.stringify(filters)}`,
       });
 
       // Transform the response to match expected structure
@@ -451,6 +454,7 @@ class MealServiceImpl implements MealService {
     if (filters.userId) params.append('userId', filters.userId);
     if (filters.limit) params.append('limit', filters.limit.toString());
     if (filters.page) params.append('page', filters.page.toString());
+    if (filters.onlyMine) params.append('onlyMine', 'true');
 
     const queryString = params.toString();
     return queryString ? `?${queryString}` : '';
@@ -493,13 +497,9 @@ class MealServiceImpl implements MealService {
     return this.getUserMeals({ status: 'rejected' });
   }
 
-  // Utility methods
+  // Utility methods (delegate to shared dateUtils for consistency)
   formatMealDate(date: string): string {
-    return new Date(date).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+    return formatMealDateDisplay(date);
   }
 
   getMealIcon(mealType: 'breakfast' | 'lunch' | 'dinner'): string {

@@ -2,7 +2,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import type { IconName } from '@/constants/IconTypes';
 import React from 'react';
-import { Dimensions, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Dimensions, StyleSheet, TouchableOpacity, View, type ViewStyle } from 'react-native';
 import { ThemedText } from '../ThemedText';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -36,73 +36,89 @@ export const StatsGrid: React.FC<StatsGridProps> = ({
   const availableWidth = screenWidth - padding * 2 - gap * (columns - 1);
   const cardWidth = availableWidth / columns;
 
+  const cardStyle: ViewStyle[] = [
+    styles.card,
+    {
+      width: cardWidth,
+      backgroundColor: theme.cardBackground ?? theme.surface,
+      borderWidth: 1,
+      borderColor: theme.border?.secondary ?? theme.cardBorder ?? 'transparent',
+      shadowColor: theme.shadow?.light ?? theme.cardShadow,
+    },
+  ];
+
   return (
     <View style={[styles.wrap, { paddingHorizontal: padding, marginBottom: 24 }]}>
       <View style={styles.grid}>
-        {stats.map((stat, index) => (
-          <TouchableOpacity
-            key={index}
-            style={[
-              styles.card,
-              {
-                width: cardWidth,
-                backgroundColor: theme.cardBackground ?? theme.surface,
-                borderWidth: 1,
-                borderColor: theme.border?.secondary ?? theme.cardBorder ?? 'transparent',
-                shadowColor: theme.shadow?.light ?? theme.cardShadow,
-              },
-            ]}
-            onPress={stat.onPress}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.iconWrap, { backgroundColor: (stat.colors[0] ?? theme.primary) + '18' }]}>
-              <Ionicons
-                name={stat.icon as IconName}
-                size={isSmallScreen ? 20 : 22}
-                color={stat.colors[0] ?? theme.primary}
-              />
-            </View>
-            <ThemedText style={[styles.value, { color: theme.text?.primary }]} numberOfLines={1}>
-              {stat.value}
-            </ThemedText>
-            <ThemedText
-              style={[styles.label, { color: theme.text?.secondary }]}
-              numberOfLines={1}
-            >
-              {stat.title}
-            </ThemedText>
-            {(stat.change || stat.period) && (
-              <View style={styles.meta}>
-                {stat.change && (
-                  <ThemedText
-                    style={[
-                      styles.change,
-                      {
-                        color:
-                          stat.trend === 'up'
-                            ? theme.status?.success
-                            : stat.trend === 'down'
-                              ? theme.status?.error
-                              : theme.text?.tertiary,
-                      },
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {stat.change}
-                  </ThemedText>
-                )}
-                {stat.period && (
-                  <ThemedText
-                    style={[styles.period, { color: theme.text?.tertiary }]}
-                    numberOfLines={1}
-                  >
-                    {stat.period}
-                  </ThemedText>
-                )}
+        {stats.map((stat, index) => {
+          const content = (
+            <View>
+              <View style={[styles.iconWrap, { backgroundColor: (stat.colors[0] ?? theme.primary) + '18' }]}>
+                <Ionicons
+                  name={stat.icon as IconName}
+                  size={isSmallScreen ? 20 : 22}
+                  color={stat.colors[0] ?? theme.primary}
+                />
               </View>
-            )}
-          </TouchableOpacity>
-        ))}
+              <ThemedText style={[styles.value, { color: theme.text?.primary }]} numberOfLines={1}>
+                {stat.value}
+              </ThemedText>
+              <ThemedText
+                style={[styles.label, { color: theme.text?.secondary }]}
+                numberOfLines={1}
+              >
+                {stat.title}
+              </ThemedText>
+              {(stat.change || stat.period) && (
+                <View style={styles.meta}>
+                  {stat.change && (
+                    <ThemedText
+                      style={[
+                        styles.change,
+                        {
+                          color:
+                            stat.trend === 'up'
+                              ? theme.status?.success
+                              : stat.trend === 'down'
+                                ? theme.status?.error
+                                : theme.text?.tertiary,
+                        },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {stat.change}
+                    </ThemedText>
+                  )}
+                  {stat.period && (
+                    <ThemedText
+                      style={[styles.period, { color: theme.text?.tertiary }]}
+                      numberOfLines={1}
+                    >
+                      {stat.period}
+                    </ThemedText>
+                  )}
+                </View>
+              )}
+            </View>
+          );
+          if (stat.onPress) {
+            return (
+              <TouchableOpacity
+                key={index}
+                style={cardStyle}
+                onPress={stat.onPress}
+                activeOpacity={0.7}
+              >
+                {content}
+              </TouchableOpacity>
+            );
+          }
+          return (
+            <View key={index} style={cardStyle}>
+              {content}
+            </View>
+          );
+        })}
       </View>
     </View>
   );

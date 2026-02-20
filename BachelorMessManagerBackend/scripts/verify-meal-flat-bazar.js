@@ -25,7 +25,7 @@ async function run() {
   // 1. mealBazarMatch returns correct query
   const match = mealBazarMatch();
   if (match && match.type && match.type.$in && match.type.$in.includes('meal') && match.type.$in.includes(null)) {
-    console.log('✓ mealBazarMatch() returns { type: { $in: [\"meal\", null] } }');
+    console.log('✓ mealBazarMatch() returns { type: { $in: [\'meal\', null] } }');
     passed++;
   } else {
     console.error('✗ mealBazarMatch() unexpected:', JSON.stringify(match));

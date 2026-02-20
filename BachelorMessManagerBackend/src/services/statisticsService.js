@@ -1,7 +1,9 @@
 const mongoose = require('mongoose');
 const Statistics = require('../models/Statistics');
 const { getGroupMemberIds } = require('../utils/groupHelper');
-const { mealBazarMatch, flatBazarMatch } = require('../utils/bazarHelper');
+const { mealBazarMatch, flatBazarMatch, buildDateRangeForMonth } = require('../utils/bazarHelper');
+const { buildMealMatchForReport, buildBazarMatchForReport } = require('../utils/scopeHelper');
+const { MEAL_ADD_FIELDS_STAGE, aggregateMealStats } = require('../utils/mealHelper');
 const logger = require('../utils/logger');
 
 class StatisticsService {
@@ -284,50 +286,30 @@ class StatisticsService {
     const User = mongoose.model('User');
 
     try {
-      const startDate = new Date(year, month - 1, 1);
-      const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+      const { firstDay: startDate, lastDay: endDate } = buildDateRangeForMonth(month, year);
+      const dateFilter = { date: { $gte: startDate, $lte: endDate } };
 
       const groupMemberIds = user ? await getGroupMemberIds(user) : null;
-      const mealMatch = {
-        date: { $gte: startDate, $lte: endDate },
-        status: 'approved',
-      };
-      if (Array.isArray(groupMemberIds) && groupMemberIds.length > 0) {
-        mealMatch.userId = { $in: groupMemberIds };
-      }
+      const mealMatch = buildMealMatchForReport(groupMemberIds, dateFilter);
+      const bazarMatch = buildBazarMatchForReport(groupMemberIds, dateFilter, mealBazarMatch());
+      const flatMatch = buildBazarMatchForReport(groupMemberIds, dateFilter, flatBazarMatch());
 
-      const mealStats = await Meal.aggregate([
-        {
-          $match: mealMatch,
-        },
-        {
-          $group: {
-            _id: '$userId',
-            totalMeals: {
-              $sum: {
-                $add: [
-                  { $cond: ['$breakfast', 1, 0] },
-                  { $cond: ['$lunch', 1, 0] },
-                  { $cond: ['$dinner', 1, 0] },
-                ],
-              },
+      const [overallMealData, mealStats] = await Promise.all([
+        aggregateMealStats(Meal, mealMatch),
+        Meal.aggregate([
+          { $match: mealMatch },
+          MEAL_ADD_FIELDS_STAGE,
+          {
+            $group: {
+              _id: '$userId',
+              totalMeals: { $sum: '$mealsPerEntry' },
+              totalBreakfast: { $sum: { $cond: ['$breakfast', 1, 0] } },
+              totalLunch: { $sum: { $cond: ['$lunch', 1, 0] } },
+              totalDinner: { $sum: { $cond: ['$dinner', 1, 0] } },
             },
-            totalBreakfast: { $sum: { $cond: ['$breakfast', 1, 0] } },
-            totalLunch: { $sum: { $cond: ['$lunch', 1, 0] } },
-            totalDinner: { $sum: { $cond: ['$dinner', 1, 0] } },
           },
-        },
+        ]),
       ]);
-
-      const mealBazarMatchFilter = mealBazarMatch();
-      const bazarMatch = {
-        ...mealBazarMatchFilter,
-        date: { $gte: startDate, $lte: endDate },
-        status: 'approved',
-      };
-      if (Array.isArray(groupMemberIds) && groupMemberIds.length > 0) {
-        bazarMatch.userId = { $in: groupMemberIds };
-      }
 
       const bazarStats = await Bazar.aggregate([
         { $match: bazarMatch },
@@ -339,15 +321,6 @@ class StatisticsService {
           },
         },
       ]);
-
-      const flatBazarMatchFilter = flatBazarMatch();
-      const flatMatch = {
-        ...flatBazarMatchFilter,
-        date: { $gte: startDate, $lte: endDate },
-      };
-      if (Array.isArray(groupMemberIds) && groupMemberIds.length > 0) {
-        flatMatch.userId = { $in: groupMemberIds };
-      }
       const [flatBazarTotalResult, flatBazarByUser] = await Promise.all([
         Bazar.aggregate([
           { $match: flatMatch },
@@ -373,7 +346,7 @@ class StatisticsService {
         .select('name email phone profileImage status')
         .lean();
 
-      const totalMeals = mealStats.reduce((sum, item) => sum + item.totalMeals, 0);
+      const totalMeals = overallMealData.totalMeals;
       const totalMealBazar = bazarStats.reduce((sum, item) => sum + item.totalAmount, 0);
       const memberCount = users.length;
       const flatSharePerPerson = memberCount > 0 ? totalFlatBazar / memberCount : 0;
