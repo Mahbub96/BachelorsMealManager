@@ -2,7 +2,10 @@ import { ThemedText } from '@/components/ThemedText';
 import { ModernLoader } from '@/components/ui/ModernLoader';
 import { ScreenLayout } from '@/components/layout';
 import { useThemeColor } from '@/hooks/useThemeColor';
-import bazarService, { BazarItem } from '@/services/bazarService';
+import bazarService, {
+  BazarItem,
+  type BazarType,
+} from '@/services/bazarService';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -31,6 +34,7 @@ export default function NewBazarScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [receiptImage, setReceiptImage] = useState<string | null>(null);
+  const [bazarType, setBazarType] = useState<BazarType>('meal');
 
   // Theme colors
   const backgroundColor = useThemeColor({}, 'background');
@@ -42,7 +46,6 @@ export default function NewBazarScreen() {
   );
 
   const addItem = () => {
-    console.log('➕ NewBazar - Adding new item');
     setItems(prev => [...prev, { name: '', quantity: '1', price: 0 }]);
   };
 
@@ -51,7 +54,6 @@ export default function NewBazarScreen() {
     field: keyof BazarItem,
     value: string | number
   ) => {
-    console.log(`✏️ NewBazar - Updating item ${index} field ${field}:`, value);
     setItems(prev => {
       const updated = prev.map((item, i) => (i === index ? { ...item, [field]: value } : item));
        
@@ -60,42 +62,23 @@ export default function NewBazarScreen() {
   };
 
   const removeItem = (index: number) => {
-    console.log('🗑️ NewBazar - Removing item:', {
-      index,
-      itemsCount: items.length,
-    });
     if (items.length > 1) {
       setItems(prev => prev.filter((_, i) => i !== index));
     }
   };
 
-  const handleDateChange = (event: unknown, selectedDate?: Date) => {
-    console.log('📅 NewBazar - Date picker event:', (event as { type?: string })?.type);
+  const handleDateChange = (_event: unknown, selectedDate?: Date) => {
     setShowDatePicker(false);
-
     if (selectedDate) {
       setSelectedDate(selectedDate);
       setDate(selectedDate.toISOString().split('T')[0]);
-      console.log(
-        '📅 NewBazar - Date selected:',
-        selectedDate.toISOString().split('T')[0]
-      );
     }
   };
 
-  const showDatePickerModal = () => {
-    console.log('📅 NewBazar - Opening date picker');
-    setShowDatePicker(true);
-  };
+  const showDatePickerModal = () => setShowDatePicker(true);
 
-  const calculateTotal = () => {
-    const total = items.reduce((sum, item) => sum + (item.price || 0), 0);
-    console.log('💰 NewBazar - Calculated total:', {
-      total,
-      itemsCount: items.length,
-    });
-    return total;
-  };
+  const calculateTotal = () =>
+    items.reduce((sum, item) => sum + (item.price || 0), 0);
 
   const handleReceiptUpload = () => {
     // This would integrate with image picker in a real app
@@ -118,46 +101,27 @@ export default function NewBazarScreen() {
   };
 
   const validateForm = () => {
-    console.log('✅ NewBazar - Validating form');
-
-    // #region agent log
-
     const emptyItems = items.filter(item => !item.name.trim());
-
     if (emptyItems.length > 0) {
-      console.error('❌ NewBazar - Validation failed: Empty item names', {
-        emptyItemsCount: emptyItems.length,
-        emptyItems,
-        allItems: items,
-      });
       Alert.alert('Error', 'All items must have a name');
       return false;
     }
     if (items.some(item => item.price <= 0)) {
-      console.error('❌ NewBazar - Validation failed: Invalid prices');
       Alert.alert('Error', 'All items must have a valid price');
       return false;
     }
     if (calculateTotal() <= 0) {
-      console.error('❌ NewBazar - Validation failed: Total amount is 0');
       Alert.alert('Error', 'Total amount must be greater than 0');
       return false;
     }
-
-    console.log('✅ NewBazar - Form validation passed');
     return true;
   };
 
   const handleSubmit = async () => {
-
-    if (!validateForm()) {
-      console.log('❌ NewBazar - Form validation failed');
-      return;
-    }
+    if (!validateForm()) return;
 
     setLoading(true);
     try {
-      // Filter out any completely empty items (items with no name, no quantity, and price = 0)
       const validItems = items.filter(
         item =>
           item.name.trim() ||
@@ -165,56 +129,35 @@ export default function NewBazarScreen() {
           item.price > 0
       );
 
-
       const bazarData = {
+        type: bazarType,
         items: validItems,
         totalAmount: calculateTotal(),
         description: description.trim() || undefined,
         date,
       };
 
-      console.log('📤 NewBazar - Submitting data:', {
-        itemsCount: items.length,
-        totalAmount: calculateTotal(),
-        hasDescription: !!description.trim(),
-        date,
-      });
-
       const response = await bazarService.submitBazar(bazarData);
 
-      console.log('📥 NewBazar - Submit response:', {
-        success: response.success,
-        hasData: !!response.data,
-        error: response.error,
-      });
-
       if (response.success) {
-        console.log('✅ NewBazar - Bazar submitted successfully');
         Alert.alert('Success', 'Bazar entry submitted successfully!', [
           {
             text: 'View Details',
-            onPress: () => {
-              console.log('👆 NewBazar - Navigating to details');
+            onPress: () =>
               router.push({
                 pathname: '/bazar-details',
                 params: { id: response.data?.id },
-              });
-            },
+              }),
           },
           {
             text: 'Back to List',
-            onPress: () => {
-              console.log('👆 NewBazar - Going back to list');
-              router.back();
-            },
+            onPress: () => router.back(),
           },
         ]);
       } else {
-        console.error('❌ NewBazar - Submit failed:', response.error);
         Alert.alert('Error', response.error || 'Failed to submit bazar entry');
       }
-    } catch (error) {
-      console.error('❌ NewBazar - Unexpected error:', error);
+    } catch {
       Alert.alert('Error', 'An unexpected error occurred');
     } finally {
       setLoading(false);
@@ -237,6 +180,55 @@ export default function NewBazarScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
+          {/* Bazar Type Tabs: Meal (groceries) vs Flat (shared) */}
+          <View style={styles.tabRow}>
+            <TouchableOpacity
+              style={[
+                styles.tabButton,
+                bazarType === 'meal' && styles.tabButtonActive,
+              ]}
+              onPress={() => setBazarType('meal')}
+            >
+              <Ionicons
+                name="restaurant"
+                size={20}
+                color={bazarType === 'meal' ? '#fff' : '#667eea'}
+              />
+              <ThemedText
+                style={[
+                  styles.tabButtonText,
+                  bazarType === 'meal' && styles.tabButtonTextActive,
+                ]}
+              >
+                Meal Bazar
+              </ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.tabButton,
+                bazarType === 'flat' && styles.tabButtonActive,
+              ]}
+              onPress={() => setBazarType('flat')}
+            >
+              <Ionicons
+                name="home"
+                size={20}
+                color={bazarType === 'flat' ? '#fff' : '#667eea'}
+              />
+              <ThemedText
+                style={[
+                  styles.tabButtonText,
+                  bazarType === 'flat' && styles.tabButtonTextActive,
+                ]}
+              >
+                Flat Bazar
+              </ThemedText>
+            </TouchableOpacity>
+          </View>
+          <ThemedText style={[styles.tabHint, { color: iconColor }]}>
+            Meal = used for meal rate. Flat = split equally (e.g. fridge, stove).
+          </ThemedText>
+
           {/* Info Card */}
           <View style={styles.infoCard}>
             <LinearGradient
@@ -259,10 +251,7 @@ export default function NewBazarScreen() {
             </ThemedText>
             <TouchableOpacity
               style={[styles.dateInput, { backgroundColor, borderColor }]}
-              onPress={() => {
-                console.log('📅 NewBazar - Opening date picker manually');
-                showDatePickerModal();
-              }}
+              onPress={showDatePickerModal}
             >
               <ThemedText style={[styles.dateInputText, { color: textColor }]}>
                 {date || 'Select a date'}
@@ -781,6 +770,39 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  tabRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 6,
+  },
+  tabButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#667eea',
+  },
+  tabButtonActive: {
+    backgroundColor: '#667eea',
+  },
+  tabButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#667eea',
+  },
+  tabButtonTextActive: {
+    color: '#fff',
+  },
+  tabHint: {
+    fontSize: 12,
+    marginBottom: 16,
+    fontStyle: 'italic',
   },
   scrollContent: {
     paddingBottom: 100, // Extra padding to ensure submit button is visible

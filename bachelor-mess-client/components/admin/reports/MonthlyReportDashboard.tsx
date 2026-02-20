@@ -192,10 +192,17 @@ export const MonthlyReportDashboard = () => {
             theme.status.success
           )}
           {renderSummaryCard(
-            'Total Cost',
+            'Meal Bazar',
             `৳${reportData.summary.totalCost.toLocaleString()}`,
             'wallet',
             theme.status.warning
+          )}
+          {renderSummaryCard(
+            'Flat (each)',
+            `৳${(reportData.summary.flatSharePerPerson ?? 0).toFixed(0)}`,
+            'home',
+            theme.status.info,
+            reportData.summary.totalFlatBazar != null ? `total ৳${reportData.summary.totalFlatBazar.toLocaleString()}` : undefined
           )}
           {renderSummaryCard(
             'Members',
@@ -229,7 +236,7 @@ export const MonthlyReportDashboard = () => {
                 <View>
                   <ThemedText style={styles.memberName}>{member.user.name}</ThemedText>
                   <ThemedText style={[styles.memberEmail, { color: theme.text.secondary }]}>
-                    {member.meals.total} meals • {member.bazar.entryCount} bazars
+                    {member.meals.total} meals • {member.bazar.entryCount} meal bazars
                   </ThemedText>
                 </View>
               </View>
@@ -248,8 +255,21 @@ export const MonthlyReportDashboard = () => {
 
             <View style={[styles.memberStatsRow, { borderTopColor: theme.border.secondary }]}>
               <View style={styles.memberStatItem}>
-                <ThemedText style={[styles.statLabel, { color: theme.text.secondary }]}>Deposit</ThemedText>
+                <ThemedText style={[styles.statLabel, { color: theme.text.secondary }]}>Meal Bazar</ThemedText>
                 <ThemedText style={styles.statValue}>৳{member.bazar.totalAmount}</ThemedText>
+              </View>
+              <View style={styles.memberStatItem}>
+                <ThemedText style={[styles.statLabel, { color: theme.text.secondary }]}>Flat added</ThemedText>
+                <ThemedText style={styles.statValue}>৳{member.bazar.flatContributed ?? 0}</ThemedText>
+              </View>
+              <View style={styles.memberStatItem}>
+                <ThemedText style={[styles.statLabel, { color: theme.text.secondary }]}>Flat</ThemedText>
+                <ThemedText style={[
+                  styles.statValue,
+                  (member.bazar.flatSettlement ?? 0) > 0 ? { color: theme.status.success } : (member.bazar.flatSettlement ?? 0) < 0 ? { color: theme.status.error } : {}
+                ]}>
+                  {(member.bazar.flatSettlement ?? 0) > 0 ? `Get ৳${Number(member.bazar.flatSettlement).toFixed(2)}` : (member.bazar.flatSettlement ?? 0) < 0 ? `Pay ৳${Math.abs(Number(member.bazar.flatSettlement ?? 0)).toFixed(2)}` : 'Settled'}
+                </ThemedText>
               </View>
               <View style={styles.memberStatItem}>
                 <ThemedText style={[styles.statLabel, { color: theme.text.secondary }]}>Cost</ThemedText>
@@ -306,8 +326,29 @@ export const MonthlyReportDashboard = () => {
              <View style={[styles.reportCard, { backgroundColor: theme.cardBackground }]}>
                <ThemedText style={styles.reportCardTitle}>Financial Summary</ThemedText>
                <View style={styles.reportRow}>
-                 <ThemedText style={styles.reportLabel}>Total Deposit (Bazar)</ThemedText>
+                 <ThemedText style={styles.reportLabel}>Meal Bazar (deposit)</ThemedText>
                  <ThemedText style={styles.reportValue}>৳{selectedUserReport.bazar.totalAmount}</ThemedText>
+               </View>
+               <View style={styles.reportRow}>
+                 <ThemedText style={styles.reportLabel}>Flat added (by you)</ThemedText>
+                 <ThemedText style={styles.reportValue}>৳{selectedUserReport.bazar.flatContributed ?? 0}</ThemedText>
+               </View>
+               <View style={styles.reportRow}>
+                 <ThemedText style={styles.reportLabel}>Flat (your share {reportData.summary.totalMembers} people)</ThemedText>
+                 <ThemedText style={styles.reportValue}>৳{selectedUserReport.bazar.flatShare ?? 0} each</ThemedText>
+               </View>
+               <View style={styles.reportRow}>
+                 <ThemedText style={styles.reportLabel}>Flat settlement</ThemedText>
+                 <ThemedText style={[
+                   styles.reportValue,
+                   (selectedUserReport.bazar.flatSettlement ?? 0) > 0 ? { color: theme.status.success } : (selectedUserReport.bazar.flatSettlement ?? 0) < 0 ? { color: theme.status.error } : {}
+                 ]}>
+                   {(selectedUserReport.bazar.flatSettlement ?? 0) > 0
+                     ? `Get back ৳${Number(selectedUserReport.bazar.flatSettlement).toFixed(2)}`
+                     : (selectedUserReport.bazar.flatSettlement ?? 0) < 0
+                       ? `Pay ৳${Math.abs(Number(selectedUserReport.bazar.flatSettlement ?? 0)).toFixed(2)}`
+                       : 'Settled'}
+                 </ThemedText>
                </View>
                <View style={styles.reportRow}>
                  <ThemedText style={styles.reportLabel}>Meal Cost ({selectedUserReport.meals.total} × {reportData.summary.mealRate.toFixed(2)})</ThemedText>

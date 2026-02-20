@@ -12,6 +12,7 @@ import { useTheme } from '../../context/ThemeContext';
 
 export type BazarCardBazar = {
   id: string;
+  type?: 'meal' | 'flat';
   items: { name: string; quantity: string; price: number }[];
   totalAmount: number;
   date: string;
@@ -180,7 +181,7 @@ export const BazarCard: React.FC<BazarCardProps> = memo(
             },
           ]}
         >
-          {/* Header with Status Badge */}
+          {/* Header with Type + Status Badge */}
           <View style={styles.headerRow}>
             <View style={styles.headerLeft}>
               <ThemedText
@@ -188,11 +189,18 @@ export const BazarCard: React.FC<BazarCardProps> = memo(
               >
                 ৳{bazar.totalAmount.toLocaleString()}
               </ThemedText>
-              <ThemedText
-                style={[styles.amountLabel, { color: theme.text.secondary }]}
-              >
-                Total Amount
-              </ThemedText>
+              <View style={styles.headerLabels}>
+                <ThemedText
+                  style={[styles.typeBadge, { color: theme.text.tertiary }]}
+                >
+                  {bazar.type === 'flat' ? 'Flat' : 'Meal'}
+                </ThemedText>
+                <ThemedText
+                  style={[styles.amountLabel, { color: theme.text.secondary }]}
+                >
+                  Total Amount
+                </ThemedText>
+              </View>
             </View>
 
             <View
@@ -393,6 +401,16 @@ const styles = StyleSheet.create({
   },
   headerLeft: {
     flex: 1,
+  },
+  headerLabels: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 2,
+  },
+  typeBadge: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   amountLabel: {
     fontSize: 12,

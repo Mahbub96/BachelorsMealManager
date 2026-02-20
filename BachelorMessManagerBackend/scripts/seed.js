@@ -186,6 +186,7 @@ const seedDatabase = async () => {
     const now = new Date();
     const bazarData = sampleBazarEntries.map((entry, idx) => ({
       ...entry,
+      type: entry.type || 'meal',
       userId: members[idx % members.length]._id,
       date: new Date(now.getTime() - idx * 24 * 60 * 60 * 1000),
       approvedBy: entry.status === 'approved' ? admin._id : null,

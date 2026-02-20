@@ -3,6 +3,47 @@ const mongoose = require('mongoose');
 const PAGINATION_MAX_LIMIT = 500;
 const PAGINATION_DEFAULT_LIMIT = 20;
 
+/** Match only meal bazar (for meal rate). Includes legacy docs without type (null matches missing). */
+function mealBazarMatch() {
+  return { type: { $in: ['meal', null] } };
+}
+
+/** Match only flat bazar (shared equipment, split equally). */
+function flatBazarMatch() {
+  return { type: 'flat' };
+}
+
+/**
+ * Builds userId scope for queries: group ($in) or single user.
+ * @param {mongoose.Types.ObjectId|string} userId - Current user id
+ * @param {mongoose.Types.ObjectId[]|null} groupMemberIds - From getGroupMemberIds; use group when length > 0
+ * @returns {{ userId: ObjectId } | { userId: { $in: ObjectId[] } }}
+ */
+function buildUserScopeMatch(userId, groupMemberIds) {
+  if (Array.isArray(groupMemberIds) && groupMemberIds.length > 0) {
+    return { userId: { $in: groupMemberIds } };
+  }
+  const id =
+    userId instanceof mongoose.Types.ObjectId
+      ? userId
+      : new mongoose.Types.ObjectId(userId);
+  return { userId: id };
+}
+
+/**
+ * Sum bazar totalAmount in a month for a scope (group or single user) and optional type filter.
+ * @param {object} Bazar - Bazar model
+ * @param {object} typeFilter - e.g. mealBazarMatch() or flatBazarMatch()
+ * @param {mongoose.Types.ObjectId|string} userId - Current user id
+ * @param {mongoose.Types.ObjectId[]|null} groupMemberIds - From getGroupMemberIds; null = single user
+ * @param {{ firstDay: Date, lastDay: Date }} monthRange - From getCurrentMonthRange()
+ * @returns {Promise<number>}
+ */
+async function getBazarSumInMonth(Bazar, typeFilter, userId, groupMemberIds, monthRange) {
+  const scope = buildUserScopeMatch(userId, groupMemberIds);
+  return aggregateSumInDateRange(Bazar, { ...typeFilter, ...scope }, monthRange);
+}
+
 /**
  * Returns current month date range (start and end of month in local time).
  * @returns {{ firstDay: Date, lastDay: Date }}
@@ -86,6 +127,7 @@ function buildBazarMatchStage(opts = {}) {
   );
   if (dateMatch) Object.assign(match, dateMatch);
   if (opts.status) match.status = opts.status;
+  if (opts.type) match.type = opts.type;
   return match;
 }
 
@@ -152,6 +194,7 @@ async function aggregateSumInDateRange(Bazar, baseMatch, range) {
  */
 function buildBazarListQuery(opts = {}) {
   const query = {};
+  if (opts.type) query.type = opts.type;
   if (opts.userIds && Array.isArray(opts.userIds) && opts.userIds.length > 0) {
     const validIds = opts.userIds.filter((id) =>
       mongoose.Types.ObjectId.isValid(id)
@@ -217,6 +260,10 @@ module.exports = {
   buildDateMatch,
   buildStatsFilters,
   buildBazarMatchStage,
+  mealBazarMatch,
+  flatBazarMatch,
+  buildUserScopeMatch,
+  getBazarSumInMonth,
   aggregateStatsAmounts,
   aggregateSumInDateRange,
   buildBazarListQuery,

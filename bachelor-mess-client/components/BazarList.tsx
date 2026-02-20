@@ -243,6 +243,7 @@ export const BazarList: React.FC<BazarListProps> = ({
           <BazarCard
             bazar={{
               id: bazar.id,
+              type: bazar.type ?? 'meal',
               items: bazar.items || [],
               totalAmount: bazar.totalAmount || 0,
               date: bazar.date || new Date().toISOString(),

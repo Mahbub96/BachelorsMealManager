@@ -91,6 +91,10 @@ const validateBazarSubmission = [
     .isLength({ max: 500 })
     .withMessage('Description must be less than 500 characters'),
   body('date').isISO8601().withMessage('Please provide a valid date'),
+  body('type')
+    .optional()
+    .isIn(['meal', 'flat'])
+    .withMessage('Type must be meal (groceries) or flat (shared equipment)'),
   handleValidationErrors,
 ];
 
@@ -234,6 +238,10 @@ const validateQueryParams = [
     .optional()
     .isIn(['pending', 'approved', 'rejected'])
     .withMessage('Status must be pending, approved, or rejected'),
+  query('type')
+    .optional()
+    .isIn(['meal', 'flat'])
+    .withMessage('Type must be meal or flat'),
   query('limit')
     .optional()
     .isInt({ min: 1, max: 100 })
@@ -277,6 +285,7 @@ const bazarSchema = Joi.object({
   totalAmount: Joi.number().positive().required(),
   description: Joi.string().max(500).optional(),
   date: Joi.date().iso().required(),
+  type: Joi.string().valid('meal', 'flat').optional(),
 });
 
 // Joi validation middleware

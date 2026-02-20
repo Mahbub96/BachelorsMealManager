@@ -231,8 +231,8 @@ export const UserDashboard: React.FC = () => {
       case 'Bazar Total':
         router.push('/(tabs)/explore');
         break;
-      case 'Avg/Day':
-        router.push('/(tabs)/meals');
+      case 'Flat Bazar':
+        router.push('/(tabs)/explore');
         break;
       case 'Meal Rate':
         Alert.alert(
@@ -314,20 +314,21 @@ export const UserDashboard: React.FC = () => {
           onPress: () => handleStatCardClick('Bazar Total'),
         },
         {
-          title: 'Avg/Day',
+          title: 'Flat Bazar',
           value:
-            stats.meals?.averagePerDay !== undefined
-              ? stats.meals.averagePerDay.toFixed(1)
-              : 'N/A',
-          icon: 'trending-up',
+            stats.flatBazar?.totalAmount !== undefined
+              ? `৳${stats.flatBazar.totalAmount.toLocaleString()}`
+              : '৳0',
+          icon: 'home',
           colors: theme.gradient.success as [string, string],
-          trend: stats.meals?.averagePerDay > 2 ? 'up' : 'down',
+          trend: stats.flatBazar?.totalAmount ? 'up' : 'neutral',
           change:
-            stats.meals?.daysSinceLastMeal !== undefined
-              ? `${stats.meals.daysSinceLastMeal} days ago`
-              : 'N/A',
-          period: 'last meal',
-          onPress: () => handleStatCardClick('Avg/Day'),
+            stats.flatBazar?.memberCount !== undefined &&
+            stats.flatBazar?.sharePerPerson !== undefined
+              ? `৳${stats.flatBazar.sharePerPerson.toFixed(0)} each (${stats.flatBazar.memberCount} ${stats.flatBazar.memberCount === 1 ? 'person' : 'people'})`
+              : 'Shared equally',
+          period: 'this month',
+          onPress: () => handleStatCardClick('Flat Bazar'),
         },
         {
           title: 'Meal Rate',
@@ -370,14 +371,14 @@ export const UserDashboard: React.FC = () => {
           onPress: () => handleStatCardClick('Bazar Total'),
         },
         {
-          title: 'Avg/Day',
-          value: 'N/A',
-          icon: 'trending-up',
+          title: 'Flat Bazar',
+          value: '৳0',
+          icon: 'home',
           colors: theme.gradient.success as [string, string],
           trend: 'neutral',
-          change: 'Login required',
-          period: 'last meal',
-          onPress: () => handleStatCardClick('Avg/Day'),
+          change: 'Shared equally',
+          period: 'this month',
+          onPress: () => handleStatCardClick('Flat Bazar'),
         },
         {
           title: 'Meal Rate',

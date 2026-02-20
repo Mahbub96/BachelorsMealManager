@@ -63,6 +63,16 @@ const bazarSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    /** meal = groceries/food (used for meal rate); flat = shared equipment/utilities (split equally) */
+    type: {
+      type: String,
+      enum: {
+        values: ['meal', 'flat'],
+        message: 'Type must be meal or flat',
+      },
+      default: 'meal',
+      index: true,
+    },
     status: {
       type: String,
       enum: {

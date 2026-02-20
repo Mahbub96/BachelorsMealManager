@@ -120,6 +120,8 @@ export interface MonthlyReportData {
   summary: {
     totalMeals: number;
     totalCost: number;
+    totalFlatBazar?: number;
+    flatSharePerPerson?: number;
     mealRate: number;
     totalMembers: number;
   };
@@ -138,6 +140,9 @@ export interface MonthlyReportData {
     };
     bazar: {
       totalAmount: number;
+      flatContributed?: number;
+      flatShare?: number;
+      flatSettlement?: number;
       entryCount: number;
     };
     financial: {

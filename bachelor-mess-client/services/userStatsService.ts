@@ -23,6 +23,12 @@ export interface UserDashboardStats {
     /** Current user's bazar total for current month (for bazar tab) */
     myTotalAmount?: number;
   };
+  /** Flat bazar (shared equipment): total and per-person share; separate from meal bazar */
+  flatBazar?: {
+    totalAmount: number;
+    memberCount: number;
+    sharePerPerson: number;
+  };
   currentMealRate: {
     rate: number;
     totalMeals: number;

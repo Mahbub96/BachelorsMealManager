@@ -18,7 +18,7 @@ class BazarController {
   // Submit bazar entry
   async submitBazar(req, res, next) {
     try {
-      const { items, totalAmount, description, date } = req.body;
+      const { items, totalAmount, description, date, type = 'meal' } = req.body;
       const userId = req.user.id;
       const receiptImage = req.file ? req.file.path : null;
 
@@ -41,7 +41,7 @@ class BazarController {
         );
       }
 
-      // Create bazar entry
+      const bazarType = type === 'flat' ? 'flat' : 'meal';
       const bazar = await Bazar.create({
         userId,
         items,
@@ -49,6 +49,7 @@ class BazarController {
         description,
         date: new Date(date),
         receiptImage,
+        type: bazarType,
         status: config.business.autoApproveBazar ? 'approved' : 'pending',
       });
 
@@ -73,12 +74,13 @@ class BazarController {
   // Get user bazar entries
   async getUserBazar(req, res, next) {
     try {
-      const { startDate, endDate, status, limit = 10, page = 1 } = req.query;
+      const { startDate, endDate, status, type, limit = 10, page = 1 } = req.query;
       const query = buildBazarListQuery({
         userId: req.user.id,
         startDate,
         endDate,
         status,
+        type: type === 'flat' ? 'flat' : type === 'meal' ? 'meal' : undefined,
       });
       const { bazarEntries, pagination } = await findBazarEntriesPaginated(
         Bazar,
@@ -104,6 +106,7 @@ class BazarController {
         startDate,
         endDate,
         userId: queryUserId,
+        type,
         limit = 20,
         page = 1,
       } = req.query;
@@ -124,6 +127,7 @@ class BazarController {
         status,
         startDate,
         endDate,
+        type: type === 'flat' ? 'flat' : type === 'meal' ? 'meal' : undefined,
         defaultCurrentMonth: !startDate && !endDate,
       });
 
@@ -253,7 +257,7 @@ class BazarController {
   async updateBazar(req, res, next) {
     try {
       const { bazarId } = req.params;
-      const { items, totalAmount, description } = req.body;
+      const { items, totalAmount, description, type } = req.body;
       const userId = req.user.id;
 
       const bazar = await Bazar.findById(bazarId);
@@ -280,6 +284,7 @@ class BazarController {
       if (items) updateData.items = items;
       if (totalAmount) updateData.totalAmount = totalAmount;
       if (description !== undefined) updateData.description = description;
+      if (type === 'meal' || type === 'flat') updateData.type = type;
 
       const updatedBazar = await Bazar.findByIdAndUpdate(bazarId, updateData, {
         new: true,
@@ -438,6 +443,7 @@ class BazarController {
         totalAmount,
         description,
         date,
+        type = 'meal',
         status = 'approved',
       } = req.body;
       const adminId = req.user.id;
@@ -474,6 +480,7 @@ class BazarController {
       }
 
       // Create bazar entry with admin override
+      const bazarType = type === 'flat' ? 'flat' : 'meal';
       const bazar = await Bazar.create({
         userId,
         items,
@@ -481,6 +488,7 @@ class BazarController {
         description,
         date: new Date(date),
         receiptImage,
+        type: bazarType,
         status,
         approvedBy: adminId,
         approvedAt: new Date(),
@@ -510,7 +518,7 @@ class BazarController {
   async adminUpdateBazar(req, res, next) {
     try {
       const { bazarId } = req.params;
-      const { items, totalAmount, description, date, status, notes } = req.body;
+      const { items, totalAmount, description, date, type, status, notes } = req.body;
       const adminId = req.user.id;
 
       // Validate admin permissions
@@ -527,11 +535,11 @@ class BazarController {
         return sendErrorResponse(res, 404, 'Bazar entry not found');
       }
 
-      // Update fields if provided
       if (items) bazar.items = items;
       if (totalAmount !== undefined) bazar.totalAmount = totalAmount;
       if (description !== undefined) bazar.description = description;
       if (date) bazar.date = new Date(date);
+      if (type === 'meal' || type === 'flat') bazar.type = type;
       if (status) bazar.status = status;
       if (notes !== undefined) bazar.notes = notes;
 

@@ -8,8 +8,11 @@ export interface BazarItem {
   price: number;
 }
 
+export type BazarType = 'meal' | 'flat';
+
 export interface BazarEntry {
   id: string;
+  type?: BazarType;
   userId:
     | string
     | {
@@ -33,6 +36,7 @@ export interface BazarEntry {
 }
 
 export interface BazarSubmission {
+  type?: BazarType;
   items: BazarItem[];
   totalAmount: number;
   description?: string;
@@ -53,6 +57,7 @@ export interface BazarFilters {
   startDate?: string;
   endDate?: string;
   status?: 'all' | 'pending' | 'approved' | 'rejected';
+  type?: BazarType | 'all';
   userId?: string;
   limit?: number;
   page?: number;
@@ -112,11 +117,7 @@ export interface BazarService {
 class BazarServiceImpl implements BazarService {
   async submitBazar(data: BazarSubmission): Promise<ApiResponse<BazarEntry>> {
     try {
-      // Validate input data
       if (!data.items || data.items.length === 0) {
-        console.error(
-          '❌ Bazar Service - Validation failed: No items provided'
-        );
         return {
           success: false,
           error: 'At least one item is required',
@@ -124,10 +125,6 @@ class BazarServiceImpl implements BazarService {
       }
 
       if (!data.totalAmount || data.totalAmount <= 0) {
-        console.error(
-          '❌ Bazar Service - Validation failed: Invalid total amount:',
-          data.totalAmount
-        );
         return {
           success: false,
           error: 'Total amount must be greater than 0',
@@ -135,26 +132,22 @@ class BazarServiceImpl implements BazarService {
       }
 
       if (!data.date) {
-        console.error('❌ Bazar Service - Validation failed: No date provided');
         return {
           success: false,
           error: 'Date is required',
         };
       }
 
-      // Get the baseURL from config to verify it's using env config
-      const endpoint = API_ENDPOINTS.BAZAR.SUBMIT;
-
       let response: ApiResponse<BazarEntry>;
 
       if (data.receiptImage) {
-        console.log('📤 Bazar Service - Submitting with receipt image');
         // Upload with file
         const additionalData = {
           items: JSON.stringify(data.items),
           totalAmount: data.totalAmount.toString(),
           description: data.description || '',
           date: data.date,
+          type: data.type || 'meal',
         };
 
         response = await httpClient.uploadFile<BazarEntry>(
@@ -164,9 +157,9 @@ class BazarServiceImpl implements BazarService {
           { offlineFallback: true }
         );
       } else {
-        console.log('📤 Bazar Service - Submitting without receipt image');
         // Upload without file - format data to match backend expectations
         const requestData = {
+          type: data.type || 'meal',
           items: data.items.map(item => ({
             name: item.name.trim(),
             quantity: item.quantity,
@@ -184,21 +177,12 @@ class BazarServiceImpl implements BazarService {
         );
       }
 
-      console.log('📥 Bazar Service - Submit response:', {
-        success: response.success,
-        hasData: !!response.data,
-        error: response.error,
-      });
-
-      // Clear cache after successful submission
       if (response.success) {
         await this.clearBazarCache();
-        console.log('🗑️ Bazar Service - Cache cleared after submission');
       }
 
       return response;
     } catch (error) {
-      console.error('❌ Bazar Service - Submit error:', error);
       return {
         success: false,
         error:
@@ -213,24 +197,14 @@ class BazarServiceImpl implements BazarService {
     filters: BazarFilters = {}
   ): Promise<ApiResponse<BazarEntry[]>> {
     try {
-      console.log('🔄 Bazar Service - Getting user bazar entries:', filters);
-
       const queryParams = this.buildQueryParams(filters);
-      const endpoint = `${API_ENDPOINTS.BAZAR.USER}${queryParams}`;
-
-      console.log('🔗 Bazar Service - Endpoint:', endpoint);
-
-      const response = await httpClient.get<BazarEntry[]>(endpoint, {
-        cache: true,
-        cacheKey: `user_bazar_${JSON.stringify(filters)}`,
-      });
-
-      console.log('📥 Bazar Service - Get user entries response:', {
-        success: response.success,
-        hasData: !!response.data,
-        dataType: typeof response.data,
-        error: response.error,
-      });
+      const response = await httpClient.get<BazarEntry[]>(
+        `${API_ENDPOINTS.BAZAR.USER}${queryParams}`,
+        {
+          cache: true,
+          cacheKey: `user_bazar_${JSON.stringify(filters)}`,
+        }
+      );
 
       // Transform the response to match expected structure
       if (response.success && response.data) {
@@ -242,7 +216,6 @@ class BazarServiceImpl implements BazarService {
           typeof response.data === 'object' &&
           'bazarEntries' in response.data
         ) {
-          console.log('🔄 Bazar Service - Handling nested response structure');
           bazarEntries =
             (response.data as { bazarEntries?: BazarEntry[] }).bazarEntries ??
             [];
@@ -255,12 +228,11 @@ class BazarServiceImpl implements BazarService {
               (entry: RawEntry): BazarEntry => ({
                 ...entry,
                 id: entry._id ?? entry.id ?? '',
-                // Ensure all required fields exist
+                type: entry.type === 'flat' ? 'flat' : 'meal',
                 items: entry.items || [],
                 totalAmount: entry.totalAmount || 0,
                 date: entry.date || new Date().toISOString(),
                 status: entry.status || 'pending',
-                // Handle populated userId field (can be string or object)
                 userId: entry.userId || 'Unknown',
                 description: entry.description || '',
                 createdAt: entry.createdAt || new Date().toISOString(),
@@ -268,11 +240,6 @@ class BazarServiceImpl implements BazarService {
               })
             )
           : [];
-
-        console.log('📊 Bazar Service - Transformed entries:', {
-          originalCount: Array.isArray(bazarEntries) ? bazarEntries.length : 0,
-          transformedCount: transformedEntries.length,
-        });
 
         return {
           ...response,
@@ -282,7 +249,6 @@ class BazarServiceImpl implements BazarService {
 
       return response;
     } catch (error) {
-      console.error('❌ Bazar Service - Get user entries error:', error);
       return {
         success: false,
         error:
@@ -333,6 +299,7 @@ class BazarServiceImpl implements BazarService {
           (entry: RawEntry): BazarEntry => ({
             ...entry,
             id: entry._id ?? entry.id ?? '',
+            type: entry.type === 'flat' ? 'flat' : 'meal',
             items: entry.items || [],
             totalAmount: entry.totalAmount || 0,
             date: entry.date || new Date().toISOString(),
@@ -368,32 +335,17 @@ class BazarServiceImpl implements BazarService {
     status: BazarStatusUpdate
   ): Promise<ApiResponse<BazarEntry>> {
     try {
-      console.log('🔄 Bazar Service - Updating bazar status:', {
-        bazarId,
-        status: status.status,
-        notes: status.notes,
-      });
-
       const response = await httpClient.patch<BazarEntry>(
         API_ENDPOINTS.BAZAR.STATUS(bazarId),
         status
       );
 
-      console.log('📥 Bazar Service - Update status response:', {
-        success: response.success,
-        hasData: !!response.data,
-        error: response.error,
-      });
-
-      // Clear cache after status update
       if (response.success) {
         await this.clearBazarCache();
-        console.log('🗑️ Bazar Service - Cache cleared after status update');
       }
 
       return response;
     } catch (error) {
-      console.error('❌ Bazar Service - Update status error:', error);
       return {
         success: false,
         error:
@@ -430,8 +382,6 @@ class BazarServiceImpl implements BazarService {
 
   async getBazarById(bazarId: string): Promise<ApiResponse<BazarEntry>> {
     try {
-      console.log('🔍 Bazar Service - Getting bazar by ID:', bazarId);
-
       const response = await httpClient.get<BazarEntry>(
         API_ENDPOINTS.BAZAR.BY_ID(bazarId),
         {
@@ -440,15 +390,8 @@ class BazarServiceImpl implements BazarService {
         }
       );
 
-      console.log('📥 Bazar Service - Get by ID response:', {
-        success: response.success,
-        hasData: !!response.data,
-        error: response.error,
-      });
-
       return response;
     } catch (error) {
-      console.error('❌ Bazar Service - Get by ID error:', error);
       return {
         success: false,
         error:
@@ -464,34 +407,18 @@ class BazarServiceImpl implements BazarService {
     data: Partial<BazarSubmission>
   ): Promise<ApiResponse<BazarEntry>> {
     try {
-      console.log('🔧 Bazar Service - Updating bazar entry:', {
-        bazarId,
-        itemsCount: data.items?.length,
-        totalAmount: data.totalAmount,
-        hasDescription: !!data.description,
-        date: data.date,
-      });
-
       const response = await httpClient.put<BazarEntry>(
         API_ENDPOINTS.BAZAR.UPDATE(bazarId),
         data,
         { cache: false }
       );
 
-      console.log('📥 Bazar Service - Update response:', {
-        success: response.success,
-        hasData: !!response.data,
-        error: response.error,
-      });
-
       if (response.success) {
         await this.clearBazarCache();
-        console.log('🗑️ Bazar Service - Cache cleared after update');
       }
 
       return response;
     } catch (error) {
-      console.error('❌ Bazar Service - Update error:', error);
       return {
         success: false,
         error:
@@ -504,26 +431,16 @@ class BazarServiceImpl implements BazarService {
 
   async deleteBazar(bazarId: string): Promise<ApiResponse<void>> {
     try {
-      console.log('🗑️ Bazar Service - Deleting bazar entry:', bazarId);
-
       const response = await httpClient.delete<void>(
         API_ENDPOINTS.BAZAR.DELETE(bazarId)
       );
 
-      console.log('📥 Bazar Service - Delete response:', {
-        success: response.success,
-        error: response.error,
-      });
-
-      // Clear cache after deletion
       if (response.success) {
         await this.clearBazarCache();
-        console.log('🗑️ Bazar Service - Cache cleared after deletion');
       }
 
       return response;
     } catch (error) {
-      console.error('❌ Bazar Service - Delete error:', error);
       return {
         success: false,
         error:
@@ -562,6 +479,8 @@ class BazarServiceImpl implements BazarService {
     if (filters.endDate) params.append('endDate', filters.endDate);
     if (filters.status && filters.status !== 'all')
       params.append('status', filters.status);
+    if (filters.type && filters.type !== 'all')
+      params.append('type', filters.type);
     if (filters.userId) params.append('userId', filters.userId);
     if (filters.limit) params.append('limit', filters.limit.toString());
     if (filters.page) params.append('page', filters.page.toString());
@@ -572,28 +491,16 @@ class BazarServiceImpl implements BazarService {
 
   async clearBazarCache(): Promise<void> {
     try {
-      console.log('🗑️ Bazar Service - Clearing bazar cache');
-      // Clear all bazar-related cache
       await httpClient.clearCache();
-
-      // Also clear dashboard cache since bazar entries affect dashboard stats
       try {
         const { default: dashboardService } =
           await import('./dashboardService');
         await dashboardService.refreshDashboard();
-        console.log(
-          '🔄 Bazar Service - Dashboard cache refreshed after bazar submission'
-        );
-      } catch (error) {
-        console.log(
-          '⚠️ Bazar Service - Could not refresh dashboard cache:',
-          error
-        );
+      } catch {
+        // Dashboard refresh is best-effort; ignore
       }
-
-      console.log('✅ Bazar Service - Cache cleared successfully');
-    } catch (error) {
-      console.error('❌ Bazar Service - Failed to clear bazar cache:', error);
+    } catch {
+      // Cache clear is best-effort; ignore
     }
   }
 

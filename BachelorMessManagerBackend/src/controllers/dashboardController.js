@@ -4,6 +4,7 @@ const Bazar = require('../models/Bazar');
 const { config } = require('../config/config');
 const logger = require('../utils/logger');
 const { sendSuccessResponse } = require('../utils/responseHandler');
+const { mealBazarMatch } = require('../utils/bazarHelper');
 
 class DashboardController {
   // Get dashboard statistics - Simplified version to fix hanging issue
@@ -16,10 +17,8 @@ class DashboardController {
         `Getting dashboard stats for user: ${userId}, isAdmin: ${isAdmin}`
       );
 
-      // Get basic counts instead of complex stats
       const userCount = await User.countDocuments({ status: 'active' });
       const mealCount = await Meal.countDocuments(isAdmin ? {} : { userId });
-      // const bazarCount = await Bazar.countDocuments(isAdmin ? {} : { userId });
 
       // Get pending counts
       const pendingMeals = await Meal.countDocuments({
@@ -32,9 +31,11 @@ class DashboardController {
         status: 'pending',
       });
 
-      // Calculate total bazar amount
+      // Calculate total meal bazar amount only (excludes flat; used for meal rate)
+      const mealOnlyFilter = mealBazarMatch();
+      const baseMatch = isAdmin ? mealOnlyFilter : { ...mealOnlyFilter, userId };
       const bazarAmounts = await Bazar.aggregate([
-        { $match: isAdmin ? {} : { userId } },
+        { $match: baseMatch },
         { $group: { _id: null, totalAmount: { $sum: '$totalAmount' } } },
       ]);
 

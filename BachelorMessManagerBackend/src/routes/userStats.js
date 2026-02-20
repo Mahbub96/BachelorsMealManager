@@ -9,7 +9,10 @@ const { getGroupMemberIds } = require('../utils/groupHelper');
 const {
   getCurrentMonthRange,
   aggregateStatsAmounts,
-  aggregateSumInDateRange,
+  mealBazarMatch,
+  flatBazarMatch,
+  buildUserScopeMatch,
+  getBazarSumInMonth,
 } = require('../utils/bazarHelper');
 const { aggregateMealStats, aggregateMealLastDate } = require('../utils/mealHelper');
 const {
@@ -25,7 +28,7 @@ const {
  * @desc    Get comprehensive user dashboard statistics (group-scoped for admin/member)
  * @access  Private
  * - All card numbers use CURRENT MONTH only so they match UI "this month" and MongoDB.
- * - Meal rate = group total bazar / group total meals (current month).
+ * - Meal rate = group total MEAL bazar / group total meals (current month). Flat bazar excluded.
  * - lastMealDate = all-time so "days since last meal" is meaningful.
  */
 router.get('/dashboard', protect, async (req, res) => {
@@ -36,6 +39,7 @@ router.get('/dashboard', protect, async (req, res) => {
     const currentDate = new Date();
     const monthRange = getCurrentMonthRange();
     const dateFilter = currentMonthDateFilter(monthRange);
+    const mealOnlyFilter = mealBazarMatch();
 
     let groupMemberIds = null;
     try {
@@ -60,45 +64,31 @@ router.get('/dashboard', protect, async (req, res) => {
       rejectedCount: 0,
       lastMealDate: null,
     };
-    let bazarData = {
-      totalAmount: 0,
-      totalEntries: 0,
-      pendingAmount: 0,
-      approvedAmount: 0,
-    };
-    let myBazarTotal = 0;
+    const scopeMatch = buildUserScopeMatch(userId, groupMemberIds);
+    const mealMatchMonth = { ...mealOnlyFilter, ...scopeMatch, date: dateFilter };
 
     if (useGroup) {
       const mealMatchMonthGroup = { userId: { $in: groupMemberIds }, date: dateFilter };
       mealData = await aggregateMealStats(Meal, mealMatchMonthGroup);
       mealData.lastMealDate = await aggregateMealLastDate(Meal, { userId: { $in: groupMemberIds } });
       finalTotalMeals = mealData.totalMeals;
-
-      bazarData = await aggregateStatsAmounts(Bazar, {
-        userId: { $in: groupMemberIds },
-        date: dateFilter,
-      });
-      const groupBazarThisMonth = await aggregateSumInDateRange(
-        Bazar,
-        { userId: { $in: groupMemberIds } },
-        monthRange
-      );
-      myBazarTotal = await aggregateSumInDateRange(Bazar, { userId }, monthRange);
-
-      mealData._mealRateMeals = finalTotalMeals;
-      bazarData._mealRateBazar = groupBazarThisMonth;
     } else {
       const mealMatchMonthUser = { userId, date: dateFilter };
       mealData = await aggregateMealStats(Meal, mealMatchMonthUser);
       mealData.lastMealDate = await aggregateMealLastDate(Meal, { userId });
       finalTotalMeals = mealData.totalMeals;
-
-      bazarData = await aggregateStatsAmounts(Bazar, { userId, date: dateFilter });
-      myBazarTotal = bazarData.totalAmount || 0;
-
-      mealData._mealRateMeals = finalTotalMeals;
-      bazarData._mealRateBazar = bazarData.totalAmount || 0;
     }
+
+    const bazarData = await aggregateStatsAmounts(Bazar, mealMatchMonth);
+    const [groupMealBazarSum, myBazarTotal, flatBazarTotalAmount] = await Promise.all([
+      getBazarSumInMonth(Bazar, mealBazarMatch(), userId, groupMemberIds, monthRange),
+      getBazarSumInMonth(Bazar, mealBazarMatch(), userId, null, monthRange),
+      getBazarSumInMonth(Bazar, flatBazarMatch(), userId, groupMemberIds, monthRange),
+    ]);
+    const flatBazarMemberCount = (groupMemberIds && groupMemberIds.length > 0) ? groupMemberIds.length : 1;
+
+    mealData._mealRateMeals = finalTotalMeals;
+    bazarData._mealRateBazar = groupMealBazarSum;
 
     const daysSinceLastMeal = daysSince(mealData.lastMealDate, currentDate);
     const mealEfficiency = ratioPercent(mealData.approvedCount, mealData.totalEntries);
@@ -118,6 +108,8 @@ router.get('/dashboard', protect, async (req, res) => {
 
     const guestMealsCount = mealData.totalGuestMeals || 0;
     const totalMealsWithGuest = finalTotalMeals; // already includes guest from aggregation
+    const flatSharePerPerson =
+      flatBazarMemberCount > 0 ? flatBazarTotalAmount / flatBazarMemberCount : 0;
     const dashboardStats = {
       meals: {
         total: totalMealsWithGuest,
@@ -136,6 +128,11 @@ router.get('/dashboard', protect, async (req, res) => {
         totalEntries: bazarData.totalEntries || 0,
         averageAmount: averageAmount,
         myTotalAmount: myBazarTotal,
+      },
+      flatBazar: {
+        totalAmount: flatBazarTotalAmount,
+        memberCount: flatBazarMemberCount,
+        sharePerPerson: flatSharePerPerson,
       },
       currentMealRate: {
         rate: currentMealRate,
@@ -248,28 +245,18 @@ router.get('/bazar', protect, async (req, res) => {
       });
     }
     const useGroup = Array.isArray(groupMemberIds) && groupMemberIds.length > 0;
+    const mealOnlyFilter = mealBazarMatch();
 
-    const matchStage = useGroup
-      ? { userId: { $in: groupMemberIds } }
-      : { userId };
+    const scopeMatch = buildUserScopeMatch(userId, groupMemberIds);
+    const matchStage = { ...mealOnlyFilter, ...scopeMatch };
     const bazarData = await aggregateStatsAmounts(Bazar, matchStage);
 
     const averageAmount = safeAverage(bazarData.totalAmount, bazarData.totalEntries);
 
-    const myTotalAmountCurrentMonth = await aggregateSumInDateRange(
-      Bazar,
-      { userId },
-      monthRange
-    );
-
-    let groupTotalAmount = null;
-    if (useGroup) {
-      groupTotalAmount = await aggregateSumInDateRange(
-        Bazar,
-        { userId: { $in: groupMemberIds } },
-        monthRange
-      );
-    }
+    const [myTotalAmountCurrentMonth, groupTotalAmount] = await Promise.all([
+      getBazarSumInMonth(Bazar, mealOnlyFilter, userId, null, monthRange),
+      useGroup ? getBazarSumInMonth(Bazar, mealOnlyFilter, userId, groupMemberIds, monthRange) : null,
+    ]);
 
     const bazarStatistics = {
       totalAmount: bazarData.totalAmount,

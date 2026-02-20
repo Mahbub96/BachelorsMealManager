@@ -22,6 +22,7 @@ import { ModernLoader } from './ui/ModernLoader';
 import bazarService, {
   BazarSubmission,
   BazarItem,
+  type BazarType,
 } from '../services/bazarService';
 import { useColorScheme } from '../hooks/useColorScheme';
 import { useAuth } from '@/context/AuthContext';
@@ -49,6 +50,7 @@ export const BazarForm: React.FC<BazarFormProps> = ({
     initialDate ? new Date(initialDate) : new Date()
   );
   const [formData, setFormData] = useState<BazarSubmission>({
+    type: 'meal',
     items: [{ name: '', quantity: '', price: 0 }],
     totalAmount: 0,
     description: '',
@@ -125,11 +127,10 @@ export const BazarForm: React.FC<BazarFormProps> = ({
 
     setLoading(true);
     try {
-      console.log('🔄 Submitting bazar entry:', formData);
 
       const submissionData: BazarSubmission = {
         ...formData,
-        // Ensure items are properly formatted
+        type: formData.type || 'meal',
         items: formData.items.map(item => ({
           name: item.name.trim(),
           quantity: item.quantity.trim(),
@@ -140,15 +141,7 @@ export const BazarForm: React.FC<BazarFormProps> = ({
         date: formData.date,
       };
 
-      console.log('🔄 Formatted submission data:', submissionData);
-
       const response = await bazarService.submitBazar(submissionData);
-
-      console.log('🔄 Bazar submission response:', {
-        success: response.success,
-        error: response.error,
-        data: response.data,
-      });
 
       if (response.success) {
         Alert.alert('Success', 'Bazar entry submitted successfully!', [
@@ -161,12 +154,9 @@ export const BazarForm: React.FC<BazarFormProps> = ({
           },
         ]);
       } else {
-        const errorMessage = response.error || 'Failed to submit bazar entry';
-        console.error('❌ Bazar submission failed:', errorMessage);
-        Alert.alert('Submission Error', errorMessage);
+        Alert.alert('Submission Error', response.error || 'Failed to submit bazar entry');
       }
     } catch (error) {
-      console.error('❌ Unexpected error during bazar submission:', error);
       Alert.alert('Error', 'An unexpected error occurred. Please try again.', [
         {
           text: 'Retry',
@@ -185,6 +175,7 @@ export const BazarForm: React.FC<BazarFormProps> = ({
   const resetForm = () => {
     setFormData({
       items: [{ name: '', quantity: '', price: 0 }],
+      type: 'meal',
       totalAmount: 0,
       description: '',
       date: new Date().toISOString().split('T')[0],
@@ -345,6 +336,72 @@ export const BazarForm: React.FC<BazarFormProps> = ({
               </ThemedText>
             </View>
           </LinearGradient>
+        </View>
+
+        {/* Bazar Type: Meal (groceries) vs Flat (shared) */}
+        <View
+          style={[styles.section, { marginBottom: isSmallScreen ? 14 : 18 }]}
+        >
+          <ThemedText
+            style={[
+              styles.sectionTitle,
+              isSmallScreen && styles.sectionTitleSmall,
+            ]}
+          >
+            Type
+          </ThemedText>
+          <View style={styles.typeRow}>
+            <TouchableOpacity
+              style={[
+                styles.typeButton,
+                (formData.type || 'meal') === 'meal' && styles.typeButtonActive,
+              ]}
+              onPress={() =>
+                setFormData(prev => ({ ...prev, type: 'meal' as BazarType }))
+              }
+            >
+              <Ionicons
+                name='restaurant'
+                size={20}
+                color={(formData.type || 'meal') === 'meal' ? '#fff' : '#667eea'}
+              />
+              <ThemedText
+                style={[
+                  styles.typeButtonText,
+                  (formData.type || 'meal') === 'meal' &&
+                    styles.typeButtonTextActive,
+                ]}
+              >
+                Meal (groceries)
+              </ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.typeButton,
+                formData.type === 'flat' && styles.typeButtonActive,
+              ]}
+              onPress={() =>
+                setFormData(prev => ({ ...prev, type: 'flat' as BazarType }))
+              }
+            >
+              <Ionicons
+                name='home'
+                size={20}
+                color={formData.type === 'flat' ? '#fff' : '#667eea'}
+              />
+              <ThemedText
+                style={[
+                  styles.typeButtonText,
+                  formData.type === 'flat' && styles.typeButtonTextActive,
+                ]}
+              >
+                Flat (shared)
+              </ThemedText>
+            </TouchableOpacity>
+          </View>
+          <ThemedText style={styles.typeHint}>
+            Meal = used for meal rate. Flat = split equally (e.g. fridge, stove).
+          </ThemedText>
         </View>
 
         {/* Date Selection */}
@@ -813,6 +870,41 @@ const styles = StyleSheet.create({
   },
   sectionTitleSmall: {
     fontSize: 14,
+  },
+  typeRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 6,
+  },
+  typeButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#667eea',
+    backgroundColor: '#fff',
+    gap: 6,
+  },
+  typeButtonActive: {
+    backgroundColor: '#667eea',
+    borderColor: '#667eea',
+  },
+  typeButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#667eea',
+  },
+  typeButtonTextActive: {
+    color: '#fff',
+  },
+  typeHint: {
+    fontSize: 11,
+    color: '#6b7280',
+    marginTop: 2,
   },
   addButton: {
     flexDirection: 'row',

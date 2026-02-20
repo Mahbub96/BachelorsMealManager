@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Statistics = require('../models/Statistics');
 const { getGroupMemberIds } = require('../utils/groupHelper');
+const { mealBazarMatch, flatBazarMatch } = require('../utils/bazarHelper');
 const logger = require('../utils/logger');
 
 class StatisticsService {
@@ -318,7 +319,9 @@ class StatisticsService {
         },
       ]);
 
+      const mealBazarMatchFilter = mealBazarMatch();
       const bazarMatch = {
+        ...mealBazarMatchFilter,
         date: { $gte: startDate, $lte: endDate },
         status: 'approved',
       };
@@ -327,9 +330,7 @@ class StatisticsService {
       }
 
       const bazarStats = await Bazar.aggregate([
-        {
-          $match: bazarMatch,
-        },
+        { $match: bazarMatch },
         {
           $group: {
             _id: '$userId',
@@ -339,54 +340,73 @@ class StatisticsService {
         },
       ]);
 
+      const flatBazarMatchFilter = flatBazarMatch();
+      const flatMatch = {
+        ...flatBazarMatchFilter,
+        date: { $gte: startDate, $lte: endDate },
+      };
+      if (Array.isArray(groupMemberIds) && groupMemberIds.length > 0) {
+        flatMatch.userId = { $in: groupMemberIds };
+      }
+      const [flatBazarTotalResult, flatBazarByUser] = await Promise.all([
+        Bazar.aggregate([
+          { $match: flatMatch },
+          { $group: { _id: null, total: { $sum: '$totalAmount' } } },
+        ]),
+        Bazar.aggregate([
+          { $match: flatMatch },
+          { $group: { _id: '$userId', total: { $sum: '$totalAmount' } } },
+        ]),
+      ]);
+      const totalFlatBazar = flatBazarTotalResult[0]?.total ?? 0;
+
       const participantIds = new Set([
         ...mealStats.map(m => m._id.toString()),
         ...bazarStats.map(b => b._id.toString()),
+        ...flatBazarByUser.map(f => f._id.toString()),
       ]);
 
       const userQuery = Array.isArray(groupMemberIds) && groupMemberIds.length > 0
         ? { _id: { $in: groupMemberIds } }
-        : {
-          $or: [
-            { _id: { $in: Array.from(participantIds) } },
-            { status: 'active' },
-          ],
-        };
+        : { _id: { $in: Array.from(participantIds).map(id => new mongoose.Types.ObjectId(id)) } };
       const users = await User.find(userQuery)
         .select('name email phone profileImage status')
         .lean();
 
-      // Calculate totals
       const totalMeals = mealStats.reduce((sum, item) => sum + item.totalMeals, 0);
-      const totalCost = bazarStats.reduce((sum, item) => sum + item.totalAmount, 0);
+      const totalMealBazar = bazarStats.reduce((sum, item) => sum + item.totalAmount, 0);
+      const memberCount = users.length;
+      const flatSharePerPerson = memberCount > 0 ? totalFlatBazar / memberCount : 0;
 
-      // Calculate Meal Rate (Cost / Total Meals)
-      // If no meals, rate is 0 to avoid division by zero
-      const mealRate = totalMeals > 0 ? totalCost / totalMeals : 0;
+      const mealRate = totalMeals > 0 ? totalMealBazar / totalMeals : 0;
 
-      // Map data to users
-      const memberReports = users.map(user => {
-        const userMeal = mealStats.find(m => m._id.toString() === user._id.toString()) || {
+      const memberReports = users.map(member => {
+        const userMeal = mealStats.find(m => m._id.toString() === member._id.toString()) || {
           totalMeals: 0,
           totalBreakfast: 0,
           totalLunch: 0,
           totalDinner: 0,
         };
 
-        const userBazar = bazarStats.find(b => b._id.toString() === user._id.toString()) || {
+        const userBazar = bazarStats.find(b => b._id.toString() === member._id.toString()) || {
           totalAmount: 0,
           entryCount: 0,
         };
+        const userFlatEntry = flatBazarByUser.find(f => f._id.toString() === member._id.toString());
+        const flatContributed = userFlatEntry?.total ?? 0;
 
         const mealCost = userMeal.totalMeals * mealRate;
-        const balance = userBazar.totalAmount - mealCost; // Deposit - Cost
+        const flatSettlement = flatContributed - flatSharePerPerson;
+        const totalIn = userBazar.totalAmount + flatContributed;
+        const totalOut = mealCost + flatSharePerPerson;
+        const balance = totalIn - totalOut;
 
         return {
           user: {
-            _id: user._id,
-            name: user.name,
-            email: user.email,
-            profileImage: user.profileImage,
+            _id: member._id,
+            name: member.name,
+            email: member.email,
+            profileImage: member.profileImage,
           },
           meals: {
             total: userMeal.totalMeals,
@@ -396,6 +416,9 @@ class StatisticsService {
           },
           bazar: {
             totalAmount: userBazar.totalAmount,
+            flatContributed: Number(flatContributed.toFixed(2)),
+            flatShare: Number(flatSharePerPerson.toFixed(2)),
+            flatSettlement: Number(flatSettlement.toFixed(2)),
             entryCount: userBazar.entryCount,
           },
           financial: {
@@ -416,7 +439,9 @@ class StatisticsService {
           },
           summary: {
             totalMeals,
-            totalCost,
+            totalCost: totalMealBazar,
+            totalFlatBazar: Number(totalFlatBazar.toFixed(2)),
+            flatSharePerPerson: Number(flatSharePerPerson.toFixed(2)),
             mealRate: Number(mealRate.toFixed(2)),
             totalMembers: users.length,
           },

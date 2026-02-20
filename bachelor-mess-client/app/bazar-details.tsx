@@ -120,6 +120,7 @@ export default function BazarDetailsScreen() {
       setEditing(true);
 
       const updateData = {
+        type: editData.type ?? bazar.type ?? 'meal',
         items: editData.items || bazar.items,
         totalAmount: editData.totalAmount || bazar.totalAmount,
         description: editData.description || bazar.description,
