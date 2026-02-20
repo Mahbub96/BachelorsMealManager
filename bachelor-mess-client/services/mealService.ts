@@ -23,6 +23,11 @@ export interface MealEntry {
     approvedAt?: string;
     approvedBy?: string;
   };
+  /** Optional guest meal counts (for tracking when member has guests) */
+  guestBreakfast?: number;
+  guestLunch?: number;
+  guestDinner?: number;
+  totalGuestMeals?: number;
 }
 
 export interface MealSubmission {
@@ -31,6 +36,9 @@ export interface MealSubmission {
   dinner: boolean;
   date: string;
   notes?: string;
+  guestBreakfast?: number;
+  guestLunch?: number;
+  guestDinner?: number;
 }
 
 export interface MealUpdate {
@@ -38,6 +46,9 @@ export interface MealUpdate {
   lunch?: boolean;
   dinner?: boolean;
   notes?: string;
+  guestBreakfast?: number;
+  guestLunch?: number;
+  guestDinner?: number;
 }
 
 export interface MealStatusUpdate {
@@ -123,10 +134,18 @@ class MealServiceImpl implements MealService {
 
       // Remove userId from data if present - backend should use authenticated user's ID from token
       // This prevents "userId already exists" errors when different users submit meals
-      const { userId, user_id, ...mealData } = data as unknown as Record<
+      const { userId, user_id, ...rest } = data as unknown as Record<
         string,
         unknown
       > & { userId?: string; user_id?: string };
+      // Sanitize optional guest counts for production (0–99)
+      const clamp = (n: unknown) => Math.min(99, Math.max(0, Number(n) || 0));
+      const mealData = {
+        ...rest,
+        guestBreakfast: rest.guestBreakfast !== undefined ? clamp(rest.guestBreakfast) : 0,
+        guestLunch: rest.guestLunch !== undefined ? clamp(rest.guestLunch) : 0,
+        guestDinner: rest.guestDinner !== undefined ? clamp(rest.guestDinner) : 0,
+      };
 
       const response = await httpClient.post<MealEntry>(
         API_ENDPOINTS.MEALS.SUBMIT,

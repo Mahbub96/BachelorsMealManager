@@ -51,8 +51,21 @@ const PendingMealsBanner: React.FC<{
         },
       ]}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 12 }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            flex: 1,
+            marginRight: 12,
+          }}
+        >
           <Ionicons
             name='time-outline'
             size={24}
@@ -97,7 +110,12 @@ const PendingMealsBanner: React.FC<{
           activeOpacity={0.8}
         >
           <LinearGradient
-            colors={(theme.gradient?.success || ['#10b981', '#059669']) as [string, string]}
+            colors={
+              (theme.gradient?.success || ['#10b981', '#059669']) as [
+                string,
+                string,
+              ]
+            }
             style={{
               flexDirection: 'row',
               alignItems: 'center',
@@ -108,7 +126,9 @@ const PendingMealsBanner: React.FC<{
             }}
           >
             <Ionicons name='checkmark-circle' size={18} color='#fff' />
-            <ThemedText style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>
+            <ThemedText
+              style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}
+            >
               Approve All
             </ThemedText>
           </LinearGradient>
@@ -232,14 +252,23 @@ export const EnhancedMealManagement: React.FC<EnhancedMealManagementProps> = ({
         ]
       );
     },
-    [selectedMeals, handleDeleteMeal, handleStatusUpdate, refreshMeals, showAlert]
+    [
+      selectedMeals,
+      handleDeleteMeal,
+      handleStatusUpdate,
+      refreshMeals,
+      showAlert,
+    ]
   );
 
-  const handleEnhancedMealPress = useCallback((meal: MealEntry) => {
-    handleMealPress(meal);
-    setSelectedMeal(meal);
-    setShowMealDetails(true);
-  }, [handleMealPress]);
+  const handleEnhancedMealPress = useCallback(
+    (meal: MealEntry) => {
+      handleMealPress(meal);
+      setSelectedMeal(meal);
+      setShowMealDetails(true);
+    },
+    [handleMealPress]
+  );
 
   const handleTabPress = useCallback(
     (tab: string) => {
@@ -248,7 +277,15 @@ export const EnhancedMealManagement: React.FC<EnhancedMealManagementProps> = ({
       } else {
         setCurrentView('meals');
         const statusFilter =
-          tab === 'overview' ? undefined : (tab === 'pending' ? 'pending' : tab === 'approved' ? 'approved' : tab === 'rejected' ? 'rejected' : undefined);
+          tab === 'overview'
+            ? undefined
+            : tab === 'pending'
+              ? 'pending'
+              : tab === 'approved'
+                ? 'approved'
+                : tab === 'rejected'
+                  ? 'rejected'
+                  : undefined;
         updateFilters({
           ...filters,
           status: statusFilter,
@@ -270,7 +307,8 @@ export const EnhancedMealManagement: React.FC<EnhancedMealManagementProps> = ({
     let filtered = meals;
 
     // Filter by status based on active tab
-    const activeStatus = currentView === 'analytics' ? undefined : filters.status;
+    const activeStatus =
+      currentView === 'analytics' ? undefined : filters.status;
 
     if (activeStatus && activeStatus !== undefined) {
       filtered = filtered.filter(meal => meal.status === activeStatus);
@@ -413,31 +451,35 @@ export const EnhancedMealManagement: React.FC<EnhancedMealManagementProps> = ({
       ) : (
         <>
           {!hasMeals && !loading && (
-            <ThemedText style={{ padding: 16, textAlign: 'center' }}>No meals yet. Add your first meal!</ThemedText>
+            <ThemedText style={{ padding: 16, textAlign: 'center' }}>
+              No meals yet. Add your first meal!
+            </ThemedText>
           )}
           {/* Pending Meals Summary Banner */}
-          {filters.status === 'pending' && pendingMealsCount > 0 && canApproveMeals && (
-            <PendingMealsBanner
-              count={pendingMealsCount}
-              onApproveAll={() => {
-                const pendingMealIds = filteredMeals
-                  .filter(m => m.status === 'pending')
-                  .map(m => m.id);
-                if (pendingMealIds.length > 0) {
-                  setSelectedMeals(pendingMealIds);
-                  handleBulkAction('approve');
-                }
-              }}
-            />
-          )}
+          {filters.status === 'pending' &&
+            pendingMealsCount > 0 &&
+            canApproveMeals && (
+              <PendingMealsBanner
+                count={pendingMealsCount}
+                onApproveAll={() => {
+                  const pendingMealIds = filteredMeals
+                    .filter(m => m.status === 'pending')
+                    .map(m => m.id);
+                  if (pendingMealIds.length > 0) {
+                    setSelectedMeals(pendingMealIds);
+                    handleBulkAction('approve');
+                  }
+                }}
+              />
+            )}
 
           {canBulkOperate && (
-          <MealBulkActions
-            selectedCount={selectedMeals.length}
-            onApprove={() => handleBulkAction('approve')}
-            onReject={() => handleBulkAction('reject')}
-            onDelete={() => handleBulkAction('delete')}
-          />
+            <MealBulkActions
+              selectedCount={selectedMeals.length}
+              onApprove={() => handleBulkAction('approve')}
+              onReject={() => handleBulkAction('reject')}
+              onDelete={() => handleBulkAction('delete')}
+            />
           )}
 
           <MealList
@@ -462,14 +504,16 @@ export const EnhancedMealManagement: React.FC<EnhancedMealManagementProps> = ({
   if (loading) {
     return (
       <ThemedView style={styles.mainContainer}>
-        <ModernLoader size="large" />
+        <ModernLoader size='large' />
       </ThemedView>
     );
   }
   if (error) {
     return (
       <ThemedView style={styles.mainContainer}>
-        <ThemedText style={{ padding: 16, color: theme?.status?.error }}>{error}</ThemedText>
+        <ThemedText style={{ padding: 16, color: theme?.status?.error }}>
+          {error}
+        </ThemedText>
       </ThemedView>
     );
   }

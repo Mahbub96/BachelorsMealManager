@@ -183,13 +183,22 @@ export default function MealsScreen() {
     });
   };
 
-  // Get meal types text
-  const getMealTypesText = (meal: { breakfast?: boolean; lunch?: boolean; dinner?: boolean }) => {
+  // Get meal types text (regular meals + guest count when present)
+  const getMealTypesText = (meal: {
+    breakfast?: boolean;
+    lunch?: boolean;
+    dinner?: boolean;
+    guestBreakfast?: number;
+    guestLunch?: number;
+    guestDinner?: number;
+  }) => {
     const types = [];
     if (meal.breakfast) types.push('Breakfast');
     if (meal.lunch) types.push('Lunch');
     if (meal.dinner) types.push('Dinner');
-    return types.join(', ');
+    const regular = types.join(', ') || 'No meals';
+    const guestTotal = (meal.guestBreakfast ?? 0) + (meal.guestLunch ?? 0) + (meal.guestDinner ?? 0);
+    return guestTotal > 0 ? `${regular} • ${guestTotal} guest(s)` : regular;
   };
 
   // Filter meals by status

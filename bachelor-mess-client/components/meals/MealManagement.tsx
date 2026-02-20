@@ -43,12 +43,19 @@ type MealLike = {
   userId?: string | { _id?: string };
   status?: string;
   date?: string;
+  guestBreakfast?: number;
+  guestLunch?: number;
+  guestDinner?: number;
 };
 
 function getMealSlots(meal: MealLike): number {
-  return (
-    (meal?.breakfast ? 1 : 0) + (meal?.lunch ? 1 : 0) + (meal?.dinner ? 1 : 0)
-  );
+  const regular =
+    (meal?.breakfast ? 1 : 0) + (meal?.lunch ? 1 : 0) + (meal?.dinner ? 1 : 0);
+  const guest =
+    (meal?.guestBreakfast ?? 0) +
+    (meal?.guestLunch ?? 0) +
+    (meal?.guestDinner ?? 0);
+  return regular + guest;
 }
 
 function countMealSlots<T extends MealLike>(
@@ -88,6 +95,12 @@ export const MealManagement: React.FC<MealManagementProps> = ({
     lunch: false,
     dinner: false,
   });
+  const [guestMeals, setGuestMeals] = useState({
+    breakfast: 0,
+    lunch: 0,
+    dinner: 0,
+  });
+  const [showGuestMeals, setShowGuestMeals] = useState(false);
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -135,6 +148,15 @@ export const MealManagement: React.FC<MealManagementProps> = ({
     () => (meals || []).filter(isMyMeal).slice(0, 5),
     [meals, isMyMeal]
   );
+
+  const summaryByType = useMemo(() => {
+    const my = (meals || []).filter(isMyMeal);
+    return {
+      breakfast: my.filter(m => m?.breakfast).length + my.reduce((s, m) => s + (m?.guestBreakfast ?? 0), 0),
+      lunch: my.filter(m => m?.lunch).length + my.reduce((s, m) => s + (m?.guestLunch ?? 0), 0),
+      dinner: my.filter(m => m?.dinner).length + my.reduce((s, m) => s + (m?.guestDinner ?? 0), 0),
+    };
+  }, [meals, isMyMeal]);
 
   const { register, unregister, refreshAll } = useAppRefresh();
 
@@ -286,15 +308,18 @@ export const MealManagement: React.FC<MealManagementProps> = ({
         dinner: selectedMeals.dinner,
         date: selectedDate.toISOString().split('T')[0],
         notes: notes.trim(),
+        guestBreakfast: guestMeals.breakfast || 0,
+        guestLunch: guestMeals.lunch || 0,
+        guestDinner: guestMeals.dinner || 0,
       };
 
       const response = await mealService.submitMeal(mealData);
 
-      console.log('response from submitMeal', response);
-
       if (response.success) {
         showAlert('Success', 'Meal submitted successfully!', 'success');
         setSelectedMeals({ breakfast: false, lunch: false, dinner: false });
+        setGuestMeals({ breakfast: 0, lunch: 0, dinner: 0 });
+        setShowGuestMeals(false);
         setNotes('');
         setSelectedDate(new Date());
         await refreshMeals();
@@ -327,17 +352,47 @@ export const MealManagement: React.FC<MealManagementProps> = ({
     lunch?: boolean;
     dinner?: boolean;
     userId?: { name?: string; email?: string } | string;
+    guestBreakfast?: number;
+    guestLunch?: number;
+    guestDinner?: number;
   }) => {
     const parts: string[] = [];
     if (meal?.breakfast) parts.push('Breakfast');
     if (meal?.lunch) parts.push('Lunch');
     if (meal?.dinner) parts.push('Dinner');
     const summary = parts.join(', ') || 'No meals selected';
+    const guestTotal =
+      (meal?.guestBreakfast ?? 0) +
+      (meal?.guestLunch ?? 0) +
+      (meal?.guestDinner ?? 0);
+    const guestStr = guestTotal > 0 ? ` • ${guestTotal} guest(s)` : '';
     const name =
       typeof meal?.userId === 'object' && meal?.userId?.name
         ? meal.userId.name
         : null;
-    return name ? `${summary} • Added by ${name}` : summary;
+    const byStr = name ? ` • Added by ${name}` : '';
+    return `${summary}${guestStr}${byStr}`;
+  };
+
+  const getMealAmountLabel = (meal: {
+    breakfast?: boolean;
+    lunch?: boolean;
+    dinner?: boolean;
+    guestBreakfast?: number;
+    guestLunch?: number;
+    guestDinner?: number;
+  }) => {
+    const regularSlots =
+      (meal?.breakfast ? 1 : 0) +
+      (meal?.lunch ? 1 : 0) +
+      (meal?.dinner ? 1 : 0);
+    const guestTotal =
+      (meal?.guestBreakfast ?? 0) +
+      (meal?.guestLunch ?? 0) +
+      (meal?.guestDinner ?? 0);
+    return guestTotal > 0
+      ? `${regularSlots} meals + ${guestTotal} guest(s)`
+      : `${regularSlots} meals`;
   };
 
   const renderOverview = () => {
@@ -405,7 +460,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
               <ThemedText
                 style={[styles.summaryValue, { color: theme.text?.primary }]}
               >
-                {(meals || []).filter(m => isMyMeal(m) && m?.breakfast).length}
+                {summaryByType.breakfast}
               </ThemedText>
               <ThemedText
                 style={[styles.summaryLabel, { color: theme.text?.secondary }]}
@@ -442,7 +497,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
               <ThemedText
                 style={[styles.summaryValue, { color: theme.text?.primary }]}
               >
-                {(meals || []).filter(m => isMyMeal(m) && m?.lunch).length}
+                {summaryByType.lunch}
               </ThemedText>
               <ThemedText
                 style={[styles.summaryLabel, { color: theme.text?.secondary }]}
@@ -478,7 +533,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
               <ThemedText
                 style={[styles.summaryValue, { color: theme.text?.primary }]}
               >
-                {(meals || []).filter(m => isMyMeal(m) && m?.dinner).length}
+                {summaryByType.dinner}
               </ThemedText>
               <ThemedText
                 style={[styles.summaryLabel, { color: theme.text?.secondary }]}
@@ -561,7 +616,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
                 icon='restaurant'
                 iconBackgroundColor={theme.status?.success ?? theme.primary}
                 timestamp={meal.date || new Date().toISOString()}
-                amount={`${getMealSlots(meal)} meals`}
+                amount={getMealAmountLabel(meal)}
                 status={
                   meal?.status === 'approved'
                     ? 'success'
@@ -825,6 +880,132 @@ export const MealManagement: React.FC<MealManagementProps> = ({
         </View>
 
         <View style={styles.formSection}>
+          <TouchableOpacity
+            style={[styles.guestMealsToggle, { backgroundColor, borderColor }]}
+            onPress={() => setShowGuestMeals(prev => !prev)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.guestMealsToggleLeft}>
+              <Ionicons
+                name='people-outline'
+                size={22}
+                color={theme.primary ?? theme.gradient?.primary?.[0]}
+              />
+              <View>
+                <ThemedText
+                  style={[styles.guestMealsToggleTitle, { color: textColor }]}
+                >
+                  Guest Meals (Optional)
+                </ThemedText>
+                <ThemedText
+                  style={[
+                    styles.guestMealsToggleSubtitle,
+                    { color: theme.text?.secondary },
+                  ]}
+                  numberOfLines={1}
+                >
+                  Not regular—add if you had guests that day
+                </ThemedText>
+              </View>
+            </View>
+            <Ionicons
+              name={showGuestMeals ? 'chevron-up' : 'chevron-down'}
+              size={24}
+              color={theme.text?.secondary ?? iconColor}
+            />
+          </TouchableOpacity>
+          {showGuestMeals && (
+            <View style={styles.guestMealsContent}>
+              <ThemedText
+                style={[
+                  styles.formSectionSubtitle,
+                  { color: theme.text?.secondary },
+                ]}
+              >
+                Add number of guests for each meal type.
+              </ThemedText>
+              <View style={styles.guestMealsRow}>
+                <View style={styles.guestMealInputWrap}>
+                  <ThemedText
+                    style={[styles.guestMealLabel, { color: textColor }]}
+                  >
+                    Breakfast
+                  </ThemedText>
+                  <TextInput
+                    style={[
+                      styles.guestMealInput,
+                      { backgroundColor, borderColor, color: textColor },
+                    ]}
+                    value={String(guestMeals.breakfast)}
+                    onChangeText={t => {
+                      const n = Math.min(
+                        99,
+                        Math.max(0, parseInt(t.replace(/\D/g, '') || '0', 10))
+                      );
+                      setGuestMeals(prev => ({ ...prev, breakfast: n }));
+                    }}
+                    keyboardType='number-pad'
+                    maxLength={2}
+                    placeholder='0'
+                    placeholderTextColor={iconColor}
+                  />
+                </View>
+                <View style={styles.guestMealInputWrap}>
+                  <ThemedText
+                    style={[styles.guestMealLabel, { color: textColor }]}
+                  >
+                    Lunch
+                  </ThemedText>
+                  <TextInput
+                    style={[
+                      styles.guestMealInput,
+                      { backgroundColor, borderColor, color: textColor },
+                    ]}
+                    value={String(guestMeals.lunch)}
+                    onChangeText={t => {
+                      const n = Math.min(
+                        99,
+                        Math.max(0, parseInt(t.replace(/\D/g, '') || '0', 10))
+                      );
+                      setGuestMeals(prev => ({ ...prev, lunch: n }));
+                    }}
+                    keyboardType='number-pad'
+                    maxLength={2}
+                    placeholder='0'
+                    placeholderTextColor={iconColor}
+                  />
+                </View>
+                <View style={styles.guestMealInputWrap}>
+                  <ThemedText
+                    style={[styles.guestMealLabel, { color: textColor }]}
+                  >
+                    Dinner
+                  </ThemedText>
+                  <TextInput
+                    style={[
+                      styles.guestMealInput,
+                      { backgroundColor, borderColor, color: textColor },
+                    ]}
+                    value={String(guestMeals.dinner)}
+                    onChangeText={t => {
+                      const n = Math.min(
+                        99,
+                        Math.max(0, parseInt(t.replace(/\D/g, '') || '0', 10))
+                      );
+                      setGuestMeals(prev => ({ ...prev, dinner: n }));
+                    }}
+                    keyboardType='number-pad'
+                    maxLength={2}
+                    placeholder='0'
+                    placeholderTextColor={iconColor}
+                  />
+                </View>
+              </View>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.formSection}>
           <ThemedText
             style={[styles.formSectionTitle, { color: theme.text?.primary }]}
           >
@@ -1001,7 +1182,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
               icon='restaurant'
               iconBackgroundColor={theme.status?.success ?? theme.primary}
               timestamp={meal.date || new Date().toISOString()}
-              amount={`${getMealSlots(meal)} meals`}
+              amount={getMealAmountLabel(meal)}
               status={
                 meal?.status === 'approved'
                   ? 'success'
@@ -1176,6 +1357,58 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#1f2937',
     marginBottom: 16,
+  },
+  formSectionSubtitle: {
+    fontSize: 13,
+    marginBottom: 12,
+  },
+  guestMealsToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 4,
+  },
+  guestMealsToggleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  guestMealsToggleTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  guestMealsToggleSubtitle: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  guestMealsContent: {
+    marginTop: 12,
+    paddingTop: 4,
+  },
+  guestMealsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  guestMealInputWrap: {
+    flex: 1,
+  },
+  guestMealLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  guestMealInput: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+    textAlign: 'center',
   },
   mealOptions: {
     flexDirection: 'row',

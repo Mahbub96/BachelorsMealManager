@@ -93,6 +93,14 @@ export const MealCard: React.FC<MealCardProps> = ({
               <ThemedText style={[styles.mealTypeText, { color: theme.primary ?? theme.secondary }]} numberOfLines={1}>Dinner</ThemedText>
             </View>
           )}
+          {((meal.guestBreakfast ?? 0) + (meal.guestLunch ?? 0) + (meal.guestDinner ?? 0)) > 0 && (
+            <View style={[styles.mealTypeBadge, styles.guestBadge, { backgroundColor: (theme.text?.secondary ?? theme.icon?.secondary ?? '#6b7280') + '18' }]}>
+              <Ionicons name="people-outline" size={12} color={theme.text?.secondary ?? theme.icon?.secondary ?? '#6b7280'} />
+              <ThemedText style={[styles.mealTypeText, { color: theme.text?.secondary ?? theme.icon?.secondary ?? '#6b7280' }]} numberOfLines={1}>
+                Guest: {(meal.guestBreakfast ?? 0) + (meal.guestLunch ?? 0) + (meal.guestDinner ?? 0)}
+              </ThemedText>
+            </View>
+          )}
         </View>
 
         {showUserInfo && meal.userId && (
@@ -218,6 +226,9 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
     letterSpacing: 0.1,
     lineHeight: 16,
+  },
+  guestBadge: {
+    marginLeft: 0,
   },
   userInfoRow: {
     flexDirection: 'row',

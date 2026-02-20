@@ -19,6 +19,9 @@ type MealCardMeal = {
   userId?: string;
   cost?: number;
   notes?: string;
+  guestBreakfast?: number;
+  guestLunch?: number;
+  guestDinner?: number;
 };
 
 export interface MealCardProps {
@@ -75,7 +78,9 @@ export const MealCard: React.FC<MealCardProps> = ({
     if (meal.breakfast) meals.push('Breakfast');
     if (meal.lunch) meals.push('Lunch');
     if (meal.dinner) meals.push('Dinner');
-    return meals.join(', ') || 'No meals selected';
+    const regular = meals.join(', ') || 'No meals selected';
+    const guestTotal = (meal.guestBreakfast ?? 0) + (meal.guestLunch ?? 0) + (meal.guestDinner ?? 0);
+    return guestTotal > 0 ? `${regular} • ${guestTotal} guest(s)` : regular;
   };
 
   const getMealCount = () => {

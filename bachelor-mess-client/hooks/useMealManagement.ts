@@ -132,6 +132,10 @@ export const useMealManagement = (
                 status: '',
                 message: '',
               },
+              guestBreakfast: meal?.guestBreakfast ?? 0,
+              guestLunch: meal?.guestLunch ?? 0,
+              guestDinner: meal?.guestDinner ?? 0,
+              totalGuestMeals: meal?.totalGuestMeals,
             })
           );
 

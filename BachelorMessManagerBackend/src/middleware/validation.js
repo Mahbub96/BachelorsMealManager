@@ -61,6 +61,9 @@ const validateMealSubmission = [
     .optional()
     .isLength({ max: 500 })
     .withMessage('Notes must be less than 500 characters'),
+  body('guestBreakfast').optional().isInt({ min: 0, max: 99 }).withMessage('Guest breakfast must be between 0 and 99'),
+  body('guestLunch').optional().isInt({ min: 0, max: 99 }).withMessage('Guest lunch must be between 0 and 99'),
+  body('guestDinner').optional().isInt({ min: 0, max: 99 }).withMessage('Guest dinner must be between 0 and 99'),
   handleValidationErrors,
 ];
 
@@ -255,6 +258,9 @@ const mealSchema = Joi.object({
   lunch: Joi.boolean().default(false),
   dinner: Joi.boolean().default(false),
   notes: Joi.string().max(500).optional(),
+  guestBreakfast: Joi.number().integer().min(0).max(99).optional(),
+  guestLunch: Joi.number().integer().min(0).max(99).optional(),
+  guestDinner: Joi.number().integer().min(0).max(99).optional(),
 });
 
 const bazarSchema = Joi.object({

@@ -52,6 +52,10 @@ const mealSchema = new mongoose.Schema(
       default: 0,
       min: [0, 'Total meals cannot be negative'],
     },
+    // Optional guest meal counts (for tracking when member has guests). Max 99 per meal type.
+    guestBreakfast: { type: Number, default: 0, min: 0, max: 99 },
+    guestLunch: { type: Number, default: 0, min: 0, max: 99 },
+    guestDinner: { type: Number, default: 0, min: 0, max: 99 },
   },
   {
     timestamps: true,
@@ -82,6 +86,11 @@ mealSchema.virtual('mealSummary').get(function () {
   if (this.lunch) meals.push('Lunch');
   if (this.dinner) meals.push('Dinner');
   return meals.join(', ') || 'No meals';
+});
+
+// Virtual for total guest meals
+mealSchema.virtual('totalGuestMeals').get(function () {
+  return (this.guestBreakfast || 0) + (this.guestLunch || 0) + (this.guestDinner || 0);
 });
 
 // Virtual for approval info

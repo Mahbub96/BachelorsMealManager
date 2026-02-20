@@ -44,6 +44,14 @@ export const MealDetailModal: React.FC<MealDetailModalProps> = ({
   if (meal.breakfast) mealTypes.push('Breakfast');
   if (meal.lunch) mealTypes.push('Lunch');
   if (meal.dinner) mealTypes.push('Dinner');
+  const guestB = meal.guestBreakfast ?? 0;
+  const guestL = meal.guestLunch ?? 0;
+  const guestD = meal.guestDinner ?? 0;
+  const hasGuestMeals = guestB > 0 || guestL > 0 || guestD > 0;
+  const guestParts: string[] = [];
+  if (guestB > 0) guestParts.push(`B: ${guestB}`);
+  if (guestL > 0) guestParts.push(`L: ${guestL}`);
+  if (guestD > 0) guestParts.push(`D: ${guestD}`);
 
   return (
     <Modal
@@ -93,6 +101,18 @@ export const MealDetailModal: React.FC<MealDetailModalProps> = ({
                 </View>
                 <ThemedText style={styles.detailValue}>
                   {mealTypes.join(', ')}
+                </ThemedText>
+              </View>
+            )}
+
+            {hasGuestMeals && (
+              <View style={styles.detailRow}>
+                <View style={styles.detailLabelWrap}>
+                  <Ionicons name="people-outline" size={20} color={theme.icon?.secondary ?? '#6b7280'} />
+                  <ThemedText style={styles.detailLabel}>Guest Meals</ThemedText>
+                </View>
+                <ThemedText style={styles.detailValue}>
+                  {guestParts.join(', ')} ({guestB + guestL + guestD} total)
                 </ThemedText>
               </View>
             )}

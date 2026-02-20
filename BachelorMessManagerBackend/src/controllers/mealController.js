@@ -15,7 +15,7 @@ class MealController {
   // Submit daily meals
   async submitMeals(req, res, next) {
     try {
-      const { breakfast, lunch, dinner, date, notes } = req.body;
+      const { breakfast, lunch, dinner, date, notes, guestBreakfast, guestLunch, guestDinner } = req.body;
       // Use _id to ensure we get the ObjectId, not the string id
       // Convert to ObjectId if it's a string to ensure proper matching
       // SECURITY: Always use authenticated user's ID from token, never from request body
@@ -95,6 +95,15 @@ class MealController {
       const normalizedDate = new Date(mealDate);
       normalizedDate.setUTCHours(0, 0, 0, 0);
 
+      // First meal by this user is auto-approved; subsequent meals need admin approval
+      let initialStatus = 'pending';
+      if (config.business?.autoApproveMeals) {
+        initialStatus = 'approved';
+      } else {
+        const approvedCount = await Meal.countDocuments({ userId, status: 'approved' });
+        initialStatus = approvedCount === 0 ? 'approved' : 'pending';
+      }
+
       let meal;
       try {
         meal = await Meal.create({
@@ -104,7 +113,10 @@ class MealController {
           dinner: dinner || false,
           date: normalizedDate,
           notes: notes?.trim() || '',
-          status: config.business?.autoApproveMeals ? 'approved' : 'pending',
+          status: initialStatus,
+          guestBreakfast: Math.min(99, Math.max(0, parseInt(guestBreakfast, 10) || 0)),
+          guestLunch: Math.min(99, Math.max(0, parseInt(guestLunch, 10) || 0)),
+          guestDinner: Math.min(99, Math.max(0, parseInt(guestDinner, 10) || 0)),
         });
       } catch (createError) {
         // Handle duplicate key error (E11000) as a fallback
@@ -436,7 +448,7 @@ class MealController {
   async updateMeal(req, res, next) {
     try {
       const { mealId } = req.params;
-      const { breakfast, lunch, dinner, notes } = req.body;
+      const { breakfast, lunch, dinner, notes, guestBreakfast, guestLunch, guestDinner } = req.body;
       const userId = req.user.id;
 
       const meal = await Meal.findById(mealId);
@@ -493,6 +505,9 @@ class MealController {
       if (lunch !== undefined) updateData.lunch = lunch;
       if (dinner !== undefined) updateData.dinner = dinner;
       if (notes !== undefined) updateData.notes = notes;
+      if (guestBreakfast !== undefined) updateData.guestBreakfast = Math.min(99, Math.max(0, parseInt(guestBreakfast, 10) || 0));
+      if (guestLunch !== undefined) updateData.guestLunch = Math.min(99, Math.max(0, parseInt(guestLunch, 10) || 0));
+      if (guestDinner !== undefined) updateData.guestDinner = Math.min(99, Math.max(0, parseInt(guestDinner, 10) || 0));
 
       const updatedMeal = await Meal.findByIdAndUpdate(mealId, updateData, {
         new: true,

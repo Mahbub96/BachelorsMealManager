@@ -149,6 +149,7 @@ const config = {
   },
 
   // Business Logic Configuration
+  // autoApproveMeals: when true, all new meals are auto-approved. When false, first meal per user is auto-approved, subsequent meals require admin approval.
   business: {
     defaultMealPrice: parseFloat(process.env.DEFAULT_MEAL_PRICE) || 120,
     maxMealsPerDay: parseInt(process.env.MAX_MEALS_PER_DAY) || 3,
