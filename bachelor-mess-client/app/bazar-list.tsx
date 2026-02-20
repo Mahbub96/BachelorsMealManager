@@ -60,7 +60,6 @@ export default function BazarListScreen(_props: BazarListScreenProps) {
   };
 
   const handleBazarPress = (bazar: BazarCardBazar) => {
-    console.log('🎯 Bazar pressed:', bazar);
     router.push(`/bazar-details?id=${bazar.id}`);
   };
 
@@ -102,12 +101,10 @@ export default function BazarListScreen(_props: BazarListScreenProps) {
 
   const handleFilterChange = (newFilters: Record<string, unknown>) => {
     updateFilters(newFilters);
-    console.log('🔍 Filters changed:', newFilters);
   };
 
   const handleSearch = (query: string) => {
     updateSearchQuery(query);
-    console.log('🔍 Search query:', query);
   };
 
   const renderBazarItem = ({ item: bazar }: { item: BazarEntry }) => (
@@ -212,16 +209,6 @@ export default function BazarListScreen(_props: BazarListScreenProps) {
 
       {/* Statistics */}
       <View style={styles.statsContainer}>
-        {(() => {
-          console.log('🎯 BazarList - Passing to BazarStatistics:', {
-            bazarStats,
-            loadingStats,
-            statsError,
-            hasStats: !!bazarStats,
-            loadingStatsValue: loadingStats,
-          });
-          return null;
-        })()}
         <BazarStatistics
           stats={bazarStats}
           loading={loadingStats}

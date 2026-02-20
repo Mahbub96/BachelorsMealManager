@@ -8,6 +8,7 @@ import {
   ThemeMode,
   ThemeContextType,
 } from '@/constants/Theme';
+import logger from '@/utils/logger';
 
 // Create the theme context
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -60,8 +61,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       return getTheme(isDark);
     } catch (error) {
-      console.error('Error getting theme:', error);
-      return LightTheme; // Fallback to light theme
+      logger.error('Error getting theme', error);
+      return LightTheme;
     }
   }, [isDark]);
 
@@ -80,7 +81,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   const value: ThemeContextType = useMemo(
     () => {
       if (!theme) {
-        console.error('Theme is undefined, using LightTheme as fallback');
+        logger.error('Theme undefined, using LightTheme fallback');
         return {
           theme: LightTheme,
           isDark: false,
@@ -108,16 +109,11 @@ export const useTheme = (): ThemeContextType => {
   const context = useContext(ThemeContext);
   // Don't throw error - return stable fallback instead to prevent render loops
   if (context === undefined) {
-    if (__DEV__) {
-      console.warn('useTheme called outside ThemeProvider, using LightTheme fallback');
-    }
+    logger.warn('useTheme called outside ThemeProvider');
     return FALLBACK_THEME;
   }
-  // Ensure theme is always available
   if (!context.theme) {
-    if (__DEV__) {
-      console.warn('Theme is undefined in context, using LightTheme as fallback');
-    }
+    logger.warn('Theme undefined in context');
     return {
       ...context,
       theme: LightTheme,

@@ -1,17 +1,26 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import {
+  View,
+  StyleSheet,
+  FlatList,
+  RefreshControl,
+  TouchableOpacity,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { ThemedView } from '../ThemedView';
+import { ThemedText } from '../ThemedText';
 import { useAppRefresh } from '../../context/AppRefreshContext';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { useBazar } from '../../context/BazarContext';
 import { BazarHeader } from './BazarHeader';
 import { BazarAddButton } from './BazarAddButton';
 import { BazarStatistics } from './BazarStatistics';
-import { BazarListSection } from './BazarListSection';
 import { BazarFilters } from './BazarFilters';
 import { BazarSearchBar } from './BazarSearchBar';
 import { BazarErrorState } from './BazarErrorState';
+import { BazarCard } from '../cards/BazarCard';
 import type { BazarCardBazar } from '../cards/BazarCard';
 import type {
   BazarEntry,
@@ -51,6 +60,7 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
 }) => {
   const router = useRouter();
   const { user } = useAuth();
+  const { theme } = useTheme();
   const { register, unregister, refreshAll } = useAppRefresh();
   const {
     bazarStats,
@@ -70,6 +80,29 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
 
   const [showFiltersPanel, setShowFiltersPanel] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [bazarScope, setBazarScope] = useState<'all' | 'my'>('all');
+
+  const isMyBazar = useCallback(
+    (entry: { userId?: string | { _id?: string; id?: string } }) => {
+      if (!user?.id) return false;
+      const uid = entry.userId;
+      if (typeof uid === 'string') return uid === user.id;
+      return (uid as { _id?: string; id?: string })?._id === user.id || (uid as { id?: string })?.id === user.id;
+    },
+    [user?.id]
+  );
+
+  const bazarEntriesToShow = useMemo(() => {
+    const list = customBazarEntries ?? filteredEntries ?? [];
+    if (bazarScope === 'my') return list.filter(isMyBazar);
+    return list;
+  }, [customBazarEntries, filteredEntries, bazarScope, isMyBazar]);
+
+  const myBazarCount = useMemo(
+    () => (filteredEntries ?? []).filter(isMyBazar).length,
+    [filteredEntries, isMyBazar]
+  );
+  const totalBazarCount = (filteredEntries ?? []).length;
 
   useEffect(() => {
     register('bazar', refreshData);
@@ -94,7 +127,6 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
   };
 
   const handleBazarPress = (bazar: BazarEntry | BazarCardBazar) => {
-    console.log('🎯 Bazar pressed:', bazar);
     onBazarPress?.(bazar);
   };
 
@@ -104,25 +136,16 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
 
   const handleFilterChange = (newFilters: BazarFiltersType) => {
     updateFilters(newFilters);
-    console.log('🔍 Filters changed:', newFilters);
   };
 
   const handleSearch = (query: string) => {
     updateSearchQuery(query);
-    console.log('🔍 Search query:', query);
   };
 
   const handleShowAllPress = () => {
-    console.log('🎯 Show All button pressed. Current state:', {
-      filteredEntriesCount: filteredEntries?.length || 0,
-      onShowAllPress: !!onShowAllPress,
-    });
-
     if (onShowAllPress) {
       onShowAllPress();
     } else {
-      // Navigate to dedicated bazar list page
-      console.log('🔄 Navigating to bazar-list page');
       router.push('/bazar-list');
     }
   };
@@ -153,22 +176,212 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
 
   const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
 
-  // Debug logging
-  console.log('🔍 BazarManagement Debug:', {
-    filteredEntriesCount: filteredEntries?.length || 0,
-    loadingEntries,
-    entriesError,
-    searchQuery,
-    filters,
-    actualEntriesToShow:
-      (customBazarEntries || filteredEntries?.slice(0, 2))?.length || 0,
-  });
+  const recentEntries = useMemo(
+    () => bazarEntriesToShow.slice(0, 2),
+    [bazarEntriesToShow]
+  );
+
+  const renderBazarItem = useCallback(
+    ({ item: bazar }: { item: BazarEntry }) => (
+      <BazarCard
+        bazar={{
+          id: bazar.id,
+          items: bazar.items ?? [],
+          totalAmount: bazar.totalAmount ?? 0,
+          date: bazar.date ?? new Date().toISOString(),
+          status: bazar.status ?? 'pending',
+          userId: bazar.userId ?? '',
+          description: bazar.description ?? '',
+        }}
+        onPress={handleBazarPress}
+        onStatusUpdate={handleStatusUpdate}
+        onDelete={handleDelete}
+        showActions={isAdmin}
+        isAdmin={isAdmin}
+      />
+    ),
+    [isAdmin, handleBazarPress, handleStatusUpdate, handleDelete]
+  );
+
+  const ListHeader = useCallback(
+    () => (
+      <View style={styles.mainContainer}>
+        <BazarHeader
+          title={title}
+          subtitle={
+            filteredEntries?.length === 0 ? 'No bazar items found' : subtitle
+          }
+        />
+        {showAddButton && (
+          <BazarAddButton
+            onPress={handleAddBazar}
+            title='Add New Bazar'
+            icon='add'
+          />
+        )}
+        {(showSearch || showFilters) && (
+          <View style={styles.searchFiltersRow}>
+            {showSearch && (
+              <View style={styles.searchContainer}>
+                <BazarSearchBar
+                  onSearch={handleSearch}
+                  placeholder='Search bazar items...'
+                  value={searchQuery}
+                />
+              </View>
+            )}
+            {showFilters && (
+              <View style={styles.filtersContainer}>
+                <BazarFilters
+                  filters={filters}
+                  onFilterChange={handleFilterChange}
+                  showFilters={showFiltersPanel}
+                  onToggleFilters={() =>
+                    setShowFiltersPanel(!showFiltersPanel)
+                  }
+                />
+              </View>
+            )}
+          </View>
+        )}
+        {showStatistics && (
+          <BazarStatistics
+            stats={bazarStats}
+            loading={loadingStats}
+            error={statsError}
+            onRetry={() => refreshData()}
+            compact={true}
+          />
+        )}
+        <View style={styles.scopeRow}>
+          <TouchableOpacity
+            style={[
+              styles.scopeCard,
+              {
+                backgroundColor: theme.cardBackground ?? theme.surface,
+                borderColor:
+                  bazarScope === 'all'
+                    ? (theme.status?.info ?? theme.primary)
+                    : (theme.border?.secondary ?? theme.cardBorder),
+                borderWidth: bazarScope === 'all' ? 2 : 1,
+                shadowColor: theme.shadow?.light ?? theme.cardShadow,
+              },
+            ]}
+            onPress={() => setBazarScope('all')}
+            activeOpacity={0.7}
+          >
+            <ThemedText
+              style={[styles.scopeValue, { color: theme.text?.primary }]}
+            >
+              {totalBazarCount}
+            </ThemedText>
+            <ThemedText
+              style={[styles.scopeLabel, { color: theme.text?.secondary }]}
+            >
+              {isAdmin ? "Everyone's Bazar" : 'Total Bazar'}
+            </ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.scopeCard,
+              {
+                backgroundColor: theme.cardBackground ?? theme.surface,
+                borderColor:
+                  bazarScope === 'my'
+                    ? (theme.status?.success ?? theme.primary)
+                    : (theme.border?.secondary ?? theme.cardBorder),
+                borderWidth: bazarScope === 'my' ? 2 : 1,
+                shadowColor: theme.shadow?.light ?? theme.cardShadow,
+              },
+            ]}
+            onPress={() => setBazarScope('my')}
+            activeOpacity={0.7}
+          >
+            <ThemedText
+              style={[styles.scopeValue, { color: theme.text?.primary }]}
+            >
+              {myBazarCount}
+            </ThemedText>
+            <ThemedText
+              style={[styles.scopeLabel, { color: theme.text?.secondary }]}
+            >
+              My Bazar
+            </ThemedText>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.sectionHeader}>
+          <ThemedText
+            style={[styles.sectionTitle, { color: theme.text.primary }]}
+          >
+            Recent Bazar Items ({recentEntries.length})
+          </ThemedText>
+          <TouchableOpacity
+            style={[
+              styles.showAllButton,
+              { backgroundColor: theme.cardBackground },
+            ]}
+            onPress={handleShowAllPress}
+            activeOpacity={0.7}
+          >
+            <ThemedText
+              style={[styles.showAllButtonText, { color: theme.primary }]}
+            >
+              View All
+            </ThemedText>
+            <Ionicons name='chevron-forward' size={16} color={theme.primary} />
+          </TouchableOpacity>
+        </View>
+      </View>
+    ),
+    [
+      title,
+      subtitle,
+      filteredEntries?.length,
+      showAddButton,
+      showSearch,
+      showFilters,
+      searchQuery,
+      filters,
+      showFiltersPanel,
+      bazarStats,
+      loadingStats,
+      statsError,
+      bazarScope,
+      totalBazarCount,
+      myBazarCount,
+      isAdmin,
+      recentEntries.length,
+      theme,
+    ]
+  );
+
+  const isLoading =
+    customLoading !== undefined ? customLoading : loadingEntries;
+  const listError = customError || entriesError;
+
+  if (isLoading && recentEntries.length === 0) {
+    return (
+      <ThemedView style={styles.container}>
+        <View style={styles.mainContainer}>
+          <BazarHeader title={title} subtitle={subtitle} />
+          <View style={styles.loadingPlaceholder}>
+            <ThemedText style={{ color: theme.text?.secondary }}>
+              Loading bazar items...
+            </ThemedText>
+          </View>
+        </View>
+      </ThemedView>
+    );
+  }
 
   return (
     <ThemedView style={styles.container}>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+      <FlatList
+        data={recentEntries}
+        renderItem={renderBazarItem}
+        keyExtractor={(item, index) => item.id ?? (item as { _id?: string })._id ?? `bazar-${index}`}
+        ListHeaderComponent={ListHeader}
+        contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -176,123 +389,22 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
             onRefresh={handlePullRefresh}
           />
         }
-      >
-        <View style={styles.mainContainer}>
-          {/* Header */}
-          <BazarHeader
-            title={title}
-            subtitle={
-              filteredEntries?.length === 0 ? 'No bazar items found' : subtitle
-            }
-          />
-
-          {/* Add Button */}
-          {showAddButton && (
-            <BazarAddButton
-              onPress={handleAddBazar}
-              title='Add New Bazar'
-              icon='add'
-            />
-          )}
-
-          {/* Search and Filters Row */}
-          {(showSearch || showFilters) && (
-            <View style={styles.searchFiltersRow}>
-              {/* Search Bar */}
-              {showSearch && (
-                <View style={styles.searchContainer}>
-                  <BazarSearchBar
-                    onSearch={handleSearch}
-                    placeholder='Search bazar items...'
-                    value={searchQuery}
-                  />
-                </View>
-              )}
-
-              {/* Filters Toggle */}
-              {showFilters && (
-                <View style={styles.filtersContainer}>
-                  <BazarFilters
-                    filters={filters}
-                    onFilterChange={handleFilterChange}
-                    showFilters={showFiltersPanel}
-                    onToggleFilters={() =>
-                      setShowFiltersPanel(!showFiltersPanel)
-                    }
-                  />
-                </View>
-              )}
+        ListEmptyComponent={
+          listError ? (
+            <View style={styles.emptyMessage}>
+              <ThemedText style={{ color: theme.text?.secondary }}>
+                {listError}
+              </ThemedText>
             </View>
-          )}
-
-          {/* Bazar Statistics */}
-          {showStatistics && (
-            <>
-              {console.log(
-                '🎯 BazarManagement - showStatistics:',
-                showStatistics
-              )}
-              {console.log('🎯 BazarManagement - Stats Data:', {
-                bazarStats,
-                loadingStats,
-                statsError,
-                hasStats: !!bazarStats,
-                loadingStatsValue: loadingStats,
-              })}
-              <BazarStatistics
-                stats={bazarStats}
-                loading={loadingStats}
-                error={statsError}
-                onRetry={() => refreshData()}
-                compact={true}
-              />
-            </>
-          )}
-
-          {/* Bazar Items List */}
-          <BazarListSection
-            title='Recent Bazar Items'
-            showUserInfo={isAdmin}
-            isAdmin={isAdmin}
-            onBazarPress={handleBazarPress}
-            onRefresh={handleRefresh}
-            onShowAllPress={handleShowAllPress}
-            showAllButton={true}
-            showAllButtonText='View All'
-            filters={customFilters || filters}
-            bazarEntries={customBazarEntries || filteredEntries?.slice(0, 2)}
-            loading={
-              customLoading !== undefined ? customLoading : loadingEntries
-            }
-            error={customError || entriesError}
-            onStatusUpdate={handleStatusUpdate}
-            onDelete={handleDelete}
-          />
-
-          {/* Alternative: Using ShowAllList component
-        <ShowAllList
-          title="Bazar Items"
-          items={filteredEntries || []}
-          renderItem={(bazar, index) => (
-            <BazarCard
-              bazar={bazar}
-              onPress={handleBazarPress}
-              onStatusUpdate={handleStatusUpdate}
-              onDelete={handleDelete}
-              showActions={isAdmin}
-              isAdmin={isAdmin}
-            />
-          )}
-          maxRecentItems={2}
-          showAllButton={true}
-          showAllButtonText="Show All"
-          loading={customLoading !== undefined ? customLoading : loadingEntries}
-          error={customError || entriesError}
-          emptyMessage="No bazar items found"
-        />
-        */}
-        </View>
-      </ScrollView>
+          ) : (
+            <View style={styles.emptyMessage}>
+              <ThemedText style={{ color: theme.text?.secondary }}>
+                No bazar items yet
+              </ThemedText>
+            </View>
+          )
+        }
+      />
     </ThemedView>
   );
 };
@@ -300,12 +412,6 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
   },
   mainContainer: {
     flex: 1,
@@ -327,5 +433,68 @@ const styles = StyleSheet.create({
   contentSection: {
     flex: 1,
     marginTop: 4, // Reduced from 8
+  },
+  scopeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 16,
+    paddingHorizontal: 2,
+  },
+  scopeCard: {
+    flex: 1,
+    borderRadius: 16,
+    padding: 14,
+    alignItems: 'center',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  scopeValue: {
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  scopeLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 4,
+    paddingVertical: 8,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: -0.5,
+  },
+  showAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+  },
+  showAllButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  listContent: {
+    flexGrow: 1,
+    paddingBottom: 20,
+  },
+  emptyMessage: {
+    padding: 16,
+    alignItems: 'center',
+  },
+  loadingPlaceholder: {
+    padding: 24,
+    alignItems: 'center',
   },
 });

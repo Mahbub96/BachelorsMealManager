@@ -36,35 +36,7 @@ router.get(
   bazarController.getAllBazar
 );
 
-// @desc    Get bazar by ID
-// @route   GET /api/bazar/:bazarId
-// @access  Private
-router.get('/:bazarId', AuthMiddleware.protect(), bazarController.getBazarById);
-
-// @desc    Update bazar entry
-// @route   PUT /api/bazar/:bazarId
-// @access  Private
-router.put('/:bazarId', AuthMiddleware.protect(), bazarController.updateBazar);
-
-// @desc    Update bazar status (admin only)
-// @route   PATCH /api/bazar/:bazarId/status
-// @access  Private/Admin
-router.patch(
-  '/:bazarId/status',
-  AuthMiddleware.protect(),
-  AuthMiddleware.requireAdmin(),
-  bazarController.updateBazarStatus
-);
-
-// @desc    Delete bazar entry
-// @route   DELETE /api/bazar/:bazarId
-// @access  Private
-router.delete(
-  '/:bazarId',
-  AuthMiddleware.protect(),
-  bazarController.deleteBazar
-);
-
+// ---- Static paths before :bazarId to avoid matching "stats", "summary", etc. ----
 // @desc    Get bazar statistics
 // @route   GET /api/bazar/stats/overview
 // @access  Private/Admin
@@ -115,7 +87,6 @@ router.get(
 );
 
 // ===== ADMIN OVERRIDE ROUTES =====
-
 // @desc    Admin override: Create bazar entry for any user (admin only)
 // @route   POST /api/bazar/admin/create
 // @access  Private/Admin
@@ -155,6 +126,36 @@ router.post(
   AuthMiddleware.protect(),
   AuthMiddleware.requireAdmin(),
   bazarController.adminBulkOperations
+);
+
+// ---- Param routes last ----
+// @desc    Get bazar by ID
+// @route   GET /api/bazar/:bazarId
+// @access  Private (own or group)
+router.get('/:bazarId', AuthMiddleware.protect(), bazarController.getBazarById);
+
+// @desc    Update bazar entry
+// @route   PUT /api/bazar/:bazarId
+// @access  Private
+router.put('/:bazarId', AuthMiddleware.protect(), bazarController.updateBazar);
+
+// @desc    Update bazar status (admin only)
+// @route   PATCH /api/bazar/:bazarId/status
+// @access  Private/Admin
+router.patch(
+  '/:bazarId/status',
+  AuthMiddleware.protect(),
+  AuthMiddleware.requireAdmin(),
+  bazarController.updateBazarStatus
+);
+
+// @desc    Delete bazar entry
+// @route   DELETE /api/bazar/:bazarId
+// @access  Private
+router.delete(
+  '/:bazarId',
+  AuthMiddleware.protect(),
+  bazarController.deleteBazar
 );
 
 module.exports = router;

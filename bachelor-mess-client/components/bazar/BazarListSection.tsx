@@ -43,18 +43,6 @@ export const BazarListSection: React.FC<BazarListSectionProps> = ({
 }) => {
   const { theme } = useTheme();
 
-  // Debug logging
-  console.log('🔍 BazarListSection Debug:', {
-    title,
-    bazarEntriesCount: bazarEntries?.length || 0,
-    loading,
-    error,
-    isAdmin,
-    showAllButton,
-    showAllButtonText,
-    onShowAllPress: !!onShowAllPress,
-  });
-
   // Create title with count
   const titleWithCount = `${title} (${bazarEntries?.length || 0})`;
 

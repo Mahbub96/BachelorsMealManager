@@ -6,8 +6,9 @@ import React, {
   useEffect,
 } from 'react';
 import { useRouter } from 'expo-router';
-import authService,{User} from '@/services/authService';
+import authService, { User } from '@/services/authService';
 import authEventEmitter from '@/services/authEventEmitter';
+import logger from '@/utils/logger';
 
 interface AuthData {
   user: User | null;
@@ -41,51 +42,38 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        console.log('🔍 Checking authentication status...');
         const isAuthenticated = await authService.isAuthenticated();
-        console.log('🔍 Authentication check result:', isAuthenticated);
-        
+        logger.debug('Auth check result', { isAuthenticated });
+
         if (isAuthenticated) {
           const token = await authService.getStoredToken();
           const user = await authService.getStoredUser();
-          console.log('🔍 Stored token:', token ? 'Yes' : 'No');
-          console.log('🔍 Stored user:', user ? 'Yes' : 'No');
-          
+
           if (token && user) {
             setAuthState({
               user,
               token,
               role: user.role,
             });
-            console.log('✅ Auth state initialized with stored data');
           } else {
-            // Clear invalid auth state
             setAuthState({ user: null, token: null, role: null });
-            console.log('🧹 Cleared invalid auth state');
           }
         } else {
-          // No authentication found
           setAuthState({ user: null, token: null, role: null });
-          console.log('🧹 No authentication found, cleared state');
         }
       } catch (error) {
-        console.error('❌ Error checking authentication:', error);
-        // Clear auth state on error
+        logger.error('Error checking authentication', error);
         setAuthState({ user: null, token: null, role: null });
       } finally {
         setIsLoading(false);
-        console.log('✅ Auth initialization complete');
       }
     };
 
     checkAuth();
 
     // Listen for auth events
-    const handleAuthEvent = (event: any) => {
-      console.log('🔔 Auth Event Received:', event);
-
-      if (event.type === 'session_expired' || event.type === 'logout') {
-        console.log('🔄 Handling auth event:', event.type);
+    const handleAuthEvent = (event: { type?: string }) => {
+      if (event?.type === 'session_expired' || event?.type === 'logout') {
         logout();
       }
     };
@@ -99,44 +87,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   const setAuth = (data: AuthData) => {
-    console.log('🔄 Setting auth data:', { hasUser: !!data.user, hasToken: !!data.token });
     setAuthState(data);
   };
 
   const logout = async () => {
     try {
-      console.log('🚪 Starting logout from AuthContext...');
-
-      // Clear auth state first
       setAuthState({ user: null, token: null, role: null });
-      console.log('🧹 Auth state cleared');
-
-      // Call logout service
       await authService.logout();
-      console.log('✅ Logout service completed');
 
-      // Navigate to login screen
       try {
         router.replace('/LoginScreen');
-        console.log('🔄 Navigated to login screen');
       } catch (navError) {
-        console.error('❌ Navigation error:', navError);
-        // Fallback navigation
+        logger.error('Navigation error on logout', navError);
         try {
           router.push('/LoginScreen');
-          console.log('🔄 Fallback navigation to login screen');
         } catch (fallbackError) {
-          console.error('❌ Fallback navigation also failed:', fallbackError);
+          logger.error('Fallback navigation failed', fallbackError);
         }
       }
     } catch (error) {
-      console.error('❌ Error during logout:', error);
-      // Even if logout fails, ensure we clear state and navigate
+      logger.error('Error during logout', error);
       setAuthState({ user: null, token: null, role: null });
       try {
         router.replace('/LoginScreen');
       } catch (navError) {
-        console.error('❌ Navigation error after logout failure:', navError);
+        logger.error('Navigation after logout failure', navError);
       }
     }
   };
@@ -148,12 +123,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     logout,
     isLoading,
   };
-
-  console.log('🔧 AuthContext value:', {
-    hasUser: !!auth.user,
-    hasToken: !!auth.token,
-    isLoading,
-  });
 
   return (
     <AuthContext.Provider value={contextValue}>

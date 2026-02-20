@@ -41,21 +41,6 @@ export default function TabLayout() {
   const isSuperAdmin = user?.role === 'super_admin';
   const isMember = user?.role === 'member' || (!user?.role || (user?.role !== 'admin' && user?.role !== 'super_admin'));
 
-  // Debug logging for troubleshooting
-  console.log('🔍 TabLayout Debug:', {
-    userRole: user?.role,
-    isAdmin,
-    isSuperAdmin,
-    isMember,
-    userId: user?.id,
-    userName: user?.name,
-  });
-
-  // Force re-render when user role changes
-  console.log('🔍 TabLayout - Rendering tabs for role:', user?.role);
-  console.log('🔍 TabLayout - Admin tab visible:', isAdmin && !isMember);
-  console.log('🔍 TabLayout - Super Admin tab visible:', isSuperAdmin && !isMember);
-
   return (
     <Tabs
       screenOptions={{

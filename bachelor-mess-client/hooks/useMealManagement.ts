@@ -60,7 +60,7 @@ export const useMealManagement = (
     },
     [showAlert]
   );
-  const [meals, setMeals] = useState<MealEntry[] | unknown[]>([]);
+  const [meals, setMeals] = useState<MealEntry[]>([]);
   const [mealStats, setMealStats] = useState<MealStats | null>(null);
   const [filters, setFilters] = useState<MealFilters>({
     status: 'approved',
@@ -111,11 +111,17 @@ export const useMealManagement = (
           }
 
           // Ensure all meals have id field (transform _id to id if needed)
-          type RawMeal = Partial<MealEntry> & { _id?: string };
+          type RawMeal = Partial<MealEntry> & { _id?: string; userId?: string | { _id?: string; name?: string; email?: string } };
           const transformedMeals: MealEntry[] = mealsData.map(
-            (meal: RawMeal) => ({
+            (meal: RawMeal) => {
+              const uid = meal?.userId;
+              const userId: MealEntry['userId'] =
+                typeof uid === 'object' && uid
+                  ? { _id: uid._id ?? '', name: uid.name ?? '', email: uid.email ?? '' }
+                  : (typeof uid === 'string' ? uid : '');
+              return {
               id: meal.id || meal._id || '',
-              userId: meal?.userId ?? { name: '', email: '' },
+              userId,
               date: meal?.date ?? new Date().toISOString().split('T')[0],
               breakfast: meal?.breakfast ?? false,
               lunch: meal.lunch ?? false,
@@ -136,7 +142,8 @@ export const useMealManagement = (
               guestLunch: meal?.guestLunch ?? 0,
               guestDinner: meal?.guestDinner ?? 0,
               totalGuestMeals: meal?.totalGuestMeals,
-            })
+            };
+            }
           );
 
           setMeals(transformedMeals);

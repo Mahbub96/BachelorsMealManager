@@ -14,6 +14,15 @@ const cluster = require('cluster');
 const os = require('os');
 require('dotenv').config();
 
+// Fail fast if required config is missing (e.g. JWT_SECRET in production)
+try {
+  const { validateConfig } = require('./src/config/config');
+  validateConfig();
+} catch (err) {
+  console.error('Configuration validation failed:', err.message);
+  process.exit(1);
+}
+
 // Import custom modules
 const logger = require('./src/utils/logger');
 const errorHandler = require('./src/middleware/errorHandler');

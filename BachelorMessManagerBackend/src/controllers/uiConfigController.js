@@ -1,6 +1,7 @@
 const UIConfig = require('../models/UIConfig');
 const { catchAsync } = require('../utils/errorHandler');
 const { successResponse, errorResponse } = require('../utils/responseHandler');
+const logger = require('../utils/logger');
 
 const uiConfigController = {
   // ==================== CONFIGURATION MANAGEMENT ====================
@@ -20,7 +21,7 @@ const uiConfigController = {
     // Validate configuration
     const validationErrors = config.validateConfig();
     if (validationErrors.length > 0) {
-      console.warn('UI Configuration validation errors:', validationErrors);
+      logger.warn('UI Configuration validation errors', { count: validationErrors.length });
     }
 
     return successResponse(

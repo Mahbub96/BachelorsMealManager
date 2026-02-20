@@ -2,6 +2,7 @@ import { API_ENDPOINTS, ApiResponse, config as API_CONFIG } from './config';
 import httpClient from './httpClient';
 import errorHandler from './errorHandler';
 import { offlineStorage } from './offlineStorage';
+import logger from '../utils/logger';
 
 // Type definitions for dashboard with new statistics system
 export interface DashboardStats {
@@ -173,24 +174,19 @@ class DashboardServiceImpl implements DashboardService {
     ApiResponse<{ message: string; timestamp: string }>
   > {
     try {
-      console.log('🔍 Dashboard Service - Checking health...');
+      logger.debug('Dashboard Service - Health check');
       const response = await httpClient.get<{
         message: string;
         timestamp: string;
       }>(API_ENDPOINTS.DASHBOARD.HEALTH);
 
-      if (response.success) {
-        console.log('✅ Dashboard Service - Health check successful',response.data);
-      } else {
-        console.error(
-          '❌ Dashboard Service - Health check failed:',
-          response.error
-        );
+      if (!response.success) {
+        logger.error('Dashboard Service - Health check failed', response.error);
       }
 
       return response;
     } catch (error) {
-      console.error('❌ Dashboard Service - Health check error:', error);
+      logger.error('Dashboard Service - Health check error', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Health check failed',
@@ -210,23 +206,18 @@ class DashboardServiceImpl implements DashboardService {
       .getDataWithOfflineFallback(
         'dashboard_stats',
         async () => {
-          console.log('📊 Dashboard Service - Fetching stats from API...');
+          logger.debug('Dashboard Service - Fetching stats');
           const response = await httpClient.get<DashboardStats>(
             API_ENDPOINTS.DASHBOARD.STATS
           );
 
           if (response.success && response.data) {
-            console.log('✅ Dashboard Service - Stats fetched successfully',response.data);
-            // Store offline data for future use
             await offlineStorage.setOfflineData(
               'dashboard_stats',
               response.data
             );
           } else {
-            console.error(
-              '❌ Dashboard Service - Failed to fetch stats:',
-              response.error
-            );
+            logger.error('Dashboard Service - Failed to fetch stats', response.error);
           }
 
           return response.data;
@@ -245,25 +236,18 @@ class DashboardServiceImpl implements DashboardService {
       .getDataWithOfflineFallback(
         'dashboard_activities',
         async () => {
-          console.log('📋 Dashboard Service - Fetching activities from API...');
+          logger.debug('Dashboard Service - Fetching activities');
           const response = await httpClient.get(
             API_ENDPOINTS.DASHBOARD.ACTIVITIES
           );
 
           if (response.success && response.data) {
-            console.log(
-              '✅ Dashboard Service - Activities fetched successfully'
-            );
-            // Store offline data for future use
             await offlineStorage.setOfflineData(
               'dashboard_activities',
               response.data
             );
           } else {
-            console.error(
-              '❌ Dashboard Service - Failed to fetch activities:',
-              response.error
-            );
+            logger.error('Dashboard Service - Failed to fetch activities', response.error);
           }
 
           return response.data;
@@ -287,14 +271,14 @@ class DashboardServiceImpl implements DashboardService {
         cacheKey,
         async () => {
           try {
-            console.log('📈 Dashboard Service - Fetching analytics from API...');
+            logger.debug('📈 Dashboard Service - Fetching analytics from API...');
             const queryParams = this.buildQueryParams(filters);
             const response = await httpClient.get(
               `${API_ENDPOINTS.DASHBOARD.ANALYTICS}?${queryParams}`
             );
 
             if (response.success && response.data != null) {
-              console.log(
+              logger.debug(
                 '✅ Dashboard Service - Analytics fetched successfully'
               );
               await offlineStorage.setOfflineData(cacheKey, response.data);
@@ -302,12 +286,12 @@ class DashboardServiceImpl implements DashboardService {
             }
             // 404 or missing endpoint: log as warn and return null so cache/offline can be used
             if (response.error?.includes('Resource not found') || response.error?.includes('not found')) {
-              console.warn(
+              logger.warn(
                 '⚠️ Dashboard Service - Analytics endpoint not available:',
                 response.error
               );
             } else {
-              console.error(
+              logger.error(
                 '❌ Dashboard Service - Failed to fetch analytics:',
                 response.error
               );
@@ -316,9 +300,9 @@ class DashboardServiceImpl implements DashboardService {
           } catch (error) {
             const msg = error instanceof Error ? error.message : 'Unknown error';
             if (msg.includes('Resource not found')) {
-              console.warn('⚠️ Dashboard Service - Analytics endpoint not available');
+              logger.warn('Dashboard Service - Analytics endpoint not available');
             } else {
-              console.error('❌ Dashboard Service - Analytics fetch error:', msg);
+              logger.error('Dashboard Service - Analytics fetch error', msg);
             }
             return null;
           }
@@ -342,7 +326,7 @@ class DashboardServiceImpl implements DashboardService {
       .getDataWithOfflineFallback(
         cacheKey,
         async () => {
-          console.log(
+          logger.debug(
             '🔄 Dashboard Service - Fetching combined data from API...'
           );
           const queryParams = this.buildQueryParams(filters);
@@ -357,7 +341,7 @@ class DashboardServiceImpl implements DashboardService {
             // Store offline data for future use
             await offlineStorage.setOfflineData(cacheKey, response.data);
           } else {
-            console.error(
+            logger.error(
               '❌ Dashboard Service - Failed to fetch combined data:',
               response.error
             );
@@ -381,13 +365,13 @@ class DashboardServiceImpl implements DashboardService {
       .getDataWithOfflineFallback(
         'dashboard_statistics',
         async () => {
-          console.log('📊 Dashboard Service - Fetching statistics from API...');
+          logger.debug('📊 Dashboard Service - Fetching statistics from API...');
           const response = await httpClient.get(
             API_ENDPOINTS.DASHBOARD.STATISTICS
           );
 
           if (response.success && response.data) {
-            console.log(
+            logger.debug(
               '✅ Dashboard Service - Statistics fetched successfully'
             );
             // Store offline data for future use
@@ -396,7 +380,7 @@ class DashboardServiceImpl implements DashboardService {
               response.data
             );
           } else {
-            console.error(
+            logger.error(
               '❌ Dashboard Service - Failed to fetch statistics:',
               response.error
             );
@@ -422,7 +406,7 @@ class DashboardServiceImpl implements DashboardService {
       .getDataWithOfflineFallback(
         cacheKey,
         async () => {
-          console.log(
+          logger.debug(
             '🍽️ Dashboard Service - Fetching meal distribution from API...'
           );
           const response = await httpClient.get(
@@ -430,13 +414,13 @@ class DashboardServiceImpl implements DashboardService {
           );
 
           if (response.success && response.data) {
-            console.log(
+            logger.debug(
               '✅ Dashboard Service - Meal distribution fetched successfully'
             );
             // Store offline data for future use
             await offlineStorage.setOfflineData(cacheKey, response.data);
           } else {
-            console.error(
+            logger.error(
               '❌ Dashboard Service - Failed to fetch meal distribution:',
               response.error
             );
@@ -462,7 +446,7 @@ class DashboardServiceImpl implements DashboardService {
       .getDataWithOfflineFallback(
         cacheKey,
         async () => {
-          console.log(
+          logger.debug(
             '💰 Dashboard Service - Fetching expense trend from API...'
           );
           const response = await httpClient.get(
@@ -470,13 +454,13 @@ class DashboardServiceImpl implements DashboardService {
           );
 
           if (response.success && response.data) {
-            console.log(
+            logger.debug(
               '✅ Dashboard Service - Expense trend fetched successfully'
             );
             // Store offline data for future use
             await offlineStorage.setOfflineData(cacheKey, response.data);
           } else {
-            console.error(
+            logger.error(
               '❌ Dashboard Service - Failed to fetch expense trend:',
               response.error
             );
@@ -502,7 +486,7 @@ class DashboardServiceImpl implements DashboardService {
       .getDataWithOfflineFallback(
         cacheKey,
         async () => {
-          console.log(
+          logger.debug(
             '📊 Dashboard Service - Fetching category breakdown from API...'
           );
           const response = await httpClient.get(
@@ -510,13 +494,13 @@ class DashboardServiceImpl implements DashboardService {
           );
 
           if (response.success && response.data) {
-            console.log(
+            logger.debug(
               '✅ Dashboard Service - Category breakdown fetched successfully'
             );
             // Store offline data for future use
             await offlineStorage.setOfflineData(cacheKey, response.data);
           } else {
-            console.error(
+            logger.error(
               '❌ Dashboard Service - Failed to fetch category breakdown:',
               response.error
             );
@@ -567,7 +551,7 @@ class DashboardServiceImpl implements DashboardService {
 
   // Offline-first refresh method
   async refreshDashboard(): Promise<void> {
-    console.log('🔄 Dashboard Service - Refreshing dashboard data...');
+    logger.debug('🔄 Dashboard Service - Refreshing dashboard data...');
 
     try {
       // Clear cache to force fresh data
@@ -581,9 +565,9 @@ class DashboardServiceImpl implements DashboardService {
         this.getStatistics(true),
       ]);
 
-      console.log('✅ Dashboard Service - Dashboard refreshed successfully');
+      logger.debug('✅ Dashboard Service - Dashboard refreshed successfully');
     } catch (error) {
-      console.error(
+      logger.error(
         '❌ Dashboard Service - Failed to refresh dashboard:',
         error
       );

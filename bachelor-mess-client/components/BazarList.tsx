@@ -18,6 +18,7 @@ import bazarService, {
 } from '../services/bazarService';
 import { bazarOptimizations } from '../utils/performance';
 import { useTheme } from '../context/ThemeContext';
+import logger from '../utils/logger';
 
 interface BazarListProps {
   filters?: BazarFilters;
@@ -45,6 +46,7 @@ export const BazarList: React.FC<BazarListProps> = ({
   onDelete,
 }) => {
   const router = useRouter();
+  const { theme } = useTheme();
   const [bazarEntries, setBazarEntries] = useState<BazarEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -56,19 +58,6 @@ export const BazarList: React.FC<BazarListProps> = ({
   const displayLoading =
     externalLoading !== undefined ? externalLoading : loading;
   const displayError = externalError !== undefined ? externalError : error;
-
-  // Debug logging
-  console.log('🔍 BazarList Debug:', {
-    externalBazarEntriesCount: externalBazarEntries?.length || 0,
-    internalBazarEntriesCount: bazarEntries?.length || 0,
-    displayBazarEntriesCount: displayBazarEntries?.length || 0,
-    externalLoading,
-    internalLoading: loading,
-    displayLoading,
-    externalError,
-    internalError: error,
-    displayError,
-  });
 
   // Memoize filters to prevent infinite loops
   const memoizedFilters = useMemo(() => filters, [filters]);
@@ -98,10 +87,9 @@ export const BazarList: React.FC<BazarListProps> = ({
           memoizedFilters
         );
 
-        console.log('📥 BazarList - Response received:', {
+        logger.debug('BazarList - Response received', {
           success: response.success,
-          entriesCount: response.data?.length || 0,
-          error: response.error,
+          entriesCount: response.data?.length ?? 0,
         });
 
         if (response.success && response.data) {
@@ -123,19 +111,16 @@ export const BazarList: React.FC<BazarListProps> = ({
           }));
 
           setBazarEntries(transformedEntries);
-          console.log('✅ BazarList - Entries loaded successfully');
+          logger.debug('BazarList - Entries loaded');
         } else {
           setError(response.error || 'Failed to load bazar entries');
-          console.error(
-            '❌ BazarList - Failed to load entries:',
-            response.error
-          );
+          logger.error('BazarList - Failed to load entries', response.error);
         }
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : 'Unknown error';
         setError(errorMessage);
-        console.error('❌ BazarList - Error loading entries:', err);
+        logger.error('BazarList - Error loading entries', err);
       } finally {
         setLoading(false);
       }
@@ -179,22 +164,18 @@ export const BazarList: React.FC<BazarListProps> = ({
                 });
 
                 if (response.success) {
-                  console.log('✅ BazarList - Status updated successfully');
-                  // Refresh the list
+                  logger.debug('BazarList - Status updated');
                   await loadBazarEntries(true);
                   onStatusUpdate?.(bazarId, status);
                 } else {
-                  console.error(
-                    '❌ BazarList - Failed to update status:',
-                    response.error
-                  );
+                  logger.error('BazarList - Failed to update status', response.error);
                   Alert.alert(
                     'Error',
                     response.error || 'Failed to update status'
                   );
                 }
               } catch (error) {
-                console.error('❌ BazarList - Error updating status:', error);
+                logger.error('BazarList - Error updating status', error);
                 Alert.alert('Error', 'Failed to update status');
               }
             },
@@ -216,27 +197,23 @@ export const BazarList: React.FC<BazarListProps> = ({
             text: 'Delete',
             style: 'destructive',
             onPress: async () => {
-              console.log('🗑️ BazarList - Deleting bazar entry:', bazarId);
+              logger.debug('BazarList - Deleting bazar entry');
 
               try {
                 const response = await bazarService.deleteBazar(bazarId);
                 if (response.success) {
-                  console.log('✅ BazarList - Bazar deleted successfully');
-                  // Refresh the list
+                  logger.debug('BazarList - Bazar deleted');
                   await loadBazarEntries(true);
                   onDelete?.(bazarId);
                 } else {
-                  console.error(
-                    '❌ BazarList - Failed to delete bazar:',
-                    response.error
-                  );
+                  logger.error('BazarList - Failed to delete bazar', response.error);
                   Alert.alert(
                     'Error',
                     response.error || 'Failed to delete bazar entry'
                   );
                 }
               } catch (error) {
-                console.error('❌ BazarList - Error deleting bazar:', error);
+                logger.error('BazarList - Error deleting bazar', error);
                 Alert.alert('Error', 'Failed to delete bazar entry');
               }
             },
@@ -308,8 +285,6 @@ export const BazarList: React.FC<BazarListProps> = ({
     }
   }, [loadBazarEntries, externalBazarEntries]);
 
-  const { theme } = useTheme();
-
   // Memoize empty state component
   const renderEmptyState = useCallback(
     () => (
@@ -346,9 +321,7 @@ export const BazarList: React.FC<BazarListProps> = ({
   if (displayLoading && displayBazarEntries.length === 0) {
     return (
       <View style={styles.loadingContainer}>
-      <View style={styles.loadingContainer}>
         <ModernLoader size='large' text='Loading shopping entries...' overlay={false} />
-      </View>
       </View>
     );
   }

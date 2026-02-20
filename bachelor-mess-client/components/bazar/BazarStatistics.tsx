@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   StyleSheet,
@@ -10,6 +10,7 @@ import type { IconName } from '@/constants/IconTypes';
 import { ThemedText } from '../ThemedText';
 import { useTheme } from '../../context/ThemeContext';
 import { useBazar } from '../../context/BazarContext';
+import { useAuth } from '../../context/AuthContext';
 
 interface BazarStats {
   totalAmount: number;
@@ -19,6 +20,66 @@ interface BazarStats {
   averageAmount: number;
   myTotalAmountCurrentMonth?: number;
   groupTotalAmount?: number;
+}
+
+type BazarEntryLike = {
+  totalAmount?: number;
+  status?: string;
+  date?: string;
+  userId?: string | { _id?: string; id?: string };
+};
+
+function getEntryUserId(entry: BazarEntryLike): string | undefined {
+  const u = entry.userId;
+  if (!u) return undefined;
+  if (typeof u === 'string') return u;
+  return (u as { _id?: string; id?: string })._id ?? (u as { id?: string }).id;
+}
+
+/** Compute stats from entries (fallback when API stats unavailable). */
+function computeStatsFromEntries(
+  entries: BazarEntryLike[],
+  currentUserId: string | undefined
+): BazarStats {
+  if (!entries.length) {
+    return {
+      totalAmount: 0,
+      totalEntries: 0,
+      pendingAmount: 0,
+      approvedAmount: 0,
+      averageAmount: 0,
+    };
+  }
+  let totalAmount = 0;
+  let pendingAmount = 0;
+  let approvedAmount = 0;
+  let myMonth = 0;
+  let groupMonth = 0;
+  const now = new Date();
+  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+  for (const entry of entries) {
+    const amt = Number(entry.totalAmount) || 0;
+    totalAmount += amt;
+    if (entry.status === 'pending') pendingAmount += amt;
+    if (entry.status === 'approved') approvedAmount += amt;
+    const entryDate = entry.date ? new Date(entry.date) : null;
+    if (entryDate && entryDate >= firstDay && entryDate <= lastDay) {
+      groupMonth += amt;
+      if (currentUserId && getEntryUserId(entry) === currentUserId) myMonth += amt;
+    }
+  }
+
+  return {
+    totalAmount,
+    totalEntries: entries.length,
+    pendingAmount,
+    approvedAmount,
+    averageAmount: entries.length > 0 ? totalAmount / entries.length : 0,
+    myTotalAmountCurrentMonth: myMonth || undefined,
+    groupTotalAmount: groupMonth > 0 ? groupMonth : undefined,
+  };
 }
 
 interface BazarStatisticsProps {
@@ -39,6 +100,7 @@ export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
   compact = false,
 }) => {
   const { theme } = useTheme();
+  const { user } = useAuth();
   const { filteredEntries, bazarEntries } = useBazar();
 
   const formatCurrency = (amount: number) => {
@@ -50,39 +112,31 @@ export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
       filteredEntries && filteredEntries.length > 0
         ? filteredEntries
         : bazarEntries;
-
     if (!entriesToUse || entriesToUse.length === 0) return null;
-
     try {
-      type Entry = { totalAmount?: number; status?: string };
-      const totalAmount = (entriesToUse as Entry[]).reduce(
-        (sum: number, entry: Entry) => sum + (Number(entry.totalAmount) || 0),
-        0
+      return computeStatsFromEntries(
+        entriesToUse as BazarEntryLike[],
+        user?.id
       );
-      const totalEntries = entriesToUse.length;
-      const pendingEntries = (entriesToUse as Entry[]).filter(
-        (entry: Entry) => entry.status === 'pending'
-      ).length;
-      const approvedEntries = (entriesToUse as Entry[]).filter(
-        (entry: Entry) => entry.status === 'approved'
-      ).length;
-      const averageAmount = totalEntries > 0 ? totalAmount / totalEntries : 0;
-
-      const fallback: BazarStats = {
-        totalAmount,
-        totalEntries,
-        pendingAmount: pendingEntries,
-        approvedAmount: approvedEntries,
-        averageAmount,
-      };
-      return fallback;
     } catch (err) {
       console.error('💥 Error calculating fallback stats:', err);
       return null;
     }
   };
 
-  const displayStats: BazarStats | null = stats || getFallbackStats();
+  const computedFromEntries = useMemo(() => {
+    const entries =
+      filteredEntries && filteredEntries.length > 0
+        ? filteredEntries
+        : bazarEntries;
+    return entries.length > 0
+      ? computeStatsFromEntries(entries as BazarEntryLike[], user?.id)
+      : null;
+  }, [filteredEntries, bazarEntries, user?.id]);
+
+  // Prefer API stats (correct DB aggregates). Use computed from entries only when API has no data or failed.
+  const displayStats: BazarStats | null =
+    stats ?? computedFromEntries ?? getFallbackStats();
 
   const hasData =
     !!displayStats ||

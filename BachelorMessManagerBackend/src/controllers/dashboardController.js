@@ -242,11 +242,9 @@ class DashboardController {
           query.userId = userId;
         }
 
-        console.log(`🔍 Querying meals for ${date.toDateString()}:`, query);
+        logger.debug(`Querying meals for ${date.toDateString()}`, { query });
         const meals = await Meal.find(query);
-        console.log(
-          `📊 Found ${meals.length} meals for ${date.toDateString()}`
-        );
+        logger.debug(`Found ${meals.length} meals for ${date.toDateString()}`);
 
         const totalMeals = meals.reduce((sum, meal) => {
           return (
@@ -334,13 +332,8 @@ class DashboardController {
         });
       }
 
-      console.log('📊 Monthly revenue data calculated:', {
+      logger.debug('Monthly revenue data calculated', {
         dataPoints: monthlyData.length,
-        totalRevenue: monthlyData.reduce((sum, item) => sum + item.value, 0),
-        averageRevenue: Math.round(
-          monthlyData.reduce((sum, item) => sum + item.value, 0) /
-            monthlyData.length
-        ),
       });
 
       return monthlyData;
@@ -412,14 +405,8 @@ class DashboardController {
         });
       }
 
-      console.log('📊 Expense breakdown data calculated:', {
-        totalExpenses: baseExpenses,
+      logger.debug('Expense breakdown calculated', {
         categories: breakdownData.length,
-        breakdown: breakdownData.map(item => ({
-          label: item.label,
-          value: item.value,
-          percentage: item.details.percentage,
-        })),
       });
 
       return breakdownData;

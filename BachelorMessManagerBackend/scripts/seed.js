@@ -7,22 +7,23 @@ require('dotenv').config();
 
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/bachelor-mess');
+    const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/bachelor-mess-dev';
+    const conn = await mongoose.connect(uri);
     console.log(`MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
     console.error('Database connection error:', error);
     throw error;
-    // process.exit(1);
   }
 };
 
-// Sample users
+// Sample users (status: 'active' so protect middleware allows login)
 const sampleUsers = [
   {
     name: 'Super Administrator',
     email: 'superadmin@mess.com',
     password: 'SuperAdmin@2024',
     role: 'super_admin',
+    status: 'active',
     phone: '+8801234567890',
     monthlyContribution: 5000,
     paymentStatus: 'paid',
@@ -37,6 +38,7 @@ const sampleUsers = [
     email: 'admin@mess.com',
     password: 'Admin@2024',
     role: 'admin',
+    status: 'active',
     phone: '+8801234567891',
     monthlyContribution: 5000,
     paymentStatus: 'paid',
@@ -49,6 +51,7 @@ const sampleUsers = [
     email: 'john@mess.com',
     password: 'Password@123',
     role: 'member',
+    status: 'active',
     phone: '+8801234567892',
     monthlyContribution: 5000,
     paymentStatus: 'paid',
@@ -61,6 +64,7 @@ const sampleUsers = [
     email: 'mahbub@mess.com',
     password: 'Password@123',
     role: 'member',
+    status: 'active',
     phone: '+8801234567893',
     monthlyContribution: 5000,
     paymentStatus: 'pending',
@@ -72,6 +76,7 @@ const sampleUsers = [
     email: 'rafiqul@mess.com',
     password: 'Password@123',
     role: 'member',
+    status: 'active',
     phone: '+8801234567894',
     monthlyContribution: 5000,
     paymentStatus: 'paid',
@@ -81,38 +86,53 @@ const sampleUsers = [
   }
 ];
 
-// Sample bazar entries
+// Sample bazar entries (match Bazar model: items have name, quantity string, price; no category/unit)
 const sampleBazarEntries = [
   {
     items: [
-      { name: 'Rice (Basmati)', quantity: 10, unit: 'kg', price: 500 },
-      { name: 'Lentils (Masoor Dal)', quantity: 3, unit: 'kg', price: 180 },
-      { name: 'Onions', quantity: 5, unit: 'kg', price: 150 }
+      { name: 'Rice (Basmati)', quantity: '10 kg', price: 500 },
+      { name: 'Lentils (Masoor Dal)', quantity: '3 kg', price: 180 },
+      { name: 'Onions', quantity: '5 kg', price: 150 }
     ],
     totalAmount: 830,
-    category: 'groceries',
+    description: 'Weekly grocery shopping',
     status: 'approved',
     notes: 'Weekly grocery shopping'
   },
   {
     items: [
-      { name: 'Beef', quantity: 2, unit: 'kg', price: 400 },
-      { name: 'Fish (Rui)', quantity: 2, unit: 'kg', price: 300 }
+      { name: 'Beef', quantity: '2 kg', price: 400 },
+      { name: 'Fish (Rui)', quantity: '2 kg', price: 300 }
     ],
     totalAmount: 700,
-    category: 'meat',
+    description: 'Protein for the week',
     status: 'pending',
     notes: 'Protein for the week'
+  },
+  {
+    items: [
+      { name: 'Potato', quantity: '5 kg', price: 100 },
+      { name: 'Oil', quantity: '1 L', price: 250 }
+    ],
+    totalAmount: 350,
+    description: 'Cooking essentials',
+    status: 'approved',
+    notes: 'Cooking essentials'
   }
 ];
 
-// Generate meal entries for past 7 days
+// Generate meal entries for past 7 days (includes optional guest meal counts)
 const generateMealEntries = (members, admin) => {
   const meals = [];
   for (let i = 0; i < 7; i++) {
     const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
     date.setUTCHours(0, 0, 0, 0);
-    members.forEach(member => {
+    members.forEach((member, memberIdx) => {
+      // Add guest meals for some entries (e.g. 1–2 days per member with 1–2 guests)
+      const hasGuests = i <= 2 && memberIdx < 2; // first 2 days, first 2 members
+      const guestBreakfast = hasGuests && i === 0 ? 1 : 0;
+      const guestLunch = hasGuests && i === 1 ? 2 : hasGuests && i === 0 ? 1 : 0;
+      const guestDinner = hasGuests && i === 2 ? 1 : 0;
       meals.push({
         userId: member._id,
         date,
@@ -123,6 +143,9 @@ const generateMealEntries = (members, admin) => {
         notes: `Meals for ${date.toDateString()}`,
         approvedBy: i < 3 ? admin._id : null,
         approvedAt: i < 3 ? new Date() : null,
+        guestBreakfast,
+        guestLunch,
+        guestDinner,
         createdAt: new Date(),
         updatedAt: new Date()
       });
@@ -159,14 +182,14 @@ const seedDatabase = async () => {
       console.log(`✅ Set createdBy to admin for ${members.length} members`);
     }
 
-    // Create bazar entries
+    // Create bazar entries (Bazar model requires date; totalAmount must equal sum of item prices)
+    const now = new Date();
     const bazarData = sampleBazarEntries.map((entry, idx) => ({
       ...entry,
       userId: members[idx % members.length]._id,
+      date: new Date(now.getTime() - idx * 24 * 60 * 60 * 1000),
       approvedBy: entry.status === 'approved' ? admin._id : null,
-      approvedAt: entry.status === 'approved' ? new Date() : null,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      approvedAt: entry.status === 'approved' ? new Date() : null
     }));
     await Bazar.insertMany(bazarData);
     console.log(`✅ Created ${bazarData.length} bazar entries`);
@@ -176,29 +199,46 @@ const seedDatabase = async () => {
     await Meal.insertMany(meals);
     console.log(`✅ Created ${meals.length} meal entries`);
 
-    // Create statistics
+    // Create statistics (align with Statistics schema: global, meals, bazar, users, monthly)
+    const approvedBazar = bazarData.filter(b => b.status === 'approved').length;
+    const pendingBazar = bazarData.filter(b => b.status === 'pending').length;
+    const rejectedBazar = bazarData.filter(b => b.status === 'rejected').length;
+    const totalBazarAmount = bazarData.reduce((s, b) => s + (b.totalAmount || 0), 0);
     const stats = new Statistics({
-      users: {
+      global: {
         totalUsers: createdUsers.length,
+        activeUsers: createdUsers.filter(u => u.status === 'active').length,
+        totalMeals: meals.length,
+        totalBazarEntries: bazarData.length,
+        totalExpenses: totalBazarAmount,
+        lastUpdated: new Date()
+      },
+      users: {
         adminUsers: createdUsers.filter(u => u.role === 'admin').length,
         memberUsers: members.length,
         inactiveUsers: 0,
         newUsersThisMonth: createdUsers.length,
-        activeUsersThisMonth: createdUsers.length
+        activeUsersThisMonth: createdUsers.length,
+        lastUpdated: new Date()
       },
       meals: {
-        totalMeals: meals.length,
-        approvedMeals: meals.filter(m => m.status === 'approved').length,
+        totalBreakfast: meals.filter(m => m.breakfast).length,
+        totalLunch: meals.filter(m => m.lunch).length,
+        totalDinner: meals.filter(m => m.dinner).length,
         pendingMeals: meals.filter(m => m.status === 'pending').length,
-        rejectedMeals: meals.filter(m => m.status === 'rejected').length
+        approvedMeals: meals.filter(m => m.status === 'approved').length,
+        rejectedMeals: meals.filter(m => m.status === 'rejected').length,
+        lastUpdated: new Date()
       },
       bazar: {
+        totalAmount: totalBazarAmount,
         totalEntries: bazarData.length,
-        approvedEntries: bazarData.filter(b => b.status === 'approved').length,
-        pendingEntries: bazarData.filter(b => b.status === 'pending').length,
-        rejectedEntries: bazarData.filter(b => b.status === 'rejected').length
-      },
-      lastUpdated: new Date()
+        pendingEntries: pendingBazar,
+        approvedEntries: approvedBazar,
+        rejectedEntries: rejectedBazar,
+        averageAmount: bazarData.length > 0 ? totalBazarAmount / bazarData.length : 0,
+        lastUpdated: new Date()
+      }
     });
     await stats.save();
     console.log('✅ Statistics initialized');

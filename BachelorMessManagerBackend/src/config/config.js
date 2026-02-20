@@ -20,8 +20,8 @@ const config = {
 
   // Database Configuration
   database: {
-    uri: process.env.NODE_ENV === 'production' 
-      ? process.env.MONGODB_URI_PROD 
+    uri: process.env.NODE_ENV === 'production'
+      ? (process.env.MONGODB_URI_PROD || process.env.MONGODB_URI)
       : process.env.MONGODB_URI,
     options: {
       maxPoolSize: parseInt(process.env.MONGODB_MAX_POOL_SIZE) || 10,
@@ -171,11 +171,13 @@ const validateConfig = () => {
   }
 
   if (!config.jwt.secret || config.jwt.secret === 'your-super-secret-jwt-key-change-this-in-production') {
-    errors.push('JWT_SECRET must be set to a secure value');
+    errors.push('JWT_SECRET must be set to a secure value in production');
   }
 
   if (!config.cloudinary.cloudName || !config.cloudinary.apiKey || !config.cloudinary.apiSecret) {
-    console.warn('Cloudinary configuration is incomplete. File uploads may not work properly.');
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('Cloudinary configuration is incomplete. File uploads may not work.');
+    }
   }
 
   if (errors.length > 0) {

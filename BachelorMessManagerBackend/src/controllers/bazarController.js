@@ -1,8 +1,14 @@
+const mongoose = require('mongoose');
 const Bazar = require('../models/Bazar');
 const User = require('../models/User');
 const { config } = require('../config/config');
 const logger = require('../utils/logger');
 const { getGroupMemberIds } = require('../utils/groupHelper');
+const {
+  buildBazarListQuery,
+  findBazarEntriesPaginated,
+  buildStatsFilters,
+} = require('../utils/bazarHelper');
 const {
   sendSuccessResponse,
   sendErrorResponse,
@@ -67,50 +73,23 @@ class BazarController {
   // Get user bazar entries
   async getUserBazar(req, res, next) {
     try {
-      const userId = req.user.id;
       const { startDate, endDate, status, limit = 10, page = 1 } = req.query;
-
-      // Build query
-      const query = { userId };
-
-      if (startDate && endDate) {
-        query.date = {
-          $gte: new Date(startDate),
-          $lte: new Date(endDate),
-        };
-      }
-
-      if (status) {
-        query.status = status;
-      }
-
-      // Calculate pagination
-      const skip = (parseInt(page) - 1) * parseInt(limit);
-
-      // Get bazar entries with pagination
-      const bazarEntries = await Bazar.find(query)
-        .populate('userId', 'name email')
-        .populate('approvedBy', 'name')
-        .sort({ date: -1 })
-        .skip(skip)
-        .limit(parseInt(limit));
-
-      // Get total count
-      const total = await Bazar.countDocuments(query);
-
+      const query = buildBazarListQuery({
+        userId: req.user.id,
+        startDate,
+        endDate,
+        status,
+      });
+      const { bazarEntries, pagination } = await findBazarEntriesPaginated(
+        Bazar,
+        query,
+        { limit, page }
+      );
       return sendSuccessResponse(
         res,
         200,
         'User bazar entries retrieved successfully',
-        {
-          bazarEntries,
-          pagination: {
-            page: parseInt(page),
-            limit: parseInt(limit),
-            total,
-            pages: Math.ceil(total / parseInt(limit)),
-          },
-        }
+        { bazarEntries, pagination }
       );
     } catch (error) {
       next(error);
@@ -124,62 +103,41 @@ class BazarController {
         status,
         startDate,
         endDate,
-        userId,
+        userId: queryUserId,
         limit = 20,
         page = 1,
       } = req.query;
 
-      const query = {};
-
-      if (status) query.status = status;
-
-      // Date: use params if both provided, else default to current month
-      if (startDate && endDate) {
-        query.date = {
-          $gte: new Date(startDate),
-          $lte: new Date(endDate),
-        };
-      } else {
-        const now = new Date();
-        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-        query.date = { $gte: monthStart, $lte: monthEnd };
+      if (queryUserId && !mongoose.Types.ObjectId.isValid(queryUserId)) {
+        return sendErrorResponse(res, 400, 'Invalid userId');
       }
 
-      // User scope: specific userId from params, or group members (admin/member see group; super_admin sees all)
-      if (userId) {
-        query.userId = userId;
-      } else {
-        const groupMemberIds = await getGroupMemberIds(req.user);
-        if (Array.isArray(groupMemberIds) && groupMemberIds.length > 0) {
-          query.userId = { $in: groupMemberIds };
-        }
-      }
+      const groupMemberIds = await getGroupMemberIds(req.user);
+      const query = buildBazarListQuery({
+        userId: queryUserId && mongoose.Types.ObjectId.isValid(queryUserId) ? queryUserId : undefined,
+        userIds:
+          !queryUserId &&
+          Array.isArray(groupMemberIds) &&
+          groupMemberIds.length > 0
+            ? groupMemberIds
+            : undefined,
+        status,
+        startDate,
+        endDate,
+        defaultCurrentMonth: !startDate && !endDate,
+      });
 
-      const skip = (parseInt(page) - 1) * parseInt(limit);
-
-      const bazarEntries = await Bazar.find(query)
-        .populate('userId', 'name email')
-        .populate('approvedBy', 'name')
-        .sort({ date: -1, createdAt: -1 })
-        .skip(skip)
-        .limit(parseInt(limit));
-
-      const total = await Bazar.countDocuments(query);
+      const { bazarEntries, pagination } = await findBazarEntriesPaginated(
+        Bazar,
+        query,
+        { limit, page }
+      );
 
       return sendSuccessResponse(
         res,
         200,
         'All bazar entries retrieved successfully',
-        {
-          bazarEntries,
-          pagination: {
-            page: parseInt(page),
-            limit: parseInt(limit),
-            total,
-            pages: Math.ceil(total / parseInt(limit)),
-          },
-        }
+        { bazarEntries, pagination }
       );
     } catch (error) {
       next(error);
@@ -229,24 +187,14 @@ class BazarController {
   async getBazarStats(req, res, next) {
     try {
       const { startDate, endDate, userId } = req.query;
-
-      // Build query
-      const query = {};
-
-      if (startDate && endDate) {
-        query.date = {
-          $gte: new Date(startDate),
-          $lte: new Date(endDate),
-        };
-      }
-
+      const filters = { ...buildStatsFilters(startDate, endDate) };
       if (userId) {
-        query.userId = userId;
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+          return sendErrorResponse(res, 400, 'Invalid userId');
+        }
+        filters.userId = userId;
       }
-
-      // Get statistics
-      const stats = await Bazar.getStats(query);
-
+      const stats = await Bazar.getStats(filters);
       return sendSuccessResponse(
         res,
         200,
@@ -261,22 +209,9 @@ class BazarController {
   // Get user bazar statistics
   async getUserBazarStats(req, res, next) {
     try {
-      const userId = req.user.id;
       const { startDate, endDate } = req.query;
-
-      // Build query
-      const query = { userId };
-
-      if (startDate && endDate) {
-        query.date = {
-          $gte: new Date(startDate),
-          $lte: new Date(endDate),
-        };
-      }
-
-      // Get user statistics
-      const stats = await Bazar.getUserStats(userId, query);
-
+      const filters = buildStatsFilters(startDate, endDate);
+      const stats = await Bazar.getUserStats(req.user.id, filters);
       return sendSuccessResponse(
         res,
         200,
@@ -364,10 +299,15 @@ class BazarController {
     }
   }
 
-  // Get bazar by ID
+  // Get bazar by ID (own entry or group member's entry for admin/member)
   async getBazarById(req, res, next) {
     try {
       const { bazarId } = req.params;
+      const currentUserId = req.user.id;
+
+      if (!mongoose.Types.ObjectId.isValid(bazarId)) {
+        return sendErrorResponse(res, 400, 'Invalid bazar ID');
+      }
 
       const bazar = await Bazar.findById(bazarId)
         .populate('userId', 'name email')
@@ -377,12 +317,33 @@ class BazarController {
         return sendErrorResponse(res, 404, 'Bazar entry not found');
       }
 
-      return sendSuccessResponse(
-        res,
-        200,
-        'Bazar entry retrieved successfully',
-        bazar
-      );
+      const entryUserId =
+        bazar.userId && (bazar.userId._id || bazar.userId).toString();
+      const isOwn = entryUserId === currentUserId;
+      if (isOwn) {
+        return sendSuccessResponse(
+          res,
+          200,
+          'Bazar entry retrieved successfully',
+          bazar
+        );
+      }
+
+      const groupMemberIds = await getGroupMemberIds(req.user);
+      const isInGroup =
+        Array.isArray(groupMemberIds) &&
+        groupMemberIds.length > 0 &&
+        groupMemberIds.some((id) => id && id.toString() === entryUserId);
+      if (isInGroup) {
+        return sendSuccessResponse(
+          res,
+          200,
+          'Bazar entry retrieved successfully',
+          bazar
+        );
+      }
+
+      return sendErrorResponse(res, 403, 'Access denied to this bazar entry');
     } catch (error) {
       next(error);
     }
@@ -431,19 +392,8 @@ class BazarController {
   async getBazarSummaryByCategory(req, res, next) {
     try {
       const { startDate, endDate } = req.query;
-
-      // Build query
-      const query = {};
-
-      if (startDate && endDate) {
-        query.date = {
-          $gte: new Date(startDate),
-          $lte: new Date(endDate),
-        };
-      }
-
-      // Get summary by category
-      const summary = await Bazar.getSummaryByCategory(query);
+      const filters = buildStatsFilters(startDate, endDate);
+      const summary = await Bazar.getSummaryByCategory(filters);
 
       return sendSuccessResponse(
         res,
@@ -460,9 +410,13 @@ class BazarController {
   async getBazarTrends(req, res, next) {
     try {
       const { period = 'month' } = req.query;
+      const allowedPeriods = ['week', 'month', 'year'];
+      const periodVal =
+        typeof period === 'string' && allowedPeriods.includes(period)
+          ? period
+          : 'month';
 
-      // Get trends
-      const trends = await Bazar.getTrends(period);
+      const trends = await Bazar.getTrends(periodVal);
 
       return sendSuccessResponse(
         res,

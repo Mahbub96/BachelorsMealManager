@@ -1,4 +1,5 @@
 import { Alert } from 'react-native';
+import { logger as appLogger } from '@/utils/logger';
 
 // Error types for better categorization
 enum ErrorType {
@@ -25,7 +26,7 @@ interface AppError {
   type: ErrorType;
   severity: ErrorSeverity;
   message: string;
-  originalError?: any;
+  originalError?: unknown;
   context?: string;
   timestamp: number;
   retryable: boolean;
@@ -183,14 +184,14 @@ class ErrorHandler {
   }
 
   // Handle error with logging and categorization
-  handleError(error: any, context?: string): AppError {
+  handleError(error: any | unknown, context?: string): AppError {
     const appError = this.categorizeError(error, context);
 
     // Log the error
     this.logError(appError);
 
-    // Console log for debugging
-    console.error('🚨 Error Handler:', {
+    // Use app logger (sanitized, no red-box overlay from console.error)
+    appLogger.error('Error Handler', {
       type: appError.type,
       severity: appError.severity,
       message: appError.message,

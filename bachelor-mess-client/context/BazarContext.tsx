@@ -129,23 +129,10 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
       setLoadingStats(true);
       setStatsError(null);
 
-      console.log('🛒 Loading bazar statistics...');
       const response = await userStatsService.getUserBazarStats();
 
-      console.log('📊 Bazar stats response:', response);
-
       if (response.success && response.data) {
-        console.log('✅ Bazar stats loaded successfully:', response.data);
         const data = response.data as Record<string, unknown>;
-        console.log('🔍 Raw API response structure:', {
-          keys: Object.keys(data),
-          values: data,
-          types: Object.keys(data).map(key => ({
-            key,
-            type: typeof data[key],
-            value: data[key],
-          })),
-        });
 
         // Transform backend data to match our interface with better error handling
         const backendStats = data as Partial<
@@ -175,15 +162,12 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
               : undefined,
         };
 
-        console.log('🔄 Transformed stats:', transformedStats);
         setBazarStats(transformedStats);
       } else {
-        console.error('❌ Failed to load bazar stats:', response.error);
         setStatsError(response.error || 'Failed to load statistics');
         // Don't clear existing stats on error, keep them for fallback
       }
     } catch (error) {
-      console.error('💥 Error loading bazar stats:', error);
       setStatsError('Failed to load statistics');
       // Don't clear existing stats on error, keep them for fallback
     } finally {
@@ -199,8 +183,8 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
       setLoadingEntries(true);
       setEntriesError(null);
 
-      // Convert UI filters to API query params
-      const apiFilters: ApiBazarFilters = {};
+      // Convert UI filters to API query params. Request enough entries so list and fallback stats are meaningful.
+      const apiFilters: ApiBazarFilters = { limit: 500 };
       if (
         filters.status &&
         filters.status !== 'all' &&
@@ -210,8 +194,8 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
       ) {
         apiFilters.status = filters.status;
       }
+      const today = new Date();
       if (filters.dateRange && filters.dateRange !== 'all') {
-        const today = new Date();
         switch (filters.dateRange) {
           case 'today':
             apiFilters.startDate = today.toISOString().split('T')[0];
@@ -232,6 +216,10 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
             apiFilters.endDate = today.toISOString().split('T')[0];
             break;
         }
+      } else if (filters.dateRange === 'all') {
+        // Explicit all-time range so backend returns all entries (not default current month)
+        apiFilters.startDate = '2020-01-01';
+        apiFilters.endDate = today.toISOString().split('T')[0];
       }
 
       const useGroupApi =
@@ -242,11 +230,7 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
         ? await bazarService.getAllBazarEntries(apiFilters)
         : await bazarService.getUserBazarEntries(apiFilters);
 
-      console.log('📊 Bazar entries response:', response);
-
       if (response.success && response.data) {
-        console.log('✅ Bazar entries loaded successfully:', response.data);
-
         // Handle nested response structure from backend
         type BazarResponse = BazarEntry[] | { bazarEntries: BazarEntry[] };
         const data = response.data as BazarResponse;
@@ -263,31 +247,12 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
           id: entry._id || entry.id,
         }));
 
-        console.log('🔄 Setting bazar entries:', {
-          count: transformedEntries.length,
-          entries: transformedEntries.map(e => ({
-            id: e.id,
-            totalAmount: e.totalAmount,
-            status: e.status,
-          })),
-        });
-        console.log('🔍 BazarContext - Final transformed entries:', {
-          count: transformedEntries.length,
-          sampleEntries: transformedEntries.slice(0, 2).map(e => ({
-            id: e.id,
-            totalAmount: e.totalAmount,
-            status: e.status,
-          })),
-        });
-
         setBazarEntries(transformedEntries);
       } else {
-        console.error('❌ Failed to load bazar entries:', response.error);
         setEntriesError(response.error || 'Failed to load bazar entries');
         // Don't clear existing entries on error, keep them for fallback
       }
     } catch (error) {
-      console.error('💥 Error loading bazar entries:', error);
       setEntriesError('Failed to load bazar entries');
       // Don't clear existing entries on error, keep them for fallback
     } finally {
@@ -299,8 +264,6 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
   const updateFilters = useCallback(
     (newFilters: BazarFilters) => {
       setFilters(newFilters);
-      console.log('🔍 Filters updated:', newFilters);
-
       // Reload data when filters change
       if (user) {
         loadBazarEntries();
@@ -312,12 +275,10 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
   // Update search query
   const updateSearchQuery = useCallback((query: string) => {
     setSearchQuery(query);
-    console.log('🔍 Search query updated:', query);
   }, []);
 
   // Refresh all data
   const refreshData = useCallback(async () => {
-    console.log('🔄 Refreshing bazar data...');
     await Promise.all([loadBazarStats(), loadBazarEntries()]);
   }, [loadBazarStats, loadBazarEntries]);
 
@@ -325,22 +286,13 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
   const updateBazarStatus = useCallback(
     async (bazarId: string, status: 'approved' | 'rejected') => {
       try {
-        console.log('🔄 Updating bazar status:', { bazarId, status });
-
         const response = await bazarService.updateBazarStatus(bazarId, {
           status,
           notes: `Status updated to ${status}`,
         });
-
-        if (response.success) {
-          console.log('✅ Bazar status updated successfully');
-          // Refresh the data
-          await refreshData();
-        } else {
-          console.error('❌ Failed to update bazar status:', response.error);
-        }
-      } catch (error) {
-        console.error('💥 Error updating bazar status:', error);
+        if (response.success) await refreshData();
+      } catch {
+        // Error state can be shown by refresh
       }
     },
     [refreshData]
@@ -350,19 +302,10 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
   const deleteBazar = useCallback(
     async (bazarId: string) => {
       try {
-        console.log('🗑️ Deleting bazar entry:', bazarId);
-
         const response = await bazarService.deleteBazar(bazarId);
-
-        if (response.success) {
-          console.log('✅ Bazar entry deleted successfully');
-          // Refresh the data
-          await refreshData();
-        } else {
-          console.error('❌ Failed to delete bazar entry:', response.error);
-        }
-      } catch (error) {
-        console.error('💥 Error deleting bazar entry:', error);
+        if (response.success) await refreshData();
+      } catch {
+        // Error state can be shown by refresh
       }
     },
     [refreshData]
@@ -372,19 +315,10 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
   const submitBazar = useCallback(
     async (data: any) => {
       try {
-        console.log('📝 Submitting new bazar entry:', data);
-
         const response = await bazarService.submitBazar(data);
-
-        if (response.success) {
-          console.log('✅ Bazar entry submitted successfully');
-          // Refresh the data
-          await refreshData();
-        } else {
-          console.error('❌ Failed to submit bazar entry:', response.error);
-        }
-      } catch (error) {
-        console.error('💥 Error submitting bazar entry:', error);
+        if (response.success) await refreshData();
+      } catch {
+        // Error state can be shown by refresh
       }
     },
     [refreshData]
@@ -394,18 +328,6 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
   const filteredEntries = useCallback(() => {
     let filtered = bazarEntries;
 
-    console.log('🔍 BazarContext - Filtering entries:', {
-      totalEntries: bazarEntries.length,
-      searchQuery,
-      filters,
-      entriesData: bazarEntries.map(e => ({
-        id: e.id,
-        totalAmount: e.totalAmount,
-        status: e.status,
-      })),
-    });
-
-    // Filter by search query
     if (searchQuery.trim()) {
       const searchLower = searchQuery.toLowerCase();
       filtered = filtered.filter(entry => {
@@ -417,10 +339,8 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
           entry.totalAmount?.toString().includes(searchQuery)
         );
       });
-      console.log('🔍 BazarContext - After search filter:', filtered.length);
     }
 
-    // Sort entries
     filtered.sort((a, b) => {
       switch (filters.sortBy) {
         case 'amount':
@@ -433,7 +353,6 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
       }
     });
 
-    console.log('🔍 BazarContext - Final filtered entries:', filtered.length);
     return filtered;
   }, [bazarEntries, searchQuery, filters.sortBy]);
 
@@ -452,18 +371,13 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
   // Load data when user changes
   useEffect(() => {
     if (user) {
-      console.log('🔄 BazarContext - User changed, loading data...', {
-        userId: user.id,
-        userEmail: user.email,
-      });
       loadBazarStats();
       loadBazarEntries();
     } else {
-      console.log('🔄 BazarContext - No user, clearing data...');
       setBazarStats(null);
       setBazarEntries([]);
     }
-  }, [user]); // Remove function dependencies to prevent infinite re-renders
+  }, [user]);
 
   const contextValue: BazarContextType = {
     // State
