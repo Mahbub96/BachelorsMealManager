@@ -50,6 +50,55 @@ export interface ActivityFilters {
   sortOrder?: 'asc' | 'desc';
 }
 
+/** Build API filters from shared UI state (FilterChipsPanel values + search). Used by dashboard and recent-activity screen. */
+export function buildActivityFiltersFromUI(
+  values: Record<string, string>,
+  searchQuery: string
+): ActivityFilters {
+  const type = values.type === 'all' ? undefined : (values.type as ActivityFilters['type']);
+  const status = values.status === 'all' ? undefined : (values.status as ActivityFilters['status']);
+  const today = new Date();
+  let startDate: string | undefined;
+  let endDate: string | undefined;
+  switch (values.dateRange) {
+    case 'today':
+      startDate = endDate = today.toISOString().split('T')[0];
+      break;
+    case 'week': {
+      const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+      startDate = weekAgo.toISOString().split('T')[0];
+      endDate = today.toISOString().split('T')[0];
+      break;
+    }
+    case 'month': {
+      const monthAgo = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
+      startDate = monthAgo.toISOString().split('T')[0];
+      endDate = today.toISOString().split('T')[0];
+      break;
+    }
+    default:
+      break;
+  }
+  const search = searchQuery.trim() || undefined;
+  let sortBy: ActivityFilters['sortBy'] = 'createdAt';
+  let sortOrder: ActivityFilters['sortOrder'] = 'desc';
+  switch (values.sortBy) {
+    case 'oldest':
+      sortBy = 'createdAt';
+      sortOrder = 'asc';
+      break;
+    case 'amount':
+      sortBy = 'amount';
+      sortOrder = 'desc';
+      break;
+    default:
+      sortBy = 'createdAt';
+      sortOrder = 'desc';
+      break;
+  }
+  return { type, status, startDate, endDate, search, sortBy, sortOrder };
+}
+
 export interface ActivityResponse {
   activities: Activity[];
   pagination: {
@@ -121,12 +170,11 @@ class ActivityService {
   async getRecentActivities(
     filters: ActivityFilters = {},
     page: number = 1,
-    limit: number = 20
+    limit: number = 20,
+    options?: { cache?: boolean }
   ): Promise<ApiResponse<ActivityResponse>> {
     try {
-      console.log('📋 Fetching recent activities...', { filters, page, limit });
-
-      // Build query parameters
+      const useCache = options?.cache !== false;
       const queryParams = new URLSearchParams();
       queryParams.append('page', page.toString());
       queryParams.append('limit', limit.toString());
@@ -162,8 +210,8 @@ class ActivityService {
       const response = await httpClient.get<{ activities: Activity[]; pagination: any; stats: ActivityStats }>(
         `${API_ENDPOINTS.ACTIVITY.RECENT}?${queryParams.toString()}`,
         {
-          cache: true,
-          cacheKey: `activities_${JSON.stringify(filters)}_${page}_${limit}`,
+          cache: useCache,
+          ...(useCache && { cacheKey: `activities_${JSON.stringify(filters)}_${page}_${limit}` }),
           offlineFallback: true,
           retries: 2,
         }

@@ -11,6 +11,7 @@ export interface User {
   status: 'active' | 'inactive';
   joinDate: string;
   createdAt: string;
+  lastLogin?: string;
 }
 
 export interface CreateUserData {

@@ -786,7 +786,11 @@ class UserController {
   async getAllUsers(req, res, next) {
     try {
       const currentUser = req.user;
-      const { role, status, search, page = 1, limit = 20 } = req.query;
+      const rawPage = parseInt(req.query.page, 10);
+      const rawLimit = parseInt(req.query.limit, 10);
+      const page = Math.max(1, Number.isNaN(rawPage) ? 1 : rawPage);
+      const limit = Math.min(100, Math.max(1, Number.isNaN(rawLimit) ? 20 : rawLimit));
+      const { role, status, search } = req.query;
 
       // Only admins and super admins can list users
       if (currentUser.role !== 'admin' && currentUser.role !== 'super_admin') {
@@ -796,24 +800,33 @@ class UserController {
       // Build query
       let query = {};
 
-      // Local admins can only see users they created, super admins can see all
+      // Local admins see users they created plus themselves; super admins see all
       if (currentUser.role === 'admin') {
-        query.createdBy = currentUser._id;
+        query.$or = [
+          { createdBy: currentUser._id },
+          { _id: currentUser._id },
+        ];
       }
-      // Super admin can see all users (no createdBy filter)
 
       // Apply filters
       if (role) query.role = role;
       if (status) query.status = status;
-      if (search) {
-        query.$or = [
-          { name: { $regex: search, $options: 'i' } },
-          { email: { $regex: search, $options: 'i' } },
-        ];
+      if (search && typeof search === 'string' && search.trim()) {
+        const searchCondition = {
+          $or: [
+            { name: { $regex: search.trim(), $options: 'i' } },
+            { email: { $regex: search.trim(), $options: 'i' } },
+          ],
+        };
+        if (query.$or) {
+          query = { $and: [query, searchCondition] };
+        } else {
+          query.$or = searchCondition.$or;
+        }
       }
 
       // Pagination
-      const skip = (parseInt(page) - 1) * parseInt(limit);
+      const skip = (page - 1) * limit;
 
       // Get users and total count
       const [users, total] = await Promise.all([
@@ -822,7 +835,7 @@ class UserController {
           .populate('createdBy', 'name email')
           .sort({ createdAt: -1 })
           .skip(skip)
-          .limit(parseInt(limit)),
+          .limit(limit),
         User.countDocuments(query),
       ]);
 
@@ -833,10 +846,10 @@ class UserController {
         {
           users,
           pagination: {
-            page: parseInt(page),
-            limit: parseInt(limit),
+            page,
+            limit,
             total,
-            pages: Math.ceil(total / parseInt(limit)),
+            pages: Math.ceil(total / limit) || 1,
           },
         }
       );
@@ -864,14 +877,24 @@ class UserController {
         return sendErrorResponse(res, 404, 'User not found');
       }
 
-      // Admins can only update users they created, super admins can update any user
-      if (currentUser.role === 'admin' && user.createdBy?.toString() !== currentUser._id.toString()) {
-        return sendErrorResponse(res, 403, 'You can only update users you created.');
+      // Admins can update users they created or themselves; super admins can update any user
+      if (currentUser.role === 'admin') {
+        const isSelf = user._id.toString() === currentUser._id.toString();
+        const isCreatedByMe = user.createdBy?.toString() === currentUser._id.toString();
+        if (!isSelf && !isCreatedByMe) {
+          return sendErrorResponse(res, 403, 'You can only update users you created or your own profile.');
+        }
       }
 
-      // Admins can only change role to member, super admins can change to any role
-      if (role && currentUser.role === 'admin' && role !== 'member') {
+      // Admins can only set role to member (and cannot change their own role away from admin)
+      if (role !== undefined && currentUser.role === 'admin' && role !== 'member') {
         return sendErrorResponse(res, 403, 'Admins can only set role to member.');
+      }
+      if (role !== undefined && currentUser.role === 'admin') {
+        const isSelf = user._id.toString() === currentUser._id.toString();
+        if (isSelf && role !== 'admin') {
+          return sendErrorResponse(res, 403, 'You cannot change your own role.');
+        }
       }
 
       // Prevent updating email to an existing email
@@ -917,7 +940,8 @@ class UserController {
       }
 
       // Prevent self-deletion
-      if (id === currentUser.id) {
+      const currentUserId = currentUser._id ? currentUser._id.toString() : currentUser.id;
+      if (id === currentUserId) {
         return sendErrorResponse(res, 400, 'You cannot delete your own account');
       }
 

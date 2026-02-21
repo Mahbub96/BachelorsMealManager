@@ -1,7 +1,7 @@
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useApiData } from '@/hooks/useApiData';
-import { activityService, type Activity } from '@/services/activityService';
+import { activityService, type Activity, type ActivityFilters as ApiActivityFilters, buildActivityFiltersFromUI } from '@/services/activityService';
 import errorHandler from '@/services/errorHandler';
 import httpClient from '@/services/httpClient';
 import userStatsService, {
@@ -18,6 +18,9 @@ import {
   View,
 } from 'react-native';
 import { useAppRefresh } from '@/context/AppRefreshContext';
+import { ACTIVITY_FILTER_SECTIONS } from '@/constants/filterConfigs';
+import { FilterChipsPanel } from '@/components/shared/FilterChipsPanel';
+import { SearchAndFilterRow } from '@/components/shared/SearchAndFilterRow';
 import { ThemedView } from '../ThemedView';
 import { ThemedText } from '../ThemedText';
 import { DataDisplay } from '../ui/DataDisplay';
@@ -62,8 +65,36 @@ export const UserDashboard: React.FC = () => {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [activitiesLoading, setActivitiesLoading] = useState(false);
   const [activitiesError, setActivitiesError] = useState<string | null>(null);
+  const [activitySearchQuery, setActivitySearchQuery] = useState('');
+  const [activityFilterValues, setActivityFilterValues] = useState<Record<string, string>>({
+    type: 'all',
+    status: 'all',
+    dateRange: 'month',
+    sortBy: 'newest',
+  });
+  const [showActivityFiltersPanel, setShowActivityFiltersPanel] = useState(false);
 
+  const buildActivityApiFilters = useCallback(
+    (): ApiActivityFilters => buildActivityFiltersFromUI(activityFilterValues, activitySearchQuery),
+    [activityFilterValues, activitySearchQuery]
+  );
 
+  const handleActivityFilterChange = useCallback(
+    (sectionKey: string, optionKey: string) => {
+      const next = { ...activityFilterValues, [sectionKey]: optionKey };
+      setActivityFilterValues(next);
+      loadActivities(buildActivityFiltersFromUI(next, activitySearchQuery));
+    },
+    [activityFilterValues, activitySearchQuery, loadActivities]
+  );
+
+  const handleActivitySearchChange = useCallback(
+    (query: string) => {
+      setActivitySearchQuery(query);
+      loadActivities(buildActivityFiltersFromUI(activityFilterValues, query));
+    },
+    [activityFilterValues, loadActivities]
+  );
 
   const loadDashboardData = useCallback(async () => {
     try {
@@ -113,14 +144,16 @@ export const UserDashboard: React.FC = () => {
     }
   }, []);
 
-  const loadActivities = useCallback(async () => {
+  const loadActivities = useCallback(async (filters?: ApiActivityFilters, forceRefresh?: boolean) => {
     try {
       if (isMounted.current) {
         setActivitiesLoading(true);
         setActivitiesError(null);
       }
 
-      const response = await activityService.getRecentActivities({}, 1, 10);
+      const apiFilters = filters ?? buildActivityApiFilters();
+      const cacheOpt = forceRefresh ? { cache: false as const } : undefined;
+      const response = await activityService.getRecentActivities(apiFilters, 1, 50, cacheOpt);
 
       if (response.success && response.data) {
         if (isMounted.current) {
@@ -139,26 +172,26 @@ export const UserDashboard: React.FC = () => {
     } finally {
       if (isMounted.current) setActivitiesLoading(false);
     }
-  }, []);
+  }, [buildActivityApiFilters]);
 
   useFocusEffect(
     useCallback(() => {
       isMounted.current = true;
       loadDashboardData();
-      loadActivities();
+      loadActivities(buildActivityApiFilters());
       return () => {
         isMounted.current = false;
       };
-    }, [loadDashboardData, loadActivities])
+    }, [loadDashboardData, loadActivities, buildActivityApiFilters])
   );
 
   useEffect(() => {
     register('dashboard', async () => {
       await loadDashboardData();
-      await loadActivities();
+      await loadActivities(buildActivityApiFilters(), true);
     });
     return () => unregister('dashboard');
-  }, [register, unregister, loadDashboardData, loadActivities]);
+  }, [register, unregister, loadDashboardData, loadActivities, buildActivityApiFilters]);
 
   const handlePullRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -178,7 +211,7 @@ export const UserDashboard: React.FC = () => {
         logger.warn('Could not refresh dashboard service cache', error);
     }
     await loadDashboardData();
-    await loadActivities();
+    await loadActivities(buildActivityApiFilters(), true);
   };
 
   const handleQuickAction = (action: string) => {
@@ -594,7 +627,30 @@ export const UserDashboard: React.FC = () => {
           isSmallScreen={false}
         />
 
-        {/* Recent Activity */}
+        {/* Recent Activity: title above, then search and filters */}
+        <View style={{ paddingHorizontal: 16, marginBottom: 8 }}>
+          <View style={{ marginBottom: 14 }}>
+            <ThemedText style={{ fontSize: 18, fontWeight: '700', letterSpacing: 0.2, marginBottom: 2, color: theme?.text?.primary }}>
+              Recent Activity ({recentActivities.length})
+            </ThemedText>
+            <ThemedText style={{ fontSize: 13, fontWeight: '500', color: theme?.text?.secondary }}>
+              Latest updates from your flat
+            </ThemedText>
+          </View>
+          <SearchAndFilterRow
+            searchPlaceholder="Search activity..."
+            searchValue={activitySearchQuery}
+            onSearchChange={handleActivitySearchChange}
+            showFiltersPanel={showActivityFiltersPanel}
+            onToggleFilters={() => setShowActivityFiltersPanel((p) => !p)}
+          >
+            <FilterChipsPanel
+              sections={ACTIVITY_FILTER_SECTIONS}
+              values={activityFilterValues}
+              onChange={handleActivityFilterChange}
+            />
+          </SearchAndFilterRow>
+        </View>
         {activitiesLoading && (
           <View style={{ padding: 16, alignItems: 'center', height: 100 }}>
              <ModernLoader visible={true} overlay={false} size="small" />
@@ -606,11 +662,9 @@ export const UserDashboard: React.FC = () => {
         {!activitiesLoading && (
           <RecentActivity
             activities={recentActivities}
-            title='Recent Activity'
-            subtitle='Latest updates from your flat'
-            showViewAll={true}
-            maxItems={3}
+            maxItems={recentActivities.length}
             isSmallScreen={false}
+            showSectionHeader={false}
           />
         )}
       </ScrollView>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   StyleSheet,
@@ -6,7 +6,6 @@ import {
   RefreshControl,
   TouchableOpacity,
   Alert,
-  // ActivityIndicator,
   StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,30 +16,33 @@ import { ThemedText } from '@/components/ThemedText';
 import { ScreenLayout } from '@/components/layout';
 import { useTheme } from '@/context/ThemeContext';
 import { ModernLoader } from '@/components/ui/ModernLoader';
-import { activityService , Activity as ActivityItem } from '@/services/activityService';
+import {
+  activityService,
+  type Activity as ActivityItem,
+  type ActivityFilters,
+  buildActivityFiltersFromUI,
+} from '@/services/activityService';
+import httpClient from '@/services/httpClient';
+import { ACTIVITY_FILTER_SECTIONS } from '@/constants/filterConfigs';
+import { SearchAndFilterRow } from '@/components/shared/SearchAndFilterRow';
+import { FilterChipsPanel } from '@/components/shared/FilterChipsPanel';
+
+const DEFAULT_FILTER_VALUES: Record<string, string> = {
+  type: 'all',
+  status: 'all',
+  dateRange: 'month',
+  sortBy: 'newest',
+};
 
 export default function RecentActivityScreen() {
-  const themeContext = useTheme();
-  const theme = themeContext?.theme;
-  
-  // Safe fallback values
-  const safeTheme = useMemo(() => {
-    if (!theme) {
-      return {
+  const { theme } = useTheme();
+  const safeTheme = useMemo(
+    () =>
+      theme ?? {
         background: '#ffffff',
-        surface: '#f8fafc',
-        primary: '#667eea',
         cardBackground: '#ffffff',
-        border: {
-          primary: '#e5e7eb',
-          secondary: '#e5e7eb',
-        },
-        text: {
-          primary: '#11181C',
-          secondary: '#687076',
-          tertiary: '#9ca3af',
-          inverse: '#ffffff',
-        },
+        primary: '#667eea',
+        text: { primary: '#11181C', secondary: '#687076', tertiary: '#9ca3af', inverse: '#ffffff' },
         gradient: {
           primary: ['#667eea', '#764ba2'],
           secondary: ['#f59e0b', '#d97706'],
@@ -49,122 +51,92 @@ export default function RecentActivityScreen() {
           error: ['#ef4444', '#dc2626'],
           info: ['#3b82f6', '#1d4ed8'],
         },
-      };
-    }
-    return theme;
-  }, [theme]);
-  
+        border: { primary: '#e5e7eb', secondary: '#e5e7eb' },
+      },
+    [theme]
+  );
+
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [filter, setFilter] = useState<'all' | 'meals' | 'bazar' | 'payments'>(
-    'all'
+  const [activityFilterValues, setActivityFilterValues] = useState<Record<string, string>>(DEFAULT_FILTER_VALUES);
+  const [activitySearchQuery, setActivitySearchQuery] = useState('');
+  const [showFiltersPanel, setShowFiltersPanel] = useState(false);
+
+  const loadActivities = useCallback(
+    async (filters?: ActivityFilters, forceRefresh?: boolean) => {
+      try {
+        setLoading(true);
+        const apiFilters = filters ?? buildActivityFiltersFromUI(activityFilterValues, activitySearchQuery);
+        const cacheOpt = forceRefresh ? { cache: false as const } : undefined;
+        const response = await activityService.getRecentActivities(apiFilters, 1, 100, cacheOpt);
+        if (response.success && response.data) {
+          setActivities(response.data.activities || []);
+        } else {
+          setActivities([]);
+        }
+      } catch (err) {
+        Alert.alert('Error', 'Failed to load activities. Please try again.');
+        setActivities([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [activityFilterValues, activitySearchQuery]
   );
 
-  useEffect(() => {
-    loadActivities();
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    httpClient.clearOnlineCache();
+    await loadActivities(buildActivityFiltersFromUI(activityFilterValues, activitySearchQuery), true);
+    setRefreshing(false);
+  }, [loadActivities, activityFilterValues, activitySearchQuery]);
+
+  const handleFilterChange = useCallback(
+    (sectionKey: string, optionKey: string) => {
+      const next = { ...activityFilterValues, [sectionKey]: optionKey };
+      setActivityFilterValues(next);
+      loadActivities(buildActivityFiltersFromUI(next, activitySearchQuery));
+    },
+    [activityFilterValues, activitySearchQuery, loadActivities]
+  );
+
+  const handleSearchChange = useCallback(
+    (query: string) => {
+      setActivitySearchQuery(query);
+      loadActivities(buildActivityFiltersFromUI(activityFilterValues, query));
+    },
+    [activityFilterValues, loadActivities]
+  );
+
+  React.useEffect(() => {
+    loadActivities(buildActivityFiltersFromUI(DEFAULT_FILTER_VALUES, ''));
   }, []);
 
-  const loadActivities = async () => {
-    try {
-      setLoading(true);
-      console.log('🔍 Loading activities...');
-      // Fetch activities from the activity service
-      const response = await activityService.getRecentActivities();
-      console.log('📡 Activity response:', JSON.stringify(response, null, 2));
-      if (response.success && response.data) {
-        console.log(
-          '✅ Activities loaded:',
-          response.data.activities?.length || 0
-        );
-        console.log('📋 First activity:', response.data.activities?.[0]);
-        setActivities(response.data.activities || []);
-      } else {
-        console.log('❌ No activities data:', response.error);
-        console.log('❌ Response details:', response);
-        setActivities([]);
-      }
-    } catch (error) {
-      console.error('❌ Failed to load activities:', error);
-      Alert.alert('Error', 'Failed to load activities. Please try again.');
-      setActivities([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadActivities();
-    setRefreshing(false);
-  };
-
   const handleActivityPress = (activity: ActivityItem) => {
-    if (!activity || !activity.id) {
-      console.warn('⚠️ Activity or activity ID is missing');
-      return;
-    }
-    
-    // Navigate to activity details based on type, passing the activity ID
-    const activityId = activity.id;
+    if (!activity?.id) return;
     const titleLower = (activity.title || '').toLowerCase();
-    
     if (titleLower.includes('bazar')) {
-      router.push({
-        pathname: '/bazar-details',
-        params: { id: activityId },
-      });
-    } else if (titleLower.includes('meal') || titleLower.includes('payment')) {
-      router.push({
-        pathname: '/activity-details',
-        params: { id: activityId },
-      });
+      router.push({ pathname: '/bazar-details', params: { id: activity.id } });
     } else {
-      // Default to activity details
-      router.push({
-        pathname: '/activity-details',
-        params: { id: activityId },
-      });
+      router.push({ pathname: '/activity-details', params: { id: activity.id } });
     }
   };
 
   const getActivityColors = (type: string): [string, string] => {
-    const gradient = safeTheme?.gradient;
-    if (!gradient) {
-      return ['#667eea', '#764ba2']; // Default gradient
-    }
-    
-    try {
-      switch (type) {
-        case 'meal':
-          return [
-            gradient.success?.[0] || '#10b981',
-            gradient.success?.[1] || '#059669'
-          ];
-        case 'bazar':
-          return [
-            gradient.warning?.[0] || '#f59e0b',
-            gradient.warning?.[1] || '#d97706'
-          ];
-        case 'member':
-          return [
-            gradient.primary?.[0] || '#667eea',
-            gradient.primary?.[1] || '#764ba2'
-          ];
-        case 'payment':
-          return [
-            gradient.error?.[0] || '#ef4444',
-            gradient.error?.[1] || '#dc2626'
-          ];
-        default:
-          return [
-            gradient.info?.[0] || '#3b82f6',
-            gradient.info?.[1] || '#1d4ed8'
-          ];
-      }
-    } catch (error) {
-      console.error('Error getting activity colors:', error);
-      return ['#667eea', '#764ba2']; // Default gradient
+    const g = safeTheme?.gradient;
+    if (!g) return ['#667eea', '#764ba2'];
+    switch (type) {
+      case 'meal':
+        return [g.success?.[0] ?? '#10b981', g.success?.[1] ?? '#059669'];
+      case 'bazar':
+        return [g.warning?.[0] ?? '#f59e0b', g.warning?.[1] ?? '#d97706'];
+      case 'member':
+        return [g.primary?.[0] ?? '#667eea', g.primary?.[1] ?? '#764ba2'];
+      case 'payment':
+        return [g.error?.[0] ?? '#ef4444', g.error?.[1] ?? '#dc2626'];
+      default:
+        return [g.info?.[0] ?? '#3b82f6', g.info?.[1] ?? '#1d4ed8'];
     }
   };
 
@@ -183,173 +155,70 @@ export default function RecentActivityScreen() {
     }
   };
 
-  const getFilteredActivities = () => {
-    if (!Array.isArray(activities)) return [];
-    if (filter === 'all') return activities;
-
-    return activities.filter(activity => {
-      if (!activity || !activity.title) return false;
-      const title = activity.title.toLowerCase();
-      switch (filter) {
-        case 'meals':
-          return (
-            title.includes('meal') ||
-            title.includes('breakfast') ||
-            title.includes('lunch') ||
-            title.includes('dinner')
-          );
-        case 'bazar':
-          return (
-            title.includes('bazar') ||
-            title.includes('shopping') ||
-            title.includes('item')
-          );
-        case 'payments':
-          return title.includes('payment');
-        default:
-          return true;
-      }
-    });
-  };
-
-  const renderActivityItem = ({
-    item,
-    index,
-  }: {
-    item: ActivityItem;
-    index: number;
-  }) => {
-    if (!item) return null;
-    
-    const filteredActivities = getFilteredActivities();
-    const isLast = index === filteredActivities.length - 1;
-    
-    return (
-      <TouchableOpacity
-        style={[
-          styles.activityItem,
-          {
-            backgroundColor: safeTheme?.cardBackground || '#ffffff',
-            borderColor: safeTheme?.border?.secondary || '#e5e7eb',
-          },
-          isLast && styles.lastActivityItem,
-        ]}
-        onPress={() => handleActivityPress(item)}
-        activeOpacity={0.7}
-      >
-        <View style={styles.activityIcon}>
-          <LinearGradient
-            colors={getActivityColors(item.type || '')}
-            style={styles.activityIconGradient}
-          >
-            <Ionicons
-              name={getActivityIcon(item.type || '') as IconName}
-              size={16}
-              color={safeTheme?.text?.inverse || '#ffffff'}
-            />
-          </LinearGradient>
-        </View>
-
-        <View style={styles.activityContent}>
-          <ThemedText style={styles.activityTitle}>
-            {item.title || 'Untitled Activity'}
-          </ThemedText>
-          <ThemedText style={styles.activityDescription}>
-            {item.description || ''}
-          </ThemedText>
-          <View style={styles.activityMeta}>
-            <ThemedText style={styles.activityTime}>
-              {item.time || ''}
-            </ThemedText>
-            {item.amount !== undefined && item.amount !== null && (
-              <ThemedText style={styles.activityAmount}>
-                ৳{item.amount.toLocaleString()}
-              </ThemedText>
-            )}
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
-  };
-
-  const renderFilterButton = (
-    filterType: 'all' | 'meals' | 'bazar' | 'payments',
-    label: string,
-    icon: string
-  ) => {
-    const isActive = filter === filterType;
-    return (
-      <TouchableOpacity
-        style={[
-          styles.filterButton,
-          {
-            backgroundColor: isActive
-              ? safeTheme?.primary || '#667eea'
-              : safeTheme?.surface || '#f8fafc',
-            borderColor: safeTheme?.border?.primary || '#e5e7eb',
-          },
-        ]}
-        onPress={() => setFilter(filterType)}
-        activeOpacity={0.7}
-      >
-        <Ionicons
-          name={icon as IconName}
-          size={16}
-          color={
-            isActive
-              ? safeTheme?.text?.inverse || '#ffffff'
-              : safeTheme?.text?.primary || '#11181C'
-          }
-        />
-        <ThemedText
-          style={[
-            styles.filterButtonText,
-            {
-              color: isActive
-                ? safeTheme?.text?.inverse || '#ffffff'
-                : safeTheme?.text?.primary || '#11181C',
-            },
-          ]}
+  const renderActivityItem = ({ item }: { item: ActivityItem }) => (
+    <TouchableOpacity
+      style={[
+        styles.activityItem,
+        {
+          backgroundColor: safeTheme?.cardBackground ?? '#ffffff',
+          borderColor: safeTheme?.border?.secondary ?? '#e5e7eb',
+        },
+      ]}
+      onPress={() => handleActivityPress(item)}
+      activeOpacity={0.7}
+    >
+      <View style={styles.activityIcon}>
+        <LinearGradient
+          colors={getActivityColors(item.type || '')}
+          style={styles.activityIconGradient}
         >
-          {label}
-        </ThemedText>
-      </TouchableOpacity>
-    );
-  };
+          <Ionicons
+            name={getActivityIcon(item.type || '') as IconName}
+            size={16}
+            color={safeTheme?.text?.inverse ?? '#ffffff'}
+          />
+        </LinearGradient>
+      </View>
+      <View style={styles.activityContent}>
+        <ThemedText style={styles.activityTitle}>{item.title || 'Untitled Activity'}</ThemedText>
+        <ThemedText style={styles.activityDescription}>{item.description || ''}</ThemedText>
+        <View style={styles.activityMeta}>
+          <ThemedText style={styles.activityTime}>{item.time || ''}</ThemedText>
+          {item.amount != null && (
+            <ThemedText style={styles.activityAmount}>৳{Number(item.amount).toLocaleString()}</ThemedText>
+          )}
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <Ionicons
-        name='time-outline'
-        size={64}
-        color={safeTheme?.text?.tertiary || '#9ca3af'}
-      />
+      <Ionicons name="time-outline" size={64} color={safeTheme?.text?.tertiary ?? '#9ca3af'} />
       <ThemedText style={styles.emptyTitle}>No Activities Found</ThemedText>
       <ThemedText style={styles.emptyDescription}>
-        {filter === 'all'
-          ? 'No activities have been recorded yet.'
-          : `No ${filter} activities found.`}
+        Try changing filters or search, or pull to refresh.
       </ThemedText>
     </View>
   );
 
   const refreshButton = (
     <TouchableOpacity onPress={onRefresh} style={{ padding: 8 }} activeOpacity={0.7}>
-      <Ionicons name="refresh" size={24} color={safeTheme?.text?.primary || '#11181C'} />
+      <Ionicons name="refresh" size={24} color={safeTheme?.text?.primary ?? '#11181C'} />
     </TouchableOpacity>
   );
 
   if (loading && activities.length === 0) {
     return (
       <ScreenLayout
-        title="Recent Activities"
+        title="Recent Activity"
         showBack
         onBackPress={() => router.back()}
         rightElement={refreshButton}
       >
-        <View style={[styles.container, styles.centerContent, { backgroundColor: safeTheme?.background || '#ffffff' }]}>
+        <View style={[styles.container, styles.centerContent, { backgroundColor: safeTheme?.background ?? '#ffffff' }]}>
           <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent={false} />
-          <ModernLoader visible={true} text="Loading activities..." />
+          <ModernLoader visible text="Loading activities..." />
         </View>
       </ScreenLayout>
     );
@@ -357,86 +226,56 @@ export default function RecentActivityScreen() {
 
   return (
     <ScreenLayout
-      title="Recent Activities"
+      title="Recent Activity"
       showBack
       onBackPress={() => router.back()}
       rightElement={refreshButton}
     >
-      <View style={[styles.container, { backgroundColor: safeTheme?.background || '#ffffff' }]}>
-        <StatusBar barStyle="dark-content" backgroundColor={safeTheme?.background || '#ffffff'} translucent={false} />
-        {/* Filter Buttons */}
-        <View style={styles.filterContainer}>
-        {renderFilterButton('all', 'All', 'list')}
-        {renderFilterButton('meals', 'Meals', 'restaurant')}
-        {renderFilterButton('bazar', 'Bazar', 'cart')}
-        {renderFilterButton('payments', 'Payments', 'card')}
-      </View>
-
-      {/* Activities List */}
-      <FlatList
-        data={getFilteredActivities()}
-        renderItem={renderActivityItem}
-        keyExtractor={(item, index) => item?.id || `activity-${index}`}
-        style={styles.list}
-        contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={[safeTheme?.primary || '#667eea']}
-            tintColor={safeTheme?.primary || '#667eea'}
-          />
-        }
-        ListEmptyComponent={renderEmptyState}
-        showsVerticalScrollIndicator={false}
-        removeClippedSubviews={true}
-        maxToRenderPerBatch={10}
-        windowSize={10}
-      />
+      <View style={[styles.container, { backgroundColor: safeTheme?.background ?? '#ffffff' }]}>
+        <StatusBar barStyle="dark-content" backgroundColor={safeTheme?.background ?? '#ffffff'} translucent={false} />
+        <View style={styles.searchFilterWrap}>
+          <SearchAndFilterRow
+            searchPlaceholder="Search activity..."
+            searchValue={activitySearchQuery}
+            onSearchChange={handleSearchChange}
+            showFiltersPanel={showFiltersPanel}
+            onToggleFilters={() => setShowFiltersPanel((p) => !p)}
+          >
+            <FilterChipsPanel
+              sections={ACTIVITY_FILTER_SECTIONS}
+              values={activityFilterValues}
+              onChange={handleFilterChange}
+            />
+          </SearchAndFilterRow>
+        </View>
+        <FlatList
+          data={activities}
+          renderItem={renderActivityItem}
+          keyExtractor={(item, index) => item?.id ?? `activity-${index}`}
+          style={styles.list}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[safeTheme?.primary ?? '#667eea']}
+              tintColor={safeTheme?.primary ?? '#667eea'}
+            />
+          }
+          ListEmptyComponent={renderEmptyState}
+          showsVerticalScrollIndicator={false}
+        />
       </View>
     </ScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  centerContent: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    opacity: 0.7,
-  },
-  filterContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 8,
-  },
-  filterButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    gap: 4,
-  },
-  filterButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  list: {
-    flex: 1,
-  },
-  listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 20,
-  },
+  container: { flex: 1 },
+  centerContent: { justifyContent: 'center', alignItems: 'center' },
+  searchFilterWrap: { paddingHorizontal: 16, marginBottom: 8 },
+  list: { flex: 1 },
+  listContent: { paddingHorizontal: 16, paddingBottom: 20 },
   activityItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -445,17 +284,8 @@ const styles = StyleSheet.create({
     marginVertical: 4,
     borderRadius: 12,
     borderWidth: 1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
   },
-  lastActivityItem: {
-    marginBottom: 0,
-  },
-  activityIcon: {
-    marginRight: 12,
-  },
+  activityIcon: { marginRight: 12 },
   activityIconGradient: {
     width: 40,
     height: 40,
@@ -463,49 +293,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  activityContent: {
-    flex: 1,
-  },
-  activityTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  activityDescription: {
-    fontSize: 14,
-    opacity: 0.7,
-    marginBottom: 8,
-    lineHeight: 18,
-  },
-  activityMeta: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  activityTime: {
-    fontSize: 12,
-    opacity: 0.5,
-  },
-  activityAmount: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyDescription: {
-    fontSize: 14,
-    opacity: 0.7,
-    textAlign: 'center',
-    paddingHorizontal: 32,
-  },
+  activityContent: { flex: 1 },
+  activityTitle: { fontSize: 16, fontWeight: '600', marginBottom: 4 },
+  activityDescription: { fontSize: 14, opacity: 0.7, marginBottom: 8, lineHeight: 18 },
+  activityMeta: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  activityTime: { fontSize: 12, opacity: 0.5 },
+  activityAmount: { fontSize: 12, fontWeight: '600' },
+  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 60 },
+  emptyTitle: { fontSize: 18, fontWeight: 'bold', marginTop: 16, marginBottom: 8 },
+  emptyDescription: { fontSize: 14, opacity: 0.7, textAlign: 'center', paddingHorizontal: 32 },
 });

@@ -77,6 +77,49 @@ export const MEAL_FILTER_SECTIONS: FilterSectionConfig[] = [
   },
 ];
 
+/** Activity (Recent Activity) filter sections – shared with dashboard and recent-activity screen. */
+export const ACTIVITY_FILTER_SECTIONS: FilterSectionConfig[] = [
+  {
+    key: 'type',
+    label: 'Type',
+    options: [
+      { key: 'all', label: 'All', icon: 'list' },
+      { key: 'meals', label: 'Meals', icon: 'restaurant' },
+      { key: 'bazar', label: 'Bazar', icon: 'cart' },
+      { key: 'members', label: 'Members', icon: 'people' },
+    ],
+  },
+  {
+    key: 'status',
+    label: 'Status',
+    options: [
+      { key: 'all', label: 'All', icon: 'list' },
+      { key: 'pending', label: 'Pending', icon: 'time' },
+      { key: 'approved', label: 'Approved', icon: 'checkmark-circle' },
+      { key: 'rejected', label: 'Rejected', icon: 'close-circle' },
+    ],
+  },
+  {
+    key: 'dateRange',
+    label: 'Date Range',
+    options: [
+      { key: 'all', label: 'All Time', icon: 'calendar' },
+      { key: 'today', label: 'Today', icon: 'today' },
+      { key: 'week', label: 'This Week', icon: 'calendar-outline' },
+      { key: 'month', label: 'This Month', icon: 'calendar-clear' },
+    ],
+  },
+  {
+    key: 'sortBy',
+    label: 'Sort By',
+    options: [
+      { key: 'newest', label: 'Newest', icon: 'arrow-down' },
+      { key: 'oldest', label: 'Oldest', icon: 'arrow-up' },
+      { key: 'amount', label: 'Amount', icon: 'wallet' },
+    ],
+  },
+];
+
 /** Placeholder for payment/expense filters (extend when payment feature is added). */
 export const PAYMENT_FILTER_SECTIONS: FilterSectionConfig[] = [
   {

@@ -170,6 +170,11 @@ export const API_ENDPOINTS = {
     BAZAR: '/api/user-stats/bazar', // Group-scoped: my total + group total (this month)
     PAYMENTS: '/api/user-stats/payments',
   },
+  REMOVAL_REQUESTS: {
+    BASE: '/api/removal-requests',
+    ACCEPT: (id: string) => `/api/removal-requests/${id}/accept`,
+    REJECT: (id: string) => `/api/removal-requests/${id}/reject`,
+  },
 } as const;
 
 export default config;

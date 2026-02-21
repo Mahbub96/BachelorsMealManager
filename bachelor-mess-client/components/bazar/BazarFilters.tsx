@@ -53,7 +53,7 @@ export const BazarFilters: React.FC<BazarFiltersProps> = ({
           onPress={onToggleFilters}
           activeOpacity={0.7}
         >
-          <Ionicons name="filter" size={20} color={theme.text.secondary} />
+          <Ionicons name='filter' size={20} color={theme.text.secondary} />
           <ThemedText
             style={[styles.filterToggleText, { color: theme.text.secondary }]}
           >

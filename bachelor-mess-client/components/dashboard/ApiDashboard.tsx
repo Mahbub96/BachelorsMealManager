@@ -2,6 +2,7 @@ import React, { useState, useCallback, useRef } from 'react';
 import {
   Alert,
   Dimensions,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   View,
@@ -14,6 +15,7 @@ import {
   Activity as ApiActivity,
   AnalyticsData,
 } from '@/services';
+import httpClient from '@/services/httpClient';
 import { StatsGrid } from '../ModernCharts';
 import { ModernLoader } from '../ui/ModernLoader';
 import { ChartsSection } from './ChartsSection';
@@ -46,6 +48,7 @@ export const ApiDashboard: React.FC = () => {
       [key: string]: any;
     };
   } | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const isTablet = screenWidth >= 768;
   const containerPadding = isTablet ? 24 : 16;
@@ -115,8 +118,8 @@ export const ApiDashboard: React.FC = () => {
     }
   };
 
-  const refreshData = async () => {
-    // Clear cache before refreshing to ensure fresh data
+  const refreshData = useCallback(async () => {
+    httpClient.clearOnlineCache();
     try {
       const { default: dashboardService } = await import('@/services/dashboardService');
       await dashboardService.refreshDashboard();
@@ -124,7 +127,16 @@ export const ApiDashboard: React.FC = () => {
       console.log('⚠️ Could not refresh dashboard service cache:', error);
     }
     await loadDashboardData();
-  };
+  }, []);
+
+  const onPullRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refreshData();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshData]);
 
   // Safe number conversion - always returns 0 if invalid
   const safeNumber = (value: unknown): number => {
@@ -327,14 +339,7 @@ export const ApiDashboard: React.FC = () => {
         ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <View style={styles.refreshControl}>
-            <Text
-              style={[styles.refreshText, { color: theme.text.secondary }]}
-              onPress={refreshData}
-            >
-              Pull to refresh
-            </Text>
-          </View>
+          <RefreshControl refreshing={refreshing} onRefresh={onPullRefresh} />
         }
       >
         {/* Header Section */}
@@ -467,13 +472,6 @@ const styles = StyleSheet.create({
   retryText: {
     fontSize: 14,
     textDecorationLine: 'underline',
-  },
-  refreshControl: {
-    padding: 16,
-    alignItems: 'center',
-  },
-  refreshText: {
-    fontSize: 14,
   },
   dataSourceIndicator: {
     paddingHorizontal: 12,

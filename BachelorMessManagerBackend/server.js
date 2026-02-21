@@ -50,6 +50,7 @@ const activityRoutes = require('./src/routes/activity');
 const statisticsRoutes = require('./src/routes/statistics');
 const superAdminRoutes = require('./src/routes/superAdmin');
 const uiConfigRoutes = require('./src/routes/uiConfig');
+const removalRequestRoutes = require('./src/routes/removalRequests');
 
 // Import statistics service
 const StatisticsService = require('./src/services/statisticsService');
@@ -382,6 +383,7 @@ function startServer() {
   app.use(`${config.apiPrefix}/statistics`, statisticsRoutes);
   app.use(`${config.apiPrefix}/super-admin`, superAdminRoutes);
   app.use(`${config.apiPrefix}/ui-config`, uiConfigRoutes);
+  app.use(`${config.apiPrefix}/removal-requests`, removalRequestRoutes);
 
   // API Documentation endpoint
   app.get(`${config.apiPrefix}/docs`, (req, res) => {

@@ -25,6 +25,8 @@ interface RecentActivityProps {
   onViewAll?: () => void;
   isSmallScreen?: boolean;
   maxItems?: number;
+  /** When false, only the list is rendered (use when title is rendered above search/filter). */
+  showSectionHeader?: boolean;
 }
 
 export const RecentActivity: React.FC<RecentActivityProps> = ({
@@ -35,35 +37,38 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
   onViewAll,
   isSmallScreen = false,
   maxItems = 3,
+  showSectionHeader = true,
 }) => {
   const { theme } = useTheme();
   const displayActivities = (activities || []).slice(0, maxItems);
 
   return (
     <View style={[styles.wrap, { paddingHorizontal: 16, marginBottom: 28 }]}>
-      <View style={styles.sectionHeader}>
-        <View style={styles.headerLeft}>
-          <ThemedText style={[styles.sectionTitle, { color: theme.text?.primary }]}>
-            {title}
-          </ThemedText>
-          {subtitle && (
-            <ThemedText style={[styles.sectionSubtitle, { color: theme.text?.secondary }]}>
-              {subtitle}
+      {showSectionHeader && (
+        <View style={styles.sectionHeader}>
+          <View style={styles.headerLeft}>
+            <ThemedText style={[styles.sectionTitle, { color: theme.text?.primary }]}>
+              {title}
             </ThemedText>
+            {subtitle && (
+              <ThemedText style={[styles.sectionSubtitle, { color: theme.text?.secondary }]}>
+                {subtitle}
+              </ThemedText>
+            )}
+          </View>
+          {showViewAll && (
+            <TouchableOpacity
+              style={[styles.viewAllBtn, { backgroundColor: theme.primary + '14' }]}
+              onPress={onViewAll || (() => router.push('/recent-activity'))}
+            >
+              <ThemedText style={[styles.viewAllText, { color: theme.primary }]}>
+                View all
+              </ThemedText>
+              <Ionicons name="chevron-forward" size={16} color={theme.primary} />
+            </TouchableOpacity>
           )}
         </View>
-        {showViewAll && (
-          <TouchableOpacity
-            style={[styles.viewAllBtn, { backgroundColor: theme.primary + '14' }]}
-            onPress={onViewAll || (() => router.push('/recent-activity'))}
-          >
-            <ThemedText style={[styles.viewAllText, { color: theme.primary }]}>
-              View all
-            </ThemedText>
-            <Ionicons name="chevron-forward" size={16} color={theme.primary} />
-          </TouchableOpacity>
-        )}
-      </View>
+      )}
 
       <View
         style={[

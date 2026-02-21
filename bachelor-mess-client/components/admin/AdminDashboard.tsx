@@ -35,12 +35,17 @@ import {
 } from '../dashboard';
 import { EnhancedMealManagement } from '../meals/EnhancedMealManagement';
 import dashboardService from '../../services/dashboardService';
+import httpClient from '../../services/httpClient';
 import { useUsers } from '../../hooks/useUsers';
 import userService, {
   User,
   CreateUserData,
   UpdateUserData,
 } from '../../services/userService';
+import {
+  removalRequestService,
+  type RemovalRequest,
+} from '../../services/removalRequestService';
 import { MemberFormModal } from './MemberFormModal';
 import { MemberViewModal } from './MemberViewModal';
 import { MonthlyReportDashboard } from './reports/MonthlyReportDashboard';
@@ -103,6 +108,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   const [resettingPassword, setResettingPassword] = useState(false);
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [openPendingFor, setOpenPendingFor] = useState<'meals' | 'bazar' | null>(null);
+  const [pendingRemovalRequests, setPendingRemovalRequests] = useState<RemovalRequest[]>([]);
+  const [removalActionId, setRemovalActionId] = useState<string | null>(null);
+  const [requestRemovalLoading, setRequestRemovalLoading] = useState(false);
   const { createUser } = useUsers();
   const isMountedRef = useRef(true);
 
@@ -156,6 +164,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
     }
   }, []);
 
+  const loadRemovalRequests = useCallback(async () => {
+    if (user?.role !== 'admin' && user?.role !== 'super_admin') return;
+    try {
+      const res = await removalRequestService.list();
+      if (res.success && res.data?.requests && isMountedRef.current) {
+        setPendingRemovalRequests(res.data.requests);
+      } else if (isMountedRef.current) {
+        setPendingRemovalRequests([]);
+      }
+    } catch {
+      if (isMountedRef.current) setPendingRemovalRequests([]);
+    }
+  }, [user?.role]);
+
   const loadMembers = useCallback(async (forceRefresh = false) => {
     try {
       setLoadingMembers(true);
@@ -170,7 +192,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
         }
       }
 
-      const response = await userService.getAllUsers({ role: 'member' });
+      const response = await userService.getAllUsers({ limit: 100 });
 
       if (response.success && response.data) {
         const membersList = Array.isArray(response.data) ? response.data : [];
@@ -209,13 +231,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
           if (activeTab === 'overview') {
             await loadAdminStats();
           } else if (activeTab === 'members') {
-            await loadMembers(true);
+            await Promise.all([loadMembers(true), loadRemovalRequests()]);
           }
         };
         loadData();
       }
-    }, [user?.role, activeTab, loadAdminStats, loadMembers])
+    }, [user?.role, activeTab, loadAdminStats, loadMembers, loadRemovalRequests])
   );
+
+  useEffect(() => {
+    if (activeTab === 'members' && (user?.role === 'admin' || user?.role === 'super_admin')) {
+      loadRemovalRequests();
+    }
+  }, [activeTab, user?.role, loadRemovalRequests]);
 
   const handlePendingCardPress = useCallback(() => {
     const total = adminStats.pendingMeals + adminStats.pendingBazar;
@@ -415,15 +443,33 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    // Clear cache before refreshing to get latest data
+    httpClient.clearOnlineCache();
     try {
       await userService.clearUserCache();
+      await dashboardService.refreshDashboard();
     } catch {
       // Continue even if cache clear fails
     }
-    await Promise.all([loadAdminStats(), loadMembers()]);
+    await Promise.all([loadAdminStats(), loadMembers(true), loadRemovalRequests()]);
     setRefreshing(false);
   };
+
+  const handleRetryOverview = useCallback(async () => {
+    httpClient.clearOnlineCache();
+    setError(null);
+    try {
+      await dashboardService.refreshDashboard();
+    } catch {
+      // ignore
+    }
+    await loadAdminStats();
+  }, [loadAdminStats]);
+
+  const handleRetryMembers = useCallback(() => {
+    httpClient.clearOnlineCache();
+    setError(null);
+    loadMembers(true);
+  }, [loadMembers]);
 
   const renderOverview = () => (
     <>
@@ -446,7 +492,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
               styles.retryButton,
               { backgroundColor: theme.button.primary.background },
             ]}
-            onPress={loadAdminStats}
+            onPress={handleRetryOverview}
           >
             <ThemedText
               style={[
@@ -668,6 +714,86 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
     }
   };
 
+  const handleAcceptRemovalRequest = useCallback(
+    async (requestId: string) => {
+      setRemovalActionId(requestId);
+      try {
+        const res = await removalRequestService.accept(requestId);
+        if (res.success && isMountedRef.current) {
+          setPendingRemovalRequests((prev) => prev.filter((r) => r._id !== requestId));
+          await loadMembers(true);
+          setShowViewModal(false);
+          setViewingMember(null);
+        } else {
+          Alert.alert('Error', res.error ?? 'Failed to accept.');
+        }
+      } catch (e) {
+        Alert.alert('Error', (e as Error).message ?? 'Failed to accept.');
+      } finally {
+        setRemovalActionId(null);
+      }
+    },
+    [loadMembers]
+  );
+
+  const handleRejectRemovalRequest = useCallback(
+    async (requestId: string) => {
+      setRemovalActionId(requestId);
+      try {
+        const res = await removalRequestService.reject(requestId);
+        if (res.success && isMountedRef.current) {
+          setPendingRemovalRequests((prev) => prev.filter((r) => r._id !== requestId));
+        } else {
+          Alert.alert('Error', res.error ?? 'Failed to reject.');
+        }
+      } catch (e) {
+        Alert.alert('Error', (e as Error).message ?? 'Failed to reject.');
+      } finally {
+        setRemovalActionId(null);
+      }
+    },
+    []
+  );
+
+  const handleRequestRemoval = useCallback(
+    (memberId: string) => {
+      const member = members.find((m) => m.id === memberId);
+      Alert.alert(
+        'Request removal',
+        member
+          ? `Send a removal request to ${member.name}? They must accept to be removed.`
+          : 'Request removal for this member? They must accept to be removed.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Request removal',
+            style: 'destructive',
+            onPress: async () => {
+              setRequestRemovalLoading(true);
+              try {
+                const res = await removalRequestService.createRemovalRequest(memberId);
+                if (res.success && isMountedRef.current) {
+                  setShowViewModal(false);
+                  setViewingMember(null);
+                  await loadRemovalRequests();
+                  await loadMembers(true);
+                  Alert.alert('Done', 'Removal request sent. The member must accept to be removed.');
+                } else {
+                  Alert.alert('Error', res.error ?? 'Failed to send removal request.');
+                }
+              } catch (e) {
+                Alert.alert('Error', (e as Error).message ?? 'Failed to send removal request.');
+              } finally {
+                setRequestRemovalLoading(false);
+              }
+            },
+          },
+        ]
+      );
+    },
+    [members, loadRemovalRequests, loadMembers]
+  );
+
   const handleDeleteMember = (memberId: string) => {
     Alert.alert(
       'Delete Member',
@@ -794,11 +920,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
             style={[styles.tabSubtitle, { color: theme.text.secondary }]}
           >
             {user?.role === 'super_admin'
-              ? 'View and manage all members'
-              : 'View and manage your members'}
+              ? 'View and manage all users'
+              : 'View and manage your users'}
             {!loadingMembers && !error && members.length >= 0 && (
               <ThemedText style={[styles.memberCountBadge, { color: theme.text.secondary }]}>
-                {' '}· {members.length} {members.length === 1 ? 'member' : 'members'}
+                {' '}· {members.length} {members.length === 1 ? 'user' : 'users'}
               </ThemedText>
             )}
           </ThemedText>
@@ -839,7 +965,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
               styles.retryButton,
               { backgroundColor: theme.button.primary.background },
             ]}
-            onPress={() => loadMembers(true)}
+            onPress={handleRetryMembers}
           >
             <ThemedText
               style={[
@@ -861,22 +987,71 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
-              onRefresh={() => {
+              onRefresh={async () => {
                 setRefreshing(true);
-                loadMembers(true).finally(() => setRefreshing(false));
+                httpClient.clearOnlineCache();
+                await Promise.all([loadMembers(true), loadRemovalRequests()]);
+                setRefreshing(false);
               }}
               colors={[theme.primary]}
             />
           }
         >
+          {pendingRemovalRequests.length > 0 && (
+            <View style={[styles.pendingRemovalSection, { borderColor: theme.border.secondary }]}>
+              <ThemedText style={styles.pendingRemovalTitle}>Pending requests</ThemedText>
+              {pendingRemovalRequests.map((req) => {
+                const userName =
+                  typeof req.userId === 'object' && req.userId !== null && 'name' in req.userId
+                    ? req.userId.name
+                    : 'Member';
+                const isLeave = req.type === 'member_leave';
+                const busy = removalActionId === req._id;
+                return (
+                  <View
+                    key={req._id}
+                    style={[styles.pendingRemovalCard, { backgroundColor: theme.cardBackground }]}
+                  >
+                    <ThemedText style={styles.pendingRemovalCardText}>
+                      {isLeave ? `${userName} requested to leave` : `Removal requested for ${userName}`}
+                    </ThemedText>
+                    {isLeave ? (
+                      <View style={styles.pendingRemovalActions}>
+                        <TouchableOpacity
+                          style={[styles.pendingRemovalBtn, styles.rejectRemovalBtn, { borderColor: theme.border.secondary }]}
+                          onPress={() => handleRejectRemovalRequest(req._id)}
+                          disabled={busy}
+                        >
+                          <ThemedText style={[styles.rejectRemovalBtnText, { color: theme.text.secondary }]}>Reject</ThemedText>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.pendingRemovalBtn, styles.acceptRemovalBtn, { backgroundColor: theme.status.success }]}
+                          onPress={() => handleAcceptRemovalRequest(req._id)}
+                          disabled={busy}
+                        >
+                          <ThemedText style={styles.acceptRemovalBtnText}>
+                            {busy ? '...' : 'Accept'}
+                          </ThemedText>
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <ThemedText style={[styles.pendingRemovalWaiting, { color: theme.text.secondary }]}>
+                        Waiting for member to respond
+                      </ThemedText>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+          )}
           {members.length === 0 ? (
             <View style={styles.emptyContainer}>
               <View style={[styles.emptyIconWrap, { backgroundColor: theme.primary + '18' }]}>
                 <Ionicons name="people-outline" size={48} color={theme.primary} />
               </View>
-              <ThemedText style={styles.emptyText}>No members yet</ThemedText>
+              <ThemedText style={styles.emptyText}>No users yet</ThemedText>
               <ThemedText style={[styles.emptySubtext, { color: theme.text.secondary }]}>
-                Add your first member to get started
+                Add your first user to get started
               </ThemedText>
               <TouchableOpacity
                 style={[styles.emptyAddButton, { backgroundColor: theme.button.primary.background }]}
@@ -945,9 +1120,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                             styles.roleBadge,
                             {
                               backgroundColor:
-                                member.role === 'admin'
-                                  ? theme.status.info + '22'
-                                  : theme.status.success + '22',
+                                member.role === 'super_admin'
+                                  ? theme.status.warning + '22'
+                                  : member.role === 'admin'
+                                    ? theme.status.info + '22'
+                                    : theme.status.success + '22',
                             },
                           ]}
                         >
@@ -956,13 +1133,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                               styles.roleText,
                               {
                                 color:
-                                  member.role === 'admin'
-                                    ? theme.status.info
-                                    : theme.status.success,
+                                  member.role === 'super_admin'
+                                    ? theme.status.warning
+                                    : member.role === 'admin'
+                                      ? theme.status.info
+                                      : theme.status.success,
                               },
                             ]}
                           >
-                            {member.role}
+                            {member.role === 'super_admin'
+                              ? 'Super admin'
+                              : member.role}
                           </ThemedText>
                         </View>
                         <View
@@ -1011,17 +1192,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                       >
                         <Ionicons name="create-outline" size={22} color={theme.button.secondary.text} />
                       </TouchableOpacity>
-                      {user?.role === 'super_admin' && (
-                        <TouchableOpacity
-                          style={[styles.memberActionBtn, styles.memberActionBtnDanger, { backgroundColor: theme.status.error + '22' }]}
-                          onPress={(e) => {
-                            e.stopPropagation();
-                            handleDeleteMember(member.id);
-                          }}
-                        >
-                          <Ionicons name="trash-outline" size={22} color={theme.status.error} />
-                        </TouchableOpacity>
-                      )}
+                      {/* Delete is not allowed from admin UI: member must request to leave (admin accepts) or admin requests removal (member accepts). */}
                     </View>
                   </View>
                   {isDeleting && (
@@ -1049,147 +1220,68 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
       <MonthlyReportDashboard />
     </View>
     );
+  const tabBarBg = theme.tab?.background ?? theme.cardBackground ?? theme.background;
+  const tabBarBorder = theme.tab?.border ?? theme.cardBorder ?? theme.border?.secondary;
+  const tabActiveColor = theme.tab?.active ?? theme.primary;
+  const tabInactiveColor = theme.tab?.inactive ?? theme.text?.secondary;
+  const activeBg = theme.primary;
+  const activeTextColor = theme.text?.inverse ?? '#fff';
+  const inactiveBg = theme.cardBackground ?? theme.surface;
+  const inactiveBorder = theme.cardBorder ?? theme.border?.secondary;
+
+  const tabs: { key: 'overview' | 'meals' | 'members' | 'reports'; label: string; icon: string }[] = [
+    { key: 'overview', label: 'Overview', icon: 'grid' },
+    { key: 'meals', label: 'Meals', icon: 'fast-food' },
+    { key: 'members', label: 'Members', icon: 'people' },
+    { key: 'reports', label: 'Reports', icon: 'stats-chart' },
+  ];
+
   return (
     <ThemedView style={styles.container}>
-      {/* Tab Navigation */}
-      <View
-        style={[
-          styles.tabNavigation,
-          {
-            backgroundColor: theme.tab.background,
-            borderBottomColor: theme.tab.border,
-          },
-        ]}
-      >
-        <TouchableOpacity
-          style={[
-            styles.tabButton,
-            activeTab === 'overview' && [
-              styles.activeTab,
-              { backgroundColor: theme.surface, shadowColor: theme.shadow?.light ?? theme.cardShadow },
-            ],
-          ]}
-          onPress={() => setActiveTab('overview')}
+      {/* Tab bar – chip style aligned with shared FilterChipsPanel */}
+      <View style={[styles.tabNavigation, { backgroundColor: tabBarBg, borderBottomColor: tabBarBorder }]}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabScrollContent}
         >
-          <Ionicons
-            name='grid'
-            size={20}
-            color={
-              activeTab === 'overview' ? theme.tab.active : theme.tab.inactive
-            }
-          />
-          <ThemedText
-            style={[
-              styles.tabText,
-              {
-                color:
-                  activeTab === 'overview'
-                    ? theme.tab.active
-                    : theme.tab.inactive,
-              },
-              activeTab === 'overview' && styles.activeTabText,
-            ]}
-          >
-            Overview
-          </ThemedText>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.tabButton,
-            activeTab === 'meals' && [
-              styles.activeTab,
-              { backgroundColor: theme.surface, shadowColor: theme.shadow?.light ?? theme.cardShadow },
-            ],
-          ]}
-          onPress={() => setActiveTab('meals')}
-        >
-          <Ionicons
-            name='fast-food'
-            size={20}
-            color={
-              activeTab === 'meals' ? theme.tab.active : theme.tab.inactive
-            }
-          />
-          <ThemedText
-            style={[
-              styles.tabText,
-              {
-                color:
-                  activeTab === 'meals' ? theme.tab.active : theme.tab.inactive,
-              },
-              activeTab === 'meals' && styles.activeTabText,
-            ]}
-          >
-            Meals
-          </ThemedText>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.tabButton,
-            activeTab === 'members' && [
-              styles.activeTab,
-              { backgroundColor: theme.surface, shadowColor: theme.shadow?.light ?? theme.cardShadow },
-            ],
-          ]}
-          onPress={() => setActiveTab('members')}
-        >
-          <Ionicons
-            name='people'
-            size={20}
-            color={
-              activeTab === 'members' ? theme.tab.active : theme.tab.inactive
-            }
-          />
-          <ThemedText
-            style={[
-              styles.tabText,
-              {
-                color:
-                  activeTab === 'members'
-                    ? theme.tab.active
-                    : theme.tab.inactive,
-              },
-              activeTab === 'members' && styles.activeTabText,
-            ]}
-          >
-            Members
-          </ThemedText>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.tabButton,
-            activeTab === 'reports' && [
-              styles.activeTab,
-              { backgroundColor: theme.surface, shadowColor: theme.shadow?.light ?? theme.cardShadow },
-            ],
-          ]}
-          onPress={() => setActiveTab('reports')}
-        >
-          <Ionicons
-            name='stats-chart'
-            size={20}
-            color={
-              activeTab === 'reports' ? theme.tab.active : theme.tab.inactive
-            }
-          />
-          <ThemedText
-            style={[
-              styles.tabText,
-              {
-                color:
-                  activeTab === 'reports'
-                    ? theme.tab.active
-                    : theme.tab.inactive,
-              },
-              activeTab === 'reports' && styles.activeTabText,
-            ]}
-          >
-            Reports
-          </ThemedText>
-        </TouchableOpacity>
+          {tabs.map(({ key, label, icon }) => {
+            const isActive = activeTab === key;
+            return (
+              <TouchableOpacity
+                key={key}
+                style={[
+                  styles.tabChip,
+                  {
+                    backgroundColor: isActive ? activeBg : inactiveBg,
+                    borderColor: isActive ? activeBg : inactiveBorder,
+                    borderWidth: 1,
+                  },
+                ]}
+                onPress={() => setActiveTab(key)}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={icon as React.ComponentProps<typeof Ionicons>['name']}
+                  size={18}
+                  color={isActive ? activeTextColor : tabInactiveColor}
+                />
+                <ThemedText
+                  style={[
+                    styles.tabChipText,
+                    {
+                      color: isActive ? activeTextColor : tabInactiveColor,
+                      marginLeft: 6,
+                    },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {label}
+                </ThemedText>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
 
       {/* Tab Content */}
@@ -1205,6 +1297,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
         onClose={handleCloseViewModal}
         onEdit={handleEditFromView}
         onResetPassword={handleResetPassword}
+        onRequestRemoval={handleRequestRemoval}
+        requestRemovalLoading={requestRemovalLoading}
       />
 
       {/* Member Add/Edit Modal */}
@@ -1374,32 +1468,27 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   tabNavigation: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
   },
-  tabButton: {
-    flex: 1,
+  tabScrollContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 8,
+    gap: 8,
+    paddingRight: 16,
   },
-  activeTab: {
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  tabChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 12,
   },
-  tabText: {
-    marginLeft: 8,
+  tabChipText: {
     fontSize: 14,
-    fontWeight: '500',
-  },
-  activeTabText: {
     fontWeight: '600',
+    maxWidth: 100,
   },
   tabContent: {
     flex: 1,
@@ -1535,6 +1624,53 @@ const styles = StyleSheet.create({
   },
   membersScrollContent: {
     paddingBottom: 24,
+  },
+  pendingRemovalSection: {
+    marginBottom: 20,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  pendingRemovalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+  pendingRemovalCard: {
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  pendingRemovalCardText: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  pendingRemovalActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  pendingRemovalBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+  },
+  rejectRemovalBtn: {
+    borderWidth: 1,
+  },
+  rejectRemovalBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  acceptRemovalBtn: {
+  },
+  acceptRemovalBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  pendingRemovalWaiting: {
+    fontSize: 13,
   },
   memberCard: {
     borderRadius: 16,

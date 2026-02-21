@@ -19,6 +19,10 @@ import { useUsers } from '@/hooks/useUsers';
 import { useMeals } from '@/hooks/useMeals';
 import { useBazar } from '@/hooks/useBazar';
 import userStatsService from '@/services/userStatsService';
+import {
+  removalRequestService,
+  type RemovalRequest,
+} from '@/services/removalRequestService';
 import { ScreenLayout } from '@/components/layout';
 
 export default function ProfileScreen() {
@@ -41,6 +45,9 @@ export default function ProfileScreen() {
   });
   const [recentActivity, setRecentActivity] = useState<{ icon?: string; action?: string; date?: string; id?: string; type?: string; title?: string }[]>([]);
   const [showAdvancedStats, setShowAdvancedStats] = useState(false);
+  const [removalRequests, setRemovalRequests] = useState<RemovalRequest[]>([]);
+  const [leaveRequestLoading, setLeaveRequestLoading] = useState(false);
+  const [removalActionLoading, setRemovalActionLoading] = useState<string | null>(null);
 
   const accountMenuItems = [
     {
@@ -201,6 +208,12 @@ export default function ProfileScreen() {
   const loadUserData = useCallback(async () => {
     try {
       await getProfile();
+      const listRes = await removalRequestService.list();
+      if (listRes.success && listRes.data?.requests) {
+        setRemovalRequests(listRes.data.requests);
+      } else {
+        setRemovalRequests([]);
+      }
 
       // Use cached user-stats service (works offline with last cached data)
       const response = await userStatsService.getUserDashboardStats();
@@ -295,6 +308,67 @@ export default function ProfileScreen() {
   const handleBack = useCallback(() => {
     router.navigate('/(tabs)/meals');
   }, [router]);
+
+  const hasPendingLeaveRequest = removalRequests.some(
+    (r) => r.type === 'member_leave' && r.status === 'pending'
+  );
+  const adminRemovalRequest = removalRequests.find(
+    (r) => r.type === 'admin_removal' && r.status === 'pending'
+  );
+
+  const handleRequestLeave = useCallback(async () => {
+    if (hasPendingLeaveRequest || user?.role !== 'member') return;
+    setLeaveRequestLoading(true);
+    try {
+      const res = await removalRequestService.createLeaveRequest();
+      if (res.success && res.data) {
+        setRemovalRequests((prev) => [res.data!, ...prev]);
+      } else {
+        Alert.alert('Error', res.error ?? 'Failed to submit leave request.');
+      }
+    } catch (e) {
+      Alert.alert('Error', (e as Error).message ?? 'Failed to submit leave request.');
+    } finally {
+      setLeaveRequestLoading(false);
+    }
+  }, [hasPendingLeaveRequest, user?.role]);
+
+  const handleAcceptRemoval = useCallback(
+    async (requestId: string) => {
+      setRemovalActionLoading(requestId);
+      try {
+        const res = await removalRequestService.accept(requestId);
+        if (res.success) {
+          await logout();
+        } else {
+          Alert.alert('Error', res.error ?? 'Failed to accept.');
+        }
+      } catch (e) {
+        Alert.alert('Error', (e as Error).message ?? 'Failed to accept.');
+      } finally {
+        setRemovalActionLoading(null);
+      }
+    },
+    [logout]
+  );
+
+  const handleDeclineRemoval = useCallback(async (requestId: string) => {
+    setRemovalActionLoading(requestId);
+    try {
+      const res = await removalRequestService.reject(requestId);
+      if (res.success) {
+        setRemovalRequests((prev) =>
+          prev.filter((r) => r._id !== requestId)
+        );
+      } else {
+        Alert.alert('Error', res.error ?? 'Failed to decline.');
+      }
+    } catch (e) {
+      Alert.alert('Error', (e as Error).message ?? 'Failed to decline.');
+    } finally {
+      setRemovalActionLoading(null);
+    }
+  }, []);
 
   useEffect(() => {
     const initialLoad = async () => {
@@ -538,6 +612,59 @@ export default function ProfileScreen() {
         <View style={styles.content}>
           <ProfileCard user={user} showStats={true} stats={userStats} />
 
+          {/* Member: Request to leave & Admin removal */}
+          {user.role === 'member' && (
+            <View style={styles.removalSection}>
+              {adminRemovalRequest && (
+                <View style={styles.removalCard}>
+                  <ThemedText style={styles.removalCardTitle}>
+                    Admin requested your removal
+                  </ThemedText>
+                  <ThemedText style={styles.removalCardSubtitle}>
+                    You can accept to leave the group or decline to stay.
+                  </ThemedText>
+                  <View style={styles.removalActions}>
+                    <TouchableOpacity
+                      style={[styles.removalBtn, styles.declineBtn]}
+                      onPress={() => handleDeclineRemoval(adminRemovalRequest._id)}
+                      disabled={removalActionLoading === adminRemovalRequest._id}
+                    >
+                      <ThemedText style={styles.declineBtnText}>Decline</ThemedText>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.removalBtn, styles.acceptRemovalBtn]}
+                      onPress={() => handleAcceptRemoval(adminRemovalRequest._id)}
+                      disabled={removalActionLoading === adminRemovalRequest._id}
+                    >
+                      <ThemedText style={styles.acceptRemovalBtnText}>
+                        {removalActionLoading === adminRemovalRequest._id ? '...' : 'Accept'}
+                      </ThemedText>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+              <View style={styles.removalCard}>
+                <ThemedText style={styles.removalCardTitle}>Leave group</ThemedText>
+                <ThemedText style={styles.removalCardSubtitle}>
+                  {hasPendingLeaveRequest
+                    ? 'Your leave request is pending. Admin will review it.'
+                    : 'Request to leave the group. Admin must approve.'}
+                </ThemedText>
+                {!hasPendingLeaveRequest && (
+                  <TouchableOpacity
+                    style={[styles.removalBtn, styles.leaveRequestBtn]}
+                    onPress={handleRequestLeave}
+                    disabled={leaveRequestLoading}
+                  >
+                    <ThemedText style={styles.leaveRequestBtnText}>
+                      {leaveRequestLoading ? 'Submitting...' : 'Request to leave'}
+                    </ThemedText>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          )}
+
           {/* Advanced Statistics */}
           {renderAdvancedStats()}
 
@@ -661,6 +788,67 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6b7280',
     textAlign: 'center',
+  },
+  removalSection: {
+    marginBottom: 24,
+  },
+  removalCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  removalCardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 6,
+  },
+  removalCardSubtitle: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginBottom: 12,
+  },
+  removalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  removalBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    minWidth: 100,
+    alignItems: 'center',
+  },
+  declineBtn: {
+    backgroundColor: '#f3f4f6',
+  },
+  declineBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  acceptRemovalBtn: {
+    backgroundColor: '#ef4444',
+  },
+  acceptRemovalBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  leaveRequestBtn: {
+    backgroundColor: '#f59e0b',
+    alignSelf: 'flex-start',
+  },
+  leaveRequestBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
   },
   activitySection: {
     marginBottom: 24,
