@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { IconName } from '@/constants/IconTypes';
 import { ThemedText } from '../../ThemedText';
 import { BazarItem } from '../../../services/bazarService';
+import { useTheme } from '../../../context/ThemeContext';
 
 interface BazarItemRowProps {
   item: BazarItem;
@@ -26,79 +27,106 @@ export const BazarItemRow: React.FC<BazarItemRowProps> = ({
   canRemove,
   errors,
 }) => {
+  const { theme } = useTheme();
+
   const getItemIcon = (index: number) => {
     const icons = ['fast-food', 'restaurant', 'cafe', 'pizza', 'wine'];
     return icons[index % icons.length];
   };
 
-  const getItemColor = (index: number) => {
-    const colors = ['#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ef4444'];
-    return colors[index % colors.length];
-  };
+  const itemColors = [
+    theme.status.warning,
+    theme.status.success,
+    theme.primary,
+    theme.secondary,
+    theme.status.error,
+  ];
+  const itemColor = itemColors[index % itemColors.length];
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.iconContainer}>
+    <View style={[styles.container, { backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }]}>
+      <View style={[styles.header, { alignItems: 'center' }]}>
+        <View style={[styles.iconContainer, { backgroundColor: theme.surface }]}>
           <Ionicons
             name={getItemIcon(index) as IconName}
             size={20}
-            color={getItemColor(index)}
+            color={itemColor}
           />
         </View>
-        <ThemedText style={styles.itemNumber}>Item {index + 1}</ThemedText>
+        <ThemedText style={[styles.itemNumber, { color: theme.text.primary }]}>Item {index + 1}</ThemedText>
         {canRemove && (
           <TouchableOpacity
             style={styles.removeButton}
             onPress={() => onRemove(index)}
           >
-            <Ionicons name='close-circle' size={20} color='#ef4444' />
+            <Ionicons name='close-circle' size={20} color={theme.status.error} />
           </TouchableOpacity>
         )}
       </View>
 
       <View style={styles.inputRow}>
         <View style={styles.inputContainer}>
-          <ThemedText style={styles.inputLabel}>Name</ThemedText>
+          <ThemedText style={[styles.inputLabel, { color: theme.text.secondary }]}>Name</ThemedText>
           <TextInput
-            style={[styles.textInput, errors?.items && styles.inputError]}
+            style={[
+              styles.textInput,
+              {
+                backgroundColor: theme.input.background,
+                borderColor: theme.border.secondary,
+                color: theme.input.text,
+              },
+              errors?.items && { borderColor: theme.status.error },
+            ]}
             value={item.name}
             onChangeText={value => onUpdate(index, 'name', value)}
             placeholder='Item name'
-            placeholderTextColor='#9ca3af'
+            placeholderTextColor={theme.input.placeholder}
           />
         </View>
 
         <View style={styles.inputContainer}>
-          <ThemedText style={styles.inputLabel}>Quantity</ThemedText>
+          <ThemedText style={[styles.inputLabel, { color: theme.text.secondary }]}>Quantity</ThemedText>
           <TextInput
-            style={[styles.textInput, errors?.items && styles.inputError]}
+            style={[
+              styles.textInput,
+              {
+                backgroundColor: theme.input.background,
+                borderColor: theme.border.secondary,
+                color: theme.input.text,
+              },
+              errors?.items && { borderColor: theme.status.error },
+            ]}
             value={item.quantity}
             onChangeText={value => onUpdate(index, 'quantity', value)}
             placeholder='e.g., 2kg, 5 pieces'
-            placeholderTextColor='#9ca3af'
+            placeholderTextColor={theme.input.placeholder}
           />
         </View>
       </View>
 
       <View style={styles.priceContainer}>
-        <ThemedText style={styles.inputLabel}>Price (৳)</ThemedText>
+        <ThemedText style={[styles.inputLabel, { color: theme.text.secondary }]}>Price (৳)</ThemedText>
         <TextInput
           style={[
             styles.textInput,
             styles.priceInput,
-            errors?.items && styles.inputError,
+            {
+              backgroundColor: theme.input.background,
+              borderColor: theme.border.secondary,
+              color: theme.input.text,
+            },
+            errors?.items && { borderColor: theme.status.error },
           ]}
           value={item.price.toString()}
           onChangeText={value => onUpdate(index, 'price', Number(value) || 0)}
           placeholder='0'
-          placeholderTextColor='#9ca3af'
+          placeholderTextColor={theme.input.placeholder}
           keyboardType='numeric'
         />
       </View>
 
       {errors?.items && (
-        <ThemedText style={styles.errorText}>{errors.items}</ThemedText>
+        <ThemedText style={[styles.errorText, { color: theme.status.error }]}>{errors.items}</ThemedText>
       )}
     </View>
   );
@@ -106,12 +134,10 @@ export const BazarItemRow: React.FC<BazarItemRowProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#f8fafc',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
   },
   header: {
     flexDirection: 'row',
@@ -122,7 +148,6 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 8,
@@ -135,7 +160,6 @@ const styles = StyleSheet.create({
   itemNumber: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
     flex: 1,
   },
   removeButton: {
@@ -152,18 +176,14 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#6b7280',
     marginBottom: 4,
   },
   textInput: {
-    backgroundColor: '#fff',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
     fontSize: 14,
-    color: '#374151',
     borderWidth: 1,
-    borderColor: '#d1d5db',
   },
   priceInput: {
     textAlign: 'right',
@@ -171,12 +191,8 @@ const styles = StyleSheet.create({
   priceContainer: {
     flex: 1,
   },
-  inputError: {
-    borderColor: '#ef4444',
-  },
   errorText: {
     fontSize: 12,
-    color: '#ef4444',
     marginTop: 4,
   },
 });

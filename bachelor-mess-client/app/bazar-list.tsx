@@ -7,6 +7,7 @@ import {
   RefreshControl,
   Alert,
   StatusBar,
+  type ViewStyle,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,20 +25,76 @@ import { BazarEntry } from '../services/bazarService';
 
 type BazarListScreenProps = Record<string, never>;
 
+/** Header component that reads from context so FlatList gets a stable reference and the search input doesn't remount on keystroke. */
+function BazarListHeader({
+  showFilters,
+  onToggleFilters,
+  headerStyles,
+}: {
+  showFilters: boolean;
+  onToggleFilters: () => void;
+  headerStyles: {
+    listHeader: ViewStyle;
+    statsContainer: ViewStyle;
+    searchFiltersRow: ViewStyle;
+    searchContainer: ViewStyle;
+    filtersContainer: ViewStyle;
+  };
+}) {
+  const { theme } = useTheme();
+  const {
+    bazarStats,
+    loadingStats,
+    statsError,
+    searchQuery,
+    filters,
+    updateFilters,
+    updateSearchQuery,
+    refreshData,
+  } = useBazar();
+
+  return (
+    <View style={[headerStyles.listHeader, { backgroundColor: theme.background }]}>
+      <View style={headerStyles.statsContainer}>
+        <BazarStatistics
+          stats={bazarStats}
+          loading={loadingStats}
+          error={statsError}
+          onRetry={() => refreshData()}
+          compact
+          fullWidth
+        />
+      </View>
+      <View style={headerStyles.searchFiltersRow}>
+        <View style={headerStyles.searchContainer}>
+          <BazarSearchBar
+            onSearch={updateSearchQuery}
+            placeholder='Search bazar items...'
+            value={searchQuery}
+          />
+        </View>
+        <View style={headerStyles.filtersContainer}>
+          <BazarFilters
+            filters={filters}
+            onFilterChange={updateFilters}
+            showFilters={showFilters}
+            onToggleFilters={onToggleFilters}
+          />
+        </View>
+      </View>
+    </View>
+  );
+}
+
 export default function BazarListScreen(_props: BazarListScreenProps) {
   const router = useRouter();
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const { user } = useAuth();
   const {
     filteredEntries,
-    bazarStats,
     filters,
     searchQuery,
-    loadingStats,
     entriesError,
-    statsError,
-    updateFilters,
-    updateSearchQuery,
     refreshData,
     updateBazarStatus,
     deleteBazar,
@@ -97,14 +154,6 @@ export default function BazarListScreen(_props: BazarListScreenProps) {
         },
       ]
     );
-  };
-
-  const handleFilterChange = (newFilters: Record<string, unknown>) => {
-    updateFilters(newFilters);
-  };
-
-  const handleSearch = (query: string) => {
-    updateSearchQuery(query);
   };
 
   const renderBazarItem = ({ item: bazar }: { item: BazarEntry }) => (
@@ -186,37 +235,15 @@ export default function BazarListScreen(_props: BazarListScreenProps) {
     </View>
   );
 
-  const renderListHeader = () => (
-    <View style={[styles.listHeader, { backgroundColor: theme.background }]}>
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <BazarSearchBar
-          onSearch={handleSearch}
-          placeholder='Search bazar items...'
-          value={searchQuery}
-        />
-      </View>
-
-      {/* Filters Toggle */}
-      <View style={styles.filtersContainer}>
-        <BazarFilters
-          filters={filters}
-          onFilterChange={handleFilterChange}
-          showFilters={showFilters}
-          onToggleFilters={() => setShowFilters(!showFilters)}
-        />
-      </View>
-
-      {/* Statistics */}
-      <View style={styles.statsContainer}>
-        <BazarStatistics
-          stats={bazarStats}
-          loading={loadingStats}
-          error={statsError}
-          onRetry={() => refreshData()}
-        />
-      </View>
-    </View>
+  const listHeaderElement = React.useMemo(
+    () => (
+      <BazarListHeader
+        showFilters={showFilters}
+        onToggleFilters={() => setShowFilters(s => !s)}
+        headerStyles={styles}
+      />
+    ),
+    [showFilters]
   );
 
   return (
@@ -232,13 +259,16 @@ export default function BazarListScreen(_props: BazarListScreenProps) {
       }
     >
       <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
         <FlatList
           data={filteredEntries || []}
           renderItem={renderBazarItem}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps='handled'
+          keyboardDismissMode='on-drag'
+          ListHeaderComponent={listHeaderElement}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -248,8 +278,7 @@ export default function BazarListScreen(_props: BazarListScreenProps) {
               progressBackgroundColor={theme.cardBackground}
             />
           }
-          ListHeaderComponent={renderListHeader}
-        ListEmptyComponent={entriesError ? renderErrorState : renderEmptyState}
+          ListEmptyComponent={entriesError ? renderErrorState : renderEmptyState}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         ListFooterComponent={<View style={styles.footer} />}
         removeClippedSubviews={true}
@@ -282,14 +311,23 @@ const styles = StyleSheet.create({
   refreshButton: {
     padding: 8,
   },
-  searchContainer: {
+  statsContainer: {
+    width: '100%',
+    alignSelf: 'stretch',
     marginBottom: 16,
+  },
+  searchFiltersRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 4,
+  },
+  searchContainer: {
+    flex: 1,
+    minWidth: 0,
   },
   filtersContainer: {
-    marginBottom: 16,
-  },
-  statsContainer: {
-    marginBottom: 8,
+    flexShrink: 0,
   },
   bazarItemContainer: {
     marginHorizontal: 20,

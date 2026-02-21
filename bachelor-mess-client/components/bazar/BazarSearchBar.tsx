@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
@@ -21,15 +21,13 @@ export const BazarSearchBar: React.FC<BazarSearchBarProps> = ({
   onClear,
 }) => {
   const { theme } = useTheme();
-  const [searchQuery, setSearchQuery] = useState(value);
+  const displayValue = value ?? '';
 
   const handleSearchChange = (text: string) => {
-    setSearchQuery(text);
     onSearch(text);
   };
 
   const handleClear = () => {
-    setSearchQuery('');
     onSearch('');
     onClear?.();
   };
@@ -57,7 +55,7 @@ export const BazarSearchBar: React.FC<BazarSearchBarProps> = ({
         ]}
         placeholder={placeholder}
         placeholderTextColor={theme.text.tertiary}
-        value={searchQuery}
+        value={displayValue}
         onChangeText={handleSearchChange}
         autoFocus={autoFocus}
         autoCapitalize='none'
@@ -65,7 +63,7 @@ export const BazarSearchBar: React.FC<BazarSearchBarProps> = ({
         returnKeyType='search'
       />
 
-      {showClearButton && searchQuery.length > 0 && (
+      {showClearButton && displayValue.length > 0 && (
         <TouchableOpacity style={styles.clearButton} onPress={handleClear}>
           <Ionicons
             name='close-circle'

@@ -7,11 +7,11 @@ import {
   Alert,
   Modal,
   TextInput,
-  FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { IconName } from '@/constants/IconTypes';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { ScreenLayout } from '@/components/layout';
@@ -21,7 +21,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { logger } from '@/utils/logger';
 import { formatDate, formatDateAndTime } from '@/utils/dateUtils';
-import { getStatusColor, getStatusBgColor, getStatusIcon } from '@/utils/statusUtils';
+import { getStatusColor, getStatusIcon } from '@/utils/statusUtils';
 import { formatCurrency } from '@/utils/formatUtils';
 
 export default function BazarDetailsScreen() {
@@ -29,11 +29,11 @@ export default function BazarDetailsScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { theme } = useTheme();
-  const iconColor = theme.icon?.secondary ?? theme.text?.tertiary ?? '#6b7280';
-  const labelColor = theme.text?.secondary ?? theme.text?.tertiary ?? '#6b7280';
-  const valueColor = theme.text?.primary ?? '#1f2937';
-  const cardBg = theme.cardBackground ?? theme.surface ?? '#fff';
-  const cardBorder = theme.cardBorder ?? theme.border?.secondary;
+  const iconColor = theme.icon.secondary;
+  const labelColor = theme.text.secondary;
+  const valueColor = theme.text.primary;
+  const cardBg = theme.cardBackground;
+  const cardBorder = theme.cardBorder;
   const [bazar, setBazar] = useState<BazarEntry | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -232,19 +232,19 @@ export default function BazarDetailsScreen() {
   if (error || !bazar) {
     return (
       <ScreenLayout title="Bazar Not Found" showBack onBackPress={() => router.back()}>
-        <ThemedView style={styles.errorContainer}>
-          <Ionicons name="alert-circle" size={64} color="#ef4444" />
-          <ThemedText style={styles.errorTitle}>Bazar Not Found</ThemedText>
-          <ThemedText style={styles.errorText}>
+        <ThemedView style={[styles.errorContainer, { backgroundColor: theme.background }]}>
+          <Ionicons name="alert-circle" size={64} color={theme.status.error} />
+          <ThemedText style={[styles.errorTitle, { color: theme.status.error }]}>Bazar Not Found</ThemedText>
+          <ThemedText style={[styles.errorText, { color: theme.text.secondary }]}>
             {error || 'This bazar entry does not exist or has been deleted.'}
           </ThemedText>
-          <ThemedText style={styles.errorDetails}>ID: {bazarId}</ThemedText>
-          <View style={styles.errorActions}>
-            <TouchableOpacity style={styles.retryButton} onPress={loadBazarDetails}>
-              <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
+          <ThemedText style={[styles.errorDetails, { color: theme.text.tertiary }]}>ID: {bazarId}</ThemedText>
+          <View style={[styles.errorActions, { alignItems: 'center' }]}>
+            <TouchableOpacity style={[styles.retryButton, { backgroundColor: theme.primary }]} onPress={loadBazarDetails}>
+              <ThemedText style={[styles.retryButtonText, { color: theme.button.primary.text }]}>Retry</ThemedText>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.errorBackButton} onPress={() => router.back()}>
-              <ThemedText style={styles.backButtonText}>Go Back</ThemedText>
+            <TouchableOpacity style={[styles.errorBackButton, { backgroundColor: theme.button.secondary.background, borderColor: theme.button.secondary.border }]} onPress={() => router.back()}>
+              <ThemedText style={[styles.backButtonText, { color: theme.button.secondary.text }]}>Go Back</ThemedText>
             </TouchableOpacity>
           </View>
         </ThemedView>
@@ -269,59 +269,78 @@ export default function BazarDetailsScreen() {
             onPress={() => setShowEditModal(true)}
             style={{ padding: 8 }}
           >
-            <Ionicons name="create" size={24} color="#6b7280" />
+            <Ionicons name="create-outline" size={24} color={theme.icon.secondary} />
           </TouchableOpacity>
         ) : undefined
       }
     >
       <ScrollView
-        style={styles.content}
+        style={[styles.content, { backgroundColor: theme.background }]}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Status Card */}
-        <View
-          style={[
-            styles.statusCard,
-            { backgroundColor: getStatusBgColor(bazar.status) },
-          ]}
-        >
-          <View style={styles.statusHeader}>
-            <Ionicons
-              name={getStatusIcon(bazar.status) as IconName}
-              size={28}
-              color={getStatusColor(bazar.status)}
-            />
-            <View style={styles.statusContent}>
-              <ThemedText
-                style={[
-                  styles.statusTitle,
-                  { color: getStatusColor(bazar.status) },
-                ]}
-              >
-                {bazar.status.charAt(0).toUpperCase() + bazar.status.slice(1)}
-              </ThemedText>
-              <ThemedText style={styles.statusDescription}>
-                {bazar.status === 'pending'
-                  ? 'Awaiting admin approval'
-                  : bazar.status === 'approved'
-                  ? 'Approved by admin'
-                  : 'Rejected by admin'}
-              </ThemedText>
+        {/* Status Card - theme-aware with accent bar */}
+        {(() => {
+          const statusColor = getStatusColor(bazar.status, theme);
+          const statusBg = `${statusColor}28`;
+          return (
+            <View
+              style={[
+                styles.statusCard,
+                {
+                  backgroundColor: statusBg,
+                  borderLeftWidth: 4,
+                  borderLeftColor: statusColor,
+                  shadowColor: theme.cardShadow,
+                },
+              ]}
+            >
+              <View style={styles.statusRow}>
+                <Ionicons
+                  name={getStatusIcon(bazar.status) as IconName}
+                  size={22}
+                  color={statusColor}
+                />
+                <View style={styles.statusContent}>
+                  <ThemedText
+                    style={[styles.statusTitle, { color: statusColor }]}
+                  >
+                    {bazar.status.charAt(0).toUpperCase() + bazar.status.slice(1)}
+                  </ThemedText>
+                  <ThemedText
+                    style={[styles.statusDescription, { color: theme.text.secondary }]}
+                    numberOfLines={1}
+                  >
+                    {bazar.status === 'pending'
+                      ? 'Awaiting admin approval'
+                      : bazar.status === 'approved'
+                      ? 'Approved by admin'
+                      : 'Rejected by admin'}
+                  </ThemedText>
+                </View>
+              </View>
             </View>
+          );
+        })()}
+
+        {/* Amount Card - label and value in a row to avoid overlap */}
+        <View style={[styles.amountCard, { backgroundColor: cardBg, borderWidth: cardBorder ? 1 : 0, borderColor: cardBorder, shadowColor: theme.cardShadow }]}>
+          <View style={styles.amountRow}>
+            <ThemedText style={[styles.amountLabel, { color: labelColor }]} numberOfLines={1}>
+              Total Amount
+            </ThemedText>
+            <ThemedText
+              style={[styles.amountValue, { color: theme.status.success }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
+              {formatCurrency(bazar.totalAmount)}
+            </ThemedText>
           </View>
         </View>
 
-        {/* Amount Card */}
-        <View style={[styles.amountCard, { backgroundColor: cardBg, borderWidth: cardBorder ? 1 : 0, borderColor: cardBorder }]}>
-          <ThemedText style={[styles.amountLabel, { color: labelColor }]}>Total Amount</ThemedText>
-          <ThemedText style={[styles.amountValue, { color: theme.status?.success ?? '#10b981' }]}>
-            {formatCurrency(bazar.totalAmount)}
-          </ThemedText>
-        </View>
-
         {/* User Info Card */}
-        <View style={[styles.infoCard, { backgroundColor: cardBg, borderWidth: cardBorder ? 1 : 0, borderColor: cardBorder }]}>
+        <View style={[styles.infoCard, { backgroundColor: cardBg, borderWidth: cardBorder ? 1 : 0, borderColor: cardBorder, shadowColor: theme.cardShadow }]}>
           <View style={styles.infoRow}>
             <Ionicons name='person-outline' size={20} color={iconColor} />
             <View style={styles.infoContent}>
@@ -364,22 +383,22 @@ export default function BazarDetailsScreen() {
 
         {/* Items List */}
         <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>
+          <ThemedText style={[styles.sectionTitle, { color: theme.text.primary }]}>
             Items ({bazar.items.length})
           </ThemedText>
           {bazar.items.map((item, index) => (
-            <View key={index} style={styles.itemCard}>
+            <View key={index} style={[styles.itemCard, { backgroundColor: cardBg, shadowColor: theme.cardShadow }]}>
               <View style={styles.itemHeader}>
-                <ThemedText style={styles.itemName}>{item.name}</ThemedText>
-                <ThemedText style={styles.itemPrice}>
+                <ThemedText style={[styles.itemName, { color: theme.text.primary }]}>{item.name}</ThemedText>
+                <ThemedText style={[styles.itemPrice, { color: theme.status.success }]}>
                   {formatCurrency(item.price)}
                 </ThemedText>
               </View>
               <View style={styles.itemDetails}>
-                <ThemedText style={styles.itemQuantity}>
+                <ThemedText style={[styles.itemQuantity, { color: theme.text.secondary }]}>
                   Quantity: {item.quantity}
                 </ThemedText>
-                <ThemedText style={styles.itemSubtotal}>
+                <ThemedText style={[styles.itemSubtotal, { color: theme.status.success }]}>
                   Subtotal: {formatCurrency(item.price * parseInt(item.quantity, 10) || 0)}
                 </ThemedText>
               </View>
@@ -390,9 +409,9 @@ export default function BazarDetailsScreen() {
         {/* Description */}
         {bazar.description && (
           <View style={styles.section}>
-            <ThemedText style={styles.sectionTitle}>Description</ThemedText>
-            <View style={styles.descriptionCard}>
-              <ThemedText style={styles.descriptionText}>
+            <ThemedText style={[styles.sectionTitle, { color: theme.text.primary }]}>Description</ThemedText>
+            <View style={[styles.descriptionCard, { backgroundColor: cardBg, shadowColor: theme.cardShadow }]}>
+              <ThemedText style={[styles.descriptionText, { color: theme.text.secondary }]}>
                 {bazar.description}
               </ThemedText>
             </View>
@@ -402,14 +421,14 @@ export default function BazarDetailsScreen() {
         {/* Receipt */}
         {bazar.receiptImage && (
           <View style={styles.section}>
-            <ThemedText style={styles.sectionTitle}>Receipt</ThemedText>
-            <View style={styles.receiptCard}>
-              <Ionicons name='image' size={32} color='#10b981' />
-              <ThemedText style={styles.receiptText}>
+            <ThemedText style={[styles.sectionTitle, { color: theme.text.primary }]}>Receipt</ThemedText>
+            <View style={[styles.receiptCard, { backgroundColor: cardBg, shadowColor: theme.cardShadow }]}>
+              <Ionicons name='image-outline' size={32} color={theme.status.success} />
+              <ThemedText style={[styles.receiptText, { color: theme.text.secondary }]}>
                 Receipt attached
               </ThemedText>
-              <TouchableOpacity style={styles.viewReceiptButton}>
-                <ThemedText style={styles.viewReceiptButtonText}>
+              <TouchableOpacity style={[styles.viewReceiptButton, { backgroundColor: theme.status.success }]}>
+                <ThemedText style={[styles.viewReceiptButtonText, { color: theme.button.primary.text }]}>
                   View Receipt
                 </ThemedText>
               </TouchableOpacity>
@@ -419,31 +438,34 @@ export default function BazarDetailsScreen() {
       </ScrollView>
 
       {/* Fixed Bottom Actions */}
-      <View style={styles.bottomActions}>
+      <View style={[styles.bottomActions, { backgroundColor: theme.background, borderTopColor: theme.border.secondary, shadowColor: theme.cardShadow }]}>
         {/* Admin Actions */}
         {user?.role === 'admin' && bazar.status === 'pending' && (
-          <View style={styles.actionButtons}>
+          <View style={[styles.actionButtons, { alignItems: 'stretch' }]}>
             <TouchableOpacity
-              style={[styles.actionButton, styles.approveButton]}
+              style={[styles.actionButton, { backgroundColor: theme.status.success }]}
               onPress={() => handleStatusUpdate('approved')}
             >
-              <Ionicons name='checkmark' size={20} color='#fff' />
-              <ThemedText style={styles.actionButtonText}>Approve</ThemedText>
+              <Ionicons name='checkmark' size={20} color={theme.button.primary.text} />
+              <ThemedText style={[styles.actionButtonText, { color: theme.button.primary.text }]}>Approve</ThemedText>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.actionButton, styles.rejectButton]}
+              style={[styles.actionButton, { backgroundColor: theme.status.error }]}
               onPress={() => handleStatusUpdate('rejected')}
             >
-              <Ionicons name='close' size={20} color='#fff' />
-              <ThemedText style={styles.actionButtonText}>Reject</ThemedText>
+              <Ionicons name='close' size={20} color={theme.button.danger.text} />
+              <ThemedText style={[styles.actionButtonText, { color: theme.button.danger.text }]}>Reject</ThemedText>
             </TouchableOpacity>
           </View>
         )}
 
         {/* Delete Button */}
-        <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-          <Ionicons name='trash' size={20} color='#fff' />
-          <ThemedText style={styles.deleteButtonText}>Delete Entry</ThemedText>
+        <TouchableOpacity
+          style={[styles.deleteButton, { backgroundColor: theme.button.danger.background, borderColor: theme.button.danger.border }]}
+          onPress={handleDelete}
+        >
+          <Ionicons name='trash-outline' size={20} color={theme.button.danger.text} />
+          <ThemedText style={[styles.deleteButtonText, { color: theme.button.danger.text }]}>Delete Entry</ThemedText>
         </TouchableOpacity>
       </View>
 
@@ -454,41 +476,43 @@ export default function BazarDetailsScreen() {
         presentationStyle='pageSheet'
         onRequestClose={() => setShowEditModal(false)}
       >
-        <ThemedView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <ThemedText style={styles.modalTitle}>Edit Bazar Entry</ThemedText>
+        <SafeAreaView style={[styles.modalContainer, { backgroundColor: theme.background }]} edges={['top', 'bottom']}>
+          <View style={[styles.modalHeader, { borderBottomColor: theme.border.secondary }]}>
+            <ThemedText style={[styles.modalTitle, { color: theme.text.primary }]}>Edit Bazar Entry</ThemedText>
             <TouchableOpacity
               style={styles.closeButton}
               onPress={() => setShowEditModal(false)}
             >
-              <Ionicons name='close' size={24} color='#6b7280' />
+              <Ionicons name='close' size={24} color={theme.icon.secondary} />
             </TouchableOpacity>
           </View>
 
           <ScrollView style={styles.modalContent}>
             {/* Date */}
             <View style={styles.inputGroup}>
-              <ThemedText style={styles.inputLabel}>Date</ThemedText>
+              <ThemedText style={[styles.inputLabel, { color: theme.text.primary }]}>Date</ThemedText>
               <TextInput
-                style={styles.textInput}
+                style={[styles.textInput, { backgroundColor: theme.input.background, borderColor: theme.input.border, color: theme.input.text }]}
                 value={editData.date}
                 onChangeText={text =>
                   setEditData(prev => ({ ...prev, date: text }))
                 }
                 placeholder='YYYY-MM-DD'
+                placeholderTextColor={theme.input.placeholder}
               />
             </View>
 
             {/* Description */}
             <View style={styles.inputGroup}>
-              <ThemedText style={styles.inputLabel}>Description</ThemedText>
+              <ThemedText style={[styles.inputLabel, { color: theme.text.primary }]}>Description</ThemedText>
               <TextInput
-                style={[styles.textInput, styles.textArea]}
+                style={[styles.textInput, styles.textArea, { backgroundColor: theme.input.background, borderColor: theme.input.border, color: theme.input.text }]}
                 value={editData.description}
                 onChangeText={text =>
                   setEditData(prev => ({ ...prev, description: text }))
                 }
                 placeholder='Enter description...'
+                placeholderTextColor={theme.input.placeholder}
                 multiline
                 numberOfLines={3}
               />
@@ -496,61 +520,60 @@ export default function BazarDetailsScreen() {
 
             {/* Items */}
             <View style={styles.inputGroup}>
-              <View style={styles.itemsHeader}>
-                <ThemedText style={styles.inputLabel}>Items</ThemedText>
+              <View style={[styles.itemsHeader, { alignItems: 'center' }]}>
+                <ThemedText style={[styles.inputLabel, { color: theme.text.primary }]}>Items</ThemedText>
                 <TouchableOpacity
                   style={styles.addItemButton}
                   onPress={addItem}
                 >
-                  <Ionicons name='add' size={20} color='#667eea' />
+                  <Ionicons name='add' size={20} color={theme.primary} />
                 </TouchableOpacity>
               </View>
 
-              <FlatList
-                data={editData.items || []}
-                keyExtractor={(_, index) => index.toString()}
-                renderItem={({ item, index }) => (
-                  <View style={styles.itemEditCard}>
-                    <View style={styles.itemEditRow}>
-                      <TextInput
-                        style={[styles.textInput, styles.itemInput]}
-                        value={item.name}
-                        onChangeText={text => updateItem(index, 'name', text)}
-                        placeholder='Item name'
-                      />
-                      <TextInput
-                        style={[styles.textInput, styles.itemInput]}
-                        value={item.quantity}
-                        onChangeText={text =>
-                          updateItem(index, 'quantity', text)
-                        }
-                        placeholder='Qty'
-                        keyboardType='numeric'
-                      />
-                      <TextInput
-                        style={[styles.textInput, styles.itemInput]}
-                        value={item.price.toString()}
-                        onChangeText={text =>
-                          updateItem(index, 'price', parseFloat(text) || 0)
-                        }
-                        placeholder='Price'
-                        keyboardType='numeric'
-                      />
-                      <TouchableOpacity
-                        style={styles.removeItemButton}
-                        onPress={() => removeItem(index)}
-                      >
-                        <Ionicons name='trash' size={16} color='#ef4444' />
-                      </TouchableOpacity>
-                    </View>
+              {(editData.items || []).map((item, index) => (
+                <View key={index} style={[styles.itemEditCard, { backgroundColor: theme.cardBackground, shadowColor: theme.cardShadow }]}>
+                  <View style={[styles.itemEditRow, { alignItems: 'center' }]}>
+                    <TextInput
+                      style={[styles.textInput, styles.itemInput, { backgroundColor: theme.input.background, borderColor: theme.input.border, color: theme.input.text }]}
+                      value={item.name}
+                      onChangeText={text => updateItem(index, 'name', text)}
+                      placeholder='Item name'
+                      placeholderTextColor={theme.input.placeholder}
+                    />
+                    <TextInput
+                      style={[styles.textInput, styles.itemInput, { backgroundColor: theme.input.background, borderColor: theme.input.border, color: theme.input.text }]}
+                      value={item.quantity}
+                      onChangeText={text =>
+                        updateItem(index, 'quantity', text)
+                      }
+                      placeholder='Qty'
+                      placeholderTextColor={theme.input.placeholder}
+                      keyboardType='numeric'
+                    />
+                    <TextInput
+                      style={[styles.textInput, styles.itemInput, { backgroundColor: theme.input.background, borderColor: theme.input.border, color: theme.input.text }]}
+                      value={item.price.toString()}
+                      onChangeText={text =>
+                        updateItem(index, 'price', parseFloat(text) || 0)
+                      }
+                      placeholder='Price'
+                      placeholderTextColor={theme.input.placeholder}
+                      keyboardType='numeric'
+                    />
+                    <TouchableOpacity
+                      style={styles.removeItemButton}
+                      onPress={() => removeItem(index)}
+                    >
+                      <Ionicons name='trash-outline' size={16} color={theme.status.error} />
+                    </TouchableOpacity>
                   </View>
-                )}
-              />
+                </View>
+              ))}
 
               {/* Total */}
-              <View style={styles.totalCard}>
-                <ThemedText style={styles.totalLabel}>Total Amount</ThemedText>
-                <ThemedText style={styles.totalValue}>
+              <View style={[styles.totalCard, { backgroundColor: theme.cardBackground, shadowColor: theme.cardShadow }]}>
+                <ThemedText style={[styles.totalLabel, { color: theme.text.primary }]}>Total Amount</ThemedText>
+                <ThemedText style={[styles.totalValue, { color: theme.status.success }]}>
                   {formatCurrency(calculateTotal())}
                 </ThemedText>
               </View>
@@ -558,24 +581,28 @@ export default function BazarDetailsScreen() {
           </ScrollView>
 
           {/* Modal Actions */}
-          <View style={styles.modalActions}>
+          <View style={[styles.modalActions, { borderTopColor: theme.border.secondary }]}>
             <TouchableOpacity
-              style={styles.cancelButton}
+              style={[styles.cancelButton, { borderColor: theme.border.primary }]}
               onPress={() => setShowEditModal(false)}
             >
-              <ThemedText style={styles.cancelButtonText}>Cancel</ThemedText>
+              <ThemedText style={[styles.cancelButtonText, { color: theme.text.primary }]}>Cancel</ThemedText>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.saveButton, editing && styles.disabledButton]}
+              style={[
+                styles.saveButton,
+                { backgroundColor: editing ? theme.button.disabled.background : theme.primary },
+                editing && styles.disabledButton,
+              ]}
               onPress={handleUpdateBazar}
               disabled={editing}
             >
-              <ThemedText style={styles.saveButtonText}>
+              <ThemedText style={[styles.saveButtonText, { color: theme.button.primary.text }]}>
                 {editing ? 'Saving...' : 'Save Changes'}
               </ThemedText>
             </TouchableOpacity>
           </View>
-        </ThemedView>
+        </SafeAreaView>
       </Modal>
     </ScreenLayout>
   );
@@ -593,7 +620,6 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#6b7280',
   },
   errorContainer: {
     flex: 1,
@@ -604,38 +630,31 @@ const styles = StyleSheet.create({
   errorTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#ef4444',
     marginTop: 16,
     marginBottom: 8,
   },
   errorText: {
     fontSize: 16,
-    color: '#6b7280',
     textAlign: 'center',
     marginBottom: 24,
   },
   retryButton: {
-    backgroundColor: '#667eea',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
   },
   errorBackButton: {
-    backgroundColor: '#f3f4f6',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#d1d5db',
   },
   retryButtonText: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },
   errorDetails: {
     fontSize: 14,
-    color: '#6b7280',
     marginTop: 8,
     marginBottom: 16,
     textAlign: 'center',
@@ -645,7 +664,6 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   backButtonText: {
-    color: '#374151',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -669,11 +687,9 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#fff',
     opacity: 0.8,
   },
   headerActions: {
@@ -695,75 +711,71 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#fff',
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: -2,
-    },
+    shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 5,
   },
   statusCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginBottom: 12,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  statusHeader: {
+  statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
   },
   statusContent: {
-    marginLeft: 12,
+    marginLeft: 10,
+    flex: 1,
+    minWidth: 0,
   },
   statusTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 15,
+    fontWeight: '700',
   },
   statusDescription: {
-    fontSize: 14,
-    color: '#6b7280',
+    fontSize: 12,
+    marginTop: 2,
   },
   amountCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 16,
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginBottom: 12,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  amountRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    justifyContent: 'space-between',
+    gap: 12,
   },
   amountLabel: {
     fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 8,
+    flexShrink: 0,
   },
   amountValue: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#10b981',
+    fontSize: 22,
+    fontWeight: '700',
+    flexShrink: 1,
+    textAlign: 'right',
   },
   infoCard: {
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 20,
     marginBottom: 16,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -779,12 +791,10 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 14,
-    color: '#6b7280',
   },
   infoValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1f2937',
   },
   section: {
     marginBottom: 24,
@@ -795,11 +805,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   itemCard: {
-    backgroundColor: '#fff',
     borderRadius: 8,
     padding: 16,
     marginBottom: 8,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -814,31 +822,25 @@ const styles = StyleSheet.create({
   itemName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1f2937',
   },
   itemPrice: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#10b981',
   },
   itemDetails: {
     marginTop: 4,
   },
   itemQuantity: {
     fontSize: 14,
-    color: '#6b7280',
   },
   itemSubtotal: {
     fontSize: 14,
-    color: '#10b981',
     fontWeight: '600',
     marginTop: 4,
   },
   descriptionCard: {
-    backgroundColor: '#fff',
     borderRadius: 8,
     padding: 16,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -846,15 +848,12 @@ const styles = StyleSheet.create({
   },
   descriptionText: {
     fontSize: 14,
-    color: '#374151',
     lineHeight: 20,
   },
   receiptCard: {
-    backgroundColor: '#fff',
     borderRadius: 8,
     padding: 20,
     alignItems: 'center',
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -862,18 +861,15 @@ const styles = StyleSheet.create({
   },
   receiptText: {
     fontSize: 14,
-    color: '#6b7280',
     marginTop: 8,
     marginBottom: 12,
   },
   viewReceiptButton: {
-    backgroundColor: '#10b981',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 6,
   },
   viewReceiptButtonText: {
-    color: '#fff',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -890,21 +886,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     gap: 8,
   },
-  approveButton: {
-    backgroundColor: '#10b981',
-  },
-  rejectButton: {
-    backgroundColor: '#ef4444',
-  },
   actionButtonText: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },
   deleteButton: {
-    backgroundColor: '#6b7280',
     flexDirection: 'row',
     alignItems: 'center',
+    borderWidth: 1,
     justifyContent: 'center',
     paddingVertical: 16,
     borderRadius: 8,
@@ -912,13 +901,11 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   deleteButtonText: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: '#f9fafb',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -926,12 +913,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#1f2937',
   },
   closeButton: {
     padding: 8,
@@ -946,18 +931,14 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#374151',
     marginBottom: 8,
   },
   textInput: {
-    backgroundColor: '#fff',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: '#d1d5db',
     fontSize: 16,
-    color: '#1f2937',
   },
   textArea: {
     minHeight: 80,
@@ -974,11 +955,9 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   itemEditCard: {
-    backgroundColor: '#fff',
     borderRadius: 8,
     padding: 12,
     marginBottom: 8,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -997,12 +976,10 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   totalCard: {
-    backgroundColor: '#fff',
     borderRadius: 8,
     padding: 16,
     marginTop: 16,
     alignItems: 'center',
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -1011,20 +988,17 @@ const styles = StyleSheet.create({
   totalLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#374151',
     marginBottom: 8,
   },
   totalValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#10b981',
   },
   modalActions: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
   },
   cancelButton: {
     flex: 1,
@@ -1032,11 +1006,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#d1d5db',
     marginRight: 10,
   },
   cancelButtonText: {
-    color: '#374151',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -1045,15 +1017,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderRadius: 8,
-    backgroundColor: '#667eea',
   },
   saveButtonText: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },
   disabledButton: {
-    backgroundColor: '#d1d5db',
     opacity: 0.7,
   },
 });

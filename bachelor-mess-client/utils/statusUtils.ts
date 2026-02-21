@@ -25,7 +25,7 @@ const STATUS_ICONS: Record<ApprovalStatus, string> = {
 };
 
 export type ThemeStatusOverrides = {
-  status?: { success?: string; warning?: string; error?: string };
+  status?: { success?: string; warning?: string; error?: string; pending?: string };
   gradient?: { success?: string[]; warning?: string[]; error?: string[] };
   text?: { tertiary?: string };
   cardBackground?: string;
@@ -40,7 +40,7 @@ export function getStatusColor(
   const s = status?.toLowerCase() as ApprovalStatus;
   if (theme?.status) {
     if (s === 'approved') return theme.status.success ?? STATUS_COLORS.approved;
-    if (s === 'pending') return theme.status.warning ?? STATUS_COLORS.pending;
+    if (s === 'pending') return theme.status.pending ?? theme.status.warning ?? STATUS_COLORS.pending;
     if (s === 'rejected') return theme.status.error ?? STATUS_COLORS.rejected;
   }
   if (theme?.gradient) {

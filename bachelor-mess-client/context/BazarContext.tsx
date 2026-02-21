@@ -80,7 +80,7 @@ interface BazarContextType {
 
   // Actions
   loadBazarStats: () => Promise<void>;
-  loadBazarEntries: () => Promise<void>;
+  loadBazarEntries: (overrideFilters?: BazarFilters) => Promise<void>;
   updateFilters: (newFilters: BazarFilters) => void;
   updateSearchQuery: (query: string) => void;
   refreshData: () => Promise<void>;
@@ -112,7 +112,7 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
   const [bazarEntries, setBazarEntries] = useState<BazarEntry[]>([]);
   const [filters, setFilters] = useState<BazarFilters>({
     status: 'all',
-    dateRange: 'all',
+    dateRange: 'month',
     sortBy: 'date',
   });
   const [searchQuery, setSearchQuery] = useState('');
@@ -176,97 +176,104 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
   }, [user]);
 
   // Load Bazar entries (admin/member/super_admin: group/all via GET /api/bazar/all; others: own via GET /api/bazar)
-  const loadBazarEntries = useCallback(async () => {
-    if (!user) return;
+  // When overrideFilters is passed (e.g. from updateFilters), use it so the API gets the new filters immediately.
+  const loadBazarEntries = useCallback(
+    async (overrideFilters?: BazarFilters) => {
+      if (!user) return;
 
-    try {
-      setLoadingEntries(true);
-      setEntriesError(null);
+      const activeFilters = overrideFilters ?? filters;
 
-      // Convert UI filters to API query params. Request enough entries so list and fallback stats are meaningful.
-      const apiFilters: ApiBazarFilters = { limit: 500 };
-      if (
-        filters.status &&
-        filters.status !== 'all' &&
-        (filters.status === 'pending' ||
-          filters.status === 'approved' ||
-          filters.status === 'rejected')
-      ) {
-        apiFilters.status = filters.status;
-      }
-      const today = new Date();
-      if (filters.dateRange && filters.dateRange !== 'all') {
-        switch (filters.dateRange) {
-          case 'today':
-            apiFilters.startDate = today.toISOString().split('T')[0];
-            apiFilters.endDate = today.toISOString().split('T')[0];
-            break;
-          case 'week':
-            const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-            apiFilters.startDate = weekAgo.toISOString().split('T')[0];
-            apiFilters.endDate = today.toISOString().split('T')[0];
-            break;
-          case 'month':
-            const monthAgo = new Date(
-              today.getFullYear(),
-              today.getMonth() - 1,
-              today.getDate()
-            );
-            apiFilters.startDate = monthAgo.toISOString().split('T')[0];
-            apiFilters.endDate = today.toISOString().split('T')[0];
-            break;
+      try {
+        setLoadingEntries(true);
+        setEntriesError(null);
+
+        // Convert UI filters to API query params. Request enough entries so list and fallback stats are meaningful.
+        const apiFilters: ApiBazarFilters = { limit: 500 };
+        if (
+          activeFilters.status &&
+          activeFilters.status !== 'all' &&
+          (activeFilters.status === 'pending' ||
+            activeFilters.status === 'approved' ||
+            activeFilters.status === 'rejected')
+        ) {
+          apiFilters.status = activeFilters.status;
         }
-      } else if (filters.dateRange === 'all') {
-        // Explicit all-time range so backend returns all entries (not default current month)
-        apiFilters.startDate = '2020-01-01';
-        apiFilters.endDate = today.toISOString().split('T')[0];
-      }
+        const today = new Date();
+        if (activeFilters.dateRange && activeFilters.dateRange !== 'all') {
+          switch (activeFilters.dateRange) {
+            case 'today':
+              apiFilters.startDate = today.toISOString().split('T')[0];
+              apiFilters.endDate = today.toISOString().split('T')[0];
+              break;
+            case 'week':
+              const weekAgo = new Date(
+                today.getTime() - 7 * 24 * 60 * 60 * 1000
+              );
+              apiFilters.startDate = weekAgo.toISOString().split('T')[0];
+              apiFilters.endDate = today.toISOString().split('T')[0];
+              break;
+            case 'month':
+              const monthAgo = new Date(
+                today.getFullYear(),
+                today.getMonth() - 1,
+                today.getDate()
+              );
+              apiFilters.startDate = monthAgo.toISOString().split('T')[0];
+              apiFilters.endDate = today.toISOString().split('T')[0];
+              break;
+          }
+        } else if (activeFilters.dateRange === 'all') {
+          // Explicit all-time range so backend returns all entries (not default current month)
+          apiFilters.startDate = '2020-01-01';
+          apiFilters.endDate = today.toISOString().split('T')[0];
+        }
 
-      const useGroupApi =
-        user.role === 'admin' ||
-        user.role === 'member' ||
-        user.role === 'super_admin';
-      const response = useGroupApi
-        ? await bazarService.getAllBazarEntries(apiFilters)
-        : await bazarService.getUserBazarEntries(apiFilters);
+        const useGroupApi =
+          user.role === 'admin' ||
+          user.role === 'member' ||
+          user.role === 'super_admin';
+        const response = useGroupApi
+          ? await bazarService.getAllBazarEntries(apiFilters)
+          : await bazarService.getUserBazarEntries(apiFilters);
 
-      if (response.success && response.data) {
-        // Handle nested response structure from backend
-        type BazarResponse = BazarEntry[] | { bazarEntries: BazarEntry[] };
-        const data = response.data as BazarResponse;
-        let entries: BazarEntry[] = Array.isArray(data)
-          ? data
-          : data && 'bazarEntries' in data
-            ? (data.bazarEntries ?? [])
-            : [];
+        if (response.success && response.data) {
+          // Handle nested response structure from backend
+          type BazarResponse = BazarEntry[] | { bazarEntries: BazarEntry[] };
+          const data = response.data as BazarResponse;
+          let entries: BazarEntry[] = Array.isArray(data)
+            ? data
+            : data && 'bazarEntries' in data
+              ? (data.bazarEntries ?? [])
+              : [];
 
-        // Transform _id to id for each entry (API may return _id)
-        type EntryWithId = BazarEntry & { _id?: string };
-        const transformedEntries = (entries as EntryWithId[]).map(entry => ({
-          ...entry,
-          id: entry._id || entry.id,
-        }));
+          // Transform _id to id for each entry (API may return _id)
+          type EntryWithId = BazarEntry & { _id?: string };
+          const transformedEntries = (entries as EntryWithId[]).map(entry => ({
+            ...entry,
+            id: entry._id || entry.id,
+          }));
 
-        setBazarEntries(transformedEntries);
-      } else {
-        setEntriesError(response.error || 'Failed to load bazar entries');
+          setBazarEntries(transformedEntries);
+        } else {
+          setEntriesError(response.error || 'Failed to load bazar entries');
+          // Don't clear existing entries on error, keep them for fallback
+        }
+      } catch (error) {
+        setEntriesError('Failed to load bazar entries');
         // Don't clear existing entries on error, keep them for fallback
+      } finally {
+        setLoadingEntries(false);
       }
-    } catch (error) {
-      setEntriesError('Failed to load bazar entries');
-      // Don't clear existing entries on error, keep them for fallback
-    } finally {
-      setLoadingEntries(false);
-    }
-  }, [user]); // Remove filters dependency to prevent re-running and clearing data
+    },
+    [user, filters]
+  );
 
-  // Update filters
+  // Update filters and reload entries with the new filters immediately
   const updateFilters = useCallback(
     (newFilters: BazarFilters) => {
       setFilters(newFilters);
-      // Reload data when filters change
       if (user) {
-        loadBazarEntries();
+        loadBazarEntries(newFilters);
       }
     },
     [user, loadBazarEntries]
@@ -324,9 +331,37 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
     [refreshData]
   );
 
-  // Computed values
+  // Computed: apply search, status, dateRange, and sort so list matches filters
   const filteredEntries = useCallback(() => {
     let filtered = bazarEntries;
+
+    if (filters.status && filters.status !== 'all') {
+      filtered = filtered.filter(entry => entry.status === filters.status);
+    }
+
+    if (filters.dateRange && filters.dateRange !== 'all') {
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      filtered = filtered.filter(entry => {
+        const d = new Date(entry.date);
+        if (filters.dateRange === 'today') {
+          return d.toDateString() === today.toDateString();
+        }
+        if (filters.dateRange === 'week') {
+          const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+          return d >= weekAgo && d <= today;
+        }
+        if (filters.dateRange === 'month') {
+          const monthAgo = new Date(
+            today.getFullYear(),
+            today.getMonth() - 1,
+            today.getDate()
+          );
+          return d >= monthAgo && d <= today;
+        }
+        return true;
+      });
+    }
 
     if (searchQuery.trim()) {
       const searchLower = searchQuery.toLowerCase();
@@ -354,7 +389,13 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
     });
 
     return filtered;
-  }, [bazarEntries, searchQuery, filters.sortBy]);
+  }, [
+    bazarEntries,
+    searchQuery,
+    filters.status,
+    filters.dateRange,
+    filters.sortBy,
+  ]);
 
   const pendingEntries = useCallback(() => {
     return bazarEntries.filter(entry => entry.status === 'pending');

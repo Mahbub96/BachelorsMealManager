@@ -88,7 +88,9 @@ interface BazarStatisticsProps {
   error?: string | null;
   onRetry?: () => void;
   onPress?: () => void;
-  compact?: boolean; // New prop for compact mode
+  compact?: boolean;
+  /** When true, no outer horizontal padding so the card aligns with list/screen width. */
+  fullWidth?: boolean;
 }
 
 export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
@@ -98,6 +100,7 @@ export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
   onRetry,
   onPress,
   compact = false,
+  fullWidth = false,
 }) => {
   const { theme } = useTheme();
   const { user } = useAuth();
@@ -134,9 +137,15 @@ export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
       : null;
   }, [filteredEntries, bazarEntries, user?.id]);
 
-  // Prefer API stats (correct DB aggregates). Use computed from entries only when API has no data or failed.
+  // When the list has filtered entries, use stats computed from those entries so Total entries and amounts align with the list.
+  // Otherwise use API stats or fallback (e.g. empty list view).
   const displayStats: BazarStats | null =
-    stats ?? computedFromEntries ?? getFallbackStats();
+    (filteredEntries && filteredEntries.length > 0 && computedFromEntries
+      ? computedFromEntries
+      : null) ??
+    stats ??
+    computedFromEntries ??
+    getFallbackStats();
 
   const hasData =
     !!displayStats ||
@@ -271,6 +280,7 @@ export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
           <View
             style={[
               styles.modernCard,
+              styles.compactCard,
               { backgroundColor: theme.cardBackground },
             ]}
           >
@@ -278,11 +288,11 @@ export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
               <View style={styles.headerLeft}>
                 <View
                   style={[
-                    styles.headerIcon,
+                    styles.compactHeaderIcon,
                     { backgroundColor: theme.primary + '18' },
                   ]}
                 >
-                  <Ionicons name='analytics' size={18} color={theme.primary} />
+                  <Ionicons name='analytics' size={16} color={theme.primary} />
                 </View>
                 <View style={styles.headerText}>
                   <ThemedText
@@ -298,7 +308,7 @@ export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
             </View>
 
             {showThisMonth && (
-              <View style={[styles.compactStatsRow, { marginBottom: 12 }]}>
+              <View style={[styles.compactStatsRow, { marginBottom: 10 }]}>
                 <View
                   style={[
                     styles.compactStatItem,
@@ -364,7 +374,7 @@ export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
               </View>
             )}
 
-            <View style={styles.compactStatsRow}>
+            <View style={[styles.compactStatsRow, { marginBottom: 0 }]}>
               {statItems.slice(0, 2).map((item, index) => (
                 <View
                   key={index}
@@ -673,10 +683,15 @@ export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
     }
   };
 
+  const containerStyle = [
+    styles.container,
+    fullWidth && { paddingHorizontal: 0 },
+  ];
+
   if (hasData) {
     return (
       <TouchableOpacity
-        style={styles.container}
+        style={containerStyle}
         onPress={onPress}
         disabled={!onPress}
         activeOpacity={onPress ? 0.7 : 1}
@@ -686,12 +701,24 @@ export const BazarStatistics: React.FC<BazarStatisticsProps> = ({
     );
   }
 
-  if (shouldShowLoading) return renderLoadingState();
-  if (error) return renderErrorState();
+  if (shouldShowLoading) {
+    return (
+      <View style={containerStyle}>
+        {renderLoadingState()}
+      </View>
+    );
+  }
+  if (error) {
+    return (
+      <View style={containerStyle}>
+        {renderErrorState()}
+      </View>
+    );
+  }
 
   return (
     <TouchableOpacity
-      style={styles.container}
+      style={containerStyle}
       onPress={onPress}
       disabled={!onPress}
       activeOpacity={onPress ? 0.7 : 1}
@@ -925,53 +952,66 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     opacity: 0.7,
   },
+  compactCard: {
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    marginBottom: 0,
+  },
+  compactHeaderIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
   compactHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 10,
   },
   compactTitle: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '700',
-    letterSpacing: -0.5,
+    letterSpacing: -0.3,
   },
   compactStatsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 10,
+    gap: 8,
   },
   compactStatItem: {
     flex: 1,
     minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
     elevation: 0,
   },
   compactStatIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 8,
   },
   compactStatContent: {
     flex: 1,
   },
   compactStatValue: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '800',
-    letterSpacing: -0.5,
-    marginBottom: 4,
+    letterSpacing: -0.3,
+    marginBottom: 2,
   },
   compactStatLabel: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '600',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
   },
 });

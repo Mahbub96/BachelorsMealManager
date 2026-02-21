@@ -17,7 +17,7 @@ import bazarService, {
 } from '../services/bazarService';
 import userService from '../services/userService';
 import { useAuth } from '../context/AuthContext';
-import { useColorScheme } from '../hooks/useColorScheme';
+import { useTheme } from '../context/ThemeContext';
 
 interface AdminBazarOverrideProps {
   visible: boolean;
@@ -41,7 +41,7 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
   mode,
 }) => {
   useAuth();
-  useColorScheme();
+  const { theme } = useTheme();
   const [loading, setLoading] = useState(false);
   const [selectedBazarIds, setSelectedBazarIds] = useState<string[]>([]);
   const [bulkOperation, setBulkOperation] = useState<
@@ -255,8 +255,8 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
   };
 
   const renderCreateForm = () => (
-    <ScrollView style={styles.formContainer}>
-      <ThemedText style={styles.sectionTitle}>Select User</ThemedText>
+    <ScrollView style={[styles.formContainer, { backgroundColor: theme.background }]}>
+      <ThemedText style={[styles.sectionTitle, { color: theme.text.primary }]}>Select User</ThemedText>
       {loadingUsers ? (
         <View style={styles.loader}>
           <ModernLoader size="small" />
@@ -268,21 +268,29 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
             key={user.id}
             style={[
               styles.userOption,
-              selectedUserId === user.id && styles.selectedUserOption,
+              {
+                borderColor: theme.border.secondary,
+                backgroundColor: theme.input.background,
+              },
+              selectedUserId === user.id && {
+                borderColor: theme.primary,
+                backgroundColor: theme.primary + '18',
+              },
             ]}
             onPress={() => setSelectedUserId(user.id)}
           >
-            <ThemedText style={styles.userName}>{user.name}</ThemedText>
-            <ThemedText style={styles.userEmail}>{user.email}</ThemedText>
+            <ThemedText style={[styles.userName, { color: theme.text.primary }]}>{user.name}</ThemedText>
+            <ThemedText style={[styles.userEmail, { color: theme.text.secondary }]}>{user.email}</ThemedText>
           </TouchableOpacity>
         ))}
       </View>
       )}
 
-      <ThemedText style={styles.sectionTitle}>Bazar Details</ThemedText>
+      <ThemedText style={[styles.sectionTitle, { color: theme.text.primary }]}>Bazar Details</ThemedText>
       <TextInput
-        style={styles.input}
+        style={[styles.input, { borderColor: theme.border.secondary, color: theme.input.text, backgroundColor: theme.input.background }]}
         placeholder='Description'
+        placeholderTextColor={theme.input.placeholder}
         value={formData.description}
         onChangeText={text =>
           setFormData(prev => ({ ...prev, description: text }))
@@ -290,15 +298,17 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
       />
 
       <TextInput
-        style={styles.input}
+        style={[styles.input, { borderColor: theme.border.secondary, color: theme.input.text, backgroundColor: theme.input.background }]}
         placeholder='Date (YYYY-MM-DD)'
+        placeholderTextColor={theme.input.placeholder}
         value={formData.date}
         onChangeText={text => setFormData(prev => ({ ...prev, date: text }))}
       />
 
       <TextInput
-        style={styles.input}
+        style={[styles.input, { borderColor: theme.border.secondary, color: theme.input.text, backgroundColor: theme.input.background }]}
         placeholder='Total Amount'
+        placeholderTextColor={theme.input.placeholder}
         value={formData.totalAmount.toString()}
         onChangeText={text =>
           setFormData(prev => ({ ...prev, totalAmount: Number(text) || 0 }))
@@ -307,41 +317,45 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
       />
 
       <View style={styles.statusSelector}>
-        <ThemedText style={styles.sectionTitle}>Status</ThemedText>
+        <ThemedText style={[styles.sectionTitle, { color: theme.text.primary }]}>Status</ThemedText>
         {(['pending', 'approved', 'rejected'] as const).map(status => (
           <TouchableOpacity
             key={status}
             style={[
               styles.statusOption,
-              selectedStatus === status && styles.selectedStatusOption,
+              { borderColor: theme.border.secondary, backgroundColor: theme.input.background },
+              selectedStatus === status && { borderColor: theme.status.success, backgroundColor: theme.status.success + '22' },
             ]}
             onPress={() => setSelectedStatus(status)}
           >
-            <ThemedText style={styles.statusText}>
+            <ThemedText style={[styles.statusText, { color: theme.text.primary }]}>
               {status.toUpperCase()}
             </ThemedText>
           </TouchableOpacity>
         ))}
       </View>
 
-      <ThemedText style={styles.sectionTitle}>Items</ThemedText>
+      <ThemedText style={[styles.sectionTitle, { color: theme.text.primary }]}>Items</ThemedText>
       {formData.items.map((item, index) => (
         <View key={index} style={styles.itemContainer}>
           <TextInput
-            style={styles.itemInput}
+            style={[styles.itemInput, { borderColor: theme.border.secondary, color: theme.input.text, backgroundColor: theme.input.background }]}
             placeholder='Item name'
+            placeholderTextColor={theme.input.placeholder}
             value={item.name}
             onChangeText={text => updateItem(index, 'name', text)}
           />
           <TextInput
-            style={styles.itemInput}
+            style={[styles.itemInput, { borderColor: theme.border.secondary, color: theme.input.text, backgroundColor: theme.input.background }]}
             placeholder='Quantity'
+            placeholderTextColor={theme.input.placeholder}
             value={item.quantity}
             onChangeText={text => updateItem(index, 'quantity', text)}
           />
           <TextInput
-            style={styles.itemInput}
+            style={[styles.itemInput, { borderColor: theme.border.secondary, color: theme.input.text, backgroundColor: theme.input.background }]}
             placeholder='Price'
+            placeholderTextColor={theme.input.placeholder}
             value={item.price.toString()}
             onChangeText={text => updateItem(index, 'price', Number(text) || 0)}
             keyboardType='numeric'
@@ -350,20 +364,20 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
             style={styles.removeButton}
             onPress={() => removeItem(index)}
           >
-            <Ionicons name='close-circle' size={24} color='#ef4444' />
+            <Ionicons name='close-circle' size={24} color={theme.status.error} />
           </TouchableOpacity>
         </View>
       ))}
-      <TouchableOpacity style={styles.addButton} onPress={addItem}>
-        <Ionicons name='add-circle' size={24} color='#10b981' />
-        <ThemedText style={styles.addButtonText}>Add Item</ThemedText>
+      <TouchableOpacity style={[styles.addButton, { borderColor: theme.status.success }]} onPress={addItem}>
+        <Ionicons name='add-circle' size={24} color={theme.status.success} />
+        <ThemedText style={[styles.addButtonText, { color: theme.status.success }]}>Add Item</ThemedText>
       </TouchableOpacity>
     </ScrollView>
   );
 
   const renderBulkForm = () => (
-    <ScrollView style={styles.formContainer}>
-      <ThemedText style={styles.sectionTitle}>Bulk Operation</ThemedText>
+    <ScrollView style={[styles.formContainer, { backgroundColor: theme.background }]}>
+      <ThemedText style={[styles.sectionTitle, { color: theme.text.primary }]}>Bulk Operation</ThemedText>
 
       <View style={styles.operationSelector}>
         {(['approve', 'reject', 'delete'] as const).map(operation => (
@@ -371,11 +385,12 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
             key={operation}
             style={[
               styles.operationOption,
-              bulkOperation === operation && styles.selectedOperationOption,
+              { borderColor: theme.border.secondary, backgroundColor: theme.input.background },
+              bulkOperation === operation && { borderColor: theme.primary, backgroundColor: theme.primary + '18' },
             ]}
             onPress={() => setBulkOperation(operation)}
           >
-            <ThemedText style={styles.operationText}>
+            <ThemedText style={[styles.operationText, { color: theme.text.primary }]}>
               {operation.toUpperCase()}
             </ThemedText>
           </TouchableOpacity>
@@ -383,15 +398,16 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
       </View>
 
       <TextInput
-        style={styles.textArea}
+        style={[styles.textArea, { borderColor: theme.border.secondary, color: theme.input.text, backgroundColor: theme.input.background }]}
         placeholder='Notes (optional)'
+        placeholderTextColor={theme.input.placeholder}
         value={bulkNotes}
         onChangeText={setBulkNotes}
         multiline
         numberOfLines={3}
       />
 
-      <ThemedText style={styles.sectionTitle}>
+      <ThemedText style={[styles.sectionTitle, { color: theme.text.primary }]}>
         Selected Entries: {selectedBazarIds.length}
       </ThemedText>
     </ScrollView>
@@ -406,11 +422,11 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
       case 'delete':
         return (
           <View style={styles.deleteContainer}>
-            <Ionicons name='warning' size={64} color='#ef4444' />
-            <ThemedText style={styles.deleteTitle}>
+            <Ionicons name='warning' size={64} color={theme.status.error} />
+            <ThemedText style={[styles.deleteTitle, { color: theme.text.primary }]}>
               Delete Bazar Entry
             </ThemedText>
-            <ThemedText style={styles.deleteText}>
+            <ThemedText style={[styles.deleteText, { color: theme.text.secondary }]}>
               Are you sure you want to delete this bazar entry? This action
               cannot be undone.
             </ThemedText>
@@ -462,12 +478,12 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
       presentationStyle='pageSheet'
       onRequestClose={onClose}
     >
-      <View style={styles.container}>
-        <View style={styles.header}>
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <View style={[styles.header, { borderBottomColor: theme.border.secondary }]}>
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <Ionicons name='close' size={24} color='#6b7280' />
+            <Ionicons name='close' size={24} color={theme.icon.secondary} />
           </TouchableOpacity>
-          <ThemedText style={styles.headerTitle}>
+          <ThemedText style={[styles.headerTitle, { color: theme.text.primary }]}>
             Admin Override - {mode.toUpperCase()}
           </ThemedText>
           <View style={styles.placeholder} />
@@ -475,19 +491,20 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
 
         {renderContent()}
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, { borderTopColor: theme.border.secondary }]}>
           <TouchableOpacity
-            style={styles.cancelButton}
+            style={[styles.cancelButton, { borderColor: theme.border.secondary }]}
             onPress={onClose}
             disabled={loading}
           >
-            <ThemedText style={styles.cancelButtonText}>Cancel</ThemedText>
+            <ThemedText style={[styles.cancelButtonText, { color: theme.text.secondary }]}>Cancel</ThemedText>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[
               styles.submitButton,
-              loading && styles.submitButtonDisabled,
+              { backgroundColor: theme.primary },
+              loading && { backgroundColor: theme.button.disabled.background },
             ]}
             onPress={handleSubmit}
             disabled={loading}
@@ -495,7 +512,7 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
             {loading ? (
               <ModernLoader size='small' />
             ) : (
-              <ThemedText style={styles.submitButtonText}>
+              <ThemedText style={[styles.submitButtonText, { color: theme.button.primary.text }]}>
                 {getSubmitButtonText()}
               </ThemedText>
             )}
@@ -509,7 +526,6 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   header: {
     flexDirection: 'row',
@@ -518,7 +534,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
   },
   closeButton: {
     padding: 8,
@@ -538,7 +553,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 12,
-    color: '#1f2937',
   },
   userSelector: {
     marginBottom: 20,
@@ -546,26 +560,18 @@ const styles = StyleSheet.create({
   userOption: {
     padding: 12,
     borderWidth: 1,
-    borderColor: '#d1d5db',
     borderRadius: 8,
     marginBottom: 8,
-  },
-  selectedUserOption: {
-    borderColor: '#3b82f6',
-    backgroundColor: '#eff6ff',
   },
   userName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1f2937',
   },
   userEmail: {
     fontSize: 14,
-    color: '#6b7280',
   },
   input: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
     borderRadius: 8,
     padding: 12,
     marginBottom: 16,
@@ -577,14 +583,9 @@ const styles = StyleSheet.create({
   statusOption: {
     padding: 12,
     borderWidth: 1,
-    borderColor: '#d1d5db',
     borderRadius: 8,
     marginBottom: 8,
     alignItems: 'center',
-  },
-  selectedStatusOption: {
-    borderColor: '#10b981',
-    backgroundColor: '#ecfdf5',
   },
   statusText: {
     fontSize: 14,
@@ -598,7 +599,6 @@ const styles = StyleSheet.create({
   itemInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#d1d5db',
     borderRadius: 8,
     padding: 8,
     marginRight: 8,
@@ -613,13 +613,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 12,
     borderWidth: 1,
-    borderColor: '#10b981',
     borderRadius: 8,
     marginTop: 8,
   },
   addButtonText: {
     marginLeft: 8,
-    color: '#10b981',
     fontWeight: '600',
   },
   operationSelector: {
@@ -628,14 +626,9 @@ const styles = StyleSheet.create({
   operationOption: {
     padding: 12,
     borderWidth: 1,
-    borderColor: '#d1d5db',
     borderRadius: 8,
     marginBottom: 8,
     alignItems: 'center',
-  },
-  selectedOperationOption: {
-    borderColor: '#3b82f6',
-    backgroundColor: '#eff6ff',
   },
   operationText: {
     fontSize: 14,
@@ -643,7 +636,6 @@ const styles = StyleSheet.create({
   },
   textArea: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
     borderRadius: 8,
     padding: 12,
     marginBottom: 16,
@@ -662,25 +654,22 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginTop: 16,
     marginBottom: 8,
-    color: '#1f2937',
   },
   deleteText: {
     fontSize: 16,
     textAlign: 'center',
-    color: '#6b7280',
     lineHeight: 24,
   },
   footer: {
     flexDirection: 'row',
+    alignItems: 'center',
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
   },
   cancelButton: {
     flex: 1,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#d1d5db',
     borderRadius: 8,
     marginRight: 8,
     alignItems: 'center',
@@ -688,23 +677,17 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#6b7280',
   },
   submitButton: {
     flex: 1,
     padding: 16,
-    backgroundColor: '#3b82f6',
     borderRadius: 8,
     marginLeft: 8,
     alignItems: 'center',
   },
-  submitButtonDisabled: {
-    backgroundColor: '#9ca3af',
-  },
   submitButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
   },
   loader: {
     marginVertical: 16,

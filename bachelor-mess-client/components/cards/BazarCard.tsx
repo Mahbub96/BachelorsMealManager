@@ -70,13 +70,13 @@ export const BazarCard: React.FC<BazarCardProps> = memo(
             styles.errorCard,
             {
               backgroundColor:
-                (theme.status?.error || '#ef4444') + '20',
-              borderColor: theme.status?.error || '#ef4444',
+                theme.status.error + '20',
+              borderColor: theme.status.error,
             },
           ]}
         >
           <ThemedText
-            style={[styles.errorText, { color: theme.status?.error || '#dc2626' }]}
+            style={[styles.errorText, { color: theme.status.error }]}
           >
             Invalid bazar data
           </ThemedText>
@@ -142,8 +142,8 @@ export const BazarCard: React.FC<BazarCardProps> = memo(
             styles.cardGradient,
             isCompact && styles.cardGradientCompact,
             {
-              backgroundColor: theme.cardBackground || theme.surface || '#fff',
-              borderColor: theme.cardBorder || theme.border?.secondary || '#e5e7eb',
+              backgroundColor: theme.cardBackground,
+              borderColor: theme.cardBorder,
             },
           ]}
         >
@@ -303,25 +303,25 @@ export const BazarCard: React.FC<BazarCardProps> = memo(
               {bazar.status === 'pending' && (
                 <>
                   <TouchableOpacity
-                    style={[styles.actionButton, styles.approveButton]}
+                    style={[styles.actionButton, { backgroundColor: theme.status.success + '22', borderColor: theme.status.success }]}
                     onPress={() =>
                       handleActionPress(() => handleStatusUpdate('approved'))
                     }
                   >
-                    <Ionicons name='checkmark' size={16} color='#10b981' />
-                    <ThemedText style={styles.approveButtonText}>
+                    <Ionicons name='checkmark' size={16} color={theme.status.success} />
+                    <ThemedText style={[styles.approveButtonText, { color: theme.status.success }]}>
                       Approve
                     </ThemedText>
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={[styles.actionButton, styles.rejectButton]}
+                    style={[styles.actionButton, { backgroundColor: theme.status.error + '18', borderColor: theme.status.error }]}
                     onPress={() =>
                       handleActionPress(() => handleStatusUpdate('rejected'))
                     }
                   >
-                    <Ionicons name='close' size={16} color='#ef4444' />
-                    <ThemedText style={styles.rejectButtonText}>
+                    <Ionicons name='close' size={16} color={theme.status.error} />
+                    <ThemedText style={[styles.rejectButtonText, { color: theme.status.error }]}>
                       Reject
                     </ThemedText>
                   </TouchableOpacity>
@@ -329,11 +329,11 @@ export const BazarCard: React.FC<BazarCardProps> = memo(
               )}
 
               <TouchableOpacity
-                style={[styles.actionButton, styles.deleteButton]}
+                style={[styles.actionButton, { backgroundColor: theme.status.error + '18', borderColor: theme.status.error }]}
                 onPress={() => handleActionPress(handleDelete)}
               >
-                <Ionicons name='trash' size={16} color='#ef4444' />
-                <ThemedText style={styles.deleteButtonText}>Delete</ThemedText>
+                <Ionicons name='trash-outline' size={16} color={theme.status.error} />
+                <ThemedText style={[styles.deleteButtonText, { color: theme.status.error }]}>Delete</ThemedText>
               </TouchableOpacity>
             </View>
           )}
@@ -365,7 +365,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 18,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.05)',
   },
   cardGradientCompact: {
     borderRadius: 14,
@@ -471,16 +470,18 @@ const styles = StyleSheet.create({
   actionsContainer: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
+    alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 8,
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.05)',
   },
   actionButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
+    borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
@@ -489,33 +490,15 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
   },
-  approveButton: {
-    backgroundColor: '#ecfdf5',
-    borderColor: '#10b981',
-    borderWidth: 1,
-  },
   approveButtonText: {
-    color: '#10b981',
     fontSize: 11,
     fontWeight: '600',
-  },
-  rejectButton: {
-    backgroundColor: '#fef2f2',
-    borderColor: '#ef4444',
-    borderWidth: 1,
   },
   rejectButtonText: {
-    color: '#ef4444',
     fontSize: 11,
     fontWeight: '600',
   },
-  deleteButton: {
-    backgroundColor: '#fef2f2',
-    borderColor: '#ef4444',
-    borderWidth: 1,
-  },
   deleteButtonText: {
-    color: '#ef4444',
     fontSize: 11,
     fontWeight: '600',
   },

@@ -24,7 +24,7 @@ import bazarService, {
   BazarItem,
   type BazarType,
 } from '../services/bazarService';
-import { useColorScheme } from '../hooks/useColorScheme';
+import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -43,7 +43,7 @@ export const BazarForm: React.FC<BazarFormProps> = ({
   showCancel = true,
 }) => {
   useAuth();
-  useColorScheme();
+  const { theme } = useTheme();
   const [loading, setLoading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(
@@ -294,14 +294,18 @@ export const BazarForm: React.FC<BazarFormProps> = ({
     return icons[index % icons.length];
   };
 
-  const getItemColor = (index: number) => {
-    const colors = ['#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ef4444'];
-    return colors[index % colors.length];
-  };
+  const itemColors = [
+    theme.status.warning,
+    theme.status.success,
+    theme.primary,
+    theme.secondary,
+    theme.status.error,
+  ];
+  const getItemColor = (index: number) => itemColors[index % itemColors.length];
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: theme.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
     >
@@ -317,19 +321,20 @@ export const BazarForm: React.FC<BazarFormProps> = ({
         {/* Header */}
         <View style={styles.header}>
           <LinearGradient
-            colors={['#667eea', '#764ba2']}
+            colors={theme.gradient?.primary?.length ? theme.gradient.primary : [theme.primary, theme.secondary]}
             style={styles.headerGradient}
           >
-            <View style={styles.headerContent}>
+            <View style={[styles.headerContent, { alignItems: 'center' }]}>
               <Ionicons
                 name='cart'
                 size={isSmallScreen ? 24 : 28}
-                color='#fff'
+                color={theme.text.inverse}
               />
               <ThemedText
                 style={[
                   styles.headerTitle,
                   isSmallScreen && styles.headerTitleSmall,
+                  { color: theme.text.inverse },
                 ]}
               >
                 Add Bazar Entry
@@ -346,15 +351,17 @@ export const BazarForm: React.FC<BazarFormProps> = ({
             style={[
               styles.sectionTitle,
               isSmallScreen && styles.sectionTitleSmall,
+              { color: theme.text.primary },
             ]}
           >
             Type
           </ThemedText>
-          <View style={styles.typeRow}>
+          <View style={[styles.typeRow, { alignItems: 'stretch' }]}>
             <TouchableOpacity
               style={[
                 styles.typeButton,
-                (formData.type || 'meal') === 'meal' && styles.typeButtonActive,
+                { borderColor: theme.tab.border, backgroundColor: theme.tab.background },
+                (formData.type || 'meal') === 'meal' && { backgroundColor: theme.primary, borderColor: theme.primary },
               ]}
               onPress={() =>
                 setFormData(prev => ({ ...prev, type: 'meal' as BazarType }))
@@ -363,13 +370,13 @@ export const BazarForm: React.FC<BazarFormProps> = ({
               <Ionicons
                 name='restaurant'
                 size={20}
-                color={(formData.type || 'meal') === 'meal' ? '#fff' : '#667eea'}
+                color={(formData.type || 'meal') === 'meal' ? theme.text.inverse : theme.tab.inactive}
               />
               <ThemedText
                 style={[
                   styles.typeButtonText,
-                  (formData.type || 'meal') === 'meal' &&
-                    styles.typeButtonTextActive,
+                  { color: theme.tab.inactive },
+                  (formData.type || 'meal') === 'meal' && { color: theme.text.inverse },
                 ]}
               >
                 Meal (groceries)
@@ -378,7 +385,8 @@ export const BazarForm: React.FC<BazarFormProps> = ({
             <TouchableOpacity
               style={[
                 styles.typeButton,
-                formData.type === 'flat' && styles.typeButtonActive,
+                { borderColor: theme.tab.border, backgroundColor: theme.tab.background },
+                formData.type === 'flat' && { backgroundColor: theme.primary, borderColor: theme.primary },
               ]}
               onPress={() =>
                 setFormData(prev => ({ ...prev, type: 'flat' as BazarType }))
@@ -387,19 +395,20 @@ export const BazarForm: React.FC<BazarFormProps> = ({
               <Ionicons
                 name='home'
                 size={20}
-                color={formData.type === 'flat' ? '#fff' : '#667eea'}
+                color={formData.type === 'flat' ? theme.text.inverse : theme.tab.inactive}
               />
               <ThemedText
                 style={[
                   styles.typeButtonText,
-                  formData.type === 'flat' && styles.typeButtonTextActive,
+                  { color: theme.tab.inactive },
+                  formData.type === 'flat' && { color: theme.text.inverse },
                 ]}
               >
                 Flat (shared)
               </ThemedText>
             </TouchableOpacity>
           </View>
-          <ThemedText style={styles.typeHint}>
+          <ThemedText style={[styles.typeHint, { color: theme.text.secondary }]}>
             Meal = used for meal rate. Flat = split equally (e.g. fridge, stove).
           </ThemedText>
         </View>
@@ -412,6 +421,7 @@ export const BazarForm: React.FC<BazarFormProps> = ({
             style={[
               styles.sectionTitle,
               isSmallScreen && styles.sectionTitleSmall,
+              { color: theme.text.primary },
             ]}
           >
             Date
@@ -419,20 +429,20 @@ export const BazarForm: React.FC<BazarFormProps> = ({
           <TouchableOpacity
             style={[
               styles.dateButton,
-              { height: inputHeight },
-              errors.date && styles.inputError,
+              { height: inputHeight, backgroundColor: theme.input.background, borderColor: theme.border.secondary },
+              errors.date && { borderColor: theme.status.error },
             ]}
             onPress={openDatePicker}
           >
-            <Ionicons name='calendar' size={20} color='#667eea' />
-            <ThemedText style={styles.dateButtonText}>
+            <Ionicons name='calendar-outline' size={20} color={theme.primary} />
+            <ThemedText style={[styles.dateButtonText, { color: theme.text.primary }]}>
               {formData.date
                 ? new Date(formData.date).toLocaleDateString()
                 : 'Select Date'}
             </ThemedText>
           </TouchableOpacity>
           {errors.date && (
-            <ThemedText style={styles.errorText}>{errors.date}</ThemedText>
+            <ThemedText style={[styles.errorText, { color: theme.status.error }]}>{errors.date}</ThemedText>
           )}
         </View>
 
@@ -440,28 +450,30 @@ export const BazarForm: React.FC<BazarFormProps> = ({
         <View
           style={[styles.section, { marginBottom: isSmallScreen ? 16 : 20 }]}
         >
-          <View style={styles.sectionHeader}>
+          <View style={[styles.sectionHeader, { alignItems: 'center' }]}>
             <ThemedText
               style={[
                 styles.sectionTitle,
                 isSmallScreen && styles.sectionTitleSmall,
+                { color: theme.text.primary },
               ]}
             >
               Items
             </ThemedText>
             <TouchableOpacity
-              style={[styles.addButton, isSmallScreen && styles.addButtonSmall]}
+              style={[styles.addButton, isSmallScreen && styles.addButtonSmall, { backgroundColor: theme.primary }]}
               onPress={addItem}
             >
               <Ionicons
                 name='add'
                 size={isSmallScreen ? 16 : 20}
-                color='#fff'
+                color={theme.text.inverse}
               />
               <ThemedText
                 style={[
                   styles.addButtonText,
                   isSmallScreen && styles.addButtonTextSmall,
+                  { color: theme.text.inverse },
                 ]}
               >
                 Add Item
@@ -472,10 +484,10 @@ export const BazarForm: React.FC<BazarFormProps> = ({
           {formData.items.map((item, index) => (
             <View
               key={index}
-              style={[styles.itemCard, isSmallScreen && styles.itemCardSmall]}
+              style={[styles.itemCard, isSmallScreen && styles.itemCardSmall, { backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }]}
             >
-              <View style={styles.itemHeader}>
-                <View style={styles.itemIcon}>
+              <View style={[styles.itemHeader, { alignItems: 'center' }]}>
+                <View style={[styles.itemIcon, { backgroundColor: theme.surface }]}>
                   <Ionicons
                     name={getItemIcon(index) as IconName}
                     size={isSmallScreen ? 16 : 20}
@@ -486,6 +498,7 @@ export const BazarForm: React.FC<BazarFormProps> = ({
                   style={[
                     styles.itemNumber,
                     isSmallScreen && styles.itemNumberSmall,
+                    { color: theme.text.primary },
                   ]}
                 >
                   Item {index + 1}
@@ -501,7 +514,7 @@ export const BazarForm: React.FC<BazarFormProps> = ({
                     <Ionicons
                       name='close-circle'
                       size={isSmallScreen ? 16 : 20}
-                      color='#ef4444'
+                      color={theme.status.error}
                     />
                   </TouchableOpacity>
                 )}
@@ -515,6 +528,7 @@ export const BazarForm: React.FC<BazarFormProps> = ({
                     style={[
                       styles.inputLabel,
                       isSmallScreen && styles.inputLabelSmall,
+                      { color: theme.text.secondary },
                     ]}
                   >
                     Name
@@ -522,13 +536,13 @@ export const BazarForm: React.FC<BazarFormProps> = ({
                   <TextInput
                     style={[
                       styles.textInput,
-                      { height: inputHeight },
-                      errors.items && styles.inputError,
+                      { height: inputHeight, backgroundColor: theme.input.background, borderColor: theme.border.secondary, color: theme.input.text },
+                      errors.items && { borderColor: theme.status.error },
                     ]}
                     value={item.name}
                     onChangeText={value => updateItem(index, 'name', value)}
                     placeholder='Item name'
-                    placeholderTextColor='#9ca3af'
+                    placeholderTextColor={theme.input.placeholder}
                   />
                 </View>
 
@@ -537,6 +551,7 @@ export const BazarForm: React.FC<BazarFormProps> = ({
                     style={[
                       styles.inputLabel,
                       isSmallScreen && styles.inputLabelSmall,
+                      { color: theme.text.secondary },
                     ]}
                   >
                     Quantity
@@ -544,13 +559,13 @@ export const BazarForm: React.FC<BazarFormProps> = ({
                   <TextInput
                     style={[
                       styles.textInput,
-                      { height: inputHeight },
-                      errors.items && styles.inputError,
+                      { height: inputHeight, backgroundColor: theme.input.background, borderColor: theme.border.secondary, color: theme.input.text },
+                      errors.items && { borderColor: theme.status.error },
                     ]}
                     value={item.quantity}
                     onChangeText={value => updateItem(index, 'quantity', value)}
                     placeholder='e.g., 2kg'
-                    placeholderTextColor='#9ca3af'
+                    placeholderTextColor={theme.input.placeholder}
                   />
                 </View>
               </View>
@@ -560,6 +575,7 @@ export const BazarForm: React.FC<BazarFormProps> = ({
                   style={[
                     styles.inputLabel,
                     isSmallScreen && styles.inputLabelSmall,
+                    { color: theme.text.secondary },
                   ]}
                 >
                   Price (৳)
@@ -567,15 +583,15 @@ export const BazarForm: React.FC<BazarFormProps> = ({
                 <TextInput
                   style={[
                     styles.textInput,
-                    { height: inputHeight },
-                    errors.items && styles.inputError,
+                    { height: inputHeight, backgroundColor: theme.input.background, borderColor: theme.border.secondary, color: theme.input.text },
+                    errors.items && { borderColor: theme.status.error },
                   ]}
                   value={item.price.toString()}
                   onChangeText={value =>
                     updateItem(index, 'price', Number(value) || 0)
                   }
                   placeholder='0'
-                  placeholderTextColor='#9ca3af'
+                  placeholderTextColor={theme.input.placeholder}
                   keyboardType='numeric'
                 />
               </View>
@@ -583,7 +599,7 @@ export const BazarForm: React.FC<BazarFormProps> = ({
           ))}
 
           {errors.items && (
-            <ThemedText style={styles.errorText}>{errors.items}</ThemedText>
+            <ThemedText style={[styles.errorText, { color: theme.status.error }]}>{errors.items}</ThemedText>
           )}
         </View>
 
@@ -595,6 +611,7 @@ export const BazarForm: React.FC<BazarFormProps> = ({
             style={[
               styles.sectionTitle,
               isSmallScreen && styles.sectionTitleSmall,
+              { color: theme.text.primary },
             ]}
           >
             Total Amount
@@ -602,8 +619,8 @@ export const BazarForm: React.FC<BazarFormProps> = ({
           <TextInput
             style={[
               styles.textInput,
-              { height: inputHeight },
-              errors.totalAmount && styles.inputError,
+              { height: inputHeight, backgroundColor: theme.input.background, borderColor: theme.border.secondary, color: theme.input.text },
+              errors.totalAmount && { borderColor: theme.status.error },
             ]}
             value={formData.totalAmount.toString()}
             onChangeText={value =>
@@ -613,11 +630,11 @@ export const BazarForm: React.FC<BazarFormProps> = ({
               }))
             }
             placeholder='0'
-            placeholderTextColor='#9ca3af'
+            placeholderTextColor={theme.input.placeholder}
             keyboardType='numeric'
           />
           {errors.totalAmount && (
-            <ThemedText style={styles.errorText}>
+            <ThemedText style={[styles.errorText, { color: theme.status.error }]}>
               {errors.totalAmount}
             </ThemedText>
           )}
@@ -631,18 +648,19 @@ export const BazarForm: React.FC<BazarFormProps> = ({
             style={[
               styles.sectionTitle,
               isSmallScreen && styles.sectionTitleSmall,
+              { color: theme.text.primary },
             ]}
           >
             Description (Optional)
           </ThemedText>
           <TextInput
-            style={[styles.textArea, { height: isSmallScreen ? 80 : 100 }]}
+            style={[styles.textArea, { height: isSmallScreen ? 80 : 100, backgroundColor: theme.input.background, borderColor: theme.border.secondary, color: theme.input.text }]}
             value={formData.description}
             onChangeText={value =>
               setFormData(prev => ({ ...prev, description: value }))
             }
             placeholder='Add any additional notes...'
-            placeholderTextColor='#9ca3af'
+            placeholderTextColor={theme.input.placeholder}
             multiline
             textAlignVertical='top'
           />
@@ -656,32 +674,35 @@ export const BazarForm: React.FC<BazarFormProps> = ({
             style={[
               styles.sectionTitle,
               isSmallScreen && styles.sectionTitleSmall,
+              { color: theme.text.primary },
             ]}
           >
             Receipt Image (Optional)
           </ThemedText>
           {formData.receiptImage ? (
             <View style={styles.imageContainer}>
-              <View style={styles.imagePreview}>
-                <Ionicons name='image' size={40} color='#667eea' />
-                <ThemedText style={styles.imageText}>Image Selected</ThemedText>
+              <View style={[styles.imagePreview, { backgroundColor: theme.surface, borderColor: theme.border.secondary }]}>
+                <Ionicons name='image' size={40} color={theme.primary} />
+                <ThemedText style={[styles.imageText, { color: theme.text.secondary }]}>Image Selected</ThemedText>
               </View>
               <TouchableOpacity
                 style={[
                   styles.removeImageButton,
                   isSmallScreen && styles.removeImageButtonSmall,
+                  { backgroundColor: theme.status.error + '18', borderColor: theme.status.error },
                 ]}
                 onPress={removeImage}
               >
                 <Ionicons
-                  name='trash'
+                  name='trash-outline'
                   size={isSmallScreen ? 16 : 20}
-                  color='#ef4444'
+                  color={theme.status.error}
                 />
                 <ThemedText
                   style={[
                     styles.removeImageText,
                     isSmallScreen && styles.removeImageTextSmall,
+                    { color: theme.status.error },
                   ]}
                 >
                   Remove
@@ -692,20 +713,21 @@ export const BazarForm: React.FC<BazarFormProps> = ({
             <TouchableOpacity
               style={[
                 styles.imageButton,
-                { height: inputHeight },
+                { height: inputHeight, backgroundColor: theme.input.background, borderColor: theme.border.secondary },
                 isSmallScreen && styles.imageButtonSmall,
               ]}
               onPress={pickImage}
             >
               <Ionicons
-                name='camera'
+                name='camera-outline'
                 size={isSmallScreen ? 20 : 24}
-                color='#667eea'
+                color={theme.primary}
               />
               <ThemedText
                 style={[
                   styles.imageButtonText,
                   isSmallScreen && styles.imageButtonTextSmall,
+                  { color: theme.text.secondary },
                 ]}
               >
                 Add Receipt Image
@@ -719,6 +741,7 @@ export const BazarForm: React.FC<BazarFormProps> = ({
           style={[
             styles.actionButtons,
             isSmallScreen && styles.actionButtonsSmall,
+            { alignItems: 'center' },
           ]}
         >
           {showCancel && (
@@ -726,6 +749,7 @@ export const BazarForm: React.FC<BazarFormProps> = ({
               style={[
                 styles.cancelButton,
                 isSmallScreen && styles.cancelButtonSmall,
+                { borderColor: theme.border.secondary },
               ]}
               onPress={onCancel}
               disabled={loading}
@@ -734,6 +758,7 @@ export const BazarForm: React.FC<BazarFormProps> = ({
                 style={[
                   styles.cancelButtonText,
                   isSmallScreen && styles.cancelButtonTextSmall,
+                  { color: theme.text.secondary },
                 ]}
               >
                 Cancel
@@ -745,6 +770,8 @@ export const BazarForm: React.FC<BazarFormProps> = ({
             style={[
               styles.submitButton,
               isSmallScreen && styles.submitButtonSmall,
+              { backgroundColor: theme.status.success },
+              loading && { backgroundColor: theme.button.disabled.background },
             ]}
             onPress={handleSubmit}
             disabled={loading}
@@ -756,12 +783,13 @@ export const BazarForm: React.FC<BazarFormProps> = ({
                 <Ionicons
                   name='checkmark'
                   size={isSmallScreen ? 16 : 20}
-                  color='#fff'
+                  color={theme.button.primary.text}
                 />
                 <ThemedText
                   style={[
                     styles.submitButtonText,
                     isSmallScreen && styles.submitButtonTextSmall,
+                    { color: theme.button.primary.text },
                   ]}
                 >
                   Submit
@@ -780,15 +808,15 @@ export const BazarForm: React.FC<BazarFormProps> = ({
           animationType='slide'
           onRequestClose={() => setShowDatePicker(false)}
         >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <ThemedText style={styles.modalTitle}>Select Date</ThemedText>
+          <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+            <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
+              <View style={[styles.modalHeader, { borderBottomColor: theme.border.secondary }]}>
+                <ThemedText style={[styles.modalTitle, { color: theme.text.primary }]}>Select Date</ThemedText>
                 <TouchableOpacity
                   onPress={confirmDateSelection}
                   style={styles.closeButton}
                 >
-                  <Ionicons name='checkmark' size={24} color='#667eea' />
+                  <Ionicons name='checkmark' size={24} color={theme.primary} />
                 </TouchableOpacity>
               </View>
 

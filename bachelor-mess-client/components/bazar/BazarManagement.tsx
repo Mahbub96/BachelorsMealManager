@@ -1,12 +1,12 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   StyleSheet,
   FlatList,
   RefreshControl,
-  TouchableOpacity,
+  type ViewStyle,
+  type TextStyle,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { ThemedView } from '../ThemedView';
 import { ThemedText } from '../ThemedText';
@@ -27,6 +27,107 @@ import type {
   BazarFilters as BazarFiltersType,
 } from '../../services/bazarService';
 
+type BazarManagementHeaderStyles = {
+  mainContainer: ViewStyle;
+  searchFiltersRow: ViewStyle;
+  searchContainer: ViewStyle;
+  filtersContainer: ViewStyle;
+  sectionHeader: ViewStyle;
+  sectionTitle: TextStyle;
+};
+
+/** Stable header component that reads search/filters from context so keyboard doesn't dismiss when typing. */
+function BazarManagementListHeader({
+  title,
+  subtitle,
+  showAddButton,
+  onAddPress,
+  showSearch,
+  showFilters,
+  showStatistics,
+  showFiltersPanel,
+  onToggleFilters,
+  headerStyles,
+}: {
+  title: string;
+  subtitle: string;
+  showAddButton: boolean;
+  onAddPress: () => void;
+  showSearch: boolean;
+  showFilters: boolean;
+  showStatistics: boolean;
+  showFiltersPanel: boolean;
+  onToggleFilters: () => void;
+  headerStyles: BazarManagementHeaderStyles;
+}) {
+  const { theme } = useTheme();
+  const {
+    filteredEntries,
+    searchQuery,
+    filters,
+    updateFilters,
+    updateSearchQuery,
+    bazarStats,
+    loadingStats,
+    statsError,
+    refreshData,
+  } = useBazar();
+
+  const entryCount = (filteredEntries ?? []).length;
+
+  return (
+    <View style={headerStyles.mainContainer}>
+      <BazarHeader
+        title={title}
+        subtitle={entryCount === 0 ? 'No bazar items found' : subtitle}
+      />
+      {showAddButton && (
+        <BazarAddButton onPress={onAddPress} title='Add New Bazar' icon='add' />
+      )}
+      {showStatistics && (
+        <BazarStatistics
+          stats={bazarStats}
+          loading={loadingStats}
+          error={statsError}
+          onRetry={() => refreshData()}
+          compact
+          fullWidth
+        />
+      )}
+      {(showSearch || showFilters) && (
+        <View style={[headerStyles.searchFiltersRow, { alignItems: 'center' }]}>
+          {showSearch && (
+            <View style={headerStyles.searchContainer}>
+              <BazarSearchBar
+                onSearch={updateSearchQuery}
+                placeholder='Search bazar items...'
+                value={searchQuery}
+              />
+            </View>
+          )}
+          {showFilters && (
+            <View style={headerStyles.filtersContainer}>
+              <BazarFilters
+                filters={filters}
+                onFilterChange={updateFilters}
+                showFilters={showFiltersPanel}
+                onToggleFilters={onToggleFilters}
+              />
+            </View>
+          )}
+        </View>
+      )}
+      <View style={headerStyles.sectionHeader}>
+        <ThemedText
+          style={[headerStyles.sectionTitle, { color: theme.text.primary }]}
+        >
+          Recent Bazar Items ({entryCount})
+        </ThemedText>
+      </View>
+    </View>
+  );
+}
+
 interface BazarManagementProps {
   showFilters?: boolean;
   showSearch?: boolean;
@@ -35,7 +136,6 @@ interface BazarManagementProps {
   title?: string;
   subtitle?: string;
   onBazarPress?: (bazar: BazarEntry | BazarCardBazar) => void;
-  onShowAllPress?: () => void;
   onAddPress?: () => void;
   customFilters?: BazarFiltersType;
   customBazarEntries?: BazarEntry[];
@@ -53,7 +153,6 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
   title = 'Bazar Management',
   subtitle = 'Track shopping expenses and manage bazar entries',
   onBazarPress,
-  onShowAllPress,
   onAddPress,
   customFilters,
   customBazarEntries,
@@ -66,46 +165,20 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
   const { theme } = useTheme();
   const { register, unregister, refreshAll } = useAppRefresh();
   const {
-    bazarStats,
     filteredEntries,
     filters,
-    searchQuery,
-    loadingStats,
     loadingEntries,
-    statsError,
     entriesError,
-    updateFilters,
-    updateSearchQuery,
     refreshData,
+    updateFilters,
     updateBazarStatus,
     deleteBazar,
   } = useBazar();
 
   const [showFiltersPanel, setShowFiltersPanel] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [bazarScope, setBazarScope] = useState<'all' | 'my'>('all');
 
-  const isMyBazar = useCallback(
-    (entry: { userId?: string | { _id?: string; id?: string } }) => {
-      if (!user?.id) return false;
-      const uid = entry.userId;
-      if (typeof uid === 'string') return uid === user.id;
-      return (uid as { _id?: string; id?: string })?._id === user.id || (uid as { id?: string })?.id === user.id;
-    },
-    [user?.id]
-  );
-
-  const bazarEntriesToShow = useMemo(() => {
-    const list = customBazarEntries ?? filteredEntries ?? [];
-    if (bazarScope === 'my') return list.filter(isMyBazar);
-    return list;
-  }, [customBazarEntries, filteredEntries, bazarScope, isMyBazar]);
-
-  const myBazarCount = useMemo(
-    () => (filteredEntries ?? []).filter(isMyBazar).length,
-    [filteredEntries, isMyBazar]
-  );
-  const totalBazarCount = (filteredEntries ?? []).length;
+  const bazarEntriesToShow = customBazarEntries ?? filteredEntries ?? [];
 
   useEffect(() => {
     register('bazar', refreshData);
@@ -118,7 +191,8 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
       appliedInitialStatusRef.current = true;
       updateFilters({ ...filters, status: initialStatus });
     }
-  }, [initialStatus, filters, updateFilters]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once when initialStatus is set
+  }, [initialStatus]);
 
   const handlePullRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -129,54 +203,66 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
     }
   }, [refreshAll]);
 
-  const handleAddBazar = () => {
+  const handleAddBazar = useCallback(() => {
     if (onAddPress) {
       onAddPress();
     } else {
       router.push('/new-bazar');
     }
-  };
+  }, [onAddPress, router]);
 
-  const handleBazarPress = (bazar: BazarEntry | BazarCardBazar) => {
-    onBazarPress?.(bazar);
-  };
+  const handleBazarPress = useCallback(
+    (bazar: BazarEntry | BazarCardBazar) => {
+      if (onBazarPress) {
+        onBazarPress(bazar);
+      } else {
+        router.push(`/bazar-details?id=${bazar.id}`);
+      }
+    },
+    [onBazarPress, router]
+  );
 
-  const handleRefresh = useCallback(() => {
-    handlePullRefresh();
-  }, [handlePullRefresh]);
+  const handleStatusUpdate = useCallback(
+    async (bazarId: string, status: 'approved' | 'rejected') => {
+      await updateBazarStatus(bazarId, status);
+    },
+    [updateBazarStatus]
+  );
 
-  const handleFilterChange = (newFilters: BazarFiltersType) => {
-    updateFilters(newFilters);
-  };
-
-  const handleSearch = (query: string) => {
-    updateSearchQuery(query);
-  };
-
-  const handleShowAllPress = () => {
-    if (onShowAllPress) {
-      onShowAllPress();
-    } else {
-      router.push('/bazar-list');
-    }
-  };
-
-  const handleStatusUpdate = async (
-    bazarId: string,
-    status: 'approved' | 'rejected'
-  ) => {
-    await updateBazarStatus(bazarId, status);
-  };
-
-  const handleDelete = async (bazarId: string) => {
-    await deleteBazar(bazarId);
-  };
+  const handleDelete = useCallback(
+    async (bazarId: string) => {
+      await deleteBazar(bazarId);
+    },
+    [deleteBazar]
+  );
 
   const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
 
-  const recentEntries = useMemo(
-    () => bazarEntriesToShow.slice(0, 2),
-    [bazarEntriesToShow]
+  const listHeaderElement = React.useMemo(
+    () => (
+      <BazarManagementListHeader
+        title={title}
+        subtitle={subtitle}
+        showAddButton={showAddButton}
+        onAddPress={handleAddBazar}
+        showSearch={showSearch}
+        showFilters={showFilters}
+        showStatistics={showStatistics}
+        showFiltersPanel={showFiltersPanel}
+        onToggleFilters={() => setShowFiltersPanel(s => !s)}
+        headerStyles={styles as BazarManagementHeaderStyles}
+      />
+    ),
+    [
+      showFiltersPanel,
+      title,
+      subtitle,
+      showAddButton,
+      showSearch,
+      showFilters,
+      showStatistics,
+      handleAddBazar,
+    ]
   );
 
   const renderBazarItem = useCallback(
@@ -191,6 +277,7 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
           status: bazar.status ?? 'pending',
           userId: bazar.userId ?? '',
           description: bazar.description ?? '',
+          createdAt: bazar.createdAt,
         }}
         onPress={handleBazarPress}
         onStatusUpdate={handleStatusUpdate}
@@ -200,158 +287,6 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
       />
     ),
     [isAdmin, handleBazarPress, handleStatusUpdate, handleDelete]
-  );
-
-  const ListHeader = useCallback(
-    () => (
-      <View style={styles.mainContainer}>
-        <BazarHeader
-          title={title}
-          subtitle={
-            filteredEntries?.length === 0 ? 'No bazar items found' : subtitle
-          }
-        />
-        {showAddButton && (
-          <BazarAddButton
-            onPress={handleAddBazar}
-            title='Add New Bazar'
-            icon='add'
-          />
-        )}
-        {(showSearch || showFilters) && (
-          <View style={styles.searchFiltersRow}>
-            {showSearch && (
-              <View style={styles.searchContainer}>
-                <BazarSearchBar
-                  onSearch={handleSearch}
-                  placeholder='Search bazar items...'
-                  value={searchQuery}
-                />
-              </View>
-            )}
-            {showFilters && (
-              <View style={styles.filtersContainer}>
-                <BazarFilters
-                  filters={filters}
-                  onFilterChange={handleFilterChange}
-                  showFilters={showFiltersPanel}
-                  onToggleFilters={() =>
-                    setShowFiltersPanel(!showFiltersPanel)
-                  }
-                />
-              </View>
-            )}
-          </View>
-        )}
-        {showStatistics && (
-          <BazarStatistics
-            stats={bazarStats}
-            loading={loadingStats}
-            error={statsError}
-            onRetry={() => refreshData()}
-            compact={true}
-          />
-        )}
-        <View style={styles.scopeRow}>
-          <TouchableOpacity
-            style={[
-              styles.scopeCard,
-              {
-                backgroundColor: theme.cardBackground ?? theme.surface,
-                borderColor:
-                  bazarScope === 'all'
-                    ? (theme.status?.info ?? theme.primary)
-                    : (theme.border?.secondary ?? theme.cardBorder),
-                borderWidth: bazarScope === 'all' ? 2 : 1,
-                shadowColor: theme.shadow?.light ?? theme.cardShadow,
-              },
-            ]}
-            onPress={() => setBazarScope('all')}
-            activeOpacity={0.7}
-          >
-            <ThemedText
-              style={[styles.scopeValue, { color: theme.text?.primary }]}
-            >
-              {totalBazarCount}
-            </ThemedText>
-            <ThemedText
-              style={[styles.scopeLabel, { color: theme.text?.secondary }]}
-            >
-              {isAdmin ? "Everyone's Bazar" : 'Total Bazar'}
-            </ThemedText>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.scopeCard,
-              {
-                backgroundColor: theme.cardBackground ?? theme.surface,
-                borderColor:
-                  bazarScope === 'my'
-                    ? (theme.status?.success ?? theme.primary)
-                    : (theme.border?.secondary ?? theme.cardBorder),
-                borderWidth: bazarScope === 'my' ? 2 : 1,
-                shadowColor: theme.shadow?.light ?? theme.cardShadow,
-              },
-            ]}
-            onPress={() => setBazarScope('my')}
-            activeOpacity={0.7}
-          >
-            <ThemedText
-              style={[styles.scopeValue, { color: theme.text?.primary }]}
-            >
-              {myBazarCount}
-            </ThemedText>
-            <ThemedText
-              style={[styles.scopeLabel, { color: theme.text?.secondary }]}
-            >
-              My Bazar
-            </ThemedText>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.sectionHeader}>
-          <ThemedText
-            style={[styles.sectionTitle, { color: theme.text.primary }]}
-          >
-            Recent Bazar Items ({recentEntries.length})
-          </ThemedText>
-          <TouchableOpacity
-            style={[
-              styles.showAllButton,
-              { backgroundColor: theme.cardBackground },
-            ]}
-            onPress={handleShowAllPress}
-            activeOpacity={0.7}
-          >
-            <ThemedText
-              style={[styles.showAllButtonText, { color: theme.primary }]}
-            >
-              View All
-            </ThemedText>
-            <Ionicons name='chevron-forward' size={16} color={theme.primary} />
-          </TouchableOpacity>
-        </View>
-      </View>
-    ),
-    [
-      title,
-      subtitle,
-      filteredEntries?.length,
-      showAddButton,
-      showSearch,
-      showFilters,
-      searchQuery,
-      filters,
-      showFiltersPanel,
-      bazarStats,
-      loadingStats,
-      statsError,
-      bazarScope,
-      totalBazarCount,
-      myBazarCount,
-      isAdmin,
-      recentEntries.length,
-      theme,
-    ]
   );
 
   if (!user) {
@@ -370,7 +305,7 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
     customLoading !== undefined ? customLoading : loadingEntries;
   const listError = customError || entriesError;
 
-  if (isLoading && recentEntries.length === 0) {
+  if (isLoading && bazarEntriesToShow.length === 0) {
     return (
       <ThemedView style={styles.container}>
         <View style={styles.mainContainer}>
@@ -388,12 +323,15 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
   return (
     <ThemedView style={styles.container}>
       <FlatList
-        data={recentEntries}
+        data={bazarEntriesToShow}
         renderItem={renderBazarItem}
-        keyExtractor={(item, index) => item.id ?? (item as { _id?: string })._id ?? `bazar-${index}`}
-        ListHeaderComponent={ListHeader}
+        keyExtractor={(item, index) =>
+          item.id ?? (item as { _id?: string })._id ?? `bazar-${index}`
+        }
+        ListHeaderComponent={listHeaderElement}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps='handled'
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -441,36 +379,6 @@ const styles = StyleSheet.create({
   filtersContainer: {
     flexShrink: 0,
   },
-  contentSection: {
-    flex: 1,
-    marginTop: 4, // Reduced from 8
-  },
-  scopeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-    marginBottom: 16,
-    paddingHorizontal: 2,
-  },
-  scopeCard: {
-    flex: 1,
-    borderRadius: 16,
-    padding: 14,
-    alignItems: 'center',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  scopeValue: {
-    fontSize: 22,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  scopeLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -483,18 +391,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     letterSpacing: -0.5,
-  },
-  showAllButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-  },
-  showAllButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
   },
   listContent: {
     flexGrow: 1,

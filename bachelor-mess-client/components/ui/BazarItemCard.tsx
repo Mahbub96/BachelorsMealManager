@@ -7,8 +7,8 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '../ThemedText';
+import { useTheme } from '../../context/ThemeContext';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -40,31 +40,32 @@ export const BazarItemCard: React.FC<BazarItemCardProps> = ({
   showActions = false,
   isAdmin = false,
 }) => {
+  const { theme } = useTheme();
   const isSmallScreen = screenWidth < 375;
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'approved':
-        return '#10b981';
+        return theme.status.success;
       case 'pending':
-        return '#f59e0b';
+        return theme.status.warning;
       case 'rejected':
-        return '#ef4444';
+        return theme.status.error;
       default:
-        return '#6b7280';
+        return theme.text.tertiary;
     }
   };
 
   const getStatusBgColor = (status: string) => {
     switch (status) {
       case 'approved':
-        return '#ecfdf5';
+        return theme.status.success + '22';
       case 'pending':
-        return '#fffbeb';
+        return theme.status.warning + '22';
       case 'rejected':
-        return '#fef2f2';
+        return theme.status.error + '18';
       default:
-        return '#f3f4f6';
+        return theme.surface;
     }
   };
 
@@ -115,15 +116,12 @@ export const BazarItemCard: React.FC<BazarItemCardProps> = ({
       onPress={() => onPress?.(item)}
       activeOpacity={0.7}
     >
-      <LinearGradient
-        colors={['#ffffff', '#f8fafc']}
-        style={styles.cardGradient}
-      >
+      <View style={[styles.cardGradient, { backgroundColor: theme.cardBackground, borderWidth: 1, borderColor: theme.cardBorder }]}>
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.titleContainer}>
             <ThemedText
-              style={[styles.title, isSmallScreen && styles.titleSmall]}
+              style={[styles.title, isSmallScreen && styles.titleSmall, { color: theme.text.primary }]}
             >
               {item.name}
             </ThemedText>
@@ -144,7 +142,7 @@ export const BazarItemCard: React.FC<BazarItemCardProps> = ({
             </View>
           </View>
           <ThemedText
-            style={[styles.amount, isSmallScreen && styles.amountSmall]}
+            style={[styles.amount, isSmallScreen && styles.amountSmall, { color: theme.status.success }]}
           >
             ৳{item.amount.toLocaleString()}
           </ThemedText>
@@ -152,15 +150,15 @@ export const BazarItemCard: React.FC<BazarItemCardProps> = ({
 
         {/* Details */}
         <View style={styles.details}>
-          <View style={styles.detailRow}>
-            <Ionicons name='calendar' size={16} color='#6b7280' />
-            <ThemedText style={styles.detailText}>
+          <View style={[styles.detailRow, { alignItems: 'center' }]}>
+            <Ionicons name='calendar-outline' size={16} color={theme.icon.secondary} />
+            <ThemedText style={[styles.detailText, { color: theme.text.secondary }]}>
               {new Date(item.date).toLocaleDateString()}
             </ThemedText>
           </View>
-          <View style={styles.detailRow}>
-            <Ionicons name='person' size={16} color='#6b7280' />
-            <ThemedText style={styles.detailText}>
+          <View style={[styles.detailRow, { alignItems: 'center' }]}>
+            <Ionicons name='person-outline' size={16} color={theme.icon.secondary} />
+            <ThemedText style={[styles.detailText, { color: theme.text.secondary }]}>
               {item.submittedBy}
             </ThemedText>
           </View>
@@ -168,39 +166,39 @@ export const BazarItemCard: React.FC<BazarItemCardProps> = ({
 
         {/* Admin Actions */}
         {showActions && isAdmin && (
-          <View style={styles.actions}>
+          <View style={[styles.actions, { borderTopColor: theme.border.secondary }]}>
             {item.status === 'pending' && (
               <>
                 <TouchableOpacity
-                  style={[styles.actionButton, styles.approveButton]}
+                  style={[styles.actionButton, { backgroundColor: theme.status.success + '22', borderColor: theme.status.success }]}
                   onPress={handleApprove}
                 >
-                  <Ionicons name='checkmark' size={16} color='#10b981' />
-                  <ThemedText style={styles.approveButtonText}>
+                  <Ionicons name='checkmark' size={16} color={theme.status.success} />
+                  <ThemedText style={[styles.approveButtonText, { color: theme.status.success }]}>
                     Approve
                   </ThemedText>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.actionButton, styles.rejectButton]}
+                  style={[styles.actionButton, { backgroundColor: theme.status.error + '18', borderColor: theme.status.error }]}
                   onPress={handleReject}
                 >
-                  <Ionicons name='close' size={16} color='#ef4444' />
-                  <ThemedText style={styles.rejectButtonText}>
+                  <Ionicons name='close' size={16} color={theme.status.error} />
+                  <ThemedText style={[styles.rejectButtonText, { color: theme.status.error }]}>
                     Reject
                   </ThemedText>
                 </TouchableOpacity>
               </>
             )}
             <TouchableOpacity
-              style={[styles.actionButton, styles.deleteButton]}
+              style={[styles.actionButton, { backgroundColor: theme.status.error + '18', borderColor: theme.status.error }]}
               onPress={handleDelete}
             >
-              <Ionicons name='trash' size={16} color='#ef4444' />
-              <ThemedText style={styles.deleteButtonText}>Delete</ThemedText>
+              <Ionicons name='trash-outline' size={16} color={theme.status.error} />
+              <ThemedText style={[styles.deleteButtonText, { color: theme.status.error }]}>Delete</ThemedText>
             </TouchableOpacity>
           </View>
         )}
-      </LinearGradient>
+      </View>
     </TouchableOpacity>
   );
 };
@@ -235,7 +233,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1f2937',
     marginBottom: 8,
     lineHeight: 20,
   },
@@ -256,7 +253,6 @@ const styles = StyleSheet.create({
   amount: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#059669',
   },
   amountSmall: {
     fontSize: 16,
@@ -271,15 +267,15 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontSize: 14,
-    color: '#6b7280',
     marginLeft: 8,
   },
   actions: {
     flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 8,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
   },
   actionButton: {
     flexDirection: 'row',
@@ -289,34 +285,19 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
   },
-  approveButton: {
-    backgroundColor: '#ecfdf5',
-    borderColor: '#10b981',
-  },
   approveButtonText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#10b981',
     marginLeft: 4,
-  },
-  rejectButton: {
-    backgroundColor: '#fef2f2',
-    borderColor: '#ef4444',
   },
   rejectButtonText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#ef4444',
     marginLeft: 4,
-  },
-  deleteButton: {
-    backgroundColor: '#fef2f2',
-    borderColor: '#ef4444',
   },
   deleteButtonText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#ef4444',
     marginLeft: 4,
   },
 });
