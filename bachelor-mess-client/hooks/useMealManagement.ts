@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Alert } from 'react-native';
+import httpClient from '../services/httpClient';
 import mealService, {
   MealFilters,
   MealStats,
@@ -90,10 +91,10 @@ export const useMealManagement = (
         setLoading(true);
         setError(null);
 
-        // Use getAllMeals for admin/member/super_admin (group or all), getUserMeals for others
+        const cacheOpt = forceRefresh ? { cache: false as const } : undefined;
         const response = useGroupApi
-          ? await mealService.getAllMeals(filters)
-          : await mealService.getUserMeals(filters);
+          ? await mealService.getAllMeals(filters, cacheOpt)
+          : await mealService.getUserMeals(filters, cacheOpt);
 
         if (response.success && response.data) {
           // Handle both response structures: { meals, pagination } or direct array
@@ -167,14 +168,13 @@ export const useMealManagement = (
   const loadMealStats = useCallback(
     async (forceRefresh = false) => {
       try {
-        // Prevent excessive API calls for stats
         const now = Date.now();
         if (!forceRefresh && now - lastFetchTimeRef.current < 60000) {
-          // 1 minute cache for stats
           return;
         }
 
-        const response = await mealService.getUserMealStats();
+        const cacheOpt = forceRefresh ? { cache: false as const } : undefined;
+        const response = await mealService.getUserMealStats(filters, cacheOpt);
         if (response.success && response.data) {
           setMealStats(response.data);
           lastFetchTimeRef.current = now;
@@ -183,10 +183,11 @@ export const useMealManagement = (
         // Silently handle stats loading errors
       }
     },
-    []
+    [filters]
   );
 
   const refreshMeals = useCallback(async () => {
+    httpClient.clearOnlineCache();
     setRefreshing(true);
     await Promise.all([
       loadMeals(true), // Force refresh

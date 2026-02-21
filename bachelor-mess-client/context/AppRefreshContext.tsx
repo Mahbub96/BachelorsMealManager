@@ -5,6 +5,7 @@ import React, {
   useContext,
   type ReactNode,
 } from 'react';
+import httpClient from '../services/httpClient';
 
 type RefreshFn = () => void | Promise<void>;
 
@@ -28,6 +29,7 @@ export function AppRefreshProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshAll = useCallback(async () => {
+    httpClient.clearOnlineCache();
     const fns = Array.from(refreshers.current.values());
     await Promise.all(fns.map((fn) => Promise.resolve(fn())));
   }, []);

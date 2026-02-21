@@ -16,7 +16,7 @@ import { ThemedText } from '../components/ThemedText';
 import { ScreenLayout } from '../components/layout';
 import { BazarCard, type BazarCardBazar } from '../components/cards/BazarCard';
 import { BazarFilters } from '../components/bazar/BazarFilters';
-import { BazarSearchBar } from '../components/bazar/BazarSearchBar';
+import { SearchBar } from '../components/shared';
 import { BazarStatistics } from '../components/bazar/BazarStatistics';
 import { useAuth } from '../context/AuthContext';
 import { useBazar } from '../context/BazarContext';
@@ -67,9 +67,9 @@ function BazarListHeader({
       </View>
       <View style={headerStyles.searchFiltersRow}>
         <View style={headerStyles.searchContainer}>
-          <BazarSearchBar
+          <SearchBar
             onSearch={updateSearchQuery}
-            placeholder='Search bazar items...'
+            placeholder="Search bazar items..."
             value={searchQuery}
           />
         </View>
@@ -182,8 +182,10 @@ export default function BazarListScreen(_props: BazarListScreenProps) {
         <ThemedText
           style={[styles.emptyMessage, { color: theme.text.secondary }]}
         >
-          {searchQuery || filters.status !== 'all'
+          {searchQuery || filters.status !== 'all' || (filters.dateRange && filters.dateRange !== 'all' && filters.dateRange !== 'month')
             ? 'Try adjusting your search or filters'
+            : filters.scope === 'mine'
+            ? 'No bazar entries from you yet'
             : 'Add your first bazar entry to get started'}
         </ThemedText>
         {!searchQuery && filters.status === 'all' && (

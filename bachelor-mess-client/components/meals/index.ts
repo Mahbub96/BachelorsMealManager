@@ -19,6 +19,13 @@ export { MealBulkActions } from './MealBulkActions';
 export { MealSelectionCheckbox } from './MealSelectionCheckbox';
 export { MealSearchBar } from './MealSearchBar';
 export { MealAdvancedFilters } from './MealAdvancedFilters';
+export {
+  MealListFilters,
+  type MealListFiltersState,
+  type MealListFilterStatus,
+  type MealListFilterDateRange,
+  type MealListFilterScope,
+} from './MealListFilters';
 
 // Modal and detail components
 export { MealModal } from './MealModal';

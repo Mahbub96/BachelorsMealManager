@@ -79,10 +79,12 @@ export interface BazarStats {
 export interface BazarService {
   submitBazar: (data: BazarSubmission) => Promise<ApiResponse<BazarEntry>>;
   getUserBazarEntries: (
-    filters?: BazarFilters
+    filters?: BazarFilters,
+    options?: { cache?: boolean }
   ) => Promise<ApiResponse<BazarEntry[]>>;
   getAllBazarEntries: (
-    filters?: BazarFilters
+    filters?: BazarFilters,
+    options?: { cache?: boolean }
   ) => Promise<ApiResponse<BazarEntry[]>>;
   updateBazarStatus: (
     bazarId: string,
@@ -194,15 +196,17 @@ class BazarServiceImpl implements BazarService {
   }
 
   async getUserBazarEntries(
-    filters: BazarFilters = {}
+    filters: BazarFilters = {},
+    options?: { cache?: boolean }
   ): Promise<ApiResponse<BazarEntry[]>> {
     try {
+      const useCache = options?.cache !== false;
       const queryParams = this.buildQueryParams(filters);
       const response = await httpClient.get<BazarEntry[]>(
         `${API_ENDPOINTS.BAZAR.USER}${queryParams}`,
         {
-          cache: true,
-          cacheKey: `user_bazar_${JSON.stringify(filters)}`,
+          cache: useCache,
+          ...(useCache && { cacheKey: `user_bazar_${JSON.stringify(filters)}` }),
         }
       );
 
@@ -260,19 +264,20 @@ class BazarServiceImpl implements BazarService {
   }
 
   async getAllBazarEntries(
-    filters: BazarFilters = {}
+    filters: BazarFilters = {},
+    options?: { cache?: boolean }
   ): Promise<ApiResponse<BazarEntry[]>> {
     try {
+      const useCache = options?.cache !== false;
       const queryParams = this.buildQueryParams(filters);
       const endpoint = `${API_ENDPOINTS.BAZAR.ALL}${queryParams}`;
 
-      // Fix: Use correct response type for nested structure
       const response = await httpClient.get<{
         bazarEntries: BazarEntry[];
         pagination: any;
       }>(endpoint, {
-        cache: true,
-        cacheKey: `all_bazar_${JSON.stringify(filters)}`,
+        cache: useCache,
+        ...(useCache && { cacheKey: `all_bazar_${JSON.stringify(filters)}` }),
       });
 
       // Transform the response to match expected structure

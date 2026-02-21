@@ -730,6 +730,11 @@ class HttpClient {
     }
   }
 
+  /** Clear only the online-status cache so the next request re-checks network. Use on user-triggered refresh after going back online. */
+  clearOnlineCache(): void {
+    this.isOnlineCache = null;
+  }
+
   // Cache management
   async clearCache(): Promise<void> {
     try {

@@ -95,8 +95,8 @@ export interface MealResponse {
 
 export interface MealService {
   submitMeal: (data: MealSubmission) => Promise<ApiResponse<MealEntry>>;
-  getUserMeals: (filters?: MealFilters) => Promise<ApiResponse<MealResponse>>;
-  getAllMeals: (filters?: MealFilters) => Promise<ApiResponse<MealResponse>>;
+  getUserMeals: (filters?: MealFilters, options?: { cache?: boolean }) => Promise<ApiResponse<MealResponse>>;
+  getAllMeals: (filters?: MealFilters, options?: { cache?: boolean }) => Promise<ApiResponse<MealResponse>>;
   updateMealStatus: (
     mealId: string,
     status: MealStatusUpdate
@@ -106,8 +106,8 @@ export interface MealService {
     data: MealUpdate
   ) => Promise<ApiResponse<MealEntry>>;
   deleteMeal: (mealId: string) => Promise<ApiResponse<void>>;
-  getMealStats: (filters?: MealFilters) => Promise<ApiResponse<MealStats>>;
-  getUserMealStats: (filters?: MealFilters) => Promise<ApiResponse<MealStats>>;
+  getMealStats: (filters?: MealFilters, options?: { cache?: boolean }) => Promise<ApiResponse<MealStats>>;
+  getUserMealStats: (filters?: MealFilters, options?: { cache?: boolean }) => Promise<ApiResponse<MealStats>>;
   getMealById: (mealId: string) => Promise<ApiResponse<MealEntry>>;
   bulkApproveMeals: (
     mealIds: string[],
@@ -171,15 +171,17 @@ class MealServiceImpl implements MealService {
   }
 
   async getUserMeals(
-    filters: MealFilters = {}
+    filters: MealFilters = {},
+    options?: { cache?: boolean }
   ): Promise<ApiResponse<MealResponse>> {
     try {
+      const useCache = options?.cache !== false && !filters.onlyMine;
       const queryParams = this.buildQueryParams(filters);
       const endpoint = `${API_ENDPOINTS.MEALS.USER}${queryParams}`;
 
       const response = await httpClient.get<MealResponse>(endpoint, {
-        cache: !filters.onlyMine,
-        cacheKey: filters.onlyMine ? undefined : `user_meals_${JSON.stringify(filters)}`,
+        cache: useCache,
+        ...(useCache && { cacheKey: `user_meals_${JSON.stringify(filters)}` }),
       });
 
       // Transform the response to match expected structure
@@ -219,15 +221,17 @@ class MealServiceImpl implements MealService {
   }
 
   async getAllMeals(
-    filters: MealFilters = {}
+    filters: MealFilters = {},
+    options?: { cache?: boolean }
   ): Promise<ApiResponse<MealResponse>> {
     try {
+      const useCache = options?.cache !== false;
       const queryParams = this.buildQueryParams(filters);
       const endpoint = `${API_ENDPOINTS.MEALS.ALL}${queryParams}`;
 
       const response = await httpClient.get<MealResponse>(endpoint, {
-        cache: true,
-        cacheKey: `all_meals_${JSON.stringify(filters)}`,
+        cache: useCache,
+        ...(useCache && { cacheKey: `all_meals_${JSON.stringify(filters)}` }),
       });
 
       // Transform the response to match expected structure
@@ -348,15 +352,17 @@ class MealServiceImpl implements MealService {
   }
 
   async getMealStats(
-    filters: MealFilters = {}
+    filters: MealFilters = {},
+    options?: { cache?: boolean }
   ): Promise<ApiResponse<MealStats>> {
     try {
+      const useCache = options?.cache !== false;
       const queryParams = this.buildQueryParams(filters);
       const endpoint = `${API_ENDPOINTS.MEALS.STATS}${queryParams}`;
 
       const response = await httpClient.get<MealStats>(endpoint, {
-        cache: true,
-        cacheKey: `meal_stats_${JSON.stringify(filters)}`,
+        cache: useCache,
+        ...(useCache && { cacheKey: `meal_stats_${JSON.stringify(filters)}` }),
       });
 
       return response;
@@ -372,15 +378,17 @@ class MealServiceImpl implements MealService {
   }
 
   async getUserMealStats(
-    filters: MealFilters = {}
+    filters: MealFilters = {},
+    options?: { cache?: boolean }
   ): Promise<ApiResponse<MealStats>> {
     try {
+      const useCache = options?.cache !== false;
       const queryParams = this.buildQueryParams(filters);
       const endpoint = `${API_ENDPOINTS.MEALS.USER_STATS}${queryParams}`;
 
       const response = await httpClient.get<MealStats>(endpoint, {
-        cache: true,
-        cacheKey: `user_meal_stats_${JSON.stringify(filters)}`,
+        cache: useCache,
+        ...(useCache && { cacheKey: `user_meal_stats_${JSON.stringify(filters)}` }),
       });
 
       return response;

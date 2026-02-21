@@ -3,6 +3,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useApiData } from '@/hooks/useApiData';
 import { activityService, type Activity } from '@/services/activityService';
 import errorHandler from '@/services/errorHandler';
+import httpClient from '@/services/httpClient';
 import userStatsService, {
   UserDashboardStats,
 } from '@/services/userStatsService';
@@ -169,7 +170,7 @@ export const UserDashboard: React.FC = () => {
   }, [refreshAll]);
 
   const handleRetry = async () => {
-    // Clear cached dashboard/analytics data, then reload screen-level data
+    httpClient.clearOnlineCache();
     try {
       const { default: dashboardService } = await import('@/services/dashboardService');
       await dashboardService.refreshDashboard();

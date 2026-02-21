@@ -121,13 +121,14 @@ class UserStatsServiceImpl implements UserStatsService {
     }
   }
 
-  async getUserBazarStats(): Promise<ApiResponse<UserDashboardStats['bazar']>> {
+  async getUserBazarStats(options?: { cache?: boolean }): Promise<ApiResponse<UserDashboardStats['bazar']>> {
     try {
+      const useCache = options?.cache !== false;
       const response = await httpClient.get<UserDashboardStats['bazar']>(
         API_ENDPOINTS.USER_STATS.BAZAR,
         {
-          cache: true,
-          cacheKey: 'user_bazar_stats',
+          cache: useCache,
+          ...(useCache && { cacheKey: 'user_bazar_stats' }),
           retries: 3,
           timeout: 10000,
         }

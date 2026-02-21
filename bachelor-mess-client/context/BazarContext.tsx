@@ -9,6 +9,7 @@ import React, {
 import bazarService, {
   type BazarFilters as ApiBazarFilters,
 } from '../services/bazarService';
+import httpClient from '../services/httpClient';
 import userStatsService from '../services/userStatsService';
 import { useAuth } from './AuthContext';
 
@@ -38,6 +39,7 @@ interface BackendBazarStats {
 }
 
 interface BazarFilters {
+  scope?: 'mine' | 'all';
   status?: 'all' | 'pending' | 'approved' | 'rejected';
   dateRange?: 'all' | 'today' | 'week' | 'month';
   sortBy?: 'date' | 'amount' | 'status';
@@ -45,6 +47,7 @@ interface BazarFilters {
 
 interface BazarEntry {
   id: string;
+  type?: 'meal' | 'flat';
   userId:
     | string
     | {
@@ -79,8 +82,8 @@ interface BazarContextType {
   entriesError: string | null;
 
   // Actions
-  loadBazarStats: () => Promise<void>;
-  loadBazarEntries: (overrideFilters?: BazarFilters) => Promise<void>;
+  loadBazarStats: (forceRefresh?: boolean) => Promise<void>;
+  loadBazarEntries: (overrideFilters?: BazarFilters, forceRefresh?: boolean) => Promise<void>;
   updateFilters: (newFilters: BazarFilters) => void;
   updateSearchQuery: (query: string) => void;
   refreshData: () => Promise<void>;
@@ -111,6 +114,7 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
   const [bazarStats, setBazarStats] = useState<BazarStats | null>(null);
   const [bazarEntries, setBazarEntries] = useState<BazarEntry[]>([]);
   const [filters, setFilters] = useState<BazarFilters>({
+    scope: 'all',
     status: 'all',
     dateRange: 'month',
     sortBy: 'date',
@@ -122,14 +126,16 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
   const [entriesError, setEntriesError] = useState<string | null>(null);
 
   // Load Bazar statistics
-  const loadBazarStats = useCallback(async () => {
+  const loadBazarStats = useCallback(async (forceRefresh?: boolean) => {
     if (!user) return;
 
     try {
       setLoadingStats(true);
       setStatsError(null);
 
-      const response = await userStatsService.getUserBazarStats();
+      const response = await userStatsService.getUserBazarStats(
+        forceRefresh ? { cache: false } : undefined
+      );
 
       if (response.success && response.data) {
         const data = response.data as Record<string, unknown>;
@@ -178,7 +184,7 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
   // Load Bazar entries (admin/member/super_admin: group/all via GET /api/bazar/all; others: own via GET /api/bazar)
   // When overrideFilters is passed (e.g. from updateFilters), use it so the API gets the new filters immediately.
   const loadBazarEntries = useCallback(
-    async (overrideFilters?: BazarFilters) => {
+    async (overrideFilters?: BazarFilters, forceRefresh?: boolean) => {
       if (!user) return;
 
       const activeFilters = overrideFilters ?? filters;
@@ -187,6 +193,7 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
         setLoadingEntries(true);
         setEntriesError(null);
 
+        const cacheOpt = forceRefresh ? { cache: false as const } : undefined;
         // Convert UI filters to API query params. Request enough entries so list and fallback stats are meaningful.
         const apiFilters: ApiBazarFilters = { limit: 500 };
         if (
@@ -233,8 +240,8 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
           user.role === 'member' ||
           user.role === 'super_admin';
         const response = useGroupApi
-          ? await bazarService.getAllBazarEntries(apiFilters)
-          : await bazarService.getUserBazarEntries(apiFilters);
+          ? await bazarService.getAllBazarEntries(apiFilters, cacheOpt)
+          : await bazarService.getUserBazarEntries(apiFilters, cacheOpt);
 
         if (response.success && response.data) {
           // Handle nested response structure from backend
@@ -284,9 +291,10 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
     setSearchQuery(query);
   }, []);
 
-  // Refresh all data
+  // Refresh all data (bypass cache so we get fresh data after going back online)
   const refreshData = useCallback(async () => {
-    await Promise.all([loadBazarStats(), loadBazarEntries()]);
+    httpClient.clearOnlineCache();
+    await Promise.all([loadBazarStats(true), loadBazarEntries(undefined, true)]);
   }, [loadBazarStats, loadBazarEntries]);
 
   // Update bazar status
@@ -331,9 +339,22 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
     [refreshData]
   );
 
-  // Computed: apply search, status, dateRange, and sort so list matches filters
+  // Computed: apply scope, search, status, dateRange, and sort so list matches filters
   const filteredEntries = useCallback(() => {
     let filtered = bazarEntries;
+
+    if (filters.scope === 'mine') {
+      if (!user?.id) {
+        filtered = [];
+      } else {
+        const uid = user.id;
+        filtered = filtered.filter(entry => {
+          const eid = entry.userId;
+          if (typeof eid === 'string') return eid === uid;
+          return eid?._id === uid || (eid as { id?: string })?.id === uid;
+        });
+      }
+    }
 
     if (filters.status && filters.status !== 'all') {
       filtered = filtered.filter(entry => entry.status === filters.status);
@@ -364,16 +385,47 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
     }
 
     if (searchQuery.trim()) {
-      const searchLower = searchQuery.toLowerCase();
-      filtered = filtered.filter(entry => {
-        return (
-          entry.description?.toLowerCase().includes(searchLower) ||
-          entry.items?.some(item =>
-            item.name?.toLowerCase().includes(searchLower)
-          ) ||
-          entry.totalAmount?.toString().includes(searchQuery)
-        );
-      });
+      const searchLower = searchQuery.trim().toLowerCase();
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayTime = today.getTime();
+      const yesterdayTime = todayTime - 24 * 60 * 60 * 1000;
+
+      const getSearchableText = (entry: (typeof filtered)[0]): string => {
+        const parts: string[] = [];
+        const dateStr = entry?.date ?? '';
+        parts.push(dateStr);
+        const d = dateStr ? new Date(dateStr) : null;
+        if (d && !isNaN(d.getTime())) {
+          parts.push(d.toLocaleDateString('en-US', { weekday: 'long' }));
+          parts.push(d.toLocaleDateString('en-US', { weekday: 'short' }));
+          parts.push(String(d.getDate()));
+          parts.push(String(d.getMonth() + 1));
+          parts.push(d.toLocaleDateString('en-US', { month: 'long' }));
+          parts.push(d.toLocaleDateString('en-US', { month: 'short' }));
+          parts.push(String(d.getFullYear()));
+          parts.push(
+            `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
+            `${d.getMonth() + 1}-${d.getDate()}`
+          );
+        }
+        if (entry?.description) parts.push(entry.description);
+        entry?.items?.forEach(item => {
+          if (item?.name) parts.push(item.name);
+        });
+        parts.push(entry?.totalAmount?.toString() ?? '');
+        if (entry?.status) parts.push(entry.status);
+        if (entry?.type) parts.push(entry.type);
+        const entryDate = entry?.date ? new Date(entry.date) : null;
+        if (entryDate && !isNaN(entryDate.getTime())) {
+          entryDate.setHours(0, 0, 0, 0);
+          if (entryDate.getTime() === todayTime) parts.push('today');
+          if (entryDate.getTime() === yesterdayTime) parts.push('yesterday');
+        }
+        return parts.join(' ').toLowerCase();
+      };
+
+      filtered = filtered.filter(entry => getSearchableText(entry).includes(searchLower));
     }
 
     filtered.sort((a, b) => {
@@ -391,7 +443,9 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
     return filtered;
   }, [
     bazarEntries,
+    user?.id,
     searchQuery,
+    filters.scope,
     filters.status,
     filters.dateRange,
     filters.sortBy,

@@ -33,6 +33,8 @@ import { useThemeColor } from '../../hooks/useThemeColor';
 import { ScreenBackButton } from '../ui/ScreenBackButton';
 import { InfoModal, type InfoModalVariant } from '../ui';
 import { MealDetailModal } from './MealDetailModal';
+import { MealListFilters, type MealListFiltersState } from './MealListFilters';
+import { SearchAndFilterRow } from '../shared';
 import { toLocalDateString, formatDate } from '../../utils/dateUtils';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -107,6 +109,13 @@ export const MealManagement: React.FC<MealManagementProps> = ({
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [historyFilter, setHistoryFilter] = useState<'total' | 'my'>('total');
+  const [mealSearchQuery, setMealSearchQuery] = useState('');
+  const [mealListFilters, setMealListFilters] = useState<MealListFiltersState>({
+    scope: 'mine',
+    status: 'all',
+    dateRange: 'month',
+  });
+  const [showMealFiltersPanel, setShowMealFiltersPanel] = useState(false);
   const [infoModal, setInfoModal] = useState<{
     title: string;
     message: string;
@@ -145,10 +154,77 @@ export const MealManagement: React.FC<MealManagementProps> = ({
     return list;
   }, [meals, historyFilter, isMyMeal]);
 
-  const recentMyMeals = useMemo(
-    () => (meals || []).filter(isMyMeal).slice(0, 5),
+  const myMeals = useMemo(
+    () => (meals || []).filter(isMyMeal),
     [meals, isMyMeal]
   );
+
+  const mealsHistorySource = useMemo(() => {
+    const scope = mealListFilters.scope ?? 'mine';
+    return scope === 'mine' ? myMeals : (meals || []);
+  }, [mealListFilters.scope, myMeals, meals]);
+
+  const filteredMealsHistory = useMemo(() => {
+    const list = mealsHistorySource;
+    const q = mealSearchQuery.trim().toLowerCase();
+    const status = mealListFilters.status ?? 'all';
+    const dateRange = mealListFilters.dateRange ?? 'month';
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayTime = today.getTime();
+
+    const getSearchableText = (meal: (typeof list)[0]): string => {
+      const parts: string[] = [];
+      const dateStr = meal?.date ?? '';
+      parts.push(dateStr);
+      const d = dateStr ? new Date(dateStr) : null;
+      if (d && !isNaN(d.getTime())) {
+        parts.push(d.toLocaleDateString('en-US', { weekday: 'long' }));
+        parts.push(d.toLocaleDateString('en-US', { weekday: 'short' }));
+        parts.push(String(d.getDate()));
+        parts.push(String(d.getMonth() + 1));
+        parts.push(d.toLocaleDateString('en-US', { month: 'long' }));
+        parts.push(d.toLocaleDateString('en-US', { month: 'short' }));
+        parts.push(String(d.getFullYear()));
+        const monthDay = `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        parts.push(monthDay, `${d.getMonth() + 1}-${d.getDate()}`);
+      }
+      if (meal?.breakfast) parts.push('breakfast');
+      if (meal?.lunch) parts.push('lunch');
+      if (meal?.dinner) parts.push('dinner');
+      if (meal?.status) parts.push(meal.status);
+      return parts.join(' ').toLowerCase();
+    };
+
+    const isToday = (t: number) => t === todayTime;
+    const yesterdayTime = todayTime - 24 * 60 * 60 * 1000;
+
+    return list.filter((meal) => {
+      if (status !== 'all' && meal?.status !== status) return false;
+      const mealDate = meal?.date ? new Date(meal.date) : null;
+      if (!mealDate) return false;
+      mealDate.setHours(0, 0, 0, 0);
+      const mealTime = mealDate.getTime();
+      if (dateRange === 'today' && mealTime !== todayTime) return false;
+      if (dateRange === 'week') {
+        const weekAgo = new Date(today);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        if (mealTime < weekAgo.getTime() || mealTime > todayTime) return false;
+      }
+      if (dateRange === 'month') {
+        const monthAgo = new Date(today);
+        monthAgo.setMonth(monthAgo.getMonth() - 1);
+        if (mealTime < monthAgo.getTime() || mealTime > todayTime) return false;
+      }
+      if (q) {
+        let searchText = getSearchableText(meal);
+        if (isToday(mealTime)) searchText += ' today';
+        if (mealTime === yesterdayTime) searchText += ' yesterday';
+        if (!searchText.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [mealsHistorySource, mealSearchQuery, mealListFilters]);
 
   const summaryByType = useMemo(() => {
     const my = (meals || []).filter(isMyMeal);
@@ -402,6 +478,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
         style={styles.scrollView}
         contentContainerStyle={styles.overviewScrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
@@ -545,7 +622,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
           </View>
         </View>
 
-        {/* Recent Meals - modern card container */}
+        {/* Meals History - with search and scope (My / Everyone's) + filters */}
         <View
           style={[styles.section, { paddingHorizontal: 16, marginBottom: 28 }]}
         >
@@ -553,51 +630,23 @@ export const MealManagement: React.FC<MealManagementProps> = ({
             <ThemedText
               style={[styles.sectionTitle, { color: theme.text?.primary }]}
             >
-              Recent My Meals
+              Meals History ({filteredMealsHistory.length})
             </ThemedText>
-            <TouchableOpacity
-              style={[
-                styles.monthFilterButton,
-                {
-                  backgroundColor:
-                    (theme.status?.success ?? theme.primary) + '18',
-                  borderColor: theme.status?.success ?? theme.primary,
-                },
-              ]}
-              onPress={() => {
-                const currentMonth = new Date().getMonth();
-                const currentYear = new Date().getFullYear();
-                const filteredMeals = (meals || []).filter(meal => {
-                  if (!isMyMeal(meal)) return false;
-                  const mealDate = new Date(meal.date);
-                  return (
-                    mealDate.getMonth() === currentMonth &&
-                    mealDate.getFullYear() === currentYear
-                  );
-                });
-                const totalSlots = countMealSlots(filteredMeals);
-                showAlert(
-                  'Current Month',
-                  `Showing ${totalSlots} meals (${filteredMeals.length} ${filteredMeals.length === 1 ? 'day' : 'days'}) for current month`,
-                  'info'
-                );
-              }}
-            >
-              <Ionicons
-                name='calendar'
-                size={20}
-                color={theme.status?.success ?? theme.primary}
-              />
-              <ThemedText
-                style={[
-                  styles.monthFilterText,
-                  { color: theme.status?.success ?? theme.primary },
-                ]}
-              >
-                Current Month
-              </ThemedText>
-            </TouchableOpacity>
           </View>
+          <SearchAndFilterRow
+            searchPlaceholder="Search by day, date, or keyword..."
+            searchValue={mealSearchQuery}
+            onSearchChange={setMealSearchQuery}
+            showFiltersPanel={showMealFiltersPanel}
+            onToggleFilters={() =>
+              setShowMealFiltersPanel((s) => !s)
+            }
+          >
+            <MealListFilters
+              filters={mealListFilters}
+              onFilterChange={setMealListFilters}
+            />
+          </SearchAndFilterRow>
           <View
             style={[
               styles.mealsList,
@@ -609,7 +658,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
               },
             ]}
           >
-            {recentMyMeals.map((meal, index) => (
+            {filteredMealsHistory.map((meal, index) => (
               <ActivityCard
                 key={meal.id || `meal-${index}`}
                 title={`Meal on ${formatDate(meal.date || new Date().toISOString())}`}
@@ -630,7 +679,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
                 isSmallScreen={isSmallScreen}
               />
             ))}
-            {recentMyMeals.length === 0 && (
+            {filteredMealsHistory.length === 0 && (
               <View style={styles.emptyState}>
                 <Ionicons
                   name='restaurant-outline'
@@ -643,7 +692,11 @@ export const MealManagement: React.FC<MealManagementProps> = ({
                     { color: theme.text?.secondary },
                   ]}
                 >
-                  No My Meals recorded yet
+                {mealSearchQuery.trim() || mealListFilters.status !== 'all' || (mealListFilters.dateRange !== 'month' && mealListFilters.dateRange !== 'all')
+                    ? 'No meals match your search or filters'
+                    : mealListFilters.scope === 'mine'
+                    ? 'No My Meals recorded yet'
+                    : "No one's meals in this period"}
                 </ThemedText>
                 <ThemedText
                   style={[
@@ -651,7 +704,11 @@ export const MealManagement: React.FC<MealManagementProps> = ({
                     { color: theme.text?.tertiary },
                   ]}
                 >
-                  Add your first My Meal to get started
+                  {mealSearchQuery.trim() || mealListFilters.status !== 'all' || (mealListFilters.dateRange !== 'month' && mealListFilters.dateRange !== 'all')
+                    ? 'Try adjusting your search or filters'
+                    : mealListFilters.scope === 'mine'
+                    ? 'Add your first My Meal to get started'
+                    : 'Switch to My Meals or change date range'}
                 </ThemedText>
               </View>
             )}

@@ -18,7 +18,7 @@ import { BazarHeader } from './BazarHeader';
 import { BazarAddButton } from './BazarAddButton';
 import { BazarStatistics } from './BazarStatistics';
 import { BazarFilters } from './BazarFilters';
-import { BazarSearchBar } from './BazarSearchBar';
+import { SearchBar } from '../shared';
 import { BazarErrorState } from './BazarErrorState';
 import { BazarCard } from '../cards/BazarCard';
 import type { BazarCardBazar } from '../cards/BazarCard';
@@ -98,9 +98,9 @@ function BazarManagementListHeader({
         <View style={[headerStyles.searchFiltersRow, { alignItems: 'center' }]}>
           {showSearch && (
             <View style={headerStyles.searchContainer}>
-              <BazarSearchBar
+              <SearchBar
                 onSearch={updateSearchQuery}
-                placeholder='Search bazar items...'
+                placeholder="Search bazar items..."
                 value={searchQuery}
               />
             </View>
@@ -121,7 +121,7 @@ function BazarManagementListHeader({
         <ThemedText
           style={[headerStyles.sectionTitle, { color: theme.text.primary }]}
         >
-          Recent Bazar Items ({entryCount})
+          Bazar History ({entryCount})
         </ThemedText>
       </View>
     </View>
