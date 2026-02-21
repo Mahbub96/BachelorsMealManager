@@ -18,6 +18,7 @@ const TAB_LABELS: Record<string, string> = {
   '/(tabs)/explore': 'Bazar',
   '/(tabs)/meals': 'Meals',
   '/(tabs)/admin': 'Admin',
+  '/(tabs)/reports': 'Analysis',
   '/(tabs)/super-admin': 'Super Admin',
 };
 
@@ -25,21 +26,18 @@ export default function TabLayout() {
   const { user } = useAuth();
   const { theme } = useTheme();
   const pathname = usePathname();
-  const headerLabel = TAB_LABELS[pathname] ?? (pathname?.includes('explore') ? 'Bazar' : pathname?.includes('meals') ? 'Meals' : pathname?.includes('admin') ? 'Admin' : 'Welcome');
+  const headerLabel = TAB_LABELS[pathname] ?? (pathname?.includes('explore') ? 'Bazar' : pathname?.includes('meals') ? 'Meals' : pathname?.includes('reports') ? 'Analysis' : pathname?.includes('admin') ? 'Admin' : 'Welcome');
 
   const backgroundColor = theme.background;
   const borderColor = theme.border?.secondary ?? theme.tab?.border;
-  const textColor = theme.text.primary;
-  const textSecondary = theme.text.secondary;
   const tabActiveColor = theme.tab?.active ?? theme.primary;
   const tabInactiveColor = theme.tab?.inactive ?? theme.text.tertiary;
   const shadowColor = theme.shadow?.light ?? theme.cardShadow;
 
-  // Determine which tabs to show based on user role
-  // Explicitly check for admin/super_admin roles only - members should never see admin tabs
+  // Tab visibility by role: Admin tab for admin/super_admin, Analysis tab for member only
   const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
   const isSuperAdmin = user?.role === 'super_admin';
-  const isMember = user?.role === 'member' || (!user?.role || (user?.role !== 'admin' && user?.role !== 'super_admin'));
+  const isMember = user?.role === 'member';
 
   return (
     <Tabs
@@ -79,6 +77,10 @@ export default function TabLayout() {
         },
         tabBarIconStyle: {
           marginTop: 4,
+        },
+        tabBarItemStyle: {
+          paddingVertical: 4,
+          minWidth: 0,
         },
       }}
     >
@@ -121,38 +123,51 @@ export default function TabLayout() {
           ),
         }}
       />
-      {/* Admin tab - only visible to admin/super_admin users, NOT members */}
-      {isAdmin && !isMember && (
-        <Tabs.Screen
-          name='admin'
-          options={{
-            title: 'Admin',
-            tabBarIcon: ({ color, focused }) => (
-              <Ionicons
-                name={focused ? 'settings' : 'settings-outline'}
-                size={24}
-                color={color}
-              />
-            ),
-          }}
-        />
-      )}
-      {/* Super Admin tab - only visible to super admin users, NOT members */}
-      {isSuperAdmin && !isMember && (
-        <Tabs.Screen
-          name='super-admin'
-          options={{
-            title: 'Super Admin',
-            tabBarIcon: ({ color, focused }) => (
-              <Ionicons
-                name={focused ? 'shield-checkmark' : 'shield-checkmark-outline'}
-                size={24}
-                color={color}
-              />
-            ),
-          }}
-        />
-      )}
+      {/* Analysis tab - visible ONLY to members; hidden for admin/super_admin */}
+      <Tabs.Screen
+        name='reports'
+        options={{
+          title: 'Analysis',
+          href: isMember ? undefined : null,
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? 'stats-chart' : 'stats-chart-outline'}
+              size={24}
+              color={color}
+            />
+          ),
+        }}
+      />
+      {/* Admin tab - visible ONLY to admin/super_admin; hidden for members */}
+      <Tabs.Screen
+        name='admin'
+        options={{
+          title: 'Admin',
+          href: isAdmin ? undefined : null,
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? 'settings' : 'settings-outline'}
+              size={24}
+              color={color}
+            />
+          ),
+        }}
+      />
+      {/* Super Admin tab - visible ONLY to super_admin */}
+      <Tabs.Screen
+        name='super-admin'
+        options={{
+          title: 'Super Admin',
+          href: isSuperAdmin ? undefined : null,
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? 'shield-checkmark' : 'shield-checkmark-outline'}
+              size={24}
+              color={color}
+            />
+          ),
+        }}
+      />
     </Tabs>
   );
 }

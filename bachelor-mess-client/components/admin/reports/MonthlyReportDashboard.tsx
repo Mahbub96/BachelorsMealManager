@@ -34,7 +34,12 @@ const getYears = () => {
   return Array.from({ length: 4 }, (_, i) => currentYear - 2 + i);
 };
 
-export const MonthlyReportDashboard = () => {
+interface MonthlyReportDashboardProps {
+  /** When set (e.g. member view), Individual tab only shows this user (view-only). */
+  currentUserId?: string | null;
+}
+
+export const MonthlyReportDashboard = ({ currentUserId }: MonthlyReportDashboardProps) => {
   const { theme } = useTheme();
   const [loading, setLoading] = useState(false);
   const [reportData, setReportData] = useState<MonthlyReportData | null>(null);
@@ -43,6 +48,7 @@ export const MonthlyReportDashboard = () => {
   const [activeTab, setActiveTab] = useState<'group' | 'individual'>('group');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const isMemberView = Boolean(currentUserId);
 
   const loadReport = useCallback(async () => {
     try {
@@ -67,14 +73,16 @@ export const MonthlyReportDashboard = () => {
     loadReport();
   }, [loadReport]);
 
-  // Auto-select first member when switching to Individual or when report loads with members
+  // Auto-select: member view = only current user; admin = first member or current selection
   useEffect(() => {
     if (activeTab !== 'individual' || !reportData?.members?.length) return;
     const ids = reportData.members.map(m => String(m.user._id));
-    if (!selectedUserId || !ids.includes(String(selectedUserId))) {
+    if (isMemberView && currentUserId) {
+      setSelectedUserId(ids.includes(String(currentUserId)) ? currentUserId : reportData.members[0].user._id);
+    } else if (!selectedUserId || !ids.includes(String(selectedUserId))) {
       setSelectedUserId(reportData.members[0].user._id);
     }
-  }, [activeTab, reportData, selectedUserId]);
+  }, [activeTab, reportData, selectedUserId, isMemberView, currentUserId]);
 
   const handleMonthChange = (increment: number) => {
     let newMonth = selectedMonth + increment;
@@ -96,6 +104,15 @@ export const MonthlyReportDashboard = () => {
     if (!reportData || !selectedUserId) return null;
     return reportData.members.find(m => String(m.user._id) === String(selectedUserId));
   }, [reportData, selectedUserId]);
+
+  // For member view: only show current user in Individual tab; for admin show all
+  const membersForIndividualSelector = useMemo(() => {
+    if (!reportData?.members?.length) return [];
+    if (isMemberView && currentUserId) {
+      return reportData.members.filter(m => String(m.user._id) === String(currentUserId));
+    }
+    return reportData.members;
+  }, [reportData, isMemberView, currentUserId]);
 
   const renderHeader = () => (
     <View style={styles.headerContainer}>
@@ -298,7 +315,7 @@ export const MonthlyReportDashboard = () => {
           style={styles.userSelector}
           contentContainerStyle={{ paddingHorizontal: 16 }}
         >
-          {reportData.members.map((member) => (
+          {membersForIndividualSelector.map((member) => (
             <TouchableOpacity
               key={member.user._id}
               style={[
