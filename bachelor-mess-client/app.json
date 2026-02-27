@@ -2,7 +2,7 @@
   "expo": {
     "name": "Bachelor Flat Manager",
     "slug": "bachelor-mess-client",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "bachelormessclient",
@@ -65,9 +65,7 @@
         {
           "icon": "./assets/images/notification-icon.png",
           "color": "#ffffff",
-          "sounds": [
-            "./assets/sounds/notification.wav"
-          ]
+          "sounds": ["./assets/sounds/notification.wav"]
         }
       ],
       "@react-native-community/datetimepicker",

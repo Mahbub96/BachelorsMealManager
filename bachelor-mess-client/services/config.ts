@@ -175,6 +175,20 @@ export const API_ENDPOINTS = {
     ACCEPT: (id: string) => `/api/removal-requests/${id}/accept`,
     REJECT: (id: string) => `/api/removal-requests/${id}/reject`,
   },
+  GROUP_ADMIN: {
+    CURRENT: '/api/group-admin/change-requests/current',
+    CREATE: '/api/group-admin/change-requests',
+    VOTE: (id: string) => `/api/group-admin/change-requests/${id}/vote`,
+    CANCEL: '/api/group-admin/change-requests/current/cancel',
+    MEMBERS: '/api/group-admin/members',
+    // Election flow: admin arranges → members apply → admin starts → members vote
+    ELECTION_CURRENT: '/api/group-admin/elections/current',
+    ELECTION_CREATE: '/api/group-admin/elections',
+    ELECTION_APPLY: '/api/group-admin/elections/current/apply',
+    ELECTION_START: '/api/group-admin/elections/current/start',
+    ELECTION_VOTE: '/api/group-admin/elections/current/vote',
+    ELECTION_CANCEL: '/api/group-admin/elections/current/cancel',
+  },
 } as const;
 
 export default config;

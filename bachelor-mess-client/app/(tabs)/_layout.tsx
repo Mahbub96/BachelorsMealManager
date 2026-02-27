@@ -31,7 +31,7 @@ export default function TabLayout() {
   const backgroundColor = theme.background;
   const borderColor = theme.border?.secondary ?? theme.tab?.border;
   const tabActiveColor = theme.tab?.active ?? theme.primary;
-  const tabInactiveColor = theme.tab?.inactive ?? theme.text.tertiary;
+  const tabInactiveColor = theme.tab?.inactive ?? theme.text.secondary;
   const shadowColor = theme.shadow?.light ?? theme.cardShadow;
 
   // Tab visibility by role: Admin tab for admin/super_admin, Analysis tab for member only

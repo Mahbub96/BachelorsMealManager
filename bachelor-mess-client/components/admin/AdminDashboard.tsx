@@ -46,6 +46,7 @@ import {
   removalRequestService,
   type RemovalRequest,
 } from '../../services/removalRequestService';
+import { groupAdminService, type Election } from '../../services/groupAdminService';
 import { MemberFormModal } from './MemberFormModal';
 import { MemberViewModal } from './MemberViewModal';
 import { MonthlyReportDashboard } from './reports/MonthlyReportDashboard';
@@ -113,6 +114,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   const [requestRemovalLoading, setRequestRemovalLoading] = useState(false);
   const { createUser } = useUsers();
   const isMountedRef = useRef(true);
+  const [adminChangeInfo, setAdminChangeInfo] = useState<{
+    candidateName: string;
+    votes: number;
+    requiredVotes: number;
+  } | null>(null);
+  const [currentElection, setCurrentElection] = useState<Election | null>(null);
+  const [electionStats, setElectionStats] = useState<{
+    totalMembers: number;
+    votedCount: number;
+    remainingVotes: number;
+  } | null>(null);
 
   const resetPasswordMember = useMemo(
     () => (resettingPasswordFor ? members.find((m) => m.id === resettingPasswordFor) : null),
@@ -163,6 +175,68 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
       }
     }
   }, []);
+
+  const loadAdminChangeStatus = useCallback(async () => {
+    if (user?.role !== 'admin') {
+      setAdminChangeInfo(null);
+      return;
+    }
+    try {
+      const res = await groupAdminService.getCurrent();
+      if (!res.success || !res.data || !res.data.request || res.data.request.status !== 'pending') {
+        if (isMountedRef.current) setAdminChangeInfo(null);
+        return;
+      }
+      const { request, requiredVotes, remainingVotes } = res.data;
+      const candidateName =
+        request.candidateId &&
+        typeof request.candidateId === 'object' &&
+        'name' in request.candidateId
+          ? (request.candidateId as { name: string }).name
+          : 'Selected member';
+      const votes = Math.max(0, requiredVotes - remainingVotes);
+      if (isMountedRef.current) {
+        setAdminChangeInfo({
+          candidateName,
+          votes,
+          requiredVotes,
+        });
+      }
+    } catch {
+      if (isMountedRef.current) setAdminChangeInfo(null);
+    }
+  }, [user?.role]);
+
+  const loadCurrentElection = useCallback(async (forceRefresh = false) => {
+    if (user?.role !== 'admin') {
+      setCurrentElection(null);
+      setElectionStats(null);
+      return;
+    }
+    try {
+      const res = await groupAdminService.getCurrentElection(forceRefresh);
+      if (res.success && res.data && isMountedRef.current) {
+        setCurrentElection(res.data.election ?? null);
+        setElectionStats(
+          res.data.election
+            ? {
+                totalMembers: res.data.totalMembers ?? 0,
+                votedCount: res.data.votedCount ?? 0,
+                remainingVotes: res.data.remainingVotes ?? 0,
+              }
+            : null
+        );
+      } else if (isMountedRef.current) {
+        setCurrentElection(null);
+        setElectionStats(null);
+      }
+    } catch {
+      if (isMountedRef.current) {
+        setCurrentElection(null);
+        setElectionStats(null);
+      }
+    }
+  }, [user?.role]);
 
   const loadRemovalRequests = useCallback(async () => {
     if (user?.role !== 'admin' && user?.role !== 'super_admin') return;
@@ -229,14 +303,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
       if (user?.role === 'admin' || user?.role === 'super_admin') {
         const loadData = async () => {
           if (activeTab === 'overview') {
-            await loadAdminStats();
+            await Promise.all([loadAdminStats(), loadAdminChangeStatus(), loadCurrentElection()]);
           } else if (activeTab === 'members') {
             await Promise.all([loadMembers(true), loadRemovalRequests()]);
           }
         };
         loadData();
       }
-    }, [user?.role, activeTab, loadAdminStats, loadMembers, loadRemovalRequests])
+    }, [user?.role, activeTab, loadAdminStats, loadMembers, loadRemovalRequests, loadAdminChangeStatus, loadCurrentElection])
   );
 
   useEffect(() => {
@@ -386,6 +460,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
         onPress: () => setActiveTab('reports'),
       },
       {
+        id: 'change-admin',
+        title: 'Change Admin',
+        subtitle: 'Prepare group voting',
+        icon: 'people-circle',
+        color: theme.gradient.primary[0],
+        onPress: () => setActiveTab('members'),
+      },
+      {
         id: 'approve-all',
         title: 'Approve All',
         subtitle: 'Approve pending meals',
@@ -420,26 +502,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
     ],
     [theme, handleQuickAction]
   );
-
-  // Access control
-  if (user?.role !== 'admin' && user?.role !== 'super_admin') {
-    return (
-      <ThemedView style={styles.accessDeniedContainer}>
-        <LinearGradient
-          colors={theme.gradient.info as [string, string]}
-          style={styles.accessDeniedGradient}
-        >
-          <Ionicons name='shield' size={80} color={theme.onPrimary?.text ?? theme.text?.inverse} />
-          <ThemedText style={[styles.accessDeniedTitle, { color: theme.onPrimary?.text ?? theme.text?.inverse }]}>
-            Access Denied
-          </ThemedText>
-          <ThemedText style={[styles.accessDeniedText, { color: theme.onPrimary?.text ?? theme.text?.inverse }]}>
-            This area is restricted to Administrators only.
-          </ThemedText>
-        </LinearGradient>
-      </ThemedView>
-    );
-  }
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -522,6 +584,230 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
             subtitle="Meal Management Center"
             icon="shield"
           />
+          {/* Election flow: arrange → members apply → admin starts → members vote */}
+          {user?.role === 'admin' && (
+            <View style={[styles.adminChangeCard, { backgroundColor: theme.cardBackground ?? theme.surface, borderColor: theme.border?.secondary ?? theme.cardBorder }]}>
+              {!currentElection ? (
+                <>
+                  <View style={styles.adminChangeHeader}>
+                    <Ionicons name="calendar" size={22} color={theme.status?.info} />
+                    <ThemedText style={styles.adminChangeTitle}>Admin election</ThemedText>
+                  </View>
+                  <ThemedText style={[styles.adminChangeText, { color: theme.text?.secondary }]}>
+                    Arrange an election so members can apply as candidates. You start the election when ready.
+                  </ThemedText>
+                  <TouchableOpacity
+                    style={[styles.resetVoteButton, { backgroundColor: theme.primary, marginTop: 8 }]}
+                    onPress={() => {
+                      Alert.alert(
+                        'Arrange election',
+                        'Set an optional election date (members will see it). You can start the election later.',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Arrange',
+                            onPress: async () => {
+                              try {
+                                const res = await groupAdminService.createElection();
+                                if (res.success) {
+                                  await loadCurrentElection(true);
+                                  Alert.alert('Done', 'Election arranged. Members can now apply to be candidates.');
+                                } else {
+                                  Alert.alert('Error', res.error ?? 'Failed to arrange election.');
+                                }
+                              } catch {
+                                Alert.alert('Error', 'Failed to arrange election.');
+                              }
+                            },
+                          },
+                        ]
+                      );
+                    }}
+                  >
+                    <ThemedText style={styles.resetVoteButtonText}>Arrange election</ThemedText>
+                  </TouchableOpacity>
+                </>
+              ) : currentElection.status === 'accepting_candidates' ? (
+                <>
+                  <View style={styles.adminChangeHeader}>
+                    <Ionicons name="people" size={22} color={theme.status?.info} />
+                    <ThemedText style={styles.adminChangeTitle}>Election – accepting candidates</ThemedText>
+                  </View>
+                  {currentElection.electionDate && (
+                    <ThemedText style={[styles.adminChangeText, { color: theme.text?.secondary }]}>
+                      Date: {new Date(currentElection.electionDate).toLocaleDateString()}
+                    </ThemedText>
+                  )}
+                  <ThemedText style={[styles.adminChangeText, { color: theme.text?.secondary }]}>
+                    Candidates: {currentElection.candidates?.length ?? 0}. Start the election when ready.
+                  </ThemedText>
+                  <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+                    <TouchableOpacity
+                      style={[styles.resetVoteButton, { flex: 1, backgroundColor: theme.primary }]}
+                      onPress={async () => {
+                        try {
+                          const res = await groupAdminService.startElection();
+                          if (res.success) {
+                            await loadCurrentElection(true);
+                            Alert.alert('Done', 'Election started. Members can now vote.');
+                          } else {
+                            Alert.alert('Error', res.error ?? 'Failed to start.');
+                          }
+                        } catch {
+                          Alert.alert('Error', 'Failed to start.');
+                        }
+                      }}
+                    >
+                      <ThemedText style={styles.resetVoteButtonText}>Start election</ThemedText>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.resetVoteButton, { flex: 1, backgroundColor: theme.status?.warning ?? theme.primary }]}
+                      onPress={() => {
+                        Alert.alert('Cancel election', 'Cancel this election? Members will need a new one.', [
+                          { text: 'No', style: 'cancel' },
+                          {
+                            text: 'Cancel election',
+                            style: 'destructive',
+                            onPress: async () => {
+                              try {
+                                const res = await groupAdminService.cancelElection();
+                                if (res.success) {
+                                  await loadCurrentElection(true);
+                                  Alert.alert('Done', 'Election cancelled.');
+                                } else {
+                                  Alert.alert('Error', res.error ?? 'Failed.');
+                                }
+                              } catch {
+                                Alert.alert('Error', 'Failed.');
+                              }
+                            },
+                          },
+                        ]);
+                      }}
+                    >
+                      <ThemedText style={styles.resetVoteButtonText}>Cancel</ThemedText>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              ) : currentElection.status === 'voting' && electionStats ? (
+                <>
+                  <View style={styles.adminChangeHeader}>
+                    <Ionicons name="checkmark-circle" size={22} color={theme.status?.info} />
+                    <ThemedText style={styles.adminChangeTitle}>Election – voting in progress</ThemedText>
+                  </View>
+                  <ThemedText style={[styles.adminChangeProgress, { color: theme.text?.primary }]}>
+                    Progress: {electionStats.votedCount}/{electionStats.totalMembers} votes
+                  </ThemedText>
+                  <TouchableOpacity
+                    style={[styles.resetVoteButton, { marginTop: 8, backgroundColor: theme.status?.warning ?? theme.primary }]}
+                    onPress={() => {
+                      Alert.alert('Cancel election', 'Cancel this election?', [
+                        { text: 'No', style: 'cancel' },
+                        {
+                          text: 'Cancel',
+                          style: 'destructive',
+                          onPress: async () => {
+                            try {
+                              const res = await groupAdminService.cancelElection();
+                              if (res.success) {
+                                await loadCurrentElection(true);
+                                Alert.alert('Done', 'Election cancelled.');
+                              } else {
+                                Alert.alert('Error', res.error ?? 'Failed.');
+                              }
+                            } catch {
+                              Alert.alert('Error', 'Failed.');
+                            }
+                          },
+                        },
+                      ]);
+                    }}
+                  >
+                    <ThemedText style={styles.resetVoteButtonText}>Cancel election</ThemedText>
+                  </TouchableOpacity>
+                </>
+              ) : null}
+            </View>
+          )}
+          {adminChangeInfo && (
+            <View
+              style={[
+                styles.adminChangeCard,
+                {
+                  backgroundColor: theme.cardBackground ?? theme.surface,
+                  borderColor: theme.border?.secondary ?? theme.cardBorder,
+                },
+              ]}
+            >
+              <View style={styles.adminChangeHeader}>
+                <Ionicons
+                  name="people-circle"
+                  size={22}
+                  color={theme.status.info}
+                />
+                <ThemedText style={styles.adminChangeTitle}>
+                  Admin change vote in progress
+                </ThemedText>
+              </View>
+              <ThemedText
+                style={[
+                  styles.adminChangeText,
+                  { color: theme.text.secondary },
+                ]}
+              >
+                Members are voting to make{' '}
+                <ThemedText style={styles.adminChangeHighlight}>
+                  {adminChangeInfo.candidateName}
+                </ThemedText>{' '}
+                the new admin. This will complete automatically when all group
+                members have voted.
+              </ThemedText>
+              <ThemedText
+                style={[
+                  styles.adminChangeProgress,
+                  { color: theme.text.primary },
+                ]}
+              >
+                Progress: {adminChangeInfo.votes}/{adminChangeInfo.requiredVotes}{' '}
+                votes
+              </ThemedText>
+              <TouchableOpacity
+                style={[
+                  styles.resetVoteButton,
+                  { backgroundColor: theme.status?.warning ?? theme.primary },
+                ]}
+                onPress={async () => {
+                  Alert.alert(
+                    'Reset vote round',
+                    'Cancel the current vote? Members will be able to start or join a new vote.',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'Reset',
+                        onPress: async () => {
+                          try {
+                            const res = await groupAdminService.cancelCurrent();
+                            if (res.success) {
+                              await loadAdminChangeStatus();
+                              Alert.alert('Done', 'Vote round reset. Members can vote again.');
+                            } else {
+                              Alert.alert('Error', res.error ?? 'Failed to reset vote.');
+                            }
+                          } catch {
+                            Alert.alert('Error', 'Failed to reset vote.');
+                          }
+                        },
+                      },
+                    ]
+                  );
+                }}
+              >
+                <ThemedText style={styles.resetVoteButtonText}>
+                  Reset vote (members can vote again)
+                </ThemedText>
+              </TouchableOpacity>
+            </View>
+          )}
           <StatsGrid stats={adminStatsForGrid} columns={2} isSmallScreen={false} />
           <QuickActions
             actions={adminQuickActions}
@@ -1236,6 +1522,40 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
     { key: 'reports', label: 'Reports', icon: 'stats-chart' },
   ];
 
+  // Access control (after all hooks)
+  if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+    return (
+      <ThemedView style={styles.accessDeniedContainer}>
+        <LinearGradient
+          colors={theme.gradient.info as [string, string]}
+          style={styles.accessDeniedGradient}
+        >
+          <Ionicons
+            name="shield"
+            size={80}
+            color={theme.onPrimary?.text ?? theme.text?.inverse}
+          />
+          <ThemedText
+            style={[
+              styles.accessDeniedTitle,
+              { color: theme.onPrimary?.text ?? theme.text?.inverse },
+            ]}
+          >
+            Access Denied
+          </ThemedText>
+          <ThemedText
+            style={[
+              styles.accessDeniedText,
+              { color: theme.onPrimary?.text ?? theme.text?.inverse },
+            ]}
+          >
+            This area is restricted to Administrators only.
+          </ThemedText>
+        </LinearGradient>
+      </ThemedView>
+    );
+  }
+
   return (
     <ThemedView style={styles.container}>
       {/* Tab bar – chip style aligned with shared FilterChipsPanel */}
@@ -1540,6 +1860,47 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 14,
     letterSpacing: 0.2,
+  },
+  adminChangeCard: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  adminChangeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+    gap: 8,
+  },
+  adminChangeTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  adminChangeText: {
+    fontSize: 13,
+    marginBottom: 4,
+  },
+  adminChangeHighlight: {
+    fontWeight: '700',
+  },
+  adminChangeProgress: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  resetVoteButton: {
+    marginTop: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  resetVoteButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#fff',
   },
   summaryCard: {
     borderRadius: 16,

@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import NetInfo from '@react-native-community/netinfo';
 import logger from '../utils/logger';
 import authEventEmitter from './authEventEmitter';
 import { config as API_CONFIG, ApiResponse, HTTP_STATUS } from './config';
@@ -103,9 +104,8 @@ class HttpClient {
     });
   }
 
-  // Enhanced online check with caching
+  // Enhanced online check: NetInfo first, then API health (avoids false "no internet" when device has network)
   private async isOnline(): Promise<boolean> {
-    // Check cache first
     if (
       this.isOnlineCache &&
       Date.now() - this.isOnlineCache.timestamp < this.ONLINE_CACHE_DURATION
@@ -114,20 +114,22 @@ class HttpClient {
     }
 
     try {
-      // Try both /health and /api/health endpoints
+      const netState = await NetInfo.fetch();
+      if (!netState.isConnected) {
+        this.isOnlineCache = { status: false, timestamp: Date.now() };
+        return false;
+      }
+
       const healthUrls = [
         `${this.baseURL}/health`,
         `${this.baseURL}/api/health`,
       ];
-
       let lastError: Error | null = null;
-      
-      // Try each health URL
+
       for (const healthUrl of healthUrls) {
         try {
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 10000);
-
           const response = await fetch(healthUrl, {
             method: 'GET',
             headers: {
@@ -136,45 +138,24 @@ class HttpClient {
             },
             signal: controller.signal,
           });
-
           clearTimeout(timeoutId);
 
-          if (response.ok) {
-            this.isOnlineCache = {
-              status: true,
-              timestamp: Date.now(),
-            };
+          if (response.ok || response.status === 429) {
+            this.isOnlineCache = { status: true, timestamp: Date.now() };
             return true;
-          } else if (response.status === 429) {
-            // 429 = Rate limited, but server IS online
-            logger.warn(`API rate limited (429), but server is online`);
-            this.isOnlineCache = {
-              status: true,
-              timestamp: Date.now(),
-            };
-            return true;
-          } else {
-            lastError = new Error(`HTTP ${response.status}: ${response.statusText}`);
-            continue; // Try next URL
           }
+          lastError = new Error(`HTTP ${response.status}: ${response.statusText}`);
         } catch (error) {
           lastError = error instanceof Error ? error : new Error(String(error));
-          continue; // Try next URL
         }
       }
 
-      // All URLs failed
-      logger.error('All health check URLs failed:', lastError?.message);
-      this.isOnlineCache = {
-        status: false,
-        timestamp: Date.now(),
-      };
-      return false;
+      // Device has network (NetInfo) but health check failed — assume online so real API requests run
+      logger.warn('Health check failed but device has network:', lastError?.message);
+      this.isOnlineCache = { status: true, timestamp: Date.now() };
+      return true;
     } catch (error) {
-      this.isOnlineCache = {
-        status: false,
-        timestamp: Date.now(),
-      };
+      this.isOnlineCache = { status: false, timestamp: Date.now() };
       return false;
     }
   }

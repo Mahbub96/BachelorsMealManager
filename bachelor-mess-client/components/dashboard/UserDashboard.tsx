@@ -1,7 +1,12 @@
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useApiData } from '@/hooks/useApiData';
-import { activityService, type Activity, type ActivityFilters as ApiActivityFilters, buildActivityFiltersFromUI } from '@/services/activityService';
+import {
+  activityService,
+  type Activity,
+  type ActivityFilters as ApiActivityFilters,
+  buildActivityFiltersFromUI,
+} from '@/services/activityService';
 import errorHandler from '@/services/errorHandler';
 import httpClient from '@/services/httpClient';
 import userStatsService, {
@@ -54,8 +59,6 @@ export const UserDashboard: React.FC = () => {
     loading: statsLoading,
     error: statsError,
   } = useApiData(userStatsService.getUserDashboardStats, {
-    // Disable automatic fetching & retries here to avoid duplicate
-    // requests; this screen uses its own explicit loader.
     autoFetch: false,
     retryOnError: false,
     maxRetries: 0,
@@ -66,17 +69,59 @@ export const UserDashboard: React.FC = () => {
   const [activitiesLoading, setActivitiesLoading] = useState(false);
   const [activitiesError, setActivitiesError] = useState<string | null>(null);
   const [activitySearchQuery, setActivitySearchQuery] = useState('');
-  const [activityFilterValues, setActivityFilterValues] = useState<Record<string, string>>({
+  const [activityFilterValues, setActivityFilterValues] = useState<
+    Record<string, string>
+  >({
     type: 'all',
     status: 'all',
     dateRange: 'month',
     sortBy: 'newest',
   });
-  const [showActivityFiltersPanel, setShowActivityFiltersPanel] = useState(false);
+  const [showActivityFiltersPanel, setShowActivityFiltersPanel] =
+    useState(false);
 
   const buildActivityApiFilters = useCallback(
-    (): ApiActivityFilters => buildActivityFiltersFromUI(activityFilterValues, activitySearchQuery),
+    (): ApiActivityFilters =>
+      buildActivityFiltersFromUI(activityFilterValues, activitySearchQuery),
     [activityFilterValues, activitySearchQuery]
+  );
+
+  const loadActivities = useCallback(
+    async (filters?: ApiActivityFilters, forceRefresh?: boolean) => {
+      try {
+        if (isMounted.current) {
+          setActivitiesLoading(true);
+          setActivitiesError(null);
+        }
+
+        const apiFilters = filters ?? buildActivityApiFilters();
+        const cacheOpt = forceRefresh ? { cache: false as const } : undefined;
+        const response = await activityService.getRecentActivities(
+          apiFilters,
+          1,
+          50,
+          cacheOpt
+        );
+
+        if (response.success && response.data) {
+          if (isMounted.current) {
+            setActivities(response.data.activities);
+          }
+        } else {
+          const errorMsg = response.error || 'Failed to load activities';
+          if (isMounted.current) setActivitiesError(errorMsg);
+          logger.error('Failed to load activities', response.error);
+        }
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : 'Failed to load activities';
+        if (isMounted.current) setActivitiesError(errorMessage);
+        logger.error('Error loading activities', err);
+      } finally {
+        if (isMounted.current) setActivitiesLoading(false);
+      }
+    },
+    [buildActivityApiFilters]
   );
 
   const handleActivityFilterChange = useCallback(
@@ -144,36 +189,6 @@ export const UserDashboard: React.FC = () => {
     }
   }, []);
 
-  const loadActivities = useCallback(async (filters?: ApiActivityFilters, forceRefresh?: boolean) => {
-    try {
-      if (isMounted.current) {
-        setActivitiesLoading(true);
-        setActivitiesError(null);
-      }
-
-      const apiFilters = filters ?? buildActivityApiFilters();
-      const cacheOpt = forceRefresh ? { cache: false as const } : undefined;
-      const response = await activityService.getRecentActivities(apiFilters, 1, 50, cacheOpt);
-
-      if (response.success && response.data) {
-        if (isMounted.current) {
-          setActivities(response.data.activities);
-        }
-      } else {
-        const errorMsg = response.error || 'Failed to load activities';
-        if (isMounted.current) setActivitiesError(errorMsg);
-        logger.error('Failed to load activities', response.error);
-      }
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'Failed to load activities';
-      if (isMounted.current) setActivitiesError(errorMessage);
-      logger.error('Error loading activities', err);
-    } finally {
-      if (isMounted.current) setActivitiesLoading(false);
-    }
-  }, [buildActivityApiFilters]);
-
   useFocusEffect(
     useCallback(() => {
       isMounted.current = true;
@@ -191,7 +206,13 @@ export const UserDashboard: React.FC = () => {
       await loadActivities(buildActivityApiFilters(), true);
     });
     return () => unregister('dashboard');
-  }, [register, unregister, loadDashboardData, loadActivities, buildActivityApiFilters]);
+  }, [
+    register,
+    unregister,
+    loadDashboardData,
+    loadActivities,
+    buildActivityApiFilters,
+  ]);
 
   const handlePullRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -205,14 +226,38 @@ export const UserDashboard: React.FC = () => {
   const handleRetry = async () => {
     httpClient.clearOnlineCache();
     try {
-      const { default: dashboardService } = await import('@/services/dashboardService');
+      const { default: dashboardService } =
+        await import('@/services/dashboardService');
       await dashboardService.refreshDashboard();
     } catch (error) {
-        logger.warn('Could not refresh dashboard service cache', error);
+      logger.warn('Could not refresh dashboard service cache', error);
     }
     await loadDashboardData();
     await loadActivities(buildActivityApiFilters(), true);
   };
+
+  const handleChangeAdminVote = useCallback(async () => {
+    if (!user) {
+      Alert.alert('Login Required', 'Please log in to use this feature', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Login', onPress: () => router.push('/LoginScreen') },
+      ]);
+      return;
+    }
+
+    if (user.role !== 'member') {
+      Alert.alert(
+        'Not available',
+        'Only group members can start or vote for admin change.'
+      );
+      return;
+    }
+
+    router.push({
+      pathname: '/(tabs)/reports',
+      params: { tab: 'vote' },
+    });
+  }, [user, router]);
 
   const handleQuickAction = (action: string) => {
     if (!user) {
@@ -241,6 +286,9 @@ export const UserDashboard: React.FC = () => {
         break;
       case 'view-profile':
         router.push('/profile');
+        break;
+      case 'change-admin':
+        void handleChangeAdminVote();
         break;
       default:
         break;
@@ -271,7 +319,7 @@ export const UserDashboard: React.FC = () => {
       case 'Meal Rate':
         Alert.alert(
           'Current Meal Rate',
-          `Meal rate (this month) = Total group bazar ÷ Total group meals. Same for everyone in your group.`,
+          `Meal rate (this month) = Total group bazar ÷ Total group meals. Same for everyone in your group.`
         );
         break;
       default:
@@ -311,7 +359,6 @@ export const UserDashboard: React.FC = () => {
   // Prepare dashboard data
   const stats = dashboardData || userStats;
   const userGreeting = user ? `Welcome back, ${user.name}` : undefined;
-
 
   // Prepare stats for StatsGrid - using real API data with click handlers
   const dashboardStats: StatItem[] = stats
@@ -459,6 +506,18 @@ export const UserDashboard: React.FC = () => {
       color: theme.gradient.warning[0],
       onPress: () => handleQuickAction('payments'),
     },
+    ...(user?.role === 'member'
+      ? ([
+          {
+            id: 'change-admin',
+            title: 'Change Admin',
+            subtitle: 'Start or join vote',
+            icon: 'people-circle',
+            color: theme.gradient.info[0],
+            onPress: () => handleQuickAction('change-admin'),
+          },
+        ] as ActionItem[])
+      : []),
   ];
 
   // Convert API activities to component format
@@ -503,7 +562,10 @@ export const UserDashboard: React.FC = () => {
   };
 
   // Helper function to get activity colors
-  const getActivityColors = (type: string, theme: ReturnType<typeof useTheme>['theme']): [string, string] => {
+  const getActivityColors = (
+    type: string,
+    theme: ReturnType<typeof useTheme>['theme']
+  ): [string, string] => {
     switch (type) {
       case 'meal':
         return theme.gradient.success as [string, string];
@@ -526,9 +588,7 @@ export const UserDashboard: React.FC = () => {
 
   // Show loading state
   if (isLoading || statsLoading) {
-    return (
-      <ModernLoader visible={true} text="Loading your dashboard..." />
-    );
+    return <ModernLoader visible={true} text='Loading your dashboard...' />;
   }
 
   // Show API connection error
@@ -578,7 +638,7 @@ export const UserDashboard: React.FC = () => {
     return (
       <ThemedView style={styles.container}>
         <DashboardHeader
-          title={user ? `Welcome back, ${user.name}` : 'Your Dashboard'}  
+          title={user ? `Welcome back, ${user.name}` : 'Your Dashboard'}
           subtitle="Here's your personal overview"
           icon='person'
         />
@@ -601,7 +661,7 @@ export const UserDashboard: React.FC = () => {
   return (
     <ThemedView style={styles.container}>
       <DashboardHeader
-        title={user ? `Welcome back, ${user.name}` : 'Your Dashboard'}  
+        title={user ? `Welcome back, ${user.name}` : 'Your Dashboard'}
         subtitle="Here's your personal overview"
         icon='person'
         userGreeting={userGreeting}
@@ -612,7 +672,10 @@ export const UserDashboard: React.FC = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handlePullRefresh} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handlePullRefresh}
+          />
         }
       >
         {/* Stats Grid */}
@@ -630,19 +693,33 @@ export const UserDashboard: React.FC = () => {
         {/* Recent Activity: title above, then search and filters */}
         <View style={{ paddingHorizontal: 16, marginBottom: 8 }}>
           <View style={{ marginBottom: 14 }}>
-            <ThemedText style={{ fontSize: 18, fontWeight: '700', letterSpacing: 0.2, marginBottom: 2, color: theme?.text?.primary }}>
+            <ThemedText
+              style={{
+                fontSize: 18,
+                fontWeight: '700',
+                letterSpacing: 0.2,
+                marginBottom: 2,
+                color: theme?.text?.primary,
+              }}
+            >
               Recent Activity ({recentActivities.length})
             </ThemedText>
-            <ThemedText style={{ fontSize: 13, fontWeight: '500', color: theme?.text?.secondary }}>
+            <ThemedText
+              style={{
+                fontSize: 13,
+                fontWeight: '500',
+                color: theme?.text?.secondary,
+              }}
+            >
               Latest updates from your flat
             </ThemedText>
           </View>
           <SearchAndFilterRow
-            searchPlaceholder="Search activity..."
+            searchPlaceholder='Search activity...'
             searchValue={activitySearchQuery}
             onSearchChange={handleActivitySearchChange}
             showFiltersPanel={showActivityFiltersPanel}
-            onToggleFilters={() => setShowActivityFiltersPanel((p) => !p)}
+            onToggleFilters={() => setShowActivityFiltersPanel(p => !p)}
           >
             <FilterChipsPanel
               sections={ACTIVITY_FILTER_SECTIONS}
@@ -653,11 +730,13 @@ export const UserDashboard: React.FC = () => {
         </View>
         {activitiesLoading && (
           <View style={{ padding: 16, alignItems: 'center', height: 100 }}>
-             <ModernLoader visible={true} overlay={false} size="small" />
+            <ModernLoader visible={true} overlay={false} size='small' />
           </View>
         )}
         {activitiesError && !activitiesLoading && (
-          <ThemedText style={{ padding: 16, color: theme?.status?.error }}>{activitiesError}</ThemedText>
+          <ThemedText style={{ padding: 16, color: theme?.status?.error }}>
+            {activitiesError}
+          </ThemedText>
         )}
         {!activitiesLoading && (
           <RecentActivity

@@ -21,6 +21,8 @@ export interface InfoModalProps {
   buttonText?: string;
   /** When set, primary button calls onConfirm then onClose; X/overlay only call onClose */
   onConfirm?: () => void;
+  /** When set, shows a secondary (Cancel) button that only calls onClose */
+  secondaryButtonText?: string;
 }
 
 const variantConfig = (
@@ -52,6 +54,7 @@ export const InfoModal: React.FC<InfoModalProps> = ({
   variant = 'info',
   buttonText = 'OK',
   onConfirm,
+  secondaryButtonText,
 }) => {
   const { theme } = useTheme();
   const config = variantConfig(theme)[variant];
@@ -108,15 +111,37 @@ export const InfoModal: React.FC<InfoModalProps> = ({
             style={[
               styles.footer,
               { borderTopColor: theme.border?.secondary ?? 'rgba(0,0,0,0.08)' },
+              secondaryButtonText && styles.footerRow,
             ]}
           >
-            <TouchableOpacity
-              style={[styles.primaryButton, { backgroundColor: theme.primary }]}
-              onPress={handlePrimaryPress}
-              activeOpacity={0.85}
-            >
-              <ThemedText style={styles.primaryButtonText}>{buttonText}</ThemedText>
-            </TouchableOpacity>
+            {secondaryButtonText ? (
+              <>
+                <TouchableOpacity
+                  style={[styles.secondaryButton, { borderColor: theme.border?.secondary ?? '#d1d5db' }]}
+                  onPress={onClose}
+                  activeOpacity={0.85}
+                >
+                  <ThemedText style={[styles.secondaryButtonText, { color: theme.text?.secondary ?? '#6b7280' }]}>
+                    {secondaryButtonText}
+                  </ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.primaryButton, { backgroundColor: theme.primary, flex: 1 }]}
+                  onPress={handlePrimaryPress}
+                  activeOpacity={0.85}
+                >
+                  <ThemedText style={styles.primaryButtonText}>{buttonText}</ThemedText>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <TouchableOpacity
+                style={[styles.primaryButton, { backgroundColor: theme.primary }]}
+                onPress={handlePrimaryPress}
+                activeOpacity={0.85}
+              >
+                <ThemedText style={styles.primaryButtonText}>{buttonText}</ThemedText>
+              </TouchableOpacity>
+            )}
           </View>
         </Pressable>
       </Pressable>
@@ -178,6 +203,22 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingHorizontal: 20,
     borderTopWidth: 1,
+  },
+  footerRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  secondaryButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   primaryButton: {
     paddingVertical: 12,

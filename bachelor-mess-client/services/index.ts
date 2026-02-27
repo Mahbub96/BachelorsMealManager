@@ -123,6 +123,9 @@ export type {
 export { offlineStorage } from './offlineStorage';
 export type { OfflineConfig, OfflineData, SyncQueueItem } from './offlineStorage';
 
+// Group Admin (admin change voting) Service
+export { groupAdminService } from './groupAdminService';
+
 // API Service Manager - For managing all services together
 export class ApiServiceManager {
   static async clearAllCache(): Promise<void> {
