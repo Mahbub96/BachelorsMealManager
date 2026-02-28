@@ -14,7 +14,7 @@ interface MealListProps {
   onMealSelect: (mealId: string) => void;
   onStatusUpdate?: (mealId: string, status: 'approved' | 'rejected') => void;
   onEdit?: (mealId: string) => void;
-  onDelete?: (mealId: string) => void;
+  onDelete?: (mealId: string, meal?: MealEntry) => void;
   isAdmin?: boolean;
   showUserInfo?: boolean;
   refreshing?: boolean;

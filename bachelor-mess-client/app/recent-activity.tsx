@@ -135,6 +135,9 @@ export default function RecentActivityScreen() {
         return [g.primary?.[0] ?? '#667eea', g.primary?.[1] ?? '#764ba2'];
       case 'payment':
         return [g.error?.[0] ?? '#ef4444', g.error?.[1] ?? '#dc2626'];
+      case 'meal_deletion':
+      case 'bazar_deletion':
+        return [g.warning?.[0] ?? '#f59e0b', g.warning?.[1] ?? '#d97706'];
       default:
         return [g.info?.[0] ?? '#3b82f6', g.info?.[1] ?? '#1d4ed8'];
     }
@@ -150,6 +153,9 @@ export default function RecentActivityScreen() {
         return 'person';
       case 'payment':
         return 'card';
+      case 'meal_deletion':
+      case 'bazar_deletion':
+        return 'trash';
       default:
         return 'document';
     }

@@ -15,7 +15,7 @@ interface MealListContainerProps {
   loading?: boolean;
   error?: string | null;
   onStatusUpdate?: (mealId: string, status: 'approved' | 'rejected') => void;
-  onDelete?: (mealId: string) => void;
+  onDelete?: (mealId: string, meal?: MealEntry) => void;
   onEdit?: (mealId: string) => void;
 }
 

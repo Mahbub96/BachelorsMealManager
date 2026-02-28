@@ -12,7 +12,7 @@ interface MealCardProps {
   isAdmin?: boolean;
   showUserInfo?: boolean;
   onStatusUpdate?: (mealId: string, status: 'approved' | 'rejected') => void;
-  onDelete?: (mealId: string) => void;
+  onDelete?: (mealId: string, meal?: MealEntry) => void;
   onEdit?: (mealId: string) => void;
 }
 
@@ -135,16 +135,16 @@ export const MealCard: React.FC<MealCardProps> = ({
           </View>
         )}
 
-        {!isAdmin && meal.status === 'pending' && (
+        {((!isAdmin && meal.status === 'pending') || (isAdmin && (onEdit || onDelete))) && (
           <View style={[styles.userActions, { borderTopColor: theme.border?.secondary }]}>
-            {onEdit && (
+            {onEdit && (meal.status === 'pending' || isAdmin) && (
               <TouchableOpacity style={[styles.actionBtn, { backgroundColor: (theme.primary ?? '') + '18' }]} onPress={() => onEdit(meal.id)}>
                 <Ionicons name="create-outline" size={14} color={theme.primary} />
                 <ThemedText style={[styles.actionBtnText, { color: theme.primary }]}>Edit</ThemedText>
               </TouchableOpacity>
             )}
-            {onDelete && (
-              <TouchableOpacity style={[styles.actionBtn, { backgroundColor: (theme.status?.error ?? '') + '18' }]} onPress={() => onDelete(meal.id)}>
+            {onDelete && (meal.status === 'pending' || isAdmin) && (
+              <TouchableOpacity style={[styles.actionBtn, { backgroundColor: (theme.status?.error ?? '') + '18' }]} onPress={() => onDelete(meal.id, meal)}>
                 <Ionicons name="trash-outline" size={14} color={theme.status?.error} />
                 <ThemedText style={[styles.actionBtnText, { color: theme.status?.error }]}>Delete</ThemedText>
               </TouchableOpacity>

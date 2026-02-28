@@ -29,6 +29,43 @@ router.get(
   mealController.getAllMeals
 );
 
+// @desc    Get my pending meal delete requests (meal owner responds here)
+// @route   GET /api/meals/delete-requests
+// @access  Private
+router.get(
+  '/delete-requests',
+  AuthMiddleware.protect(),
+  mealController.getMyDeleteRequests
+);
+
+// @desc    Respond to a meal delete request (accept or reject)
+// @route   POST /api/meals/delete-requests/:requestId/respond
+// @access  Private (meal owner only)
+router.post(
+  '/delete-requests/:requestId/respond',
+  AuthMiddleware.protect(),
+  mealController.respondToDeleteRequest
+);
+
+// @desc    Get meal statistics (static path before :mealId)
+// @route   GET /api/meals/stats/overview
+// @access  Private/Admin
+router.get(
+  '/stats/overview',
+  AuthMiddleware.protect(),
+  AuthMiddleware.requireAdmin(),
+  mealController.getMealStats
+);
+
+// @desc    Get user meal statistics
+// @route   GET /api/meals/stats/user
+// @access  Private
+router.get(
+  '/stats/user',
+  AuthMiddleware.protect(),
+  mealController.getUserMealStats
+);
+
 // @desc    Get meal by ID
 // @route   GET /api/meals/:mealId
 // @access  Private
@@ -49,29 +86,20 @@ router.patch(
   mealController.updateMealStatus
 );
 
-// @desc    Delete meal entry
+// @desc    Request meal deletion (admin only; meal owner must confirm)
+// @route   POST /api/meals/:mealId/delete-request
+// @access  Private/Admin
+router.post(
+  '/:mealId/delete-request',
+  AuthMiddleware.protect(),
+  AuthMiddleware.requireRole(['admin', 'super_admin']),
+  mealController.createDeleteRequest
+);
+
+// @desc    Delete meal entry (own meal only; for others use delete-request)
 // @route   DELETE /api/meals/:mealId
 // @access  Private
 router.delete('/:mealId', AuthMiddleware.protect(), mealController.deleteMeal);
-
-// @desc    Get meal statistics
-// @route   GET /api/meals/stats/overview
-// @access  Private/Admin
-router.get(
-  '/stats/overview',
-  AuthMiddleware.protect(),
-  AuthMiddleware.requireAdmin(),
-  mealController.getMealStats
-);
-
-// @desc    Get user meal statistics
-// @route   GET /api/meals/stats/user
-// @access  Private
-router.get(
-  '/stats/user',
-  AuthMiddleware.protect(),
-  mealController.getUserMealStats
-);
 
 // @desc    Bulk approve meals (admin only)
 // @route   POST /api/meals/bulk-approve

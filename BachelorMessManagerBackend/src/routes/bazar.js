@@ -128,11 +128,40 @@ router.post(
   bazarController.adminBulkOperations
 );
 
+// ---- Delete request flow (before :bazarId) ----
+// @desc    Get my pending bazar delete requests
+// @route   GET /api/bazar/delete-requests
+// @access  Private
+router.get(
+  '/delete-requests',
+  AuthMiddleware.protect(),
+  bazarController.getMyDeleteRequests
+);
+
+// @desc    Respond to bazar delete request (accept/reject)
+// @route   POST /api/bazar/delete-requests/:requestId/respond
+// @access  Private (bazar owner)
+router.post(
+  '/delete-requests/:requestId/respond',
+  AuthMiddleware.protect(),
+  bazarController.respondToDeleteRequest
+);
+
 // ---- Param routes last ----
 // @desc    Get bazar by ID
 // @route   GET /api/bazar/:bazarId
 // @access  Private (own or group)
 router.get('/:bazarId', AuthMiddleware.protect(), bazarController.getBazarById);
+
+// @desc    Request bazar deletion (admin only); owner must confirm
+// @route   POST /api/bazar/:bazarId/delete-request
+// @access  Private (admin, super_admin)
+router.post(
+  '/:bazarId/delete-request',
+  AuthMiddleware.protect(),
+  AuthMiddleware.requireRole(['admin', 'super_admin']),
+  bazarController.createDeleteRequest
+);
 
 // @desc    Update bazar entry
 // @route   PUT /api/bazar/:bazarId

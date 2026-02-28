@@ -1,5 +1,7 @@
 const Meal = require('../models/Meal');
+const MealDeleteRequest = require('../models/MealDeleteRequest');
 const Bazar = require('../models/Bazar');
+const BazarDeleteRequest = require('../models/BazarDeleteRequest');
 const User = require('../models/User');
 const logger = require('../utils/logger');
 const StatisticsService = require('../services/statisticsService');
@@ -115,6 +117,92 @@ class ActivityController {
             notes: meal.notes,
             createdAt: meal.createdAt,
             updatedAt: meal.updatedAt,
+          });
+        });
+      }
+
+      if (!type || type === 'meal_deletion') {
+        const deletionQuery = { status: { $in: ['accepted', 'rejected'] } };
+        if (baseQuery.createdAt) deletionQuery.createdAt = baseQuery.createdAt;
+        if (useGroup) {
+          deletionQuery.requestedFor = { $in: groupMemberIds };
+        } else if (!isAdmin && !isSuperAdmin) {
+          deletionQuery.requestedFor = userId;
+        }
+
+        const deleteRequests = await MealDeleteRequest.find(deletionQuery)
+          .populate('requestedBy', 'name email')
+          .populate('requestedFor', 'name email')
+          .sort({ [sortBy]: sortOrder === 'desc' ? -1 : 1 })
+          .skip(skip)
+          .limit(limitPerType);
+
+        deleteRequests.forEach(req => {
+          const dateStr = new Date(req.mealDate).toLocaleDateString();
+          const ownerName = req.requestedFor?.name || req.requestedFor?.email || 'Unknown';
+          const adminName = req.requestedBy?.name || req.requestedBy?.email || 'Admin';
+          activities.push({
+            id: req._id.toString(),
+            type: 'meal_deletion',
+            title: req.status === 'accepted' ? 'Meal deleted' : 'Delete request rejected',
+            description: req.status === 'accepted'
+              ? `${ownerName} confirmed deletion of their meal (${req.mealSummary}) for ${dateStr}. Requested by ${adminName}.`
+              : `${ownerName} rejected the request to delete their meal for ${dateStr}.`,
+            time: getTimeAgo(req.respondedAt || req.updatedAt),
+            priority: 'low',
+            amount: 0,
+            user: ownerName,
+            icon: 'trash',
+            status: req.status,
+            date: req.mealDate,
+            mealSummary: req.mealSummary,
+            requestedBy: adminName,
+            respondedAt: req.respondedAt,
+            createdAt: req.createdAt,
+            updatedAt: req.updatedAt,
+          });
+        });
+      }
+
+      if (!type || type === 'bazar_deletion') {
+        const bazarDeletionQuery = { status: { $in: ['accepted', 'rejected'] } };
+        if (baseQuery.createdAt) bazarDeletionQuery.createdAt = baseQuery.createdAt;
+        if (useGroup) {
+          bazarDeletionQuery.requestedFor = { $in: groupMemberIds };
+        } else if (!isAdmin && !isSuperAdmin) {
+          bazarDeletionQuery.requestedFor = userId;
+        }
+
+        const bazarDeleteRequests = await BazarDeleteRequest.find(bazarDeletionQuery)
+          .populate('requestedBy', 'name email')
+          .populate('requestedFor', 'name email')
+          .sort({ [sortBy]: sortOrder === 'desc' ? -1 : 1 })
+          .skip(skip)
+          .limit(limitPerType);
+
+        bazarDeleteRequests.forEach(req => {
+          const dateStr = new Date(req.bazarDate).toLocaleDateString();
+          const ownerName = req.requestedFor?.name || req.requestedFor?.email || 'Unknown';
+          const adminName = req.requestedBy?.name || req.requestedBy?.email || 'Admin';
+          activities.push({
+            id: req._id.toString(),
+            type: 'bazar_deletion',
+            title: req.status === 'accepted' ? 'Bazar entry deleted' : 'Delete request rejected',
+            description: req.status === 'accepted'
+              ? `${ownerName} confirmed deletion of their bazar entry (${req.bazarSummary || '৳' + (req.totalAmount || 0)}) for ${dateStr}. Requested by ${adminName}.`
+              : `${ownerName} rejected the request to delete their bazar entry for ${dateStr}.`,
+            time: getTimeAgo(req.respondedAt || req.updatedAt),
+            priority: 'low',
+            amount: req.totalAmount || 0,
+            user: ownerName,
+            icon: 'trash',
+            status: req.status,
+            date: req.bazarDate,
+            bazarSummary: req.bazarSummary,
+            requestedBy: adminName,
+            respondedAt: req.respondedAt,
+            createdAt: req.createdAt,
+            updatedAt: req.updatedAt,
           });
         });
       }
@@ -587,6 +675,80 @@ class ActivityController {
           'Activity retrieved successfully',
           activity
         );
+      }
+
+      // Try to find as meal deletion request
+      const mealDeleteReq = await MealDeleteRequest.findById(id)
+        .populate('requestedBy', 'name email')
+        .populate('requestedFor', 'name email');
+      if (mealDeleteReq) {
+        const groupMemberIds = await getGroupMemberIds(req.user);
+        const canAccess =
+          isAdmin ||
+          (mealDeleteReq.requestedFor && (mealDeleteReq.requestedFor._id || mealDeleteReq.requestedFor).toString() === userId) ||
+          (Array.isArray(groupMemberIds) && groupMemberIds.length > 0 && groupMemberIds.some(m => m.toString() === (mealDeleteReq.requestedFor._id || mealDeleteReq.requestedFor).toString()));
+        if (!canAccess) return sendErrorResponse(res, 403, 'Access denied');
+        const dateStr = new Date(mealDeleteReq.mealDate).toLocaleDateString();
+        const ownerName = mealDeleteReq.requestedFor?.name || mealDeleteReq.requestedFor?.email || 'Unknown';
+        const adminName = mealDeleteReq.requestedBy?.name || mealDeleteReq.requestedBy?.email || 'Admin';
+        const activity = {
+          id: mealDeleteReq._id.toString(),
+          type: 'meal_deletion',
+          title: mealDeleteReq.status === 'accepted' ? 'Meal deleted' : 'Delete request rejected',
+          description: mealDeleteReq.status === 'accepted'
+            ? `${ownerName} confirmed deletion of their meal (${mealDeleteReq.mealSummary}) for ${dateStr}. Requested by ${adminName}.`
+            : `${ownerName} rejected the request to delete their meal for ${dateStr}.`,
+          time: getTimeAgo(mealDeleteReq.respondedAt || mealDeleteReq.updatedAt),
+          priority: 'low',
+          amount: 0,
+          user: ownerName,
+          icon: 'trash',
+          status: mealDeleteReq.status,
+          date: mealDeleteReq.mealDate,
+          mealSummary: mealDeleteReq.mealSummary,
+          requestedBy: adminName,
+          respondedAt: mealDeleteReq.respondedAt,
+          createdAt: mealDeleteReq.createdAt,
+          updatedAt: mealDeleteReq.updatedAt,
+        };
+        return sendSuccessResponse(res, 200, 'Activity retrieved successfully', activity);
+      }
+
+      // Try to find as bazar deletion request
+      const bazarDeleteReq = await BazarDeleteRequest.findById(id)
+        .populate('requestedBy', 'name email')
+        .populate('requestedFor', 'name email');
+      if (bazarDeleteReq) {
+        const groupMemberIds = await getGroupMemberIds(req.user);
+        const canAccess =
+          isAdmin ||
+          (bazarDeleteReq.requestedFor && (bazarDeleteReq.requestedFor._id || bazarDeleteReq.requestedFor).toString() === userId) ||
+          (Array.isArray(groupMemberIds) && groupMemberIds.length > 0 && groupMemberIds.some(m => m.toString() === (bazarDeleteReq.requestedFor._id || bazarDeleteReq.requestedFor).toString()));
+        if (!canAccess) return sendErrorResponse(res, 403, 'Access denied');
+        const dateStr = new Date(bazarDeleteReq.bazarDate).toLocaleDateString();
+        const ownerName = bazarDeleteReq.requestedFor?.name || bazarDeleteReq.requestedFor?.email || 'Unknown';
+        const adminName = bazarDeleteReq.requestedBy?.name || bazarDeleteReq.requestedBy?.email || 'Admin';
+        const activity = {
+          id: bazarDeleteReq._id.toString(),
+          type: 'bazar_deletion',
+          title: bazarDeleteReq.status === 'accepted' ? 'Bazar entry deleted' : 'Delete request rejected',
+          description: bazarDeleteReq.status === 'accepted'
+            ? `${ownerName} confirmed deletion of their bazar entry (${bazarDeleteReq.bazarSummary || '৳' + (bazarDeleteReq.totalAmount || 0)}) for ${dateStr}. Requested by ${adminName}.`
+            : `${ownerName} rejected the request to delete their bazar entry for ${dateStr}.`,
+          time: getTimeAgo(bazarDeleteReq.respondedAt || bazarDeleteReq.updatedAt),
+          priority: 'low',
+          amount: bazarDeleteReq.totalAmount || 0,
+          user: ownerName,
+          icon: 'trash',
+          status: bazarDeleteReq.status,
+          date: bazarDeleteReq.bazarDate,
+          bazarSummary: bazarDeleteReq.bazarSummary,
+          requestedBy: adminName,
+          respondedAt: bazarDeleteReq.respondedAt,
+          createdAt: bazarDeleteReq.createdAt,
+          updatedAt: bazarDeleteReq.updatedAt,
+        };
+        return sendSuccessResponse(res, 200, 'Activity retrieved successfully', activity);
       }
 
       // Try to find as user (member registration) - admin only

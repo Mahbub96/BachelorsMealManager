@@ -76,6 +76,20 @@ export interface BazarStats {
   lastUpdated: string;
 }
 
+export interface BazarDeleteRequestItem {
+  _id: string;
+  bazarId: string | { _id: string };
+  requestedBy: { _id: string; name?: string; email?: string };
+  requestedFor: { _id: string; name?: string; email?: string };
+  status: 'pending' | 'accepted' | 'rejected';
+  bazarDate: string;
+  bazarSummary: string;
+  totalAmount?: number;
+  respondedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface BazarService {
   submitBazar: (data: BazarSubmission) => Promise<ApiResponse<BazarEntry>>;
   getUserBazarEntries: (
@@ -97,6 +111,9 @@ export interface BazarService {
     data: Partial<BazarSubmission>
   ) => Promise<ApiResponse<BazarEntry>>;
   deleteBazar: (bazarId: string) => Promise<ApiResponse<void>>;
+  createBazarDeleteRequest: (bazarId: string) => Promise<ApiResponse<BazarDeleteRequestItem>>;
+  getMyBazarDeleteRequests: () => Promise<ApiResponse<BazarDeleteRequestItem[]>>;
+  respondToBazarDeleteRequest: (requestId: string, action: 'accept' | 'reject') => Promise<ApiResponse<BazarDeleteRequestItem>>;
   uploadReceipt: (file: {
     uri: string;
     type: string;
@@ -436,8 +453,10 @@ class BazarServiceImpl implements BazarService {
 
   async deleteBazar(bazarId: string): Promise<ApiResponse<void>> {
     try {
+      const id = bazarId && String(bazarId).trim();
+      if (!id) return { success: false, error: 'Invalid bazar ID' };
       const response = await httpClient.delete<void>(
-        API_ENDPOINTS.BAZAR.DELETE(bazarId)
+        API_ENDPOINTS.BAZAR.DELETE(id)
       );
 
       if (response.success) {
@@ -452,6 +471,71 @@ class BazarServiceImpl implements BazarService {
           error instanceof Error
             ? error.message
             : 'Failed to delete bazar entry',
+      };
+    }
+  }
+
+  async createBazarDeleteRequest(bazarId: string): Promise<ApiResponse<BazarDeleteRequestItem>> {
+    try {
+      if (!bazarId || typeof bazarId !== 'string' || !bazarId.trim()) {
+        return { success: false, error: 'Invalid bazar ID' };
+      }
+      const response = await httpClient.post<BazarDeleteRequestItem>(
+        API_ENDPOINTS.BAZAR.DELETE_REQUEST(bazarId.trim()),
+        {}
+      );
+      if (response.success) {
+        await this.clearBazarCache();
+      }
+      return response;
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to send delete request',
+      };
+    }
+  }
+
+  async getMyBazarDeleteRequests(): Promise<ApiResponse<BazarDeleteRequestItem[]>> {
+    try {
+      const response = await httpClient.get<BazarDeleteRequestItem[]>(API_ENDPOINTS.BAZAR.DELETE_REQUESTS);
+      const raw = response.data;
+      const data = Array.isArray(raw) ? [...raw] : [];
+      const pending = data.filter((r): r is BazarDeleteRequestItem => !!r && r.status === 'pending');
+      return { success: true, data: pending, message: response.message };
+    } catch (error) {
+      return {
+        success: false,
+        data: [],
+        error: error instanceof Error ? error.message : 'Failed to fetch delete requests',
+      };
+    }
+  }
+
+  async respondToBazarDeleteRequest(
+    requestId: string,
+    action: 'accept' | 'reject'
+  ): Promise<ApiResponse<BazarDeleteRequestItem>> {
+    try {
+      const id = requestId && String(requestId).trim();
+      if (!id || !action || !['accept', 'reject'].includes(action)) {
+        return { success: false, error: 'Invalid request' };
+      }
+      const response = await httpClient.post<BazarDeleteRequestItem>(
+        API_ENDPOINTS.BAZAR.RESPOND_DELETE_REQUEST(id),
+        { action }
+      );
+      if (response.success) {
+        await this.clearBazarCache();
+      }
+      return {
+        ...response,
+        message: response.message || (response.success ? 'Done' : response.error),
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to respond to delete request',
       };
     }
   }

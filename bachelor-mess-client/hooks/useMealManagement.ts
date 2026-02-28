@@ -39,7 +39,11 @@ interface UseMealManagementReturn {
     mealId: string,
     status: 'approved' | 'rejected'
   ) => Promise<void>;
-  handleDeleteMeal: (mealId: string) => Promise<void>;
+  handleDeleteMeal: (mealId: string, meal?: MealEntry) => void;
+  /** Delete without confirmation (e.g. for bulk delete after one confirmation). Own meal only. */
+  deleteMealById: (mealId: string) => Promise<boolean>;
+  /** Request deletion (admin only, for others' meals). No confirmation. */
+  requestDeletionForMeal: (mealId: string) => Promise<boolean>;
   handleEditMeal: (mealId: string) => void;
   handleMealSubmitted: () => Promise<void>;
 
@@ -73,7 +77,7 @@ export const useMealManagement = (
   const [selectedMeal, setSelectedMeal] = useState<MealEntry | null>(null);
   const lastFetchTimeRef = useRef<number>(0);
 
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
   const useGroupApi =
     user?.role === 'admin' ||
     user?.role === 'member' ||
@@ -236,26 +240,83 @@ export const useMealManagement = (
     [loadMealStats, alert]
   );
 
+  const getMealOwnerLabel = useCallback((m?: MealEntry) => {
+    if (!m?.userId) return null;
+    if (typeof m.userId === 'object' && (m.userId.name || m.userId.email)) {
+      return m.userId.name || m.userId.email;
+    }
+    return null;
+  }, []);
+
+  const getMealOwnerId = useCallback((m?: MealEntry) => {
+    if (!m?.userId) return null;
+    if (typeof m.userId === 'string') return m.userId;
+    const u = m.userId as { _id?: string; id?: string };
+    return u._id ?? u.id ?? null;
+  }, []);
+
   const handleDeleteMeal = useCallback(
-    async (mealId: string) => {
-      Alert.alert('Delete Meal', 'Are you sure you want to delete this meal?', [
+    (mealId: string, meal?: MealEntry) => {
+      const id = (mealId && String(mealId).trim()) || '';
+      if (!id) return;
+
+      const ownerLabel = getMealOwnerLabel(meal);
+      const dateLabel = meal?.date ? mealService.formatMealDate(meal.date) : '';
+      const ownerId = getMealOwnerId(meal);
+      const isOwnMeal = user?.id && ownerId && (String(user.id) === String(ownerId));
+
+      if (isAdmin && !isOwnMeal && meal) {
+        const title = `Request deletion of ${ownerLabel || 'this'}'s meal?`;
+        const message = `A delete request will be sent to ${ownerLabel || 'the meal owner'}. The meal will only be removed after they confirm.`;
+        Alert.alert(title, message, [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Request deletion',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                const response = await mealService.createMealDeleteRequest(id);
+                if (response.success) {
+                  if (showAlert) showAlert('Request sent', `${ownerLabel || 'The member'} will need to confirm to delete this meal.`, 'success');
+                  else Alert.alert('Request sent', `${ownerLabel || 'The member'} will need to confirm to delete this meal.`);
+                  try { await loadMeals(true); } catch { /* ignore */ }
+                } else {
+                  if (showAlert) showAlert('Error', response.message || response.error || 'Failed to send delete request', 'error');
+                  else Alert.alert('Error', response.message || response.error || 'Failed to send delete request');
+                }
+              } catch {
+                if (showAlert) showAlert('Error', 'Failed to send delete request', 'error');
+                else Alert.alert('Error', 'Failed to send delete request');
+              }
+            },
+          },
+        ]);
+        return;
+      }
+
+      const title = ownerLabel ? `Delete ${ownerLabel}'s meal record?` : 'Delete meal record?';
+      const message = ownerLabel
+        ? `This will permanently remove the meal record for ${dateLabel}. This action cannot be undone.`
+        : dateLabel
+          ? `Remove the meal for ${dateLabel}? This cannot be undone.`
+          : 'Are you sure you want to delete this meal? This action cannot be undone.';
+
+      Alert.alert(title, message, [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
             try {
-              const response = await mealService.deleteMeal(mealId);
+              const response = await mealService.deleteMeal(id);
               if (response.success) {
-                setMeals(prevMeals =>
-                  prevMeals.filter(meal => meal.id !== mealId)
-                );
+                setMeals(prevMeals => prevMeals.filter(m => m.id !== id));
                 if (showAlert) showAlert('Success', 'Meal deleted successfully', 'success');
                 else Alert.alert('Success', 'Meal deleted successfully');
-                await loadMealStats(); // Refresh stats after deletion
+                try { await loadMealStats(); } catch { /* ignore */ }
               } else {
-                if (showAlert) showAlert('Error', response.message || 'Failed to delete meal', 'error');
-                else Alert.alert('Error', response.message || 'Failed to delete meal');
+                if (showAlert) showAlert('Error', response.message || response.error || 'Failed to delete meal', 'error');
+                else Alert.alert('Error', response.message || response.error || 'Failed to delete meal');
               }
             } catch {
               if (showAlert) showAlert('Error', 'Failed to delete meal', 'error');
@@ -265,7 +326,52 @@ export const useMealManagement = (
         },
       ]);
     },
-    [loadMealStats, showAlert]
+    [loadMealStats, loadMeals, showAlert, getMealOwnerLabel, getMealOwnerId, isAdmin, user?.id]
+  );
+
+  const deleteMealById = useCallback(
+    async (mealId: string): Promise<boolean> => {
+      const id = mealId && String(mealId).trim();
+      if (!id) return false;
+      try {
+        const response = await mealService.deleteMeal(id);
+        if (response.success) {
+          setMeals(prev => prev.filter(m => m.id !== id));
+          try {
+            await loadMealStats();
+          } catch {
+            // Ignore refresh errors (e.g. unmounted)
+          }
+          return true;
+        }
+        return false;
+      } catch {
+        return false;
+      }
+    },
+    [loadMealStats]
+  );
+
+  const requestDeletionForMeal = useCallback(
+    async (mealId: string): Promise<boolean> => {
+      const id = mealId && String(mealId).trim();
+      if (!id) return false;
+      try {
+        const response = await mealService.createMealDeleteRequest(id);
+        if (response.success) {
+          try {
+            await loadMeals(true);
+          } catch {
+            // Ignore refresh errors (e.g. unmounted)
+          }
+          return true;
+        }
+        return false;
+      } catch {
+        return false;
+      }
+    },
+    [loadMeals]
   );
 
   const handleEditMeal = useCallback(
@@ -318,6 +424,8 @@ export const useMealManagement = (
     closeMealDetail,
     handleStatusUpdate,
     handleDeleteMeal,
+    deleteMealById,
+    requestDeletionForMeal,
     handleEditMeal,
     handleMealSubmitted,
 

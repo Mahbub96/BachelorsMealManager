@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
 const Bazar = require('../models/Bazar');
+const BazarDeleteRequest = require('../models/BazarDeleteRequest');
 const User = require('../models/User');
+const StatisticsService = require('../services/statisticsService');
 const { config } = require('../config/config');
 const logger = require('../utils/logger');
 const { getGroupMemberIds } = require('../utils/groupHelper');
@@ -227,27 +229,182 @@ class BazarController {
     }
   }
 
-  // Delete bazar entry
+  // Delete bazar entry (only owner; admin must use delete request so owner can confirm)
   async deleteBazar(req, res, next) {
     try {
-      const { bazarId } = req.params;
+      const bazarId = (req.params.bazarId || '').trim();
       const userId = req.user.id;
+
+      if (!bazarId || !mongoose.Types.ObjectId.isValid(bazarId)) {
+        return sendErrorResponse(res, 400, 'Invalid bazar ID');
+      }
 
       const bazar = await Bazar.findById(bazarId);
       if (!bazar) {
         return sendErrorResponse(res, 404, 'Bazar entry not found');
       }
 
-      // Check if user can delete this bazar (own entry or admin)
-      if (bazar.userId.toString() !== userId && req.user.role !== 'admin') {
+      const isAdminOrSuper = ['admin', 'super_admin'].includes(req.user.role);
+      const isOwner = bazar.userId.toString() === userId;
+
+      if (!isOwner) {
+        if (isAdminOrSuper) {
+          return sendErrorResponse(
+            res,
+            400,
+            'To delete another member\'s bazar entry, use "Request deletion" so the entry owner can confirm.'
+          );
+        }
         return sendErrorResponse(res, 403, 'Access denied');
       }
 
       await Bazar.findByIdAndDelete(bazarId);
+      try {
+        await StatisticsService.updateAfterOperation('bazar_deleted', { bazarId });
+      } catch (statsErr) {
+        logger.error('Statistics update after bazar delete failed:', statsErr);
+      }
 
-      logger.info(`Bazar entry deleted by user ${req.user.email}`);
+      logger.info(`Bazar entry deleted by owner ${req.user.email}`);
 
       return sendSuccessResponse(res, 200, 'Bazar entry deleted successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Create delete request (admin/super_admin only); bazar owner must confirm
+  async createDeleteRequest(req, res, next) {
+    try {
+      const bazarId = (req.params.bazarId || '').trim();
+      const userId = req.user.id;
+
+      if (!bazarId || !mongoose.Types.ObjectId.isValid(bazarId)) {
+        return sendErrorResponse(res, 400, 'Invalid bazar ID');
+      }
+
+      const isAdminOrSuper = ['admin', 'super_admin'].includes(req.user.role);
+      if (!isAdminOrSuper) {
+        return sendErrorResponse(res, 403, 'Only admin can request bazar deletion');
+      }
+
+      const bazar = await Bazar.findById(bazarId).populate('userId', 'name email');
+      if (!bazar) {
+        return sendErrorResponse(res, 404, 'Bazar entry not found');
+      }
+
+      const ownerId = (bazar.userId._id || bazar.userId).toString();
+      if (ownerId === userId) {
+        return sendErrorResponse(res, 400, 'Use direct delete for your own bazar entry');
+      }
+
+      const existing = await BazarDeleteRequest.findOne({ bazarId, status: 'pending' });
+      if (existing) {
+        return sendErrorResponse(res, 400, 'A delete request for this bazar entry is already pending');
+      }
+
+      const bazarSummary = `${bazar.items?.length || 0} items, ৳${(bazar.totalAmount || 0).toLocaleString()}`;
+
+      const request = await BazarDeleteRequest.create({
+        bazarId,
+        requestedBy: userId,
+        requestedFor: bazar.userId._id || bazar.userId,
+        status: 'pending',
+        bazarDate: bazar.date,
+        bazarSummary,
+        totalAmount: bazar.totalAmount || 0,
+      });
+
+      const populated = await BazarDeleteRequest.findById(request._id)
+        .populate('requestedBy', 'name email')
+        .populate('requestedFor', 'name email');
+
+      logger.info(`Bazar delete request created by ${req.user.email} for bazar ${bazarId}`);
+
+      return sendSuccessResponse(
+        res,
+        201,
+        'Delete request sent. The bazar entry owner must confirm to delete.',
+        populated
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // List delete requests for current user (pending only)
+  async getMyDeleteRequests(req, res, next) {
+    try {
+      const userId = req.user.id;
+
+      const requests = await BazarDeleteRequest.find({ requestedFor: userId, status: 'pending' })
+        .populate('requestedBy', 'name email')
+        .populate('requestedFor', 'name email')
+        .sort({ createdAt: -1 })
+        .lean();
+
+      return sendSuccessResponse(res, 200, 'Delete requests retrieved', requests);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Respond to delete request (accept or reject); only bazar owner. Atomic update.
+  async respondToDeleteRequest(req, res, next) {
+    try {
+      const requestId = (req.params.requestId || '').trim();
+      const action = req.body && (req.body.action === 'accept' || req.body.action === 'reject') ? req.body.action : null;
+      const userId = req.user.id;
+
+      if (!action) {
+        return sendErrorResponse(res, 400, 'Action must be accept or reject');
+      }
+
+      if (!requestId || !mongoose.Types.ObjectId.isValid(requestId)) {
+        return sendErrorResponse(res, 400, 'Invalid request ID');
+      }
+
+      const respondedAt = new Date();
+      const newStatus = action === 'accept' ? 'accepted' : 'rejected';
+
+      const request = await BazarDeleteRequest.findOneAndUpdate(
+        { _id: requestId, requestedFor: userId, status: 'pending' },
+        { $set: { status: newStatus, respondedAt } },
+        { new: true }
+      );
+
+      if (!request) {
+        const exists = await BazarDeleteRequest.findById(requestId).select('status requestedFor').lean();
+        if (!exists) return sendErrorResponse(res, 404, 'Delete request not found');
+        if (exists.status !== 'pending') return sendErrorResponse(res, 400, 'This request was already responded to');
+        return sendErrorResponse(res, 403, 'Only the bazar entry owner can respond to this request');
+      }
+
+      if (action === 'accept') {
+        const bazar = await Bazar.findById(request.bazarId);
+        if (!bazar) {
+          await BazarDeleteRequest.findByIdAndUpdate(request._id, { $set: { status: 'rejected' } });
+          return sendErrorResponse(res, 404, 'Bazar entry no longer exists');
+        }
+        await Bazar.findByIdAndDelete(request.bazarId);
+        try {
+          await StatisticsService.updateAfterOperation('bazar_deleted', { bazarId: request.bazarId });
+        } catch (statsErr) {
+          logger.error('Statistics update after bazar delete failed:', statsErr);
+        }
+        logger.info(`Bazar ${request.bazarId} deleted after owner ${req.user.email} accepted delete request`);
+      }
+
+      const populated = await BazarDeleteRequest.findById(request._id)
+        .populate('requestedBy', 'name email')
+        .populate('requestedFor', 'name email')
+        .lean();
+
+      const message = action === 'accept'
+        ? 'Bazar entry deleted successfully. All related data has been updated.'
+        : 'Delete request rejected.';
+
+      return sendSuccessResponse(res, 200, message, populated);
     } catch (error) {
       next(error);
     }
@@ -568,41 +725,13 @@ class BazarController {
     }
   }
 
-  // Admin override: Delete any bazar entry (admin only)
-  async adminDeleteBazar(req, res, next) {
-    try {
-      const { bazarId } = req.params;
-      const adminId = req.user.id;
-
-      // Validate admin permissions
-      if (req.user.role !== 'admin') {
-        return sendErrorResponse(
-          res,
-          403,
-          'Admin privileges required for this operation'
-        );
-      }
-
-      const bazar = await Bazar.findById(bazarId);
-      if (!bazar) {
-        return sendErrorResponse(res, 404, 'Bazar entry not found');
-      }
-
-      // Log the deletion for audit purposes
-      logger.info(
-        `Admin ${req.user.email} deleted bazar entry ${bazarId} for user ${bazar.userId}`
-      );
-
-      await Bazar.findByIdAndDelete(bazarId);
-
-      return sendSuccessResponse(
-        res,
-        200,
-        'Bazar entry deleted successfully by admin'
-      );
-    } catch (error) {
-      next(error);
-    }
+  // Admin override: Delete any bazar entry — use delete-request flow so owner confirms
+  async adminDeleteBazar(req, res) {
+    return sendErrorResponse(
+      res,
+      400,
+      'To delete another member\'s bazar entry, use "Request deletion" so the entry owner can confirm.'
+    );
   }
 
   // Admin override: Bulk operations (admin only)
@@ -652,8 +781,11 @@ class BazarController {
           break;
 
         case 'delete':
-          result = await Bazar.deleteMany({ _id: { $in: bazarIds } });
-          break;
+          return sendErrorResponse(
+            res,
+            400,
+            'Bulk direct delete is not allowed. Use "Request deletion" on each entry so the owner can confirm.'
+          );
 
         default:
           return sendErrorResponse(

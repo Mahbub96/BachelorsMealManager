@@ -39,7 +39,7 @@ export interface BazarCardProps {
   bazar: BazarCardBazar;
   onPress?: (bazar: BazarCardBazar) => void;
   onStatusUpdate?: (bazarId: string, status: 'approved' | 'rejected') => void;
-  onDelete?: (bazarId: string) => void;
+  onDelete?: (bazarId: string, bazar?: BazarCardBazar) => void;
   variant?: 'default' | 'compact' | 'detailed';
   showActions?: boolean;
   showReceipt?: boolean;
@@ -111,18 +111,7 @@ export const BazarCard: React.FC<BazarCardProps> = memo(
     };
 
     const handleDelete = () => {
-      Alert.alert(
-        'Delete Bazar Entry',
-        'Are you sure you want to delete this bazar entry? This action cannot be undone.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Delete',
-            style: 'destructive',
-            onPress: () => onDelete?.(bazar.id),
-          },
-        ]
-      );
+      onDelete?.(bazar.id, bazar);
     };
 
     const handleActionPress = (action: () => void) => {

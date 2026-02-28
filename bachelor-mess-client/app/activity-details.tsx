@@ -102,6 +102,9 @@ export default function ActivityDetailsScreen(_props: ActivityDetailsScreenProps
         return theme.gradient.primary as [string, string];
       case 'payment':
         return theme.gradient.error as [string, string];
+      case 'meal_deletion':
+      case 'bazar_deletion':
+        return theme.gradient.warning as [string, string];
       default:
         return theme.gradient.info as [string, string];
     }
@@ -117,6 +120,9 @@ export default function ActivityDetailsScreen(_props: ActivityDetailsScreenProps
         return 'person';
       case 'payment':
         return 'card';
+      case 'meal_deletion':
+      case 'bazar_deletion':
+        return 'trash';
       default:
         return 'information-circle';
     }

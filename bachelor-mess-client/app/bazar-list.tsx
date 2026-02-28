@@ -16,6 +16,7 @@ import { ThemedText } from '../components/ThemedText';
 import { ScreenLayout } from '../components/layout';
 import { BazarCard, type BazarCardBazar } from '../components/cards/BazarCard';
 import { BazarFilters } from '../components/bazar/BazarFilters';
+import { PendingBazarDeleteRequests } from '../components/bazar/PendingBazarDeleteRequests';
 import { SearchBar } from '../components/shared';
 import { BazarStatistics } from '../components/bazar/BazarStatistics';
 import { useAuth } from '../context/AuthContext';
@@ -98,6 +99,7 @@ export default function BazarListScreen(_props: BazarListScreenProps) {
     refreshData,
     updateBazarStatus,
     deleteBazar,
+    requestBazarDeletion,
   } = useBazar();
 
   const [refreshing, setRefreshing] = useState(false);
@@ -139,21 +141,74 @@ export default function BazarListScreen(_props: BazarListScreenProps) {
     );
   };
 
-  const handleDelete = async (bazarId: string) => {
-    Alert.alert(
-      'Delete Bazar Entry',
-      'Are you sure you want to delete this bazar entry? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            await deleteBazar(bazarId);
+  const getOwnerId = (b: BazarEntry | BazarCardBazar | undefined): string | null => {
+    if (!b) return null;
+    const u = b.userId;
+    if (typeof u === 'string') return u;
+    if (u && typeof u === 'object') return (u as { _id?: string; id?: string })._id ?? (u as { id?: string }).id ?? null;
+    return null;
+  };
+  const getOwnerName = (b: BazarEntry | BazarCardBazar | undefined): string => {
+    if (!b) return 'Member';
+    const u = b.userId;
+    if (u && typeof u === 'object' && 'name' in u) return (u as { name?: string }).name ?? 'Member';
+    return 'Member';
+  };
+
+  const handleDelete = (bazarId: string, bazar?: BazarEntry | BazarCardBazar) => {
+    const id = bazarId && String(bazarId).trim();
+    if (!id) return;
+    const ownerId = getOwnerId(bazar);
+    const isOwner = !!user?.id && ownerId === user.id;
+    const isAdminUser = user?.role === 'admin' || user?.role === 'super_admin';
+
+    if (isOwner) {
+      Alert.alert(
+        'Delete Bazar Entry',
+        'Are you sure you want to delete this bazar entry? This action cannot be undone.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await deleteBazar(id);
+              } catch {
+                Alert.alert('Error', 'Delete failed. Please try again.');
+              }
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+      return;
+    }
+    if (isAdminUser && bazar) {
+      const ownerName = getOwnerName(bazar);
+      Alert.alert(
+        'Request Deletion',
+        `Request deletion of ${ownerName}'s bazar entry? They will need to confirm.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Request',
+            onPress: async () => {
+              try {
+                const res = await requestBazarDeletion(id);
+                Alert.alert(
+                  res.success ? 'Done' : 'Error',
+                  res.success ? `${ownerName} will need to confirm to delete this entry.` : (res.error || res.message || 'Request failed')
+                );
+              } catch {
+                Alert.alert('Error', 'Request failed. Please try again.');
+              }
+            },
+          },
+        ]
+      );
+      return;
+    }
+    Alert.alert('Error', 'You can only delete your own bazar entries.');
   };
 
   const renderBazarItem = ({ item: bazar }: { item: BazarEntry }) => (
@@ -239,13 +294,19 @@ export default function BazarListScreen(_props: BazarListScreenProps) {
 
   const listHeaderElement = React.useMemo(
     () => (
-      <BazarListHeader
-        showFilters={showFilters}
-        onToggleFilters={() => setShowFilters(s => !s)}
-        headerStyles={styles}
-      />
+      <>
+        <PendingBazarDeleteRequests
+          onResponded={refreshData}
+          onError={(msg) => Alert.alert('Error', msg)}
+        />
+        <BazarListHeader
+          showFilters={showFilters}
+          onToggleFilters={() => setShowFilters(s => !s)}
+          headerStyles={styles}
+        />
+      </>
     ),
-    [showFilters]
+    [showFilters, refreshData]
   );
 
   return (

@@ -93,6 +93,19 @@ export interface MealResponse {
   pagination: MealPagination;
 }
 
+export interface MealDeleteRequestItem {
+  _id: string;
+  mealId: string | { _id: string };
+  requestedBy: { _id: string; name?: string; email?: string };
+  requestedFor: { _id: string; name?: string; email?: string };
+  status: 'pending' | 'accepted' | 'rejected';
+  mealDate: string;
+  mealSummary: string;
+  respondedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface MealService {
   submitMeal: (data: MealSubmission) => Promise<ApiResponse<MealEntry>>;
   getUserMeals: (filters?: MealFilters, options?: { cache?: boolean }) => Promise<ApiResponse<MealResponse>>;
@@ -106,6 +119,9 @@ export interface MealService {
     data: MealUpdate
   ) => Promise<ApiResponse<MealEntry>>;
   deleteMeal: (mealId: string) => Promise<ApiResponse<void>>;
+  createMealDeleteRequest: (mealId: string) => Promise<ApiResponse<MealDeleteRequestItem>>;
+  getMyDeleteRequests: () => Promise<ApiResponse<MealDeleteRequestItem[]>>;
+  respondToDeleteRequest: (requestId: string, action: 'accept' | 'reject') => Promise<ApiResponse<MealDeleteRequestItem>>;
   getMealStats: (filters?: MealFilters, options?: { cache?: boolean }) => Promise<ApiResponse<MealStats>>;
   getUserMealStats: (filters?: MealFilters, options?: { cache?: boolean }) => Promise<ApiResponse<MealStats>>;
   getMealById: (mealId: string) => Promise<ApiResponse<MealEntry>>;
@@ -333,11 +349,12 @@ class MealServiceImpl implements MealService {
 
   async deleteMeal(mealId: string): Promise<ApiResponse<void>> {
     try {
+      const id = mealId && String(mealId).trim();
+      if (!id) return { success: false, error: 'Invalid meal ID' };
       const response = await httpClient.delete<void>(
-        API_ENDPOINTS.MEALS.DELETE(mealId)
+        API_ENDPOINTS.MEALS.DELETE(id)
       );
 
-      // Clear cache after deletion
       if (response.success) {
         await this.clearMealCache();
       }
@@ -347,6 +364,68 @@ class MealServiceImpl implements MealService {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to delete meal',
+      };
+    }
+  }
+
+  async createMealDeleteRequest(mealId: string): Promise<ApiResponse<MealDeleteRequestItem>> {
+    try {
+      if (!mealId || typeof mealId !== 'string' || !mealId.trim()) {
+        return { success: false, error: 'Invalid meal ID' };
+      }
+      const response = await httpClient.post<MealDeleteRequestItem>(
+        API_ENDPOINTS.MEALS.DELETE_REQUEST(mealId.trim()),
+        {}
+      );
+      if (response.success) {
+        await this.clearMealCache();
+      }
+      return response;
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to send delete request',
+      };
+    }
+  }
+
+  async getMyDeleteRequests(): Promise<ApiResponse<MealDeleteRequestItem[]>> {
+    try {
+      const response = await httpClient.get<MealDeleteRequestItem[]>(API_ENDPOINTS.MEALS.DELETE_REQUESTS);
+      const raw = response.data;
+      const data = Array.isArray(raw) ? [...raw] : [];
+      const pending = data.filter((r): r is MealDeleteRequestItem => !!r && r.status === 'pending');
+      return { success: true, data: pending, message: response.message };
+    } catch (error) {
+      return {
+        success: false,
+        data: [],
+        error: error instanceof Error ? error.message : 'Failed to fetch delete requests',
+      };
+    }
+  }
+
+  async respondToDeleteRequest(requestId: string, action: 'accept' | 'reject'): Promise<ApiResponse<MealDeleteRequestItem>> {
+    try {
+      const id = requestId && String(requestId).trim();
+      if (!id || !action || !['accept', 'reject'].includes(action)) {
+        return { success: false, error: 'Invalid request' };
+      }
+      const response = await httpClient.post<MealDeleteRequestItem>(
+        API_ENDPOINTS.MEALS.RESPOND_DELETE_REQUEST(id),
+        { action }
+      );
+      if (response.success) {
+        await this.clearMealCache();
+      }
+      return {
+        ...response,
+        message: response.message || (response.success ? 'Done' : response.error),
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to respond to delete request',
       };
     }
   }

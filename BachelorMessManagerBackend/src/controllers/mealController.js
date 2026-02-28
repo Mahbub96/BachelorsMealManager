@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Meal = require('../models/Meal');
+const MealDeleteRequest = require('../models/MealDeleteRequest');
 const User = require('../models/User');
 const { config } = require('../config/config');
 const logger = require('../utils/logger');
@@ -425,27 +426,186 @@ class MealController {
     }
   }
 
-  // Delete meal entry
+  // Delete meal entry (only owner can delete own meal; admin must use delete request)
   async deleteMeal(req, res, next) {
     try {
-      const { mealId } = req.params;
+      const mealId = (req.params.mealId || '').trim();
       const userId = req.user.id;
+
+      if (!mealId || !mongoose.Types.ObjectId.isValid(mealId)) {
+        return sendErrorResponse(res, 400, 'Invalid meal ID');
+      }
 
       const meal = await Meal.findById(mealId);
       if (!meal) {
         return sendErrorResponse(res, 404, 'Meal entry not found');
       }
 
-      // Check if user can delete this meal (own meal or admin)
-      if (meal.userId.toString() !== userId && req.user.role !== 'admin') {
+      const isAdminOrSuper = ['admin', 'super_admin'].includes(req.user.role);
+      const isOwner = meal.userId.toString() === userId;
+
+      if (!isOwner) {
+        if (isAdminOrSuper) {
+          return sendErrorResponse(
+            res,
+            400,
+            'To delete another member\'s meal, use "Request deletion" so the meal owner can confirm.'
+          );
+        }
         return sendErrorResponse(res, 403, 'Access denied');
       }
 
       await Meal.findByIdAndDelete(mealId);
+      try {
+        await StatisticsService.updateAfterOperation('meal_deleted', { mealId });
+      } catch (statsErr) {
+        logger.error('Statistics update after meal delete failed:', statsErr);
+      }
 
-      logger.info(`Meal deleted by user ${req.user.email}`);
+      logger.info(`Meal deleted by owner ${req.user.email}`);
 
       return sendSuccessResponse(res, 200, 'Meal entry deleted successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Create delete request (admin/super_admin only); meal owner must confirm
+  async createDeleteRequest(req, res, next) {
+    try {
+      const mealId = (req.params.mealId || '').trim();
+      const userId = req.user.id;
+
+      if (!mealId || !mongoose.Types.ObjectId.isValid(mealId)) {
+        return sendErrorResponse(res, 400, 'Invalid meal ID');
+      }
+
+      const isAdminOrSuper = ['admin', 'super_admin'].includes(req.user.role);
+      if (!isAdminOrSuper) {
+        return sendErrorResponse(res, 403, 'Only admin can request meal deletion');
+      }
+
+      const meal = await Meal.findById(mealId).populate('userId', 'name email');
+      if (!meal) {
+        return sendErrorResponse(res, 404, 'Meal entry not found');
+      }
+
+      const mealOwnerId = (meal.userId._id || meal.userId).toString();
+      if (mealOwnerId === userId) {
+        return sendErrorResponse(res, 400, 'Use direct delete for your own meal');
+      }
+
+      const existing = await MealDeleteRequest.findOne({ mealId, status: 'pending' });
+      if (existing) {
+        return sendErrorResponse(res, 400, 'A delete request for this meal is already pending');
+      }
+
+      const mealTypes = [];
+      if (meal.breakfast) mealTypes.push('Breakfast');
+      if (meal.lunch) mealTypes.push('Lunch');
+      if (meal.dinner) mealTypes.push('Dinner');
+      const mealSummary = mealTypes.join(', ') || 'No meals';
+
+      const requestedForId = meal.userId._id || meal.userId;
+      const request = await MealDeleteRequest.create({
+        mealId,
+        requestedBy: userId,
+        requestedFor: requestedForId,
+        status: 'pending',
+        mealDate: meal.date,
+        mealSummary,
+      });
+
+      const populated = await MealDeleteRequest.findById(request._id)
+        .populate('requestedBy', 'name email')
+        .populate('requestedFor', 'name email');
+
+      logger.info(`Meal delete request created by ${req.user.email} for meal ${mealId}`);
+
+      return sendSuccessResponse(
+        res,
+        201,
+        'Delete request sent. The meal owner must confirm to delete.',
+        populated
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // List delete requests for current user (pending only for member to respond)
+  async getMyDeleteRequests(req, res, next) {
+    try {
+      const userId = req.user.id;
+
+      const requests = await MealDeleteRequest.find({ requestedFor: userId, status: 'pending' })
+        .populate('requestedBy', 'name email')
+        .populate('requestedFor', 'name email')
+        .sort({ createdAt: -1 })
+        .lean();
+
+      return sendSuccessResponse(res, 200, 'Delete requests retrieved', requests);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Respond to delete request (accept or reject); only meal owner. Atomic update to prevent double-response.
+  async respondToDeleteRequest(req, res, next) {
+    try {
+      const requestId = (req.params.requestId || '').trim();
+      const action = req.body && (req.body.action === 'accept' || req.body.action === 'reject') ? req.body.action : null;
+      const userId = req.user.id;
+
+      if (!action) {
+        return sendErrorResponse(res, 400, 'Action must be accept or reject');
+      }
+
+      if (!requestId || !mongoose.Types.ObjectId.isValid(requestId)) {
+        return sendErrorResponse(res, 400, 'Invalid request ID');
+      }
+
+      const respondedAt = new Date();
+      const newStatus = action === 'accept' ? 'accepted' : 'rejected';
+
+      const request = await MealDeleteRequest.findOneAndUpdate(
+        { _id: requestId, requestedFor: userId, status: 'pending' },
+        { $set: { status: newStatus, respondedAt } },
+        { new: true }
+      );
+
+      if (!request) {
+        const exists = await MealDeleteRequest.findById(requestId).select('status requestedFor').lean();
+        if (!exists) return sendErrorResponse(res, 404, 'Delete request not found');
+        if (exists.status !== 'pending') return sendErrorResponse(res, 400, 'This request was already responded to');
+        return sendErrorResponse(res, 403, 'Only the meal owner can respond to this request');
+      }
+
+      if (action === 'accept') {
+        const meal = await Meal.findById(request.mealId);
+        if (!meal) {
+          await MealDeleteRequest.findByIdAndUpdate(request._id, { $set: { status: 'rejected' } });
+          return sendErrorResponse(res, 404, 'Meal no longer exists');
+        }
+        await Meal.findByIdAndDelete(request.mealId);
+        try {
+          await StatisticsService.updateAfterOperation('meal_deleted', { mealId: request.mealId });
+        } catch (statsErr) {
+          logger.error('Statistics update after meal delete failed (meal already deleted):', statsErr);
+        }
+        logger.info(`Meal ${request.mealId} deleted after owner ${req.user.email} accepted delete request`);
+      }
+
+      const populated = await MealDeleteRequest.findById(request._id)
+        .populate('requestedBy', 'name email')
+        .populate('requestedFor', 'name email')
+        .lean();
+
+      const message = action === 'accept'
+        ? 'Meal deleted successfully. All related data has been updated.'
+        : 'Delete request rejected.';
+
+      return sendSuccessResponse(res, 200, message, populated);
     } catch (error) {
       next(error);
     }
@@ -463,13 +623,12 @@ class MealController {
         return sendErrorResponse(res, 404, 'Meal entry not found');
       }
 
-      // Check if user can update this meal (own meal or admin)
-      if (meal.userId.toString() !== userId && req.user.role !== 'admin') {
+      const isAdminOrSuper = ['admin', 'super_admin'].includes(req.user.role);
+      if (meal.userId.toString() !== userId && !isAdminOrSuper) {
         return sendErrorResponse(res, 403, 'Access denied');
       }
 
-      // Only allow updates if meal is pending (unless admin)
-      if (meal.status !== 'pending' && req.user.role !== 'admin') {
+      if (meal.status !== 'pending' && !isAdminOrSuper) {
         return sendErrorResponse(
           res,
           400,
@@ -479,7 +638,7 @@ class MealController {
 
       // Prevent multiple updates per day: check if meal was already updated
       // Each user can only update their meal once per day
-      if (req.user.role !== 'admin') {
+      if (!isAdminOrSuper) {
         const mealDate = new Date(meal.date);
         const createdAt = new Date(meal.createdAt);
         const updatedAt = new Date(meal.updatedAt);

@@ -33,6 +33,7 @@ import { useThemeColor } from '../../hooks/useThemeColor';
 import { ScreenBackButton } from '../ui/ScreenBackButton';
 import { InfoModal, type InfoModalVariant } from '../ui';
 import { MealDetailModal } from './MealDetailModal';
+import { PendingMealDeleteRequests } from './PendingMealDeleteRequests';
 import { MealListFilters, type MealListFiltersState } from './MealListFilters';
 import { SearchAndFilterRow } from '../shared';
 import { toLocalDateString, formatDate } from '../../utils/dateUtils';
@@ -480,6 +481,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
       >
+        <PendingMealDeleteRequests onResponded={refreshMeals} onError={(msg) => showAlert('Error', msg, 'error')} />
         <DashboardHeader
           title='Meal Management'
           subtitle='Track and manage My Meals'

@@ -136,39 +136,83 @@ export default function BazarDetailsScreen() {
     }
   };
 
-  const handleDelete = async () => {
+  const getOwnerId = (b: BazarEntry | null): string | null => {
+    if (!b) return null;
+    const u = b.userId;
+    if (typeof u === 'string') return u;
+    if (u && typeof u === 'object') return (u as { _id?: string; id?: string })._id ?? (u as { id?: string }).id ?? null;
+    return null;
+  };
+  const getOwnerName = (b: BazarEntry | null): string => {
+    if (!b) return 'Member';
+    const u = b.userId;
+    if (u && typeof u === 'object' && 'name' in u) return (u as { name?: string }).name ?? 'Member';
+    return 'Member';
+  };
+
+  const handleDelete = () => {
     if (!bazar) return;
 
-    Alert.alert(
-      'Delete Bazar Entry',
-      'Are you sure you want to delete this bazar entry?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const response = await bazarService.deleteBazar(bazar.id);
+    const ownerId = getOwnerId(bazar);
+    const isOwner = !!user?.id && ownerId === user.id;
+    const isAdminUser = user?.role === 'admin' || user?.role === 'super_admin';
 
-              if (response.success) {
-                Alert.alert('Success', 'Bazar entry deleted successfully');
-                router.back();
-              } else {
-                logger.error('Bazar delete failed', response.error);
-                Alert.alert(
-                  'Error',
-                  response.error || 'Failed to delete bazar entry'
-                );
+    if (isOwner) {
+      Alert.alert(
+        'Delete Bazar Entry',
+        'Are you sure you want to delete this bazar entry?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                const response = await bazarService.deleteBazar(bazar.id);
+                if (response.success) {
+                  Alert.alert('Success', 'Bazar entry deleted successfully');
+                  router.back();
+                } else {
+                  Alert.alert('Error', response.error || 'Failed to delete bazar entry');
+                }
+              } catch {
+                Alert.alert('Error', 'An unexpected error occurred');
               }
-            } catch (error) {
-              logger.error('Bazar delete error', error);
-              Alert.alert('Error', 'An unexpected error occurred');
-            }
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+      return;
+    }
+
+    if (isAdminUser) {
+      const ownerName = getOwnerName(bazar);
+      Alert.alert(
+        'Request Deletion',
+        `Request deletion of ${ownerName}'s bazar entry? They will need to confirm.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Request',
+            onPress: async () => {
+              try {
+                const response = await bazarService.createBazarDeleteRequest(bazar.id);
+                Alert.alert(
+                  response.success ? 'Done' : 'Error',
+                  response.success ? `${ownerName} will need to confirm to delete this entry.` : (response.error || response.message || 'Request failed')
+                );
+                if (response.success) router.back();
+              } catch {
+                Alert.alert('Error', 'An unexpected error occurred');
+              }
+            },
+          },
+        ]
+      );
+      return;
+    }
+
+    Alert.alert('Error', 'You can only delete your own bazar entries.');
   };
 
   const addItem = () => {

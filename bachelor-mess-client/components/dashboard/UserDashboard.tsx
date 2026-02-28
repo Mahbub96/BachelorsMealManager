@@ -556,6 +556,9 @@ export const UserDashboard: React.FC = () => {
         return 'person';
       case 'approval':
         return 'checkmark-circle';
+      case 'meal_deletion':
+      case 'bazar_deletion':
+        return 'trash';
       default:
         return 'notifications';
     }
@@ -577,6 +580,9 @@ export const UserDashboard: React.FC = () => {
         return theme.gradient.primary as [string, string];
       case 'approval':
         return theme.gradient.success as [string, string];
+      case 'meal_deletion':
+      case 'bazar_deletion':
+        return theme.gradient.warning as [string, string];
       default:
         return theme.gradient.primary as [string, string];
     }

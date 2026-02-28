@@ -4,6 +4,7 @@ import {
   StyleSheet,
   FlatList,
   RefreshControl,
+  Alert,
   type ViewStyle,
   type TextStyle,
 } from 'react-native';
@@ -20,6 +21,7 @@ import { BazarStatistics } from './BazarStatistics';
 import { BazarFilters } from './BazarFilters';
 import { SearchBar } from '../shared';
 import { BazarErrorState } from './BazarErrorState';
+import { PendingBazarDeleteRequests } from './PendingBazarDeleteRequests';
 import { BazarCard } from '../cards/BazarCard';
 import type { BazarCardBazar } from '../cards/BazarCard';
 import type {
@@ -173,6 +175,7 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
     updateFilters,
     updateBazarStatus,
     deleteBazar,
+    requestBazarDeletion,
   } = useBazar();
 
   const [showFiltersPanel, setShowFiltersPanel] = useState(false);
@@ -229,18 +232,93 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
     [updateBazarStatus]
   );
 
+  const getBazarOwnerId = (b: BazarEntry | BazarCardBazar | undefined): string | null => {
+    if (!b) return null;
+    const u = b.userId;
+    if (typeof u === 'string') return u;
+    if (u && typeof u === 'object') return (u as { _id?: string; id?: string })._id ?? (u as { id?: string }).id ?? null;
+    return null;
+  };
+
+  const getBazarOwnerName = (b: BazarEntry | BazarCardBazar | undefined): string => {
+    if (!b) return 'Member';
+    const u = b.userId;
+    if (u && typeof u === 'object' && 'name' in u) return (u as { name?: string }).name ?? 'Member';
+    return 'Member';
+  };
+
   const handleDelete = useCallback(
-    async (bazarId: string) => {
-      await deleteBazar(bazarId);
+    (bazarId: string, bazar?: BazarEntry | BazarCardBazar) => {
+      const id = bazarId && String(bazarId).trim();
+      if (!id) return;
+      const ownerId = getBazarOwnerId(bazar);
+      const isOwner = !!user?.id && ownerId === user.id;
+      const isAdminUser = user?.role === 'admin' || user?.role === 'super_admin';
+
+      if (isOwner) {
+        Alert.alert(
+          'Delete Bazar Entry',
+          'Are you sure you want to delete this bazar entry? This action cannot be undone.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Delete',
+              style: 'destructive',
+              onPress: async () => {
+                try {
+                  await deleteBazar(id);
+                } catch {
+                  // Ignore (e.g. unmounted); errors surfaced by context
+                }
+              },
+            },
+          ]
+        );
+        return;
+      }
+
+      if (isAdminUser && bazar) {
+        const ownerName = getBazarOwnerName(bazar);
+        Alert.alert(
+          'Request Deletion',
+          `Request deletion of ${ownerName}'s bazar entry? They will need to confirm.`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Request',
+              onPress: async () => {
+                try {
+                  const res = await requestBazarDeletion(id);
+                  if (res.success) {
+                    Alert.alert('Done', `${ownerName} will need to confirm to delete this entry.`);
+                  } else {
+                    Alert.alert('Error', res.error || res.message || 'Request failed');
+                  }
+                } catch {
+                  Alert.alert('Error', 'Request failed. Please try again.');
+                }
+              },
+            },
+          ]
+        );
+        return;
+      }
+
+      Alert.alert('Error', 'You can only delete your own bazar entries.');
     },
-    [deleteBazar]
+    [user?.id, user?.role, deleteBazar, requestBazarDeletion]
   );
 
   const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
 
   const listHeaderElement = React.useMemo(
     () => (
-      <BazarManagementListHeader
+      <>
+        <PendingBazarDeleteRequests
+          onResponded={refreshData}
+          onError={(msg) => Alert.alert('Error', msg)}
+        />
+        <BazarManagementListHeader
         title={title}
         subtitle={subtitle}
         showAddButton={showAddButton}
@@ -252,6 +330,7 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
         onToggleFilters={() => setShowFiltersPanel(s => !s)}
         headerStyles={styles as BazarManagementHeaderStyles}
       />
+      </>
     ),
     [
       showFiltersPanel,
@@ -262,6 +341,7 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
       showFilters,
       showStatistics,
       handleAddBazar,
+      refreshData,
     ]
   );
 

@@ -40,7 +40,7 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
   selectedBazar,
   mode,
 }) => {
-  useAuth();
+  const { user } = useAuth();
   const { theme } = useTheme();
   const [loading, setLoading] = useState(false);
   const [selectedBazarIds, setSelectedBazarIds] = useState<string[]>([]);
@@ -156,33 +156,68 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
     }
   };
 
-  const handleDeleteBazar = async () => {
+  const handleDeleteBazar = () => {
     if (!selectedBazar) return;
 
+    const ownerId =
+      typeof selectedBazar.userId === 'string'
+        ? selectedBazar.userId
+        : (selectedBazar.userId as { _id?: string; id?: string })?._id ?? (selectedBazar.userId as { id?: string })?.id;
+    const ownerName =
+      selectedBazar.userId && typeof selectedBazar.userId === 'object' && 'name' in selectedBazar.userId
+        ? (selectedBazar.userId as { name?: string }).name ?? 'Member'
+        : 'Member';
+    const isOwn = user?.id && ownerId === user.id;
+
+    if (isOwn) {
+      Alert.alert(
+        'Confirm Delete',
+        'Are you sure you want to delete this bazar entry? This action cannot be undone.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              setLoading(true);
+              try {
+                const response = await bazarService.deleteBazar(selectedBazar.id);
+                if (response.success) {
+                  Alert.alert('Success', 'Bazar entry deleted successfully!');
+                  onSuccess?.();
+                  onClose();
+                } else {
+                  Alert.alert('Error', response.error || 'Failed to delete bazar entry');
+                }
+              } catch {
+                Alert.alert('Error', 'An unexpected error occurred');
+              } finally {
+                setLoading(false);
+              }
+            },
+          },
+        ]
+      );
+      return;
+    }
+
     Alert.alert(
-      'Confirm Delete',
-      'Are you sure you want to delete this bazar entry? This action cannot be undone.',
+      'Request Deletion',
+      `Request deletion of ${ownerName}'s bazar entry? They will need to confirm.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Delete',
-          style: 'destructive',
+          text: 'Request',
           onPress: async () => {
             setLoading(true);
             try {
-              const response = await bazarService.adminDeleteBazar(
-                selectedBazar.id
-              );
-
+              const response = await bazarService.createBazarDeleteRequest(selectedBazar.id);
               if (response.success) {
-                Alert.alert('Success', 'Bazar entry deleted successfully!');
+                Alert.alert('Done', `${ownerName} will need to confirm to delete this entry.`);
                 onSuccess?.();
                 onClose();
               } else {
-                Alert.alert(
-                  'Error',
-                  response.error || 'Failed to delete bazar entry'
-                );
+                Alert.alert('Error', response.error || response.message || 'Request failed');
               }
             } catch {
               Alert.alert('Error', 'An unexpected error occurred');

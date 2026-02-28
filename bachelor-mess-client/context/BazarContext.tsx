@@ -7,8 +7,10 @@ import React, {
   useState,
 } from 'react';
 import bazarService, {
+  type BazarDeleteRequestItem,
   type BazarFilters as ApiBazarFilters,
 } from '../services/bazarService';
+import type { ApiResponse } from '../services/config';
 import httpClient from '../services/httpClient';
 import userStatsService from '../services/userStatsService';
 import { useAuth } from './AuthContext';
@@ -92,6 +94,12 @@ interface BazarContextType {
     status: 'approved' | 'rejected'
   ) => Promise<void>;
   deleteBazar: (bazarId: string) => Promise<void>;
+  requestBazarDeletion: (bazarId: string) => Promise<ApiResponse<BazarDeleteRequestItem>>;
+  getMyBazarDeleteRequests: () => Promise<ApiResponse<BazarDeleteRequestItem[]>>;
+  respondToBazarDeleteRequest: (
+    requestId: string,
+    action: 'accept' | 'reject'
+  ) => Promise<ApiResponse<BazarDeleteRequestItem>>;
   submitBazar: (data: any) => Promise<void>;
 
   // Computed
@@ -313,15 +321,60 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
     [refreshData]
   );
 
-  // Delete bazar entry
+  // Delete bazar entry (owner only; admin should use requestBazarDeletion for others)
   const deleteBazar = useCallback(
     async (bazarId: string) => {
+      const id = bazarId && String(bazarId).trim();
+      if (!id) return;
       try {
-        const response = await bazarService.deleteBazar(bazarId);
-        if (response.success) await refreshData();
+        const response = await bazarService.deleteBazar(id);
+        if (response.success) {
+          try {
+            await refreshData();
+          } catch {
+            // Ignore refresh errors (e.g. unmounted)
+          }
+        }
       } catch {
-        // Error state can be shown by refresh
+        // Error state can be shown by caller
       }
+    },
+    [refreshData]
+  );
+
+  const requestBazarDeletion = useCallback(
+    async (bazarId: string) => {
+      const id = bazarId && String(bazarId).trim();
+      if (!id) return { success: false, error: 'Invalid bazar ID' };
+      const response = await bazarService.createBazarDeleteRequest(id);
+      if (response.success) {
+        try {
+          await refreshData();
+        } catch {
+          // Ignore refresh errors (e.g. unmounted)
+        }
+      }
+      return response;
+    },
+    [refreshData]
+  );
+
+  const getMyBazarDeleteRequests = useCallback(
+    () => bazarService.getMyBazarDeleteRequests(),
+    []
+  );
+
+  const respondToBazarDeleteRequest = useCallback(
+    async (requestId: string, action: 'accept' | 'reject') => {
+      const response = await bazarService.respondToBazarDeleteRequest(requestId, action);
+      if (response.success) {
+        try {
+          await refreshData();
+        } catch {
+          // Ignore refresh errors (e.g. unmounted)
+        }
+      }
+      return response;
     },
     [refreshData]
   );
@@ -493,6 +546,9 @@ export const BazarProvider: React.FC<BazarProviderProps> = ({ children }) => {
     refreshData,
     updateBazarStatus,
     deleteBazar,
+    requestBazarDeletion,
+    getMyBazarDeleteRequests,
+    respondToBazarDeleteRequest,
     submitBazar,
 
     // Computed
