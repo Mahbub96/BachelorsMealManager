@@ -38,6 +38,8 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
 }) => {
   const { user } = useAuth();
   const { theme } = useTheme();
+  const onPrimaryText = theme.onPrimary?.text ?? theme.text.inverse;
+  const onPrimaryOverlay = theme.onPrimary?.overlay ?? theme.text.tertiary;
   const [systemStats, setSystemStats] = useState<SystemStats>({
     totalUsers: 0,
     totalAdmins: 0,
@@ -178,11 +180,11 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
           colors={theme.gradient.primary as [string, string]}
           style={styles.accessDeniedGradient}
         >
-          <Ionicons name='shield-checkmark' size={80} color='#fff' />
-          <ThemedText style={styles.accessDeniedTitle}>
+          <Ionicons name='shield-checkmark' size={80} color={onPrimaryText} />
+          <ThemedText style={[styles.accessDeniedTitle, { color: onPrimaryText }]}>
             Access Denied
           </ThemedText>
-          <ThemedText style={styles.accessDeniedText}>
+          <ThemedText style={[styles.accessDeniedText, { color: onPrimaryText }]}>
             This area is restricted to Super Administrators only.
           </ThemedText>
         </LinearGradient>
@@ -200,14 +202,14 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
       {/* Header */}
       <LinearGradient colors={theme.gradient.primary as [string, string]} style={styles.header}>
         <View style={styles.headerContent}>
-          <View style={styles.headerIconContainer}>
-            <Ionicons name='shield-checkmark' size={40} color='#fff' />
+          <View style={[styles.headerIconContainer, { backgroundColor: onPrimaryOverlay }]}>
+            <Ionicons name='shield-checkmark' size={40} color={onPrimaryText} />
           </View>
           <View style={styles.headerText}>
-            <ThemedText style={styles.headerTitle}>
+            <ThemedText style={[styles.headerTitle, { color: onPrimaryText }]}>
               Super Admin Dashboard
             </ThemedText>
-            <ThemedText style={styles.headerSubtitle}>
+            <ThemedText style={[styles.headerSubtitle, { color: onPrimaryText }]}>
               System Control Center
             </ThemedText>
           </View>
@@ -227,11 +229,11 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
             <Ionicons
               name={getHealthIcon(systemStats.systemHealth)}
               size={32}
-              color='#fff'
+              color={onPrimaryText}
             />
             <View style={styles.healthText}>
-              <ThemedText style={styles.healthTitle}>System Health</ThemedText>
-              <ThemedText style={styles.healthStatus}>
+              <ThemedText style={[styles.healthTitle, { color: onPrimaryText }]}>System Health</ThemedText>
+              <ThemedText style={[styles.healthStatus, { color: onPrimaryText }]}>
                 {systemStats.systemHealth.toUpperCase()}
               </ThemedText>
             </View>
@@ -246,11 +248,9 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
             colors={theme.gradient.success as [string, string]}
             style={styles.statGradient}
           >
-            <Ionicons name='people' size={28} color='#fff' />
-            <ThemedText style={styles.statValue}>
-              {systemStats.totalUsers}
-            </ThemedText>
-            <ThemedText style={styles.statLabel}>Total Users</ThemedText>
+            <Ionicons name='people' size={28} color={onPrimaryText} />
+            <ThemedText style={[styles.statValue, { color: onPrimaryText }]}>{systemStats.totalUsers}</ThemedText>
+            <ThemedText style={[styles.statLabel, { color: onPrimaryText }]}>Total Users</ThemedText>
           </LinearGradient>
         </View>
 
@@ -259,11 +259,9 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
             colors={theme.gradient.info as [string, string]}
             style={styles.statGradient}
           >
-            <Ionicons name='shield' size={28} color='#fff' />
-            <ThemedText style={styles.statValue}>
-              {systemStats.totalAdmins}
-            </ThemedText>
-            <ThemedText style={styles.statLabel}>Administrators</ThemedText>
+            <Ionicons name='shield' size={28} color={onPrimaryText} />
+            <ThemedText style={[styles.statValue, { color: onPrimaryText }]}>{systemStats.totalAdmins}</ThemedText>
+            <ThemedText style={[styles.statLabel, { color: onPrimaryText }]}>Administrators</ThemedText>
           </LinearGradient>
         </View>
 
@@ -272,11 +270,9 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
             colors={theme.gradient.warning as [string, string]}
             style={styles.statGradient}
           >
-            <Ionicons name='time' size={28} color='#fff' />
-            <ThemedText style={styles.statValue}>
-              {systemStats.pendingApprovals}
-            </ThemedText>
-            <ThemedText style={styles.statLabel}>Pending</ThemedText>
+            <Ionicons name='time' size={28} color={onPrimaryText} />
+            <ThemedText style={[styles.statValue, { color: onPrimaryText }]}>{systemStats.pendingApprovals}</ThemedText>
+            <ThemedText style={[styles.statLabel, { color: onPrimaryText }]}>Pending</ThemedText>
           </LinearGradient>
         </View>
 
@@ -285,82 +281,46 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
             colors={theme.gradient.secondary as [string, string]}
             style={styles.statGradient}
           >
-            <Ionicons name='checkmark-circle' size={28} color='#fff' />
-            <ThemedText style={styles.statValue}>
-              {systemStats.activeUsers}
-            </ThemedText>
-            <ThemedText style={styles.statLabel}>Active Users</ThemedText>
+            <Ionicons name='checkmark-circle' size={28} color={onPrimaryText} />
+            <ThemedText style={[styles.statValue, { color: onPrimaryText }]}>{systemStats.activeUsers}</ThemedText>
+            <ThemedText style={[styles.statLabel, { color: onPrimaryText }]}>Active Users</ThemedText>
           </LinearGradient>
         </View>
       </View>
 
       {/* Quick Actions */}
       <View style={styles.section}>
-        <ThemedText style={styles.sectionTitle}>Quick Actions</ThemedText>
+        <ThemedText style={[styles.sectionTitle, { color: theme.text.primary }]}>Quick Actions</ThemedText>
         <View style={styles.actionsGrid}>
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => setActiveTab('users')}
-          >
-            <LinearGradient
-              colors={theme.gradient.success as [string, string]}
-              style={styles.actionGradient}
-            >
-              <Ionicons name='people-circle' size={36} color='#fff' />
-              <ThemedText style={styles.actionTitle}>Manage Users</ThemedText>
-              <ThemedText style={styles.actionSubtitle}>
-                View and manage all users
-              </ThemedText>
+          <TouchableOpacity style={styles.actionCard} onPress={() => setActiveTab('users')}>
+            <LinearGradient colors={theme.gradient.success as [string, string]} style={styles.actionGradient}>
+              <Ionicons name='people-circle' size={36} color={onPrimaryText} />
+              <ThemedText style={[styles.actionTitle, { color: onPrimaryText }]}>Manage Users</ThemedText>
+              <ThemedText style={[styles.actionSubtitle, { color: onPrimaryText }]}>View and manage all users</ThemedText>
             </LinearGradient>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => handleSystemAction('backup')}
-          >
-            <LinearGradient
-              colors={theme.gradient.warning as [string, string]}
-              style={styles.actionGradient}
-            >
-              <Ionicons name='cloud-download' size={36} color='#fff' />
-              <ThemedText style={styles.actionTitle}>Backup System</ThemedText>
-              <ThemedText style={styles.actionSubtitle}>
-                Create system backup
-              </ThemedText>
+          <TouchableOpacity style={styles.actionCard} onPress={() => handleSystemAction('backup')}>
+            <LinearGradient colors={theme.gradient.warning as [string, string]} style={styles.actionGradient}>
+              <Ionicons name='cloud-download' size={36} color={onPrimaryText} />
+              <ThemedText style={[styles.actionTitle, { color: onPrimaryText }]}>Backup System</ThemedText>
+              <ThemedText style={[styles.actionSubtitle, { color: onPrimaryText }]}>Create system backup</ThemedText>
             </LinearGradient>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => setActiveTab('system')}
-          >
-            <LinearGradient
-              colors={theme.gradient.secondary as [string, string]}
-              style={styles.actionGradient}
-            >
-              <Ionicons name='settings' size={36} color='#fff' />
-              <ThemedText style={styles.actionTitle}>
-                System Settings
-              </ThemedText>
-              <ThemedText style={styles.actionSubtitle}>
-                Configure system options
-              </ThemedText>
+          <TouchableOpacity style={styles.actionCard} onPress={() => setActiveTab('system')}>
+            <LinearGradient colors={theme.gradient.secondary as [string, string]} style={styles.actionGradient}>
+              <Ionicons name='settings' size={36} color={onPrimaryText} />
+              <ThemedText style={[styles.actionTitle, { color: onPrimaryText }]}>System Settings</ThemedText>
+              <ThemedText style={[styles.actionSubtitle, { color: onPrimaryText }]}>Configure system options</ThemedText>
             </LinearGradient>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => handleSystemAction('analytics')}
-          >
-            <LinearGradient
-              colors={theme.gradient.primary as [string, string]}
-              style={styles.actionGradient}
-            >
-              <Ionicons name='analytics' size={36} color='#fff' />
-              <ThemedText style={styles.actionTitle}>Analytics</ThemedText>
-              <ThemedText style={styles.actionSubtitle}>
-                View system analytics
-              </ThemedText>
+          <TouchableOpacity style={styles.actionCard} onPress={() => handleSystemAction('analytics')}>
+            <LinearGradient colors={theme.gradient.primary as [string, string]} style={styles.actionGradient}>
+              <Ionicons name='analytics' size={36} color={onPrimaryText} />
+              <ThemedText style={[styles.actionTitle, { color: onPrimaryText }]}>Analytics</ThemedText>
+              <ThemedText style={[styles.actionSubtitle, { color: onPrimaryText }]}>View system analytics</ThemedText>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -368,7 +328,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
 
       {/* Recent Users */}
       <View style={styles.section}>
-        <ThemedText style={styles.sectionTitle}>Recent Users</ThemedText>
+        <ThemedText style={[styles.sectionTitle, { color: theme.text.primary }]}>Recent Users</ThemedText>
         <View style={styles.usersList}>
           {recentUsers.slice(0, 3).map((user, index) => (
             <View key={user.id || index} style={[styles.userCard, { backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }]}>
@@ -377,22 +337,22 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
                   <Ionicons name='person' size={24} color={theme.icon.secondary} />
                 </View>
                 <View style={styles.userDetails}>
-                  <ThemedText style={styles.userName}>{user.name}</ThemedText>
+                  <ThemedText style={[styles.userName, { color: theme.text.primary }]}>{user.name}</ThemedText>
                   <ThemedText style={[styles.userEmail, { color: theme.text.secondary }]}>{user.email}</ThemedText>
-                  <View style={styles.userRole}>
-                    <ThemedText style={[styles.roleText, { color: theme.text.tertiary }]}>{user.role}</ThemedText>
+                  <View style={[styles.userRole, { backgroundColor: theme.surface }]}>
+                    <ThemedText style={[styles.roleText, { color: theme.primary }]}>{user.role}</ThemedText>
                   </View>
                 </View>
               </View>
               <View style={styles.userActions}>
                 <TouchableOpacity
-                  style={styles.actionButton}
+                  style={[styles.actionButton, { backgroundColor: theme.surface }]}
                   onPress={() => handleUserAction('edit', user.id || '')}
                 >
                   <Ionicons name='create' size={20} color={theme.status.info} />
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.actionButton, styles.deleteButton]}
+                  style={[styles.actionButton, styles.deleteButton, { backgroundColor: theme.surface }]}
                   onPress={() => handleUserAction('delete', user.id || '')}
                 >
                   <Ionicons name='trash' size={20} color={theme.status.error} />
@@ -405,35 +365,19 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
 
       {/* System Actions */}
       <View style={styles.section}>
-        <ThemedText style={styles.sectionTitle}>System Actions</ThemedText>
+        <ThemedText style={[styles.sectionTitle, { color: theme.text.primary }]}>System Actions</ThemedText>
         <View style={styles.systemActions}>
-          <TouchableOpacity
-            style={styles.systemActionCard}
-            onPress={() => handleSystemAction('restart')}
-          >
-            <LinearGradient
-              colors={theme.gradient.warning as [string, string]}
-              style={styles.systemActionGradient}
-            >
-              <Ionicons name='refresh' size={24} color='#fff' />
-              <ThemedText style={styles.systemActionTitle}>
-                Restart System
-              </ThemedText>
+          <TouchableOpacity style={styles.systemActionCard} onPress={() => handleSystemAction('restart')}>
+            <LinearGradient colors={theme.gradient.warning as [string, string]} style={styles.systemActionGradient}>
+              <Ionicons name='refresh' size={24} color={onPrimaryText} />
+              <ThemedText style={[styles.systemActionTitle, { color: onPrimaryText }]}>Restart System</ThemedText>
             </LinearGradient>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.systemActionCard}
-            onPress={() => handleSystemAction('maintenance')}
-          >
-            <LinearGradient
-              colors={theme.gradient.secondary as [string, string]}
-              style={styles.systemActionGradient}
-            >
-              <Ionicons name='construct' size={24} color='#fff' />
-              <ThemedText style={styles.systemActionTitle}>
-                Maintenance Mode
-              </ThemedText>
+          <TouchableOpacity style={styles.systemActionCard} onPress={() => handleSystemAction('maintenance')}>
+            <LinearGradient colors={theme.gradient.secondary as [string, string]} style={styles.systemActionGradient}>
+              <Ionicons name='construct' size={24} color={onPrimaryText} />
+              <ThemedText style={[styles.systemActionTitle, { color: onPrimaryText }]}>Maintenance Mode</ThemedText>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -443,8 +387,8 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
 
   const renderUsers = () => (
     <View style={styles.tabContent}>
-      <ThemedText style={styles.tabTitle}>User Management</ThemedText>
-      <ThemedText style={styles.tabSubtitle}>
+      <ThemedText style={[styles.tabTitle, { color: theme.text.primary }]}>User Management</ThemedText>
+      <ThemedText style={[styles.tabSubtitle, { color: theme.text.secondary }]}>
         Manage all system users and their permissions
       </ThemedText>
     </View>
@@ -452,8 +396,8 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
 
   const renderSystem = () => (
     <View style={styles.tabContent}>
-      <ThemedText style={styles.tabTitle}>System Settings</ThemedText>
-      <ThemedText style={styles.tabSubtitle}>
+      <ThemedText style={[styles.tabTitle, { color: theme.text.primary }]}>System Settings</ThemedText>
+      <ThemedText style={[styles.tabSubtitle, { color: theme.text.secondary }]}>
         Configure system-wide settings and preferences
       </ThemedText>
     </View>
@@ -466,7 +410,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
         <TouchableOpacity
           style={[
             styles.tabButton,
-            activeTab === 'overview' && [styles.activeTab, { backgroundColor: theme.surface }],
+            activeTab === 'overview' && [styles.activeTab, { backgroundColor: theme.surface, shadowColor: theme.shadow.light }],
           ]}
           onPress={() => setActiveTab('overview')}
         >
@@ -487,7 +431,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.tabButton, activeTab === 'users' && [styles.activeTab, { backgroundColor: theme.surface }]]}
+          style={[styles.tabButton, activeTab === 'users' && [styles.activeTab, { backgroundColor: theme.surface, shadowColor: theme.shadow.light }]]}
           onPress={() => setActiveTab('users')}
         >
           <Ionicons
@@ -507,7 +451,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.tabButton, activeTab === 'system' && [styles.activeTab, { backgroundColor: theme.surface }]]}
+          style={[styles.tabButton, activeTab === 'system' && [styles.activeTab, { backgroundColor: theme.surface, shadowColor: theme.shadow.light }]]}
           onPress={() => setActiveTab('system')}
         >
           <Ionicons
@@ -553,24 +497,20 @@ const styles = StyleSheet.create({
   accessDeniedTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
     marginTop: 20,
     marginBottom: 10,
   },
   accessDeniedText: {
     fontSize: 16,
-    color: '#fff',
     textAlign: 'center',
     paddingHorizontal: 40,
     opacity: 0.9,
   },
   tabNavigation: {
     flexDirection: 'row',
-    backgroundColor: '#f8fafc',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
   },
   tabButton: {
     flex: 1,
@@ -581,8 +521,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   activeTab: {
-    backgroundColor: '#fff',
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -592,10 +530,8 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 14,
     fontWeight: '500',
-    color: '#6b7280',
   },
   activeTabText: {
-    color: '#667eea',
     fontWeight: '600',
   },
   tabContent: {
@@ -611,7 +547,6 @@ const styles = StyleSheet.create({
   },
   tabSubtitle: {
     fontSize: 16,
-    color: '#6b7280',
     textAlign: 'center',
   },
   scrollView: {
@@ -630,7 +565,6 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 15,
@@ -641,12 +575,10 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
     marginBottom: 5,
   },
   headerSubtitle: {
     fontSize: 16,
-    color: '#fff',
     opacity: 0.9,
   },
   healthCard: {
@@ -669,13 +601,11 @@ const styles = StyleSheet.create({
   healthTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
     marginBottom: 5,
   },
   healthStatus: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#fff',
   },
   statsGrid: {
     flexDirection: 'row',
@@ -696,13 +626,11 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
     marginTop: 8,
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 12,
-    color: '#fff',
     opacity: 0.9,
     textAlign: 'center',
   },
@@ -732,13 +660,11 @@ const styles = StyleSheet.create({
   actionTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#fff',
     marginTop: 8,
     marginBottom: 4,
   },
   actionSubtitle: {
     fontSize: 12,
-    color: '#fff',
     opacity: 0.9,
     textAlign: 'center',
   },
@@ -748,7 +674,6 @@ const styles = StyleSheet.create({
   userCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8fafc',
     padding: 15,
     borderRadius: 12,
     marginBottom: 10,
@@ -762,7 +687,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#e5e7eb',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -777,11 +701,9 @@ const styles = StyleSheet.create({
   },
   userEmail: {
     fontSize: 14,
-    color: '#6b7280',
     marginBottom: 4,
   },
   userRole: {
-    backgroundColor: '#e0e7ff',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 12,
@@ -789,7 +711,6 @@ const styles = StyleSheet.create({
   },
   roleText: {
     fontSize: 12,
-    color: '#3730a3',
     fontWeight: '500',
   },
   userActions: {
@@ -799,14 +720,11 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#f3f4f6',
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 8,
   },
-  deleteButton: {
-    backgroundColor: '#fef2f2',
-  },
+  deleteButton: {},
   systemActions: {
     flexDirection: 'row',
   },
@@ -823,7 +741,6 @@ const styles = StyleSheet.create({
   systemActionTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#fff',
     marginTop: 8,
   },
 });

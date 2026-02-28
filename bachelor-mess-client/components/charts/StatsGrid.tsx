@@ -32,6 +32,8 @@ export const StatsGrid: React.FC<StatsGridProps> = ({
 }) => {
   const { theme } = useTheme();
   const router = useRouter();
+  const onPrimaryText = theme.onPrimary?.text ?? theme.text.inverse;
+  const onPrimaryOverlay = theme.onPrimary?.overlay;
 
   const handleStatPress = (stat: StatItem) => {
       router.push({
@@ -64,18 +66,18 @@ export const StatsGrid: React.FC<StatsGridProps> = ({
         style={styles.cardGradient}
       >
         <View style={styles.cardContent}>
-          <View style={styles.iconContainer}>
+          <View style={[styles.iconContainer, { backgroundColor: onPrimaryOverlay }]}>
             <Ionicons
               name={stat.icon as IconName}
               size={24}
-              color={theme.text.inverse}
+              color={onPrimaryText}
             />
           </View>
           <View style={styles.textContainer}>
-            <ThemedText style={styles.statValue}>
+            <ThemedText style={[styles.statValue, { color: onPrimaryText }]}>
               {stat.value}
             </ThemedText>
-            <ThemedText style={styles.statTitle} numberOfLines={2}>
+            <ThemedText style={[styles.statTitle, { color: onPrimaryText }]} numberOfLines={2}>
               {stat.title}
             </ThemedText>
           </View>
@@ -122,7 +124,6 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -133,12 +134,10 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: 'white',
     marginBottom: 4,
   },
   statTitle: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.9)',
     lineHeight: 16,
   },
 }); 

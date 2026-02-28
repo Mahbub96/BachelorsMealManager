@@ -219,7 +219,7 @@ export default function ActivityDetailsScreen(_props: ActivityDetailsScreenProps
               { backgroundColor: activityColors[0] },
             ]}
           >
-            <Ionicons name={activityIcon as IconName} size={32} color='#fff' />
+            <Ionicons name={activityIcon as IconName} size={32} color={theme.text.inverse} />
           </View>
         </View>
 
@@ -227,7 +227,7 @@ export default function ActivityDetailsScreen(_props: ActivityDetailsScreenProps
         <View
           style={[
             styles.detailsCard,
-            { backgroundColor: theme.cardBackground },
+            { backgroundColor: theme.cardBackground, shadowColor: theme.shadow.light },
           ]}
         >
           <ThemedText
@@ -236,7 +236,7 @@ export default function ActivityDetailsScreen(_props: ActivityDetailsScreenProps
             Activity Details
           </ThemedText>
 
-          <View style={styles.detailRow}>
+          <View style={[styles.detailRow, { borderBottomColor: theme.border.secondary }]}>
             <ThemedText
               style={[styles.detailLabel, { color: theme.text.secondary }]}
             >
@@ -249,7 +249,7 @@ export default function ActivityDetailsScreen(_props: ActivityDetailsScreenProps
             </ThemedText>
           </View>
 
-          <View style={styles.detailRow}>
+          <View style={[styles.detailRow, { borderBottomColor: theme.border.secondary }]}>
             <ThemedText
               style={[styles.detailLabel, { color: theme.text.secondary }]}
             >
@@ -269,7 +269,7 @@ export default function ActivityDetailsScreen(_props: ActivityDetailsScreenProps
             </View>
           </View>
 
-          <View style={styles.detailRow}>
+          <View style={[styles.detailRow, { borderBottomColor: theme.border.secondary }]}>
             <ThemedText
               style={[styles.detailLabel, { color: theme.text.secondary }]}
             >
@@ -282,7 +282,7 @@ export default function ActivityDetailsScreen(_props: ActivityDetailsScreenProps
             </ThemedText>
           </View>
 
-          <View style={styles.detailRow}>
+          <View style={[styles.detailRow, { borderBottomColor: theme.border.secondary }]}>
             <ThemedText
               style={[styles.detailLabel, { color: theme.text.secondary }]}
             >
@@ -296,7 +296,7 @@ export default function ActivityDetailsScreen(_props: ActivityDetailsScreenProps
           </View>
 
           {activity.updatedAt && activity.updatedAt !== activity.createdAt && (
-            <View style={styles.detailRow}>
+            <View style={[styles.detailRow, { borderBottomColor: theme.border.secondary }]}>
               <ThemedText
                 style={[styles.detailLabel, { color: theme.text.secondary }]}
               >
@@ -316,7 +316,7 @@ export default function ActivityDetailsScreen(_props: ActivityDetailsScreenProps
           <View
             style={[
               styles.descriptionCard,
-              { backgroundColor: theme.cardBackground },
+              { backgroundColor: theme.cardBackground, shadowColor: theme.shadow.light },
             ]}
           >
             <ThemedText
@@ -402,7 +402,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 20,
     marginBottom: 16,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -419,7 +418,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
   },
   detailLabel: {
     fontSize: 14,
@@ -442,7 +440,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 20,
     marginBottom: 16,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -456,7 +453,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 20,
     marginBottom: 16,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,

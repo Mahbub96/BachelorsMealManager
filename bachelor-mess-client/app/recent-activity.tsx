@@ -35,7 +35,7 @@ const DEFAULT_FILTER_VALUES: Record<string, string> = {
 };
 
 export default function RecentActivityScreen() {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const safeTheme = useMemo(
     () =>
       theme ?? {
@@ -217,7 +217,7 @@ export default function RecentActivityScreen() {
         rightElement={refreshButton}
       >
         <View style={[styles.container, styles.centerContent, { backgroundColor: safeTheme?.background ?? '#ffffff' }]}>
-          <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent={false} />
+          <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent={false} />
           <ModernLoader visible text="Loading activities..." />
         </View>
       </ScreenLayout>
@@ -232,7 +232,7 @@ export default function RecentActivityScreen() {
       rightElement={refreshButton}
     >
       <View style={[styles.container, { backgroundColor: safeTheme?.background ?? '#ffffff' }]}>
-        <StatusBar barStyle="dark-content" backgroundColor={safeTheme?.background ?? '#ffffff'} translucent={false} />
+        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={safeTheme?.background ?? '#ffffff'} translucent={false} />
         <View style={styles.searchFilterWrap}>
           <SearchAndFilterRow
             searchPlaceholder="Search activity..."

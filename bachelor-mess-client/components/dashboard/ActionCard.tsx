@@ -1,5 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, StyleSheet } from 'react-native';
+import { useTheme } from '@/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '../ThemedText';
@@ -21,17 +22,20 @@ export const ActionCard: React.FC<ActionCardProps> = ({
   onPress,
   disabled = false,
 }) => {
+  const { theme } = useTheme();
+  const onPrimaryText = theme.onPrimary?.text ?? theme.text.inverse;
+  const onPrimaryOverlay = theme.onPrimary?.overlay;
   return (
     <TouchableOpacity
-      style={[styles.actionCard, disabled && styles.actionCardDisabled]}
+      style={[styles.actionCard, disabled && styles.actionCardDisabled, { shadowColor: theme.shadow.light }]}
       onPress={onPress}
       activeOpacity={0.7}
       disabled={disabled}
     >
       <LinearGradient colors={gradient} style={styles.actionGradient}>
-        <Ionicons name={icon} size={24} color='#fff' />
-        <ThemedText style={styles.actionTitle}>{title}</ThemedText>
-        <ThemedText style={styles.actionSubtitle}>{subtitle}</ThemedText>
+        <Ionicons name={icon} size={24} color={onPrimaryText} />
+        <ThemedText style={[styles.actionTitle, { color: onPrimaryText }]}>{title}</ThemedText>
+        <ThemedText style={[styles.actionSubtitle, { color: onPrimaryOverlay ?? onPrimaryText }]}>{subtitle}</ThemedText>
       </LinearGradient>
     </TouchableOpacity>
   );
@@ -42,7 +46,6 @@ const styles = StyleSheet.create({
     width: '48%',
     borderRadius: 12,
     overflow: 'hidden',
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -59,14 +62,12 @@ const styles = StyleSheet.create({
   actionTitle: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#fff',
     marginTop: 8,
     marginBottom: 4,
     textAlign: 'center',
   },
   actionSubtitle: {
     fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.9)',
     textAlign: 'center',
   },
 });

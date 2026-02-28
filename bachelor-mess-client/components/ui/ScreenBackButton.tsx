@@ -19,10 +19,7 @@ export const ScreenBackButton: React.FC<ScreenBackButtonProps> = ({
 }) => {
   const iconColor = useThemeColor({}, 'icon');
   const textColor = useThemeColor({}, 'text');
-  const borderColor = useThemeColor(
-    { light: '#e5e7eb', dark: '#374151' },
-    'background'
-  );
+  const borderColor = useThemeColor({}, 'border');
 
   return (
     <TouchableOpacity

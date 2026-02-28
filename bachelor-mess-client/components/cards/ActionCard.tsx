@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import { useTheme } from '@/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import type { IconName } from '@/constants/IconTypes';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -25,19 +26,32 @@ export const ActionCard: React.FC<ActionCardProps> = ({
   title,
   subtitle,
   icon,
-  iconColor = '#fff',
-  gradientColors = ['#667eea', '#764ba2'],
+  iconColor,
+  gradientColors,
   onPress,
   isSmallScreen = screenWidth < 375,
   variant = 'default',
   disabled = false,
   badge,
-  badgeColor = '#ef4444',
+  badgeColor,
 }) => {
+  const { theme } = useTheme();
+  const onPrimaryText = theme.onPrimary?.text ?? theme.text.inverse;
+  const onPrimaryOverlay = theme.onPrimary?.overlay ?? theme.text.tertiary;
+  const iconColorResolved = iconColor ?? onPrimaryText;
+  const gradientColorsResolved = gradientColors ?? (theme.gradient.primary as [string, string, ...string[]]);
+  const badgeColorResolved = badgeColor ?? theme.status.error;
+
+  const cardStyle = [styles.card, { shadowColor: theme.shadow.light }];
+  const iconContainerStyle = [styles.iconContainer, { backgroundColor: onPrimaryOverlay }];
+  const titleStyle = (s: object) => [s, { color: onPrimaryText }];
+  const subtitleStyle = (s: object) => [s, { color: onPrimaryOverlay ?? onPrimaryText }];
+  const badgeTextStyle = [styles.badgeText, { color: onPrimaryText }];
+
   const renderCompactCard = () => (
     <TouchableOpacity
       style={[
-        styles.card,
+        ...cardStyle,
         styles.compactCard,
         isSmallScreen && styles.compactCardSmall,
         disabled && styles.disabledCard,
@@ -46,36 +60,26 @@ export const ActionCard: React.FC<ActionCardProps> = ({
       activeOpacity={onPress && !disabled ? 0.7 : 1}
       disabled={disabled}
     >
-      <LinearGradient colors={gradientColors} style={styles.cardGradient}>
+      <LinearGradient colors={gradientColorsResolved} style={styles.cardGradient}>
         <View style={styles.compactContent}>
-          <View style={styles.iconContainer}>
+          <View style={iconContainerStyle}>
             <Ionicons
               name={icon as IconName}
               size={isSmallScreen ? 32 : 36}
-              color={iconColor}
+              color={iconColorResolved}
             />
           </View>
-          <ThemedText
-            style={[
-              styles.compactTitle,
-              isSmallScreen && styles.compactTitleSmall,
-            ]}
-          >
+          <ThemedText style={titleStyle([styles.compactTitle, isSmallScreen && styles.compactTitleSmall])}>
             {title}
           </ThemedText>
           {subtitle && (
-            <ThemedText
-              style={[
-                styles.compactSubtitle,
-                isSmallScreen && styles.compactSubtitleSmall,
-              ]}
-            >
+            <ThemedText style={subtitleStyle([styles.compactSubtitle, isSmallScreen && styles.compactSubtitleSmall])}>
               {subtitle}
             </ThemedText>
           )}
           {badge && (
-            <View style={[styles.badge, { backgroundColor: badgeColor }]}>
-              <ThemedText style={styles.badgeText}>{badge}</ThemedText>
+            <View style={[styles.badge, { backgroundColor: badgeColorResolved }]}>
+              <ThemedText style={badgeTextStyle}>{badge}</ThemedText>
             </View>
           )}
         </View>
@@ -86,7 +90,7 @@ export const ActionCard: React.FC<ActionCardProps> = ({
   const renderDetailedCard = () => (
     <TouchableOpacity
       style={[
-        styles.card,
+        ...cardStyle,
         styles.detailedCard,
         isSmallScreen && styles.detailedCardSmall,
         disabled && styles.disabledCard,
@@ -95,38 +99,28 @@ export const ActionCard: React.FC<ActionCardProps> = ({
       activeOpacity={onPress && !disabled ? 0.7 : 1}
       disabled={disabled}
     >
-      <LinearGradient colors={gradientColors} style={styles.cardGradient}>
+      <LinearGradient colors={gradientColorsResolved} style={styles.cardGradient}>
         <View style={styles.detailedHeader}>
-          <View style={styles.iconContainer}>
+          <View style={iconContainerStyle}>
             <Ionicons
               name={icon as IconName}
               size={isSmallScreen ? 28 : 32}
-              color={iconColor}
+              color={iconColorResolved}
             />
           </View>
           {badge && (
-            <View style={[styles.badge, { backgroundColor: badgeColor }]}>
-              <ThemedText style={styles.badgeText}>{badge}</ThemedText>
+            <View style={[styles.badge, { backgroundColor: badgeColorResolved }]}>
+              <ThemedText style={badgeTextStyle}>{badge}</ThemedText>
             </View>
           )}
         </View>
 
         <View style={styles.detailedContent}>
-          <ThemedText
-            style={[
-              styles.detailedTitle,
-              isSmallScreen && styles.detailedTitleSmall,
-            ]}
-          >
+          <ThemedText style={titleStyle([styles.detailedTitle, isSmallScreen && styles.detailedTitleSmall])}>
             {title}
           </ThemedText>
           {subtitle && (
-            <ThemedText
-              style={[
-                styles.detailedSubtitle,
-                isSmallScreen && styles.detailedSubtitleSmall,
-              ]}
-            >
+            <ThemedText style={subtitleStyle([styles.detailedSubtitle, isSmallScreen && styles.detailedSubtitleSmall])}>
               {subtitle}
             </ThemedText>
           )}
@@ -138,7 +132,7 @@ export const ActionCard: React.FC<ActionCardProps> = ({
   const renderDefaultCard = () => (
     <TouchableOpacity
       style={[
-        styles.card,
+        ...cardStyle,
         styles.defaultCard,
         isSmallScreen && styles.defaultCardSmall,
         disabled && styles.disabledCard,
@@ -147,38 +141,28 @@ export const ActionCard: React.FC<ActionCardProps> = ({
       activeOpacity={onPress && !disabled ? 0.7 : 1}
       disabled={disabled}
     >
-      <LinearGradient colors={gradientColors} style={styles.cardGradient}>
+      <LinearGradient colors={gradientColorsResolved} style={styles.cardGradient}>
         <View style={styles.defaultHeader}>
-          <View style={styles.iconContainer}>
+          <View style={iconContainerStyle}>
             <Ionicons
               name={icon as IconName}
               size={isSmallScreen ? 28 : 32}
-              color={iconColor}
+              color={iconColorResolved}
             />
           </View>
           {badge && (
-            <View style={[styles.badge, { backgroundColor: badgeColor }]}>
-              <ThemedText style={styles.badgeText}>{badge}</ThemedText>
+            <View style={[styles.badge, { backgroundColor: badgeColorResolved }]}>
+              <ThemedText style={badgeTextStyle}>{badge}</ThemedText>
             </View>
           )}
         </View>
 
         <View style={styles.defaultContent}>
-          <ThemedText
-            style={[
-              styles.defaultTitle,
-              isSmallScreen && styles.defaultTitleSmall,
-            ]}
-          >
+          <ThemedText style={titleStyle([styles.defaultTitle, isSmallScreen && styles.defaultTitleSmall])}>
             {title}
           </ThemedText>
           {subtitle && (
-            <ThemedText
-              style={[
-                styles.defaultSubtitle,
-                isSmallScreen && styles.defaultSubtitleSmall,
-              ]}
-            >
+            <ThemedText style={subtitleStyle([styles.defaultSubtitle, isSmallScreen && styles.defaultSubtitleSmall])}>
               {subtitle}
             </ThemedText>
           )}
@@ -198,11 +182,9 @@ export const ActionCard: React.FC<ActionCardProps> = ({
 };
 
 const styles = StyleSheet.create({
-  // Base card styles
   card: {
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
@@ -214,8 +196,6 @@ const styles = StyleSheet.create({
   disabledCard: {
     opacity: 0.5,
   },
-
-  // Compact variant
   compactCard: {
     borderRadius: 16,
     width: '100%',
@@ -247,7 +227,6 @@ const styles = StyleSheet.create({
   compactTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
     textAlign: 'center',
     marginBottom: 6,
   },
@@ -256,7 +235,6 @@ const styles = StyleSheet.create({
   },
   compactSubtitle: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
     textAlign: 'center',
     lineHeight: 18,
   },
@@ -264,8 +242,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 16,
   },
-
-  // Default variant
   defaultCard: {
     aspectRatio: 1.2,
     borderRadius: 16,
@@ -288,7 +264,6 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
@@ -300,7 +275,6 @@ const styles = StyleSheet.create({
   defaultTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#fff',
     marginBottom: 4,
   },
   defaultTitleSmall: {
@@ -308,15 +282,12 @@ const styles = StyleSheet.create({
   },
   defaultSubtitle: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
     lineHeight: 16,
   },
   defaultSubtitleSmall: {
     fontSize: 10,
     lineHeight: 14,
   },
-
-  // Detailed variant
   detailedCard: {
     aspectRatio: 1.2,
     borderRadius: 16,
@@ -338,7 +309,6 @@ const styles = StyleSheet.create({
   detailedTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#fff',
     marginBottom: 4,
   },
   detailedTitleSmall: {
@@ -346,15 +316,12 @@ const styles = StyleSheet.create({
   },
   detailedSubtitle: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
     lineHeight: 16,
   },
   detailedSubtitleSmall: {
     fontSize: 10,
     lineHeight: 14,
   },
-
-  // Shared styles
   badge: {
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -364,7 +331,6 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontSize: 10,
-    color: '#fff',
     fontWeight: '600',
   },
 });

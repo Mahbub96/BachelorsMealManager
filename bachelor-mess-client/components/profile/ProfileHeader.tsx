@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { useTheme } from '@/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import type { IconName } from '@/constants/IconTypes';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -33,6 +34,10 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   showActions = false,
   compact = false,
 }) => {
+  const { theme } = useTheme();
+  const onPrimaryText = theme.onPrimary?.text ?? theme.text.inverse;
+  const onPrimaryOverlay = theme.onPrimary?.overlay ?? theme.text.tertiary;
+
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -45,18 +50,18 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   const getRoleColor = (role: string) => {
     switch (role) {
       case 'super_admin':
-        return '#ef4444';
+        return theme.status.error;
       case 'admin':
-        return '#f59e0b';
+        return theme.status.warning;
       case 'member':
-        return '#667eea';
+        return theme.primary;
       default:
-        return '#6b7280';
+        return theme.text.secondary;
     }
   };
 
   const getStatusColor = (status: string) => {
-    return status === 'active' ? '#10b981' : '#6b7280';
+    return status === 'active' ? theme.status.success : theme.text.secondary;
   };
 
   const getRoleIcon = (role: string) => {
@@ -74,56 +79,45 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
 
   return (
     <LinearGradient
-      colors={['#667eea', '#764ba2']}
+      colors={theme.gradient.primary as [string, string]}
       style={[styles.headerGradient, compact && styles.compactHeader]}
     >
       <View style={styles.header}>
         <View style={styles.avatarContainer}>
-          <View style={styles.avatar}>
-            <ThemedText style={styles.avatarText}>
+          <View style={[styles.avatar, { backgroundColor: onPrimaryOverlay }]}>
+            <ThemedText style={[styles.avatarText, { color: onPrimaryText }]}>
               {getInitials(user.name)}
             </ThemedText>
           </View>
           {user.isEmailVerified && (
-            <View style={styles.verifiedBadge}>
-              <Ionicons name='checkmark-circle' size={16} color='#10b981' />
+            <View style={[styles.verifiedBadge, { backgroundColor: theme.surface }]}>
+              <Ionicons name='checkmark-circle' size={16} color={theme.status.success} />
             </View>
           )}
         </View>
 
         <View style={styles.userInfo}>
-          <ThemedText style={[styles.name, compact && styles.compactName]}>
+          <ThemedText style={[styles.name, compact && styles.compactName, { color: onPrimaryText }]}>
             {user.name}
           </ThemedText>
-          <ThemedText style={[styles.email, compact && styles.compactEmail]}>
+          <ThemedText style={[styles.email, compact && styles.compactEmail, { color: onPrimaryOverlay ?? onPrimaryText }]}>
             {user.email}
           </ThemedText>
 
           <View style={styles.badges}>
             <View style={[styles.badgeContainer, { backgroundColor: getRoleColor(user.role) }]}>
-              <Ionicons
-                name={getRoleIcon(user.role) as IconName}
-                size={12}
-                color='#fff'
-              />
-              <ThemedText style={styles.badgeText}>
+              <Ionicons name={getRoleIcon(user.role) as IconName} size={12} color={onPrimaryText} />
+              <ThemedText style={[styles.badgeText, { color: onPrimaryText }]}>
                 {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
               </ThemedText>
             </View>
-            <View
-              style={[
-                styles.badgeContainer,
-                { backgroundColor: getStatusColor(user.status) },
-              ]}
-            >
+            <View style={[styles.badgeContainer, { backgroundColor: getStatusColor(user.status) }]}>
               <Ionicons
-                name={
-                  user.status === 'active' ? 'checkmark-circle' : 'close-circle'
-                }
+                name={user.status === 'active' ? 'checkmark-circle' : 'close-circle'}
                 size={12}
-                color='#fff'
+                color={onPrimaryText}
               />
-              <ThemedText style={styles.badgeText}>
+              <ThemedText style={[styles.badgeText, { color: onPrimaryText }]}>
                 {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
               </ThemedText>
             </View>
@@ -133,19 +127,13 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
         {showActions && (
           <View style={styles.actions}>
             {onEditPress && (
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={onEditPress}
-              >
-                <Ionicons name='create' size={20} color='#fff' />
+              <TouchableOpacity style={[styles.actionButton, { backgroundColor: onPrimaryOverlay }]} onPress={onEditPress}>
+                <Ionicons name='create' size={20} color={onPrimaryText} />
               </TouchableOpacity>
             )}
             {onViewDetailsPress && (
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={onViewDetailsPress}
-              >
-                <Ionicons name='eye' size={20} color='#fff' />
+              <TouchableOpacity style={[styles.actionButton, { backgroundColor: onPrimaryOverlay }]} onPress={onViewDetailsPress}>
+                <Ionicons name='eye' size={20} color={onPrimaryText} />
               </TouchableOpacity>
             )}
           </View>
@@ -175,12 +163,10 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
-    color: '#fff',
     fontSize: 20,
     fontWeight: 'bold',
   },
@@ -188,7 +174,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: -2,
     right: -2,
-    backgroundColor: '#fff',
     borderRadius: 10,
     padding: 2,
   },
@@ -196,7 +181,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   name: {
-    color: '#fff',
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 4,
@@ -205,7 +189,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   email: {
-    color: 'rgba(255, 255, 255, 0.8)',
     fontSize: 14,
     marginBottom: 8,
   },
@@ -220,13 +203,11 @@ const styles = StyleSheet.create({
   badgeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
   },
   badgeText: {
-    color: '#fff',
     fontSize: 10,
     fontWeight: '500',
     marginLeft: 4,
@@ -239,7 +220,6 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },

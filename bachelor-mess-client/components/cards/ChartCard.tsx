@@ -3,6 +3,7 @@ import { View, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { IconName } from '@/constants/IconTypes';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTheme } from '@/context/ThemeContext';
 import { ThemedText } from '../ThemedText';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -29,8 +30,8 @@ export const ChartCard: React.FC<ChartCardProps> = ({
   title,
   subtitle,
   icon,
-  iconColor = '#fff',
-  gradientColors = ['#667eea', '#764ba2'],
+  iconColor,
+  gradientColors,
   onPress,
   isSmallScreen = screenWidth < 375,
   variant = 'default',
@@ -42,24 +43,31 @@ export const ChartCard: React.FC<ChartCardProps> = ({
   onPeriodChange,
   periods = ['1D', '1W', '1M', '3M', '1Y'],
 }) => {
+  const { theme } = useTheme();
+  const onPrimaryText = theme.onPrimary?.text ?? theme.text.inverse;
+  const onPrimaryOverlay = theme.onPrimary?.overlay;
+  const iconColorResolved = iconColor ?? onPrimaryText;
+  const gradientColorsResolved = gradientColors ?? (theme.gradient.primary as [string, string, ...string[]]);
+
   const renderCompactCard = () => (
     <TouchableOpacity
       style={[
         styles.card,
         styles.compactCard,
         isSmallScreen && styles.compactCardSmall,
+        { shadowColor: theme.shadow.light },
       ]}
       onPress={onPress}
       activeOpacity={onPress ? 0.7 : 1}
     >
-      <LinearGradient colors={gradientColors} style={styles.cardGradient}>
+      <LinearGradient colors={gradientColorsResolved} style={styles.cardGradient}>
         {showHeader && (
           <View style={styles.compactHeader}>
             {showIcon && icon && (
               <Ionicons
                 name={icon as IconName}
                 size={isSmallScreen ? 16 : 18}
-                color={iconColor}
+                color={iconColorResolved}
               />
             )}
             <View style={styles.compactHeaderText}>
@@ -67,6 +75,7 @@ export const ChartCard: React.FC<ChartCardProps> = ({
                 style={[
                   styles.compactTitle,
                   isSmallScreen && styles.compactTitleSmall,
+                  { color: onPrimaryText },
                 ]}
               >
                 {title}
@@ -76,6 +85,7 @@ export const ChartCard: React.FC<ChartCardProps> = ({
                   style={[
                     styles.compactSubtitle,
                     isSmallScreen && styles.compactSubtitleSmall,
+                    { color: onPrimaryText },
                   ]}
                 >
                   {subtitle}
@@ -95,6 +105,7 @@ export const ChartCard: React.FC<ChartCardProps> = ({
                 style={[
                   styles.periodButton,
                   period === p && styles.periodButtonActive,
+                  { backgroundColor: onPrimaryOverlay },
                 ]}
                 onPress={() => onPeriodChange(p)}
               >
@@ -102,6 +113,7 @@ export const ChartCard: React.FC<ChartCardProps> = ({
                   style={[
                     styles.periodButtonText,
                     period === p && styles.periodButtonTextActive,
+                    { color: onPrimaryText },
                   ]}
                 >
                   {p}
@@ -120,20 +132,21 @@ export const ChartCard: React.FC<ChartCardProps> = ({
         styles.card,
         styles.detailedCard,
         isSmallScreen && styles.detailedCardSmall,
+        { shadowColor: theme.shadow.light },
       ]}
       onPress={onPress}
       activeOpacity={onPress ? 0.7 : 1}
     >
-      <LinearGradient colors={gradientColors} style={styles.cardGradient}>
+      <LinearGradient colors={gradientColorsResolved} style={styles.cardGradient}>
         {showHeader && (
           <View style={styles.detailedHeader}>
             <View style={styles.detailedHeaderLeft}>
               {showIcon && icon && (
-                <View style={styles.iconContainer}>
+                <View style={[styles.iconContainer, { backgroundColor: onPrimaryOverlay }]}>
                   <Ionicons
                     name={icon as IconName}
                     size={isSmallScreen ? 20 : 24}
-                    color={iconColor}
+                    color={iconColorResolved}
                   />
                 </View>
               )}
@@ -142,6 +155,7 @@ export const ChartCard: React.FC<ChartCardProps> = ({
                   style={[
                     styles.detailedTitle,
                     isSmallScreen && styles.detailedTitleSmall,
+                    { color: onPrimaryText },
                   ]}
                 >
                   {title}
@@ -151,6 +165,7 @@ export const ChartCard: React.FC<ChartCardProps> = ({
                     style={[
                       styles.detailedSubtitle,
                       isSmallScreen && styles.detailedSubtitleSmall,
+                      { color: onPrimaryText },
                     ]}
                   >
                     {subtitle}
@@ -167,6 +182,7 @@ export const ChartCard: React.FC<ChartCardProps> = ({
                     style={[
                       styles.periodButton,
                       period === p && styles.periodButtonActive,
+                      { backgroundColor: onPrimaryOverlay },
                     ]}
                     onPress={() => onPeriodChange(p)}
                   >
@@ -174,6 +190,7 @@ export const ChartCard: React.FC<ChartCardProps> = ({
                       style={[
                         styles.periodButtonText,
                         period === p && styles.periodButtonTextActive,
+                        { color: onPrimaryText },
                       ]}
                     >
                       {p}
@@ -196,20 +213,21 @@ export const ChartCard: React.FC<ChartCardProps> = ({
         styles.card,
         styles.defaultCard,
         isSmallScreen && styles.defaultCardSmall,
+        { shadowColor: theme.shadow.light },
       ]}
       onPress={onPress}
       activeOpacity={onPress ? 0.7 : 1}
     >
-      <LinearGradient colors={gradientColors} style={styles.cardGradient}>
+      <LinearGradient colors={gradientColorsResolved} style={styles.cardGradient}>
         {showHeader && (
           <View style={styles.defaultHeader}>
             <View style={styles.defaultHeaderLeft}>
               {showIcon && icon && (
-                <View style={styles.iconContainer}>
+                <View style={[styles.iconContainer, { backgroundColor: onPrimaryOverlay }]}>
                   <Ionicons
                     name={icon as IconName}
                     size={isSmallScreen ? 20 : 24}
-                    color={iconColor}
+                    color={iconColorResolved}
                   />
                 </View>
               )}
@@ -218,6 +236,7 @@ export const ChartCard: React.FC<ChartCardProps> = ({
                   style={[
                     styles.defaultTitle,
                     isSmallScreen && styles.defaultTitleSmall,
+                    { color: onPrimaryText },
                   ]}
                 >
                   {title}
@@ -227,6 +246,7 @@ export const ChartCard: React.FC<ChartCardProps> = ({
                     style={[
                       styles.defaultSubtitle,
                       isSmallScreen && styles.defaultSubtitleSmall,
+                      { color: onPrimaryText },
                     ]}
                   >
                     {subtitle}
@@ -243,6 +263,7 @@ export const ChartCard: React.FC<ChartCardProps> = ({
                     style={[
                       styles.periodButton,
                       period === p && styles.periodButtonActive,
+                      { backgroundColor: onPrimaryOverlay },
                     ]}
                     onPress={() => onPeriodChange(p)}
                   >
@@ -250,6 +271,7 @@ export const ChartCard: React.FC<ChartCardProps> = ({
                       style={[
                         styles.periodButtonText,
                         period === p && styles.periodButtonTextActive,
+                        { color: onPrimaryText },
                       ]}
                     >
                       {p}
@@ -277,11 +299,9 @@ export const ChartCard: React.FC<ChartCardProps> = ({
 };
 
 const styles = StyleSheet.create({
-  // Base card styles
   card: {
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -290,8 +310,6 @@ const styles = StyleSheet.create({
   cardGradient: {
     padding: 16,
   },
-
-  // Compact variant
   compactCard: {
     aspectRatio: 1.5,
     borderRadius: 12,
@@ -312,7 +330,6 @@ const styles = StyleSheet.create({
   compactTitle: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#fff',
     marginBottom: 2,
   },
   compactTitleSmall: {
@@ -320,7 +337,6 @@ const styles = StyleSheet.create({
   },
   compactSubtitle: {
     fontSize: 10,
-    color: 'rgba(255, 255, 255, 0.8)',
   },
   compactSubtitleSmall: {
     fontSize: 8,
@@ -364,7 +380,6 @@ const styles = StyleSheet.create({
   defaultTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#fff',
     marginBottom: 4,
   },
   defaultTitleSmall: {
@@ -372,7 +387,6 @@ const styles = StyleSheet.create({
   },
   defaultSubtitle: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
   },
   defaultSubtitleSmall: {
     fontSize: 10,
@@ -414,7 +428,6 @@ const styles = StyleSheet.create({
   detailedTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#fff',
     marginBottom: 4,
   },
   detailedTitleSmall: {
@@ -422,7 +435,6 @@ const styles = StyleSheet.create({
   },
   detailedSubtitle: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
   },
   detailedSubtitleSmall: {
     fontSize: 10,
@@ -437,12 +449,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // Shared styles
   iconContainer: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -450,18 +460,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
-  periodButtonActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-  },
+  periodButtonActive: {},
   periodButtonText: {
     fontSize: 10,
-    color: 'rgba(255, 255, 255, 0.8)',
     fontWeight: '500',
   },
   periodButtonTextActive: {
-    color: '#fff',
     fontWeight: '600',
   },
 });

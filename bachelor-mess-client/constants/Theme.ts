@@ -410,11 +410,11 @@ export const getThemeColor = (theme: ThemeColors, path: string): string => {
       value = value[key];
     } else {
       console.warn(`Theme path "${path}" not found`);
-      return '#000000'; // fallback
+      return theme.text.primary;
     }
   }
 
-  return typeof value === 'string' ? value : '#000000';
+  return typeof value === 'string' ? value : theme.text.primary;
 };
 
 // Common theme patterns

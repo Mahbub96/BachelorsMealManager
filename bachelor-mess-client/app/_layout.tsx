@@ -6,8 +6,9 @@ import { ThemeProvider } from '@/context/ThemeContext';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { LogBox } from 'react-native';
+import { LogBox, StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { useTheme } from '@/context/ThemeContext';
 // import { useColorScheme } from 'react-native';
 
 // Suppress all debug/warning overlays in GUI (production + dev)
@@ -27,10 +28,11 @@ export const unstable_settings = {
 SplashScreen.preventAutoHideAsync();
 
 function AppContent() {
-  // const { user } = useAuth();
-
+  const { isDark } = useTheme();
   return (
-    <Stack>
+    <>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
+      <Stack>
       <Stack.Screen name='auth' options={{ headerShown: false }} />
       <Stack.Screen name='(tabs)' options={{ headerShown: false }} />
       <Stack.Screen name='LoginScreen' options={{ headerShown: false }} />
@@ -85,6 +87,7 @@ function AppContent() {
       <Stack.Screen name='super-admin' options={{ headerShown: false }} />
       <Stack.Screen name='+not-found' options={{ headerShown: false }} />
     </Stack>
+    </>
   );
 }
 

@@ -84,10 +84,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
   const iconColor = useThemeColor({}, 'icon');
-  const borderColor = useThemeColor(
-    { light: '#e5e7eb', dark: '#374151' },
-    'background'
-  );
+  const borderColor = useThemeColor({}, 'border');
 
   const [activeTab, setActiveTab] = useState<'overview' | 'add' | 'history'>(
     'overview'
@@ -769,25 +766,16 @@ export const MealManagement: React.FC<MealManagementProps> = ({
             <TouchableOpacity
               style={[
                 styles.mealOption,
-                !selectedMeals.breakfast && {
-                  backgroundColor:
-                    theme.cardBackground ?? theme.surface ?? '#fff',
-                  borderColor: theme.border?.secondary ?? '#e5e7eb',
+                {
+                  backgroundColor: selectedMeals.breakfast
+                    ? (theme.status?.success ?? theme.gradient?.success?.[0])
+                    : (theme.cardBackground ?? theme.surface),
+                  borderColor: selectedMeals.breakfast
+                    ? (theme.status?.success ?? theme.gradient?.success?.[0])
+                    : theme.border?.secondary,
+                  shadowColor: theme.shadow.light,
                 },
-                selectedMeals.breakfast && [
-                  styles.mealOptionSelected,
-                  {
-                    backgroundColor:
-                      theme.status?.success ??
-                      theme.gradient?.success?.[0] ??
-                      '#10b981',
-                    borderColor:
-                      theme.status?.success ??
-                      theme.gradient?.success?.[0] ??
-                      '#10b981',
-                  },
-                ],
-              ]}
+                              ]}
               onPress={() => toggleMeal('breakfast')}
             >
               <Ionicons
@@ -795,10 +783,8 @@ export const MealManagement: React.FC<MealManagementProps> = ({
                 size={24}
                 color={
                   selectedMeals.breakfast
-                    ? (theme.text?.inverse ?? '#fff')
-                    : (theme.status?.warning ??
-                      theme.gradient?.warning?.[0] ??
-                      '#f59e0b')
+                    ? theme.text?.inverse
+                    : (theme.status?.warning ?? theme.gradient?.warning?.[0])
                 }
               />
               <ThemedText
@@ -807,7 +793,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
                   selectedMeals.breakfast && styles.mealOptionTextSelected,
                   {
                     color: selectedMeals.breakfast
-                      ? (theme.text?.inverse ?? '#fff')
+                      ? theme.text?.inverse
                       : textColor,
                   },
                 ]}
@@ -818,24 +804,15 @@ export const MealManagement: React.FC<MealManagementProps> = ({
             <TouchableOpacity
               style={[
                 styles.mealOption,
-                !selectedMeals.lunch && {
-                  backgroundColor:
-                    theme.cardBackground ?? theme.surface ?? '#fff',
-                  borderColor: theme.border?.secondary ?? '#e5e7eb',
+                {
+                  backgroundColor: selectedMeals.lunch
+                    ? (theme.status?.success ?? theme.gradient?.success?.[0])
+                    : (theme.cardBackground ?? theme.surface),
+                  borderColor: selectedMeals.lunch
+                    ? (theme.status?.success ?? theme.gradient?.success?.[0])
+                    : theme.border?.secondary,
+                  shadowColor: theme.shadow.light,
                 },
-                selectedMeals.lunch && [
-                  styles.mealOptionSelected,
-                  {
-                    backgroundColor:
-                      theme.status?.success ??
-                      theme.gradient?.success?.[0] ??
-                      '#10b981',
-                    borderColor:
-                      theme.status?.success ??
-                      theme.gradient?.success?.[0] ??
-                      '#10b981',
-                  },
-                ],
               ]}
               onPress={() => toggleMeal('lunch')}
             >
@@ -844,10 +821,10 @@ export const MealManagement: React.FC<MealManagementProps> = ({
                 size={24}
                 color={
                   selectedMeals.lunch
-                    ? (theme.text?.inverse ?? '#fff')
+                    ? theme.text?.inverse
                     : (theme.status?.success ??
                       theme.gradient?.success?.[0] ??
-                      '#10b981')
+                      theme.status?.success ?? theme.gradient?.success?.[0])
                 }
               />
               <ThemedText
@@ -856,7 +833,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
                   selectedMeals.lunch && styles.mealOptionTextSelected,
                   {
                     color: selectedMeals.lunch
-                      ? (theme.text?.inverse ?? '#fff')
+                      ? theme.text?.inverse
                       : textColor,
                   },
                 ]}
@@ -867,24 +844,15 @@ export const MealManagement: React.FC<MealManagementProps> = ({
             <TouchableOpacity
               style={[
                 styles.mealOption,
-                !selectedMeals.dinner && {
-                  backgroundColor:
-                    theme.cardBackground ?? theme.surface ?? '#fff',
-                  borderColor: theme.border?.secondary ?? '#e5e7eb',
+                {
+                  backgroundColor: selectedMeals.dinner
+                    ? (theme.primary ?? theme.gradient?.primary?.[0])
+                    : (theme.cardBackground ?? theme.surface),
+                  borderColor: selectedMeals.dinner
+                    ? (theme.primary ?? theme.gradient?.primary?.[0])
+                    : theme.border?.secondary,
+                  shadowColor: theme.shadow.light,
                 },
-                selectedMeals.dinner && [
-                  styles.mealOptionSelected,
-                  {
-                    backgroundColor:
-                      theme.primary ??
-                      theme.gradient?.primary?.[0] ??
-                      '#8b5cf6',
-                    borderColor:
-                      theme.primary ??
-                      theme.gradient?.primary?.[0] ??
-                      '#8b5cf6',
-                  },
-                ],
               ]}
               onPress={() => toggleMeal('dinner')}
             >
@@ -893,10 +861,8 @@ export const MealManagement: React.FC<MealManagementProps> = ({
                 size={24}
                 color={
                   selectedMeals.dinner
-                    ? (theme.text?.inverse ?? '#fff')
-                    : (theme.primary ??
-                      theme.gradient?.primary?.[0] ??
-                      '#8b5cf6')
+                    ? theme.text?.inverse
+                    : (theme.primary ?? theme.gradient?.primary?.[0])
                 }
               />
               <ThemedText
@@ -905,7 +871,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
                   selectedMeals.dinner && styles.mealOptionTextSelected,
                   {
                     color: selectedMeals.dinner
-                      ? (theme.text?.inverse ?? '#fff')
+                      ? theme.text?.inverse
                       : textColor,
                   },
                 ]}
@@ -1094,8 +1060,8 @@ export const MealManagement: React.FC<MealManagementProps> = ({
           animationType='slide'
           onRequestClose={() => setShowDatePicker(false)}
         >
-          <View style={styles.modalOverlay}>
-            <View style={[styles.modalContent, { backgroundColor }]}>
+          <View style={[styles.modalOverlay, { backgroundColor: theme.overlay.medium }]}>
+            <View style={[styles.modalContent, { backgroundColor, shadowColor: theme.shadow.light }]}>
               <View style={styles.modalHeader}>
                 <ThemedText style={[styles.modalTitle, { color: textColor }]}>
                   Select Date
@@ -1373,13 +1339,11 @@ const styles = StyleSheet.create({
   emptyStateText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#6b7280',
     marginTop: 12,
     marginBottom: 4,
   },
   emptyStateSubtext: {
     fontSize: 14,
-    color: '#9ca3af',
   },
   addMealForm: {
     padding: 20,
@@ -1390,7 +1354,6 @@ const styles = StyleSheet.create({
   formSectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1f2937',
     marginBottom: 16,
   },
   formSectionSubtitle: {
@@ -1452,13 +1415,10 @@ const styles = StyleSheet.create({
   },
   mealOption: {
     flex: 1,
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -1469,13 +1429,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 8,
   },
-  mealOptionSelected: {
-    backgroundColor: '#10b981',
-    borderColor: '#10b981',
-  },
-  mealOptionTextSelected: {
-    color: '#fff',
-  },
+  mealOptionSelected: {},
+  mealOptionTextSelected: {},
   notesInput: {
     borderRadius: 12,
     padding: 16,
@@ -1485,7 +1440,6 @@ const styles = StyleSheet.create({
   },
   notesPlaceholder: {
     fontSize: 14,
-    color: '#9ca3af',
     textAlign: 'center',
   },
   submitButton: {
@@ -1556,7 +1510,6 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1566,7 +1519,6 @@ const styles = StyleSheet.create({
     margin: 20,
     width: '90%',
     maxWidth: 400,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 12,

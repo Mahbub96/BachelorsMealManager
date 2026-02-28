@@ -18,6 +18,7 @@ import { ModernLoader } from './ui/ModernLoader';
 import { ThemedView } from './ThemedView';
 import mealService, { MealSubmission } from '../services/mealService';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { toLocalDateString, dateStringToDate, formatDate } from '../utils/dateUtils';
 
 type ShowAlertVariant = 'info' | 'success' | 'error' | 'warning';
@@ -45,6 +46,8 @@ export const MealForm: React.FC<MealFormProps> = ({
     [onShowAlert]
   );
   const { user } = useAuth();
+  const { theme } = useTheme();
+  const onPrimaryText = theme.button?.primary?.text ?? theme.onPrimary?.text ?? theme.text.inverse;
   const [loading, setLoading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(
@@ -329,13 +332,13 @@ export const MealForm: React.FC<MealFormProps> = ({
   const getMealColor = (mealType: 'breakfast' | 'lunch' | 'dinner') => {
     switch (mealType) {
       case 'breakfast':
-        return '#f59e0b';
+        return theme.status.warning;
       case 'lunch':
-        return '#10b981';
+        return theme.status.success;
       case 'dinner':
-        return '#6366f1';
+        return theme.primary;
       default:
-        return '#6b7280';
+        return theme.text.secondary;
     }
   };
 
@@ -348,12 +351,12 @@ export const MealForm: React.FC<MealFormProps> = ({
   return (
     <View style={styles.container}>
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-        <ThemedView style={styles.formContainer}>
+        <ThemedView style={[styles.formContainer, { backgroundColor: theme.surface, shadowColor: theme.shadow.light }]}>
         <View style={styles.header}>
-          <ThemedText style={styles.title}>
+          <ThemedText style={[styles.title, { color: theme.text.primary }]}>
             {isUpdating ? 'Update Meal Entry' : 'Add Meal Entry'}
           </ThemedText>
-          <ThemedText style={styles.subtitle}>
+          <ThemedText style={[styles.subtitle, { color: theme.text.secondary }]}>
             {isUpdating
               ? 'Update your meal selection for this date'
               : 'Select the meals you had today'}
@@ -362,34 +365,32 @@ export const MealForm: React.FC<MealFormProps> = ({
 
         {/* Date Selection */}
         <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Date</ThemedText>
+          <ThemedText style={[styles.sectionTitle, { color: theme.text.primary }]}>Date</ThemedText>
           <TouchableOpacity
             style={[
               styles.dateButton,
-              errors.date && styles.inputError,
+              { backgroundColor: theme.input.background, borderColor: theme.border.primary },
+              errors.date && { borderColor: theme.status.error },
             ]}
             onPress={openDatePicker}
             activeOpacity={0.7}
           >
-            <Ionicons name='calendar' size={20} color='#667eea' />
-            <ThemedText style={styles.dateButtonText}>
+            <Ionicons name='calendar' size={20} color={theme.primary} />
+            <ThemedText style={[styles.dateButtonText, { color: theme.text.primary }]}>
               {formData.date ? formatDate(formData.date) : 'Select Date'}
             </ThemedText>
           </TouchableOpacity>
           {errors.date && (
-            <ThemedText style={styles.errorText}>{errors.date}</ThemedText>
+            <ThemedText style={[styles.errorText, { color: theme.status.error }]}>{errors.date}</ThemedText>
           )}
           {existingMealWarning && (
-            <View style={styles.warningContainer}>
-              <Ionicons name='warning' size={16} color='#f59e0b' />
-              <ThemedText style={styles.warningText}>
+            <View style={[styles.warningContainer, { backgroundColor: theme.surface, borderColor: theme.border.primary }]}>
+              <Ionicons name='warning' size={16} color={theme.status.warning} />
+              <ThemedText style={[styles.warningText, { color: theme.text.primary }]}>
                 {existingMealWarning}
               </ThemedText>
-              <TouchableOpacity
-                onPress={clearWarnings}
-                style={styles.warningCloseButton}
-              >
-                <Ionicons name='close' size={16} color='#d97706' />
+              <TouchableOpacity onPress={clearWarnings} style={styles.warningCloseButton}>
+                <Ionicons name='close' size={16} color={theme.status.warning} />
               </TouchableOpacity>
             </View>
           )}
@@ -397,15 +398,16 @@ export const MealForm: React.FC<MealFormProps> = ({
 
         {/* Meal Selection */}
         <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Select Meals</ThemedText>
+          <ThemedText style={[styles.sectionTitle, { color: theme.text.primary }]}>Select Meals</ThemedText>
           <View style={styles.mealsContainer}>
             {meals.map(meal => (
               <TouchableOpacity
                 key={meal.key}
-                style={[
-                  styles.mealCard,
-                  formData[meal.key] && styles.mealCardSelected,
-                ]}
+              style={[
+                styles.mealCard,
+                { shadowColor: theme.shadow.light },
+                formData[meal.key] && styles.mealCardSelected,
+              ]}
                 onPress={() => toggleMeal(meal.key)}
                 activeOpacity={0.7}
               >
@@ -413,26 +415,27 @@ export const MealForm: React.FC<MealFormProps> = ({
                   colors={
                     formData[meal.key]
                       ? [getMealColor(meal.key), getMealColor(meal.key) + '80']
-                      : ['#f8fafc', '#f1f5f9']
+                      : [theme.input.background, theme.surface]
                   }
                   style={styles.mealGradient}
                 >
                   <Ionicons
                     name={meal.icon as IconName}
                     size={24}
-                    color={formData[meal.key] ? '#fff' : '#6b7280'}
+                    color={formData[meal.key] ? onPrimaryText : theme.text.tertiary}
                   />
                   <ThemedText
                     style={[
                       styles.mealLabel,
+                      { color: formData[meal.key] ? onPrimaryText : theme.text.secondary },
                       formData[meal.key] && styles.mealLabelSelected,
                     ]}
                   >
                     {meal.label}
                   </ThemedText>
                   {formData[meal.key] && (
-                    <View style={styles.checkmark}>
-                      <Ionicons name='checkmark' size={16} color='#fff' />
+                    <View style={[styles.checkmark, { backgroundColor: theme.onPrimary?.overlay ?? theme.text.inverse }]}>
+                      <Ionicons name='checkmark' size={16} color={onPrimaryText} />
                     </View>
                   )}
                 </LinearGradient>
@@ -440,16 +443,16 @@ export const MealForm: React.FC<MealFormProps> = ({
             ))}
           </View>
           {errors.meals && (
-            <ThemedText style={styles.errorText}>{errors.meals}</ThemedText>
+            <ThemedText style={[styles.errorText, { color: theme.status.error }]}>{errors.meals}</ThemedText>
           )}
         </View>
 
         {/* Notes Section */}
         <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Notes (Optional)</ThemedText>
-          <View style={styles.notesContainer}>
-            <Ionicons name='chatbubble-outline' size={20} color='#6b7280' />
-            <ThemedText style={styles.notesText}>
+          <ThemedText style={[styles.sectionTitle, { color: theme.text.primary }]}>Notes (Optional)</ThemedText>
+          <View style={[styles.notesContainer, { backgroundColor: theme.input.background, borderColor: theme.border.primary }]}>
+            <Ionicons name='chatbubble-outline' size={20} color={theme.text.tertiary} />
+            <ThemedText style={[styles.notesText, { color: theme.text.tertiary }]}>
               {formData.notes || 'Add any special notes...'}
             </ThemedText>
           </View>
@@ -459,11 +462,11 @@ export const MealForm: React.FC<MealFormProps> = ({
         <View style={styles.actionsContainer}>
           {showCancel && (
             <TouchableOpacity
-              style={styles.cancelButton}
+              style={[styles.cancelButton, { borderColor: theme.border.primary }]}
               onPress={onCancel}
               disabled={loading}
             >
-              <ThemedText style={styles.cancelButtonText}>Cancel</ThemedText>
+              <ThemedText style={[styles.cancelButtonText, { color: theme.text.secondary }]}>Cancel</ThemedText>
             </TouchableOpacity>
           )}
 
@@ -476,15 +479,15 @@ export const MealForm: React.FC<MealFormProps> = ({
             disabled={loading}
           >
             <LinearGradient
-              colors={loading ? ['#9ca3af', '#6b7280'] : ['#667eea', '#764ba2']}
+              colors={(loading ? [theme.button.disabled.background, theme.button.disabled.border] : theme.gradient.primary) as [string, string]}
               style={styles.submitButtonGradient}
             >
               {loading ? (
                 <ModernLoader size='small' overlay={false} />
               ) : (
-                <Ionicons name='checkmark' size={20} color='#fff' />
+                <Ionicons name='checkmark' size={20} color={onPrimaryText} />
               )}
-              <ThemedText style={styles.submitButtonText}>
+              <ThemedText style={[styles.submitButtonText, { color: onPrimaryText }]}>
                 {loading
                   ? 'Submitting...'
                   : isUpdating
@@ -497,8 +500,8 @@ export const MealForm: React.FC<MealFormProps> = ({
 
         {/* User Info */}
         {user && (
-          <View style={styles.userInfo}>
-            <ThemedText style={styles.userInfoText}>
+          <View style={[styles.userInfo, { borderTopColor: theme.border.secondary }]}>
+            <ThemedText style={[styles.userInfoText, { color: theme.text.secondary }]}>
               Submitting as: {user.name}
             </ThemedText>
           </View>
@@ -514,15 +517,15 @@ export const MealForm: React.FC<MealFormProps> = ({
           animationType="slide"
           onRequestClose={() => setShowDatePicker(false)}
         >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <ThemedText style={styles.modalTitle}>Select Date</ThemedText>
+          <View style={[styles.modalOverlay, { backgroundColor: theme.overlay.medium }]}>
+            <View style={[styles.modalContent, { backgroundColor: theme.background, shadowColor: theme.shadow.light }]}>
+              <View style={[styles.modalHeader, { borderBottomColor: theme.border.secondary }]}>
+                <ThemedText style={[styles.modalTitle, { color: theme.text.primary }]}>Select Date</ThemedText>
                 <TouchableOpacity
                   onPress={confirmDateSelection}
                   style={styles.closeButton}
                 >
-                  <Ionicons name="checkmark" size={24} color="#667eea" />
+                  <Ionicons name="checkmark" size={24} color={theme.primary} />
                 </TouchableOpacity>
               </View>
               <View style={styles.datePickerContainer}>
@@ -559,10 +562,8 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     padding: 20,
-    backgroundColor: '#fff',
     borderRadius: 16,
     margin: 16,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -575,12 +576,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1f2937',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#6b7280',
     textAlign: 'center',
   },
   section: {
@@ -589,15 +588,12 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1f2937',
     marginBottom: 12,
   },
   dateButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#d1d5db',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 16,
@@ -605,11 +601,7 @@ const styles = StyleSheet.create({
   dateButtonText: {
     marginLeft: 8,
     fontSize: 16,
-    color: '#374151',
     flex: 1,
-  },
-  inputError: {
-    borderColor: '#ef4444',
   },
   mealsContainer: {
     flexDirection: 'row',
@@ -620,7 +612,6 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 12,
     overflow: 'hidden',
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -641,18 +632,14 @@ const styles = StyleSheet.create({
   mealLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#6b7280',
     marginTop: 8,
     textAlign: 'center',
   },
-  mealLabelSelected: {
-    color: '#fff',
-  },
+  mealLabelSelected: {},
   checkmark: {
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: 12,
     width: 24,
     height: 24,
@@ -663,14 +650,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#f8fafc',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
   },
   notesText: {
     fontSize: 16,
-    color: '#6b7280',
     marginLeft: 12,
     flex: 1,
   },
@@ -685,20 +669,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
     alignItems: 'center',
     justifyContent: 'center',
   },
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#6b7280',
   },
   submitButton: {
     flex: 2,
     borderRadius: 12,
     overflow: 'hidden',
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -717,59 +698,48 @@ const styles = StyleSheet.create({
   submitButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
     marginLeft: 8,
   },
   userInfo: {
     marginTop: 16,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
     alignItems: 'center',
   },
   userInfoText: {
     fontSize: 14,
-    color: '#6b7280',
   },
   errorText: {
     fontSize: 14,
-    color: '#ef4444',
     marginTop: 8,
   },
   warningContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fffbeb',
     borderRadius: 12,
     padding: 12,
     marginTop: 12,
     borderWidth: 1,
-    borderColor: '#fde68a',
   },
   warningText: {
     fontSize: 14,
-    color: '#d97706',
     marginLeft: 8,
     flex: 1,
   },
   warningCloseButton: {
     padding: 4,
   },
-  // Modal styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: '#fff',
     borderRadius: 16,
     padding: 20,
     margin: 20,
     width: '90%',
     maxWidth: 400,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 12,
@@ -784,7 +754,6 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#1f2937',
   },
   closeButton: {
     padding: 4,

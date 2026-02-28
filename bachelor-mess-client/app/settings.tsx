@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { ScreenLayout } from '@/components/layout';
+import { useTheme } from '@/context/ThemeContext';
 import { featureManager, FeatureConfig, offlineStorage } from '@/services';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -28,6 +29,7 @@ interface SettingItem {
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
   const [featureConfig, setFeatureConfig] = useState<FeatureConfig | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -251,16 +253,16 @@ export default function SettingsScreen() {
     return (
       <TouchableOpacity
         key={item.id}
-        style={styles.settingItem}
+        style={[styles.settingItem, { backgroundColor: theme.surface, borderBottomColor: theme.border?.secondary ?? '#f3f4f6' }]}
         onPress={item.onPress}
         disabled={item.type === 'feature'}
       >
-        <View style={styles.settingIcon}>
-          <Ionicons name={item.icon} size={24} color='#667eea' />
+        <View style={[styles.settingIcon, { backgroundColor: theme.surface }]}>
+          <Ionicons name={item.icon} size={24} color={theme.primary} />
         </View>
         <View style={styles.settingContent}>
-          <ThemedText style={styles.settingTitle}>{item.title}</ThemedText>
-          <ThemedText style={styles.settingSubtitle}>
+          <ThemedText style={[styles.settingTitle, { color: theme.text?.primary }]}>{item.title}</ThemedText>
+          <ThemedText style={[styles.settingSubtitle, { color: theme.text?.secondary }]}>
             {item.subtitle}
           </ThemedText>
         </View>
@@ -269,20 +271,20 @@ export default function SettingsScreen() {
             <Switch
               value={item.value}
               onValueChange={item.onToggle}
-              trackColor={{ false: '#e5e7eb', true: '#667eea' }}
-              thumbColor={item.value ? '#ffffff' : '#f3f4f6'}
+              trackColor={{ false: theme.border.primary, true: theme.primary }}
+              thumbColor={item.value ? (theme.button?.primary?.text ?? theme.text.inverse) : theme.surface}
             />
           )}
           {item.type === 'feature' && (
             <Switch
               value={item.value}
               onValueChange={item.onToggle}
-              trackColor={{ false: '#e5e7eb', true: '#667eea' }}
-              thumbColor={item.value ? '#ffffff' : '#f3f4f6'}
+              trackColor={{ false: theme.border.primary, true: theme.primary }}
+              thumbColor={item.value ? (theme.button?.primary?.text ?? theme.text.inverse) : theme.surface}
             />
           )}
           {(item.type === 'select' || item.type === 'navigate') && (
-            <Ionicons name='chevron-forward' size={20} color='#9ca3af' />
+            <Ionicons name='chevron-forward' size={20} color={theme.icon.secondary} />
           )}
         </View>
       </TouchableOpacity>
@@ -292,7 +294,7 @@ export default function SettingsScreen() {
   if (loading) {
     return (
       <ThemedView style={styles.container}>
-        <ThemedText style={styles.loadingText}>Loading settings...</ThemedText>
+        <ThemedText style={[styles.loadingText, { color: theme.text?.secondary }]}>Loading settings...</ThemedText>
       </ThemedView>
     );
   }
@@ -307,11 +309,11 @@ export default function SettingsScreen() {
       onBackPress={handleBack}
     >
       <ScrollView
-        style={styles.scrollView}
+        style={[styles.scrollView, { backgroundColor: theme.background }]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Core Features</ThemedText>
+          <ThemedText style={[styles.sectionTitle, { color: theme.text?.secondary }]}>Core Features</ThemedText>
           {settings
             .filter(item =>
               [
@@ -325,7 +327,7 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Advanced Features</ThemedText>
+          <ThemedText style={[styles.sectionTitle, { color: theme.text?.secondary }]}>Advanced Features</ThemedText>
           {settings
             .filter(item =>
               [
@@ -339,7 +341,7 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>
+          <ThemedText style={[styles.sectionTitle, { color: theme.text?.secondary }]}>
             Real-time Features
           </ThemedText>
           {settings
@@ -350,7 +352,7 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>
+          <ThemedText style={[styles.sectionTitle, { color: theme.text?.secondary }]}>
             Analytics & Monitoring
           </ThemedText>
           {settings
@@ -361,7 +363,7 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>App Settings</ThemedText>
+          <ThemedText style={[styles.sectionTitle, { color: theme.text?.secondary }]}>App Settings</ThemedText>
           {settings
             .filter(item =>
               ['notifications', 'privacy', 'about', 'reset'].includes(item.id)
@@ -370,9 +372,9 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Database</ThemedText>
+          <ThemedText style={[styles.sectionTitle, { color: theme.text?.secondary }]}>Database</ThemedText>
           <TouchableOpacity
-            style={styles.resetButton}
+            style={[styles.resetButton, { backgroundColor: theme.status?.error }]}
             onPress={async () => {
               Alert.alert(
                 'Reset Database',
@@ -400,7 +402,7 @@ export default function SettingsScreen() {
               );
             }}
           >
-            <ThemedText style={styles.resetButtonText}>Reset Database</ThemedText>
+            <ThemedText style={[styles.resetButtonText, { color: theme.button?.danger?.text }]}>Reset Database</ThemedText>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -419,7 +421,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 50,
     fontSize: 16,
-    color: '#6b7280',
   },
   section: {
     marginBottom: 24,
@@ -429,22 +430,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 12,
     marginHorizontal: 20,
-    color: '#ddd',
   },
   settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#ffffff',
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
   },
   settingIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#f3f4f6',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
@@ -455,18 +452,15 @@ const styles = StyleSheet.create({
   settingTitle: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#111827',
     marginBottom: 2,
   },
   settingSubtitle: {
     fontSize: 14,
-    color: '#6b7280',
   },
   settingAction: {
     marginLeft: 16,
   },
   resetButton: {
-    backgroundColor: '#ef4444',
     padding: 12,
     borderRadius: 8,
     alignItems: 'center',
@@ -474,7 +468,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   resetButtonText: {
-    color: 'white',
     fontWeight: '600',
   },
 });

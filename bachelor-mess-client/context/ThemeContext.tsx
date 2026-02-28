@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { Appearance } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   ThemeColors,
   LightTheme,
@@ -9,6 +10,8 @@ import {
   ThemeContextType,
 } from '@/constants/Theme';
 import logger from '@/utils/logger';
+
+const THEME_STORAGE_KEY = 'app_theme_mode';
 
 // Create the theme context
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -25,7 +28,7 @@ const FALLBACK_THEME: ThemeContextType = {
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  // Initialize state based on Appearance API (more stable than useColorScheme hook)
+  // Start from system; then hydrate from persisted preference so user choice sticks
   const [isDark, setIsDark] = useState(() => {
     try {
       return Appearance.getColorScheme() === 'dark';
@@ -33,28 +36,22 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
       return false;
     }
   });
-  
-  // Listen to appearance changes (but only after initial mount to prevent loops)
-  const isInitialMount = useRef(true);
-  
+
+  // Load persisted theme on mount (user's choice overrides system)
   useEffect(() => {
-    // Skip on initial mount
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
-    }
-    
-    // Only listen to changes after initial mount
-    const subscription = Appearance.addChangeListener(({ colorScheme }) => {
-      if (colorScheme === 'dark') {
-        setIsDark(true);
-      } else {
-        setIsDark(false);
+    let cancelled = false;
+    (async () => {
+      try {
+        const stored = await AsyncStorage.getItem(THEME_STORAGE_KEY);
+        if (cancelled) return;
+        if (stored === 'dark') setIsDark(true);
+        else if (stored === 'light') setIsDark(false);
+      } catch (e) {
+        logger.error('ThemeContext: load theme', e);
       }
-    });
-    
-    return () => subscription.remove();
-  }, []); // Empty deps - only set up listener once
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // Get the current theme - memoized to prevent unnecessary re-renders
   const theme = useMemo(() => {
@@ -66,15 +63,24 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [isDark]);
 
+  // Persist and apply theme
+  const persistAndSet = useCallback((dark: boolean) => {
+    setIsDark(dark);
+    const mode = dark ? 'dark' : 'light';
+    AsyncStorage.setItem(THEME_STORAGE_KEY, mode).catch(e =>
+      logger.error('ThemeContext: save theme', e)
+    );
+  }, []);
+
   // Toggle between light and dark themes
   const toggleTheme = useCallback(() => {
-    setIsDark(prev => !prev);
-  }, []);
+    persistAndSet(!isDark);
+  }, [isDark, persistAndSet]);
 
   // Set specific theme mode
   const setTheme = useCallback((mode: ThemeMode) => {
-    setIsDark(mode === 'dark');
-  }, []);
+    persistAndSet(mode === 'dark');
+  }, [persistAndSet]);
 
   // Memoize the context value to prevent unnecessary re-renders
   // Only recreate if theme, isDark, or functions actually change

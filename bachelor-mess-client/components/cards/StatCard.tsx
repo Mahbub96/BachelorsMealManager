@@ -3,6 +3,7 @@ import { View, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { IconName } from '@/constants/IconTypes';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTheme } from '@/context/ThemeContext';
 import { ThemedText } from '../ThemedText';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -32,8 +33,8 @@ export const StatCard: React.FC<StatCardProps> = ({
   value,
   subtitle,
   icon,
-  iconColor = '#fff',
-  gradientColors = ['#667eea', '#764ba2'],
+  iconColor,
+  gradientColors,
   trend,
   onPress,
   isSmallScreen = screenWidth < 375,
@@ -43,6 +44,13 @@ export const StatCard: React.FC<StatCardProps> = ({
   backgroundColor,
   textColor,
 }) => {
+  const { theme } = useTheme();
+  const onPrimaryText = theme.onPrimary?.text ?? theme.text.inverse;
+  const onPrimaryOverlay = theme.onPrimary?.overlay;
+  const iconColorResolved = iconColor ?? onPrimaryText;
+  const gradientColorsResolved = gradientColors ?? (theme.gradient.primary as [string, string, ...string[]]);
+  const trendBg = trend?.isPositive ? theme.status.success : theme.status.error;
+
   const renderCompactCard = () => (
     <TouchableOpacity
       style={[
@@ -53,19 +61,20 @@ export const StatCard: React.FC<StatCardProps> = ({
       onPress={onPress}
       activeOpacity={onPress ? 0.7 : 1}
     >
-      <LinearGradient colors={gradientColors} style={styles.cardGradient}>
+      <LinearGradient colors={gradientColorsResolved} style={styles.cardGradient}>
         <View style={styles.compactContent}>
           {showIcon && icon && (
             <Ionicons
               name={icon as IconName}
               size={isSmallScreen ? 28 : 32}
-              color={iconColor}
+              color={iconColorResolved}
             />
           )}
           <ThemedText
             style={[
               styles.compactValue,
               isSmallScreen && styles.compactValueSmall,
+              { color: onPrimaryText },
             ]}
           >
             {value}
@@ -74,6 +83,7 @@ export const StatCard: React.FC<StatCardProps> = ({
             style={[
               styles.compactTitle,
               isSmallScreen && styles.compactTitleSmall,
+              { color: onPrimaryText },
             ]}
           >
             {title}
@@ -83,6 +93,7 @@ export const StatCard: React.FC<StatCardProps> = ({
               style={[
                 styles.compactSubtitle,
                 isSmallScreen && styles.compactSubtitleSmall,
+                { color: onPrimaryText },
               ]}
             >
               {subtitle}
@@ -103,14 +114,14 @@ export const StatCard: React.FC<StatCardProps> = ({
       onPress={onPress}
       activeOpacity={onPress ? 0.7 : 1}
     >
-      <LinearGradient colors={gradientColors} style={styles.cardGradient}>
+      <LinearGradient colors={gradientColorsResolved} style={styles.cardGradient}>
         <View style={styles.detailedHeader}>
           {showIcon && icon && (
-            <View style={styles.iconContainer}>
+            <View style={[styles.iconContainer, { backgroundColor: onPrimaryOverlay }]}>
               <Ionicons
                 name={icon as IconName}
                 size={isSmallScreen ? 24 : 28}
-                color={iconColor}
+                color={iconColorResolved}
               />
             </View>
           )}
@@ -118,15 +129,15 @@ export const StatCard: React.FC<StatCardProps> = ({
             <View
               style={[
                 styles.trendBadge,
-                { backgroundColor: trend.isPositive ? '#10b981' : '#ef4444' },
+                { backgroundColor: trendBg },
               ]}
             >
               <Ionicons
                 name={trend.isPositive ? 'trending-up' : 'trending-down'}
                 size={12}
-                color='#fff'
+                color={onPrimaryText}
               />
-              <ThemedText style={styles.trendText}>
+              <ThemedText style={[styles.trendText, { color: onPrimaryText }]}>
                 {trend.isPositive ? '+' : ''}
                 {trend.value}%
               </ThemedText>
@@ -139,6 +150,7 @@ export const StatCard: React.FC<StatCardProps> = ({
             style={[
               styles.detailedValue,
               isSmallScreen && styles.detailedValueSmall,
+              { color: onPrimaryText },
             ]}
           >
             {value}
@@ -147,6 +159,7 @@ export const StatCard: React.FC<StatCardProps> = ({
             style={[
               styles.detailedTitle,
               isSmallScreen && styles.detailedTitleSmall,
+              { color: onPrimaryText },
             ]}
           >
             {title}
@@ -156,6 +169,7 @@ export const StatCard: React.FC<StatCardProps> = ({
               style={[
                 styles.detailedSubtitle,
                 isSmallScreen && styles.detailedSubtitleSmall,
+                { color: onPrimaryText },
               ]}
             >
               {subtitle}
@@ -176,14 +190,14 @@ export const StatCard: React.FC<StatCardProps> = ({
       onPress={onPress}
       activeOpacity={onPress ? 0.7 : 1}
     >
-      <LinearGradient colors={gradientColors} style={styles.cardGradient}>
+      <LinearGradient colors={gradientColorsResolved} style={styles.cardGradient}>
         <View style={styles.defaultHeader}>
           {showIcon && icon && (
-            <View style={styles.iconContainer}>
+            <View style={[styles.iconContainer, { backgroundColor: onPrimaryOverlay }]}>
               <Ionicons
                 name={icon as IconName}
                 size={isSmallScreen ? 24 : 28}
-                color={iconColor}
+                color={iconColorResolved}
               />
             </View>
           )}
@@ -191,15 +205,15 @@ export const StatCard: React.FC<StatCardProps> = ({
             <View
               style={[
                 styles.trendBadge,
-                { backgroundColor: trend.isPositive ? '#10b981' : '#ef4444' },
+                { backgroundColor: trendBg },
               ]}
             >
               <Ionicons
                 name={trend.isPositive ? 'trending-up' : 'trending-down'}
                 size={12}
-                color='#fff'
+                color={onPrimaryText}
               />
-              <ThemedText style={styles.trendText}>
+              <ThemedText style={[styles.trendText, { color: onPrimaryText }]}>
                 {trend.isPositive ? '+' : ''}
                 {trend.value}%
               </ThemedText>
@@ -212,6 +226,7 @@ export const StatCard: React.FC<StatCardProps> = ({
             style={[
               styles.defaultValue,
               isSmallScreen && styles.defaultValueSmall,
+              { color: onPrimaryText },
             ]}
           >
             {value}
@@ -220,6 +235,7 @@ export const StatCard: React.FC<StatCardProps> = ({
             style={[
               styles.defaultTitle,
               isSmallScreen && styles.defaultTitleSmall,
+              { color: onPrimaryText },
             ]}
           >
             {title}
@@ -229,6 +245,7 @@ export const StatCard: React.FC<StatCardProps> = ({
               style={[
                 styles.defaultSubtitle,
                 isSmallScreen && styles.defaultSubtitleSmall,
+                { color: onPrimaryText },
               ]}
             >
               {subtitle}
@@ -250,11 +267,9 @@ export const StatCard: React.FC<StatCardProps> = ({
 };
 
 const styles = StyleSheet.create({
-  // Base card styles
   card: {
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
@@ -263,8 +278,6 @@ const styles = StyleSheet.create({
   cardGradient: {
     padding: 20,
   },
-
-  // Compact variant
   compactCard: {
     borderRadius: 16,
     width: '100%',
@@ -296,7 +309,6 @@ const styles = StyleSheet.create({
   compactValue: {
     fontSize: 36,
     fontWeight: 'bold',
-    color: '#fff',
     marginBottom: 8,
     textAlign: 'center',
   },
@@ -305,7 +317,6 @@ const styles = StyleSheet.create({
   },
   compactTitle: {
     fontSize: 18,
-    color: 'rgba(255, 255, 255, 0.9)',
     fontWeight: '600',
     textAlign: 'center',
   },
@@ -314,14 +325,11 @@ const styles = StyleSheet.create({
   },
   compactSubtitle: {
     fontSize: 10,
-    color: 'rgba(255, 255, 255, 0.8)',
     textAlign: 'center',
   },
   compactSubtitleSmall: {
     fontSize: 8,
   },
-
-  // Default variant
   defaultCard: {
     aspectRatio: 1.2,
     borderRadius: 16,
@@ -342,7 +350,6 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
@@ -357,7 +364,6 @@ const styles = StyleSheet.create({
   },
   trendText: {
     fontSize: 10,
-    color: '#fff',
     fontWeight: '600',
   },
   defaultContent: {
@@ -367,7 +373,6 @@ const styles = StyleSheet.create({
   defaultValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
     marginBottom: 4,
   },
   defaultValueSmall: {
@@ -375,7 +380,6 @@ const styles = StyleSheet.create({
   },
   defaultTitle: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.9)',
     fontWeight: '500',
     marginBottom: 2,
   },
@@ -384,13 +388,10 @@ const styles = StyleSheet.create({
   },
   defaultSubtitle: {
     fontSize: 10,
-    color: 'rgba(255, 255, 255, 0.8)',
   },
   defaultSubtitleSmall: {
     fontSize: 8,
   },
-
-  // Detailed variant
   detailedCard: {
     aspectRatio: 1.2,
     borderRadius: 16,
@@ -412,7 +413,6 @@ const styles = StyleSheet.create({
   detailedValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
     marginBottom: 4,
   },
   detailedValueSmall: {
@@ -420,7 +420,6 @@ const styles = StyleSheet.create({
   },
   detailedTitle: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.9)',
     fontWeight: '500',
     marginBottom: 2,
   },
@@ -429,7 +428,6 @@ const styles = StyleSheet.create({
   },
   detailedSubtitle: {
     fontSize: 10,
-    color: 'rgba(255, 255, 255, 0.8)',
   },
   detailedSubtitleSmall: {
     fontSize: 8,

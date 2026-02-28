@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
+import { useTheme } from '@/context/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import type { IconName } from '@/constants/IconTypes';
@@ -17,6 +18,8 @@ export const MealAnalytics: React.FC<MealAnalyticsProps> = ({
   mealStats,
   userRole,
 }) => {
+  const { theme } = useTheme();
+  const onPrimaryText = theme.onPrimary?.text ?? theme.text.inverse;
   // Calculate additional analytics
   const calculateAnalytics = () => {
     // Count individual meals (breakfast + lunch + dinner), not just entries
@@ -58,13 +61,13 @@ export const MealAnalytics: React.FC<MealAnalyticsProps> = ({
     colors: [string, string],
     subtitle?: string
   ) => (
-    <View style={styles.statCard}>
+    <View style={[styles.statCard, { shadowColor: theme.shadow.light }]}>
       <LinearGradient colors={colors} style={styles.statGradient}>
-        <Ionicons name={icon as IconName} size={24} color='#fff' />
-        <ThemedText style={styles.statValue}>{value}</ThemedText>
-        <ThemedText style={styles.statTitle}>{title}</ThemedText>
+        <Ionicons name={icon as IconName} size={24} color={onPrimaryText} />
+        <ThemedText style={[styles.statValue, { color: onPrimaryText }]}>{value}</ThemedText>
+        <ThemedText style={[styles.statTitle, { color: onPrimaryText }]}>{title}</ThemedText>
         {subtitle && (
-          <ThemedText style={styles.statSubtitle}>{subtitle}</ThemedText>
+          <ThemedText style={[styles.statSubtitle, { color: theme.onPrimary?.overlay ?? onPrimaryText }]}>{subtitle}</ThemedText>
         )}
       </LinearGradient>
     </View>
@@ -72,39 +75,39 @@ export const MealAnalytics: React.FC<MealAnalyticsProps> = ({
 
   const renderMealTypeBreakdown = () => (
     <View style={styles.breakdownContainer}>
-      <ThemedText style={styles.sectionTitle}>Meal Type Breakdown</ThemedText>
-      <View style={styles.breakdownGrid}>
-        <View style={styles.breakdownItem}>
-          <View style={[styles.breakdownIcon, { backgroundColor: '#fbbf24' }]}>
-            <Ionicons name='sunny' size={20} color='#fff' />
+      <ThemedText style={[styles.sectionTitle, { color: theme.text.primary }]}>Meal Type Breakdown</ThemedText>
+      <View style={[styles.breakdownGrid, { backgroundColor: theme.surface, shadowColor: theme.shadow.light }]}>
+        <View style={[styles.breakdownItem, { borderBottomColor: theme.border.secondary }]}>
+          <View style={[styles.breakdownIcon, { backgroundColor: theme.status.warning }]}>
+            <Ionicons name='sunny' size={20} color={onPrimaryText} />
           </View>
           <View style={styles.breakdownContent}>
-            <ThemedText style={styles.breakdownLabel}>Breakfast</ThemedText>
-            <ThemedText style={styles.breakdownValue}>
+            <ThemedText style={[styles.breakdownLabel, { color: theme.text.primary }]}>Breakfast</ThemedText>
+            <ThemedText style={[styles.breakdownValue, { color: theme.text.secondary }]}>
               {analytics.breakfastCount} meals
             </ThemedText>
           </View>
         </View>
 
-        <View style={styles.breakdownItem}>
-          <View style={[styles.breakdownIcon, { backgroundColor: '#f59e0b' }]}>
-            <Ionicons name='sunny' size={20} color='#fff' />
+        <View style={[styles.breakdownItem, { borderBottomColor: theme.border.secondary }]}>
+          <View style={[styles.breakdownIcon, { backgroundColor: theme.status.warning }]}>
+            <Ionicons name='sunny' size={20} color={onPrimaryText} />
           </View>
           <View style={styles.breakdownContent}>
-            <ThemedText style={styles.breakdownLabel}>Lunch</ThemedText>
-            <ThemedText style={styles.breakdownValue}>
+            <ThemedText style={[styles.breakdownLabel, { color: theme.text.primary }]}>Lunch</ThemedText>
+            <ThemedText style={[styles.breakdownValue, { color: theme.text.secondary }]}>
               {analytics.lunchCount} meals
             </ThemedText>
           </View>
         </View>
 
-        <View style={styles.breakdownItem}>
-          <View style={[styles.breakdownIcon, { backgroundColor: '#7c3aed' }]}>
-            <Ionicons name='moon' size={20} color='#fff' />
+        <View style={[styles.breakdownItem, { borderBottomColor: theme.border.secondary }]}>
+          <View style={[styles.breakdownIcon, { backgroundColor: theme.status.pending }]}>
+            <Ionicons name='moon' size={20} color={onPrimaryText} />
           </View>
           <View style={styles.breakdownContent}>
-            <ThemedText style={styles.breakdownLabel}>Dinner</ThemedText>
-            <ThemedText style={styles.breakdownValue}>
+            <ThemedText style={[styles.breakdownLabel, { color: theme.text.primary }]}>Dinner</ThemedText>
+            <ThemedText style={[styles.breakdownValue, { color: theme.text.secondary }]}>
               {analytics.dinnerCount} meals
             </ThemedText>
           </View>
@@ -115,36 +118,22 @@ export const MealAnalytics: React.FC<MealAnalyticsProps> = ({
 
   const renderStatusBreakdown = () => (
     <View style={styles.breakdownContainer}>
-      <ThemedText style={styles.sectionTitle}>Status Breakdown</ThemedText>
-      <View style={styles.statusGrid}>
+      <ThemedText style={[styles.sectionTitle, { color: theme.text.primary }]}>Status Breakdown</ThemedText>
+      <View style={[styles.statusGrid, { backgroundColor: theme.surface, shadowColor: theme.shadow.light }]}>
         <View style={styles.statusItem}>
-          <View
-            style={[styles.statusIndicator, { backgroundColor: '#f59e0b' }]}
-          />
-          <ThemedText style={styles.statusLabel}>Pending</ThemedText>
-          <ThemedText style={styles.statusValue}>
-            {analytics.pendingMeals}
-          </ThemedText>
+          <View style={[styles.statusIndicator, { backgroundColor: theme.status.warning }]} />
+          <ThemedText style={[styles.statusLabel, { color: theme.text.secondary }]}>Pending</ThemedText>
+          <ThemedText style={[styles.statusValue, { color: theme.text.primary }]}>{analytics.pendingMeals}</ThemedText>
         </View>
-
         <View style={styles.statusItem}>
-          <View
-            style={[styles.statusIndicator, { backgroundColor: '#10b981' }]}
-          />
-          <ThemedText style={styles.statusLabel}>Approved</ThemedText>
-          <ThemedText style={styles.statusValue}>
-            {analytics.approvedMeals}
-          </ThemedText>
+          <View style={[styles.statusIndicator, { backgroundColor: theme.status.success }]} />
+          <ThemedText style={[styles.statusLabel, { color: theme.text.secondary }]}>Approved</ThemedText>
+          <ThemedText style={[styles.statusValue, { color: theme.text.primary }]}>{analytics.approvedMeals}</ThemedText>
         </View>
-
         <View style={styles.statusItem}>
-          <View
-            style={[styles.statusIndicator, { backgroundColor: '#ef4444' }]}
-          />
-          <ThemedText style={styles.statusLabel}>Rejected</ThemedText>
-          <ThemedText style={styles.statusValue}>
-            {analytics.rejectedMeals}
-          </ThemedText>
+          <View style={[styles.statusIndicator, { backgroundColor: theme.status.error }]} />
+          <ThemedText style={[styles.statusLabel, { color: theme.text.secondary }]}>Rejected</ThemedText>
+          <ThemedText style={[styles.statusValue, { color: theme.text.primary }]}>{analytics.rejectedMeals}</ThemedText>
         </View>
       </View>
     </View>
@@ -155,36 +144,22 @@ export const MealAnalytics: React.FC<MealAnalyticsProps> = ({
 
     return (
       <View style={styles.advancedContainer}>
-        <ThemedText style={styles.sectionTitle}>Advanced Metrics</ThemedText>
+        <ThemedText style={[styles.sectionTitle, { color: theme.text.primary }]}>Advanced Metrics</ThemedText>
         <View style={styles.metricsGrid}>
-          <View style={styles.metricCard}>
-            <ThemedText style={styles.metricTitle}>Avg Meals/Day</ThemedText>
-            <ThemedText style={styles.metricValue}>
-              {analytics.avgMealsPerDay.toFixed(1)}
+          <View style={[styles.metricCard, { backgroundColor: theme.surface, shadowColor: theme.shadow.light }]}>
+            <ThemedText style={[styles.metricTitle, { color: theme.text.secondary }]}>Avg Meals/Day</ThemedText>
+            <ThemedText style={[styles.metricValue, { color: theme.text.primary }]}>{analytics.avgMealsPerDay.toFixed(1)}</ThemedText>
+          </View>
+          <View style={[styles.metricCard, { backgroundColor: theme.surface, shadowColor: theme.shadow.light }]}>
+            <ThemedText style={[styles.metricTitle, { color: theme.text.secondary }]}>Approval Rate</ThemedText>
+            <ThemedText style={[styles.metricValue, { color: theme.text.primary }]}>
+              {analytics.totalMeals > 0 ? `${((analytics.approvedMeals / analytics.totalMeals) * 100).toFixed(1)}%` : '0%'}
             </ThemedText>
           </View>
-
-          <View style={styles.metricCard}>
-            <ThemedText style={styles.metricTitle}>Approval Rate</ThemedText>
-            <ThemedText style={styles.metricValue}>
-              {analytics.totalMeals > 0
-                ? `${(
-                    (analytics.approvedMeals / analytics.totalMeals) *
-                    100
-                  ).toFixed(1)}%`
-                : '0%'}
-            </ThemedText>
-          </View>
-
-          <View style={styles.metricCard}>
-            <ThemedText style={styles.metricTitle}>Pending Rate</ThemedText>
-            <ThemedText style={styles.metricValue}>
-              {analytics.totalMeals > 0
-                ? `${(
-                    (analytics.pendingMeals / analytics.totalMeals) *
-                    100
-                  ).toFixed(1)}%`
-                : '0%'}
+          <View style={[styles.metricCard, { backgroundColor: theme.surface, shadowColor: theme.shadow.light }]}>
+            <ThemedText style={[styles.metricTitle, { color: theme.text.secondary }]}>Pending Rate</ThemedText>
+            <ThemedText style={[styles.metricValue, { color: theme.text.primary }]}>
+              {analytics.totalMeals > 0 ? `${((analytics.pendingMeals / analytics.totalMeals) * 100).toFixed(1)}%` : '0%'}
             </ThemedText>
           </View>
         </View>
@@ -196,30 +171,21 @@ export const MealAnalytics: React.FC<MealAnalyticsProps> = ({
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Main Stats */}
       <View style={styles.statsGrid}>
-        {renderStatCard('Total Meals', analytics.totalMeals, 'fast-food', [
-          '#667eea',
-          '#764ba2',
-        ])}
-
+        {renderStatCard('Total Meals', analytics.totalMeals, 'fast-food', theme.gradient.primary as [string, string])}
         {renderStatCard(
           'Pending',
           analytics.pendingMeals,
           'time',
-          ['#f59e0b', '#d97706'],
+          theme.gradient.warning as [string, string],
           'Awaiting approval'
         )}
-
         {renderStatCard(
           'Approved',
           analytics.approvedMeals,
           'checkmark-circle',
-          ['#10b981', '#059669']
+          theme.gradient.success as [string, string]
         )}
-
-        {renderStatCard('Rejected', analytics.rejectedMeals, 'close-circle', [
-          '#ef4444',
-          '#dc2626',
-        ])}
+        {renderStatCard('Rejected', analytics.rejectedMeals, 'close-circle', theme.gradient.error as [string, string])}
       </View>
 
       {/* Meal Type Breakdown */}
@@ -231,31 +197,30 @@ export const MealAnalytics: React.FC<MealAnalyticsProps> = ({
       {/* Advanced Metrics for Admin/Super Admin */}
       {renderAdvancedMetrics()}
 
-      {/* Quick Insights */}
       <View style={styles.insightsContainer}>
-        <ThemedText style={styles.sectionTitle}>Quick Insights</ThemedText>
-        <View style={styles.insightsList}>
-          <View style={styles.insightItem}>
-            <Ionicons name='trending-up' size={16} color='#10b981' />
-            <ThemedText style={styles.insightText}>
+        <ThemedText style={[styles.sectionTitle, { color: theme.text.primary }]}>Quick Insights</ThemedText>
+        <View style={[styles.insightsList, { backgroundColor: theme.surface, shadowColor: theme.shadow.light }]}>
+          <View style={[styles.insightItem, { borderBottomColor: theme.border.secondary }]}>
+            <Ionicons name='trending-up' size={16} color={theme.status.success} />
+            <ThemedText style={[styles.insightText, { color: theme.text.primary }]}>
               {analytics.approvedMeals > analytics.rejectedMeals
                 ? 'High approval rate indicates good meal quality'
                 : 'Consider reviewing meal standards'}
             </ThemedText>
           </View>
 
-          <View style={styles.insightItem}>
-            <Ionicons name='alert-circle' size={16} color='#f59e0b' />
-            <ThemedText style={styles.insightText}>
+          <View style={[styles.insightItem, { borderBottomColor: theme.border.secondary }]}>
+            <Ionicons name='alert-circle' size={16} color={theme.status.warning} />
+            <ThemedText style={[styles.insightText, { color: theme.text.primary }]}>
               {analytics.pendingMeals > 0
                 ? `${analytics.pendingMeals} meals awaiting approval`
                 : 'All meals have been processed'}
             </ThemedText>
           </View>
 
-          <View style={styles.insightItem}>
-            <Ionicons name='analytics' size={16} color='#667eea' />
-            <ThemedText style={styles.insightText}>
+          <View style={[styles.insightItem, { borderBottomColor: theme.border.secondary }]}>
+            <Ionicons name='analytics' size={16} color={theme.primary} />
+            <ThemedText style={[styles.insightText, { color: theme.text.primary }]}>
               Average {analytics.avgMealsPerDay.toFixed(1)} meals per entry
             </ThemedText>
           </View>
@@ -281,7 +246,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
@@ -295,19 +259,16 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
     marginTop: 8,
     marginBottom: 4,
   },
   statTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#fff',
     textAlign: 'center',
   },
   statSubtitle: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
     textAlign: 'center',
     marginTop: 4,
   },
@@ -317,14 +278,11 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1f2937',
     marginBottom: 16,
   },
   breakdownGrid: {
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -335,7 +293,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
   },
   breakdownIcon: {
     width: 40,
@@ -351,20 +308,16 @@ const styles = StyleSheet.create({
   breakdownLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#374151',
   },
   breakdownValue: {
     fontSize: 14,
-    color: '#6b7280',
     marginTop: 2,
   },
   statusGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -382,13 +335,11 @@ const styles = StyleSheet.create({
   },
   statusLabel: {
     fontSize: 12,
-    color: '#6b7280',
     marginBottom: 4,
   },
   statusValue: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1f2937',
   },
   advancedContainer: {
     marginBottom: 24,
@@ -399,12 +350,10 @@ const styles = StyleSheet.create({
   },
   metricCard: {
     flex: 1,
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
     marginHorizontal: 4,
     alignItems: 'center',
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -412,23 +361,19 @@ const styles = StyleSheet.create({
   },
   metricTitle: {
     fontSize: 12,
-    color: '#6b7280',
     marginBottom: 8,
     textAlign: 'center',
   },
   metricValue: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#1f2937',
   },
   insightsContainer: {
     marginBottom: 24,
   },
   insightsList: {
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -439,11 +384,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
   },
   insightText: {
     fontSize: 14,
-    color: '#374151',
     marginLeft: 12,
     flex: 1,
   },

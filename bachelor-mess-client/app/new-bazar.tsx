@@ -45,8 +45,8 @@ export default function NewBazarScreen() {
     theme.primary,
     theme.secondary,
   ]) as [string, string];
-  const onPrimaryText = theme.onPrimary?.text ?? '#ffffff';
-  const onPrimaryOverlay = theme.onPrimary?.overlay ?? 'rgba(255,255,255,0.2)';
+  const onPrimaryText = theme.onPrimary?.text ?? theme.text.inverse;
+  const onPrimaryOverlay = theme.onPrimary?.overlay ?? theme.text.tertiary;
   const submitBarHeight = 88;
   const scrollBottomPadding = submitBarHeight + insets.bottom + 24;
 
@@ -394,7 +394,7 @@ export default function NewBazarScreen() {
                   key={index}
                   style={[
                     styles.itemCard,
-                    { backgroundColor: theme.cardBackground },
+                    { backgroundColor: theme.cardBackground, shadowColor: theme.shadow.light },
                   ]}
                 >
                   <View
@@ -403,6 +403,7 @@ export default function NewBazarScreen() {
                       {
                         backgroundColor: theme.cardBackground,
                         borderColor: theme.cardBorder,
+                        shadowColor: theme.shadow.light,
                       },
                     ]}
                   >
@@ -526,7 +527,7 @@ export default function NewBazarScreen() {
                     end={{ x: 1, y: 1 }}
                     style={[
                       styles.totalCardGradient,
-                      { borderColor: onPrimaryOverlay },
+                      { borderColor: onPrimaryOverlay, shadowColor: theme.shadow.light },
                     ]}
                   >
                     <View style={styles.totalHeader}>
@@ -610,6 +611,7 @@ export default function NewBazarScreen() {
                           ? theme.border.primary
                           : theme.status.info + '80',
                         borderStyle: receiptImage ? 'solid' : 'dashed',
+                        shadowColor: theme.shadow.light,
                       },
                     ]}
                   >
@@ -767,6 +769,7 @@ export default function NewBazarScreen() {
             {
               backgroundColor: theme.background,
               borderTopColor: theme.border.secondary,
+              shadowColor: theme.shadow.light,
               paddingBottom: Math.max(16, insets.bottom),
             },
           ]}
@@ -874,7 +877,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
@@ -921,8 +923,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.25)',
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.12,
     shadowRadius: 12,
@@ -940,7 +940,6 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -989,7 +988,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 18,
     borderWidth: 2,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
@@ -1027,7 +1025,6 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 140,
     borderRadius: 12,
-    backgroundColor: 'rgba(0,0,0,0.06)',
   },
   receiptActions: {
     flexDirection: 'row',
@@ -1154,7 +1151,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
@@ -1200,7 +1196,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 16,
     borderTopWidth: 1,
-    shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: -2,

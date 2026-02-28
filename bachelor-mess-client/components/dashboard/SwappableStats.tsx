@@ -104,6 +104,8 @@ export const SwappableStats: React.FC<SwappableStatsProps> = ({
   }
 
   const currentStat = stats[currentIndex];
+  const onPrimaryText = theme.onPrimary?.text ?? theme.text.inverse;
+  const onPrimaryOverlay = theme.onPrimary?.overlay;
 
   return (
     <View style={styles.container}>
@@ -141,16 +143,16 @@ export const SwappableStats: React.FC<SwappableStatsProps> = ({
           style={styles.cardGradient}
         >
           <View style={styles.cardContent}>
-            <View style={styles.iconContainer}>
+            <View style={[styles.iconContainer, { backgroundColor: onPrimaryOverlay }]}>
               <Ionicons
                 name={currentStat.icon as IconName}
                 size={32}
-                color={theme.text.inverse}
+                color={onPrimaryText}
               />
             </View>
             <View style={styles.textContainer}>
-              <ThemedText style={styles.statTitle}>{currentStat.title}</ThemedText>
-              <ThemedText style={styles.statValue}>
+              <ThemedText style={[styles.statTitle, { color: onPrimaryText }]}>{currentStat.title}</ThemedText>
+              <ThemedText style={[styles.statValue, { color: onPrimaryText }]}>
                 {currentStat.value}
               </ThemedText>
               {currentStat.trend && (
@@ -160,7 +162,7 @@ export const SwappableStats: React.FC<SwappableStatsProps> = ({
                     size={16}
                     color={getTrendColor(currentStat.trend)}
                   />
-                  <ThemedText style={styles.trendText}>
+                  <ThemedText style={[styles.trendText, { color: onPrimaryOverlay ?? onPrimaryText }]}>
                     {currentStat.trend === 'up' ? 'Rising' : 
                      currentStat.trend === 'down' ? 'Falling' : 'Stable'}
                   </ThemedText>
@@ -246,7 +248,6 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
@@ -257,13 +258,11 @@ const styles = StyleSheet.create({
   statTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: 'white',
     marginBottom: 4,
   },
   statValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: 'white',
     marginBottom: 4,
   },
   trendContainer: {
@@ -273,7 +272,6 @@ const styles = StyleSheet.create({
   },
   trendText: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
   },
   quickStatsContainer: {
     flexDirection: 'row',

@@ -1,66 +1,58 @@
 /**
  * Learn more about light and dark modes:
  * https://docs.expo.dev/guides/color-schemes/
+ *
+ * Uses ThemeContext so in-app theme toggle (light/dark) updates all components.
  */
 
-import { useColorScheme } from '../hooks/useColorScheme';
+import { useTheme } from '@/context/ThemeContext';
 import { Colors } from '../constants/Colors';
-import { getTheme, getThemeColor } from '../constants/Theme';
+import { getThemeColor } from '../constants/Theme';
+
+// Map shorthand names to theme paths (theme has nested objects)
+const THEME_PATH_MAP: Record<string, string> = {
+  text: 'text.primary',
+  icon: 'icon.primary',
+  background: 'background',
+  border: 'border.primary',
+};
 
 /**
- * Enhanced useThemeColor hook that works with the comprehensive theme system
- *
- * This hook provides backward compatibility with the old Colors system
- * while also supporting the new comprehensive theme system.
+ * Enhanced useThemeColor hook that works with the comprehensive theme system.
+ * Uses ThemeContext so it reacts to in-app theme toggle (not just system preference).
  *
  * @param props - Style props (for backward compatibility)
- * @param colorName - Color name from the theme system
+ * @param colorName - Color name from the theme system (e.g. 'text', 'text.primary', 'background')
  * @returns The appropriate color for the current theme
  */
 export function useThemeColor(
   props: { light?: string; dark?: string },
   colorName: string
 ): string {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const { theme, isDark } = useTheme();
 
-  // Get the current theme
-  const theme = getTheme(isDark);
-
-  // Try to get color from the comprehensive theme system first
+  const path = THEME_PATH_MAP[colorName] ?? colorName;
   try {
-    const themeColor = getThemeColor(theme, colorName);
-    if (themeColor && themeColor !== '#000000') {
-      return themeColor;
-    }
-  } catch (error) {
-    // Fall back to old system if theme color not found
+    const themeColor = getThemeColor(theme, path);
+    if (themeColor) return themeColor;
+  } catch {
+    // Fall back to props or Colors
   }
 
-  // Fallback to the old Colors system for backward compatibility
   const colorFromProps = isDark ? props.dark : props.light;
+  if (colorFromProps) return colorFromProps;
 
-  if (colorFromProps) {
-    return colorFromProps;
-  }
-
-  // Final fallback to Colors constant
+  const colorScheme = isDark ? 'dark' : 'light';
   const colorSchemeColors = Colors[colorScheme as keyof typeof Colors];
-  return (
-    colorSchemeColors?.[colorName as keyof typeof colorSchemeColors] ||
-    colorSchemeColors?.text ||
-    '#000000'
-  );
+  return colorSchemeColors?.[colorName as keyof typeof colorSchemeColors] ?? theme.text.primary;
 }
 
 /**
- * Hook to get the current theme object
- * @returns The current theme object
+ * Hook to get the current theme object. Uses ThemeContext so it reacts to in-app theme toggle.
  */
 export function useCurrentTheme() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  return getTheme(isDark);
+  const { theme } = useTheme();
+  return theme;
 }
 
 /**
@@ -73,11 +65,12 @@ export function useThemeColors(colorNames: string[]): Record<string, string> {
   const colors: Record<string, string> = {};
 
   colorNames.forEach(name => {
+    const path = THEME_PATH_MAP[name] ?? name;
     try {
-      colors[name] = getThemeColor(theme, name);
-    } catch (error) {
-      console.warn(`Theme color "${name}" not found`);
-      colors[name] = '#000000'; // fallback
+      const value = getThemeColor(theme, path);
+      colors[name] = typeof value === 'string' ? value : theme.text.primary;
+    } catch {
+      colors[name] = theme.text.primary;
     }
   });
 

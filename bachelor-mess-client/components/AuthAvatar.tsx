@@ -14,6 +14,7 @@ import {
   Animated,
   ScrollView,
 } from 'react-native';
+import { useTheme } from '@/context/ThemeContext';
 import { ThemedText } from './ThemedText';
 import { useAuth } from '@/context/AuthContext';
 
@@ -28,6 +29,7 @@ export const AuthAvatar: React.FC<AuthAvatarProps> = ({
   size = 48,
   showDropdown = true,
 }) => {
+  const { theme } = useTheme();
   const { user, logout } = useAuth();
   const router = useRouter();
   const [showModal, setShowModal] = useState(false);
@@ -115,6 +117,8 @@ export const AuthAvatar: React.FC<AuthAvatarProps> = ({
     }
   };
 
+  const onPrimaryText = theme.onPrimary?.text ?? theme.text.inverse;
+
   // Base menu items for all users
   const baseMenuItems = [
     {
@@ -122,7 +126,7 @@ export const AuthAvatar: React.FC<AuthAvatarProps> = ({
       title: 'Profile',
       subtitle: 'View and edit your profile',
       icon: 'person-outline',
-      color: '#667eea',
+      color: theme.primary,
       onPress: () => {
         handleCloseModal();
         router.push('/profile');
@@ -133,7 +137,7 @@ export const AuthAvatar: React.FC<AuthAvatarProps> = ({
       title: 'Settings',
       subtitle: 'App preferences and configuration',
       icon: 'settings-outline',
-      color: '#8b5cf6',
+      color: theme.status.pending,
       onPress: () => {
         handleCloseModal();
         router.push('/settings');
@@ -144,7 +148,7 @@ export const AuthAvatar: React.FC<AuthAvatarProps> = ({
       title: 'Help & Support',
       subtitle: 'Get help and contact support',
       icon: 'help-circle-outline',
-      color: '#10b981',
+      color: theme.status.success,
       onPress: () => {
         handleCloseModal();
         router.push('/help');
@@ -155,7 +159,7 @@ export const AuthAvatar: React.FC<AuthAvatarProps> = ({
       title: 'Notifications',
       subtitle: 'Manage your notifications',
       icon: 'notifications-outline',
-      color: '#f59e0b',
+      color: theme.status.warning,
       onPress: () => {
         handleCloseModal();
         router.push('/notifications');
@@ -163,14 +167,13 @@ export const AuthAvatar: React.FC<AuthAvatarProps> = ({
     },
   ];
 
-  // Admin-specific menu items
   const adminMenuItems = [
     {
       id: 'admin-dashboard',
       title: 'Admin Dashboard',
       subtitle: 'Manage flat operations',
       icon: 'shield-outline',
-      color: '#ef4444',
+      color: theme.status.error,
       onPress: () => {
         handleCloseModal();
         router.push('/admin');
@@ -178,14 +181,13 @@ export const AuthAvatar: React.FC<AuthAvatarProps> = ({
     },
   ];
 
-  // Super admin-specific menu items
   const superAdminMenuItems = [
     {
       id: 'system-management',
       title: 'System Management',
       subtitle: 'Manage system settings and users',
       icon: 'shield-checkmark-outline',
-      color: '#dc2626',
+      color: theme.status.error,
       onPress: () => {
         handleCloseModal();
         router.push('/admin');
@@ -196,7 +198,7 @@ export const AuthAvatar: React.FC<AuthAvatarProps> = ({
       title: 'User Management',
       subtitle: 'Manage all users and roles',
       icon: 'people-outline',
-      color: '#7c3aed',
+      color: theme.status.pending,
       onPress: () => {
         handleCloseModal();
         router.push('/admin');
@@ -228,15 +230,15 @@ export const AuthAvatar: React.FC<AuthAvatarProps> = ({
         activeOpacity={0.8}
       >
         <LinearGradient
-          colors={['#667eea', '#764ba2']}
+          colors={theme.gradient.primary as [string, string]}
           style={[styles.avatarGradient, { borderRadius: size / 2 }]}
         >
           {user ? (
-            <ThemedText style={[styles.avatarText, { fontSize: size * 0.4 }]}>
+            <ThemedText style={[styles.avatarText, { fontSize: size * 0.4, color: onPrimaryText }]}>
               {getInitials(user.name)}
             </ThemedText>
           ) : (
-            <Ionicons name='person' size={size * 0.5} color='#fff' />
+            <Ionicons name='person' size={size * 0.5} color={onPrimaryText} />
           )}
         </LinearGradient>
       </TouchableOpacity>
@@ -252,7 +254,7 @@ export const AuthAvatar: React.FC<AuthAvatarProps> = ({
           style={[
             styles.modalOverlay,
             styles.modalOverlayFullScreen,
-            { opacity: fadeAnim },
+            { opacity: fadeAnim, backgroundColor: theme.overlay.medium },
           ]}
           pointerEvents={showModal ? 'auto' : 'none'}
         >
@@ -262,6 +264,7 @@ export const AuthAvatar: React.FC<AuthAvatarProps> = ({
                 styles.modalContainer,
                 {
                   transform: [{ translateY: slideAnim }],
+                  backgroundColor: theme.background,
                 },
               ]}
             >
@@ -271,24 +274,23 @@ export const AuthAvatar: React.FC<AuthAvatarProps> = ({
                 showsVerticalScrollIndicator={true}
                 bounces={false}
               >
-                <Pressable style={styles.modalContent} onPress={() => {}}>
-                  {/* User Info Header */}
-                  <View style={styles.userInfoHeader}>
+                <Pressable style={[styles.modalContent, { backgroundColor: theme.surface }]} onPress={() => {}}>
+                  <View style={[styles.userInfoHeader, { borderBottomColor: theme.border.secondary }]}>
                     <View style={styles.userAvatar}>
                       <LinearGradient
-                        colors={['#667eea', '#764ba2']}
+                        colors={theme.gradient.primary as [string, string]}
                         style={styles.userAvatarGradient}
                       >
-                        <ThemedText style={styles.userAvatarText}>
+                        <ThemedText style={[styles.userAvatarText, { color: onPrimaryText }]}>
                           {getInitials(getUserDisplayName())}
                         </ThemedText>
                       </LinearGradient>
                     </View>
                     <View style={styles.userInfo}>
-                      <ThemedText style={styles.userName}>
+                      <ThemedText style={[styles.userName, { color: theme.text.primary }]}>
                         {getUserDisplayName()}
                       </ThemedText>
-                      <ThemedText style={styles.userRole}>
+                      <ThemedText style={[styles.userRole, { color: theme.text.secondary }]}>
                         {getUserRole()}
                       </ThemedText>
                     </View>
@@ -311,21 +313,21 @@ export const AuthAvatar: React.FC<AuthAvatarProps> = ({
                           <Ionicons
                             name={item.icon as IconName}
                             size={20}
-                            color='#fff'
+                            color={onPrimaryText}
                           />
                         </View>
                         <View style={styles.menuContent}>
-                          <ThemedText style={styles.menuTitle}>
+                          <ThemedText style={[styles.menuTitle, { color: theme.text.primary }]}>
                             {item.title}
                           </ThemedText>
-                          <ThemedText style={styles.menuSubtitle}>
+                          <ThemedText style={[styles.menuSubtitle, { color: theme.text.secondary }]}>
                             {item.subtitle}
                           </ThemedText>
                         </View>
                         <Ionicons
                           name='chevron-forward'
                           size={16}
-                          color='#9ca3af'
+                          color={theme.icon.secondary}
                         />
                       </TouchableOpacity>
                     ))}
@@ -333,25 +335,25 @@ export const AuthAvatar: React.FC<AuthAvatarProps> = ({
 
                   {/* Logout Button */}
                   <TouchableOpacity
-                    style={styles.logoutButton}
+                    style={[styles.logoutButton, { borderTopColor: theme.border.secondary }]}
                     onPress={handleLogout}
                   >
                     <View
-                      style={[styles.menuIcon, { backgroundColor: '#ef4444' }]}
+                      style={[styles.menuIcon, { backgroundColor: theme.status.error }]}
                     >
-                      <Ionicons name='log-out-outline' size={20} color='#fff' />
+                      <Ionicons name='log-out-outline' size={20} color={onPrimaryText} />
                     </View>
                     <View style={styles.menuContent}>
                       <ThemedText
-                        style={[styles.menuTitle, { color: '#ef4444' }]}
+                        style={[styles.menuTitle, { color: theme.status.error }]}
                       >
                         Logout
                       </ThemedText>
-                      <ThemedText style={styles.menuSubtitle}>
+                      <ThemedText style={[styles.menuSubtitle, { color: theme.text.secondary }]}>
                         Sign out of your account
                       </ThemedText>
                     </View>
-                    <Ionicons name='chevron-forward' size={16} color='#9ca3af' />
+                    <Ionicons name='chevron-forward' size={16} color={theme.icon.secondary} />
                   </TouchableOpacity>
                 </Pressable>
               </ScrollView>
@@ -376,12 +378,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   avatarText: {
-    color: '#fff',
     fontWeight: 'bold',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
   modalOverlayFullScreen: {
@@ -393,7 +393,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContainer: {
-    backgroundColor: '#fff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingTop: 20,
@@ -416,7 +415,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingBottom: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
     marginBottom: 20,
   },
   userAvatar: {
@@ -432,7 +430,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   userAvatarText: {
-    color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
   },
@@ -442,12 +439,10 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1f2937',
     marginBottom: 2,
   },
   userRole: {
     fontSize: 14,
-    color: '#6b7280',
   },
   menuItems: {
     marginBottom: 20,
@@ -473,12 +468,10 @@ const styles = StyleSheet.create({
   menuTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1f2937',
     marginBottom: 2,
   },
   menuSubtitle: {
     fontSize: 12,
-    color: '#6b7280',
   },
   logoutButton: {
     flexDirection: 'row',
@@ -487,7 +480,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderRadius: 8,
     borderTopWidth: 1,
-    borderTopColor: '#f3f4f6',
     paddingTop: 20,
   },
 });

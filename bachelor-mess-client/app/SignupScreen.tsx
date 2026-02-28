@@ -1,5 +1,6 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { useTheme } from '@/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -18,6 +19,7 @@ import {
 import authService from '@/services/authService';
 
 export default function SignupScreen() {
+  const { theme } = useTheme();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -29,6 +31,7 @@ export default function SignupScreen() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const onPrimaryText = theme.button?.primary?.text ?? theme.onPrimary?.text ?? theme.text.inverse;
 
   const validateForm = () => {
     if (!name.trim()) {
@@ -114,7 +117,7 @@ export default function SignupScreen() {
 
   return (
     <LinearGradient
-      colors={['#e0eafc', '#cfdef3']}
+      colors={theme.gradient.primary as [string, string]}
       style={modernStyles.gradient}
     >
       <KeyboardAvoidingView
@@ -125,48 +128,38 @@ export default function SignupScreen() {
           contentContainerStyle={modernStyles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          <ThemedView style={modernStyles.card}>
+          <ThemedView style={[modernStyles.card, { backgroundColor: theme.surface, shadowColor: theme.shadow.light }]}>
             <Ionicons
               name='person-add-outline'
               size={64}
-              color='#007AFF'
+              color={theme.primary}
               style={{ marginBottom: 16 }}
             />
-            <ThemedText type='title' style={modernStyles.title}>
+            <ThemedText type='title' style={[modernStyles.title, { color: theme.text.primary }]}>
               Create Account
             </ThemedText>
-            <ThemedText style={modernStyles.subtitle}>
+            <ThemedText style={[modernStyles.subtitle, { color: theme.text.secondary }]}>
               Join our flat management community
             </ThemedText>
 
-            <View style={modernStyles.inputWrapper}>
-              <Ionicons
-                name='person-outline'
-                size={20}
-                color='#007AFF'
-                style={modernStyles.inputIcon}
-              />
+            <View style={[modernStyles.inputWrapper, { backgroundColor: theme.surface, borderColor: theme.border.primary }]}>
+              <Ionicons name='person-outline' size={20} color={theme.primary} style={modernStyles.inputIcon} />
               <TextInput
-                style={modernStyles.input}
+                style={[modernStyles.input, { color: theme.text.primary }]}
                 placeholder='Full Name'
-                placeholderTextColor='#b0b0b0'
+                placeholderTextColor={theme.text.tertiary}
                 autoCapitalize='words'
                 value={name}
                 onChangeText={setName}
               />
             </View>
 
-            <View style={modernStyles.inputWrapper}>
-              <Ionicons
-                name='mail-outline'
-                size={20}
-                color='#007AFF'
-                style={modernStyles.inputIcon}
-              />
+            <View style={[modernStyles.inputWrapper, { backgroundColor: theme.surface, borderColor: theme.border.primary }]}>
+              <Ionicons name='mail-outline' size={20} color={theme.primary} style={modernStyles.inputIcon} />
               <TextInput
-                style={modernStyles.input}
+                style={[modernStyles.input, { color: theme.text.primary }]}
                 placeholder='Email'
-                placeholderTextColor='#b0b0b0'
+                placeholderTextColor={theme.text.tertiary}
                 autoCapitalize='none'
                 keyboardType='email-address'
                 value={email}
@@ -174,17 +167,12 @@ export default function SignupScreen() {
               />
             </View>
 
-            <View style={modernStyles.inputWrapper}>
-              <Ionicons
-                name='call-outline'
-                size={20}
-                color='#007AFF'
-                style={modernStyles.inputIcon}
-              />
+            <View style={[modernStyles.inputWrapper, { backgroundColor: theme.surface, borderColor: theme.border.primary }]}>
+              <Ionicons name='call-outline' size={20} color={theme.primary} style={modernStyles.inputIcon} />
               <TextInput
-                style={modernStyles.input}
+                style={[modernStyles.input, { color: theme.text.primary }]}
                 placeholder='Phone Number'
-                placeholderTextColor='#b0b0b0'
+                placeholderTextColor={theme.text.tertiary}
                 autoCapitalize='none'
                 keyboardType='phone-pad'
                 value={phone}
@@ -193,28 +181,28 @@ export default function SignupScreen() {
             </View>
 
             <View style={modernStyles.roleContainer}>
-              <ThemedText style={modernStyles.roleLabel}>
+              <ThemedText style={[modernStyles.roleLabel, { color: theme.text.primary }]}>
                 Select Role:
               </ThemedText>
               <View style={modernStyles.roleButtons}>
                 <TouchableOpacity
                   style={[
                     modernStyles.roleButton,
-                    role === 'admin' && modernStyles.roleButtonActive,
+                    { borderColor: theme.border.primary, backgroundColor: theme.surface },
+                    role === 'admin' && { backgroundColor: theme.primary, borderColor: theme.primary },
                   ]}
                   onPress={() => setRole('admin')}
                 >
                   <Ionicons
-                    name={
-                      role === 'admin' ? 'shield-checkmark' : 'shield-outline'
-                    }
+                    name={role === 'admin' ? 'shield-checkmark' : 'shield-outline'}
                     size={20}
-                    color={role === 'admin' ? '#fff' : '#007AFF'}
+                    color={role === 'admin' ? onPrimaryText : theme.primary}
                   />
                   <ThemedText
                     style={[
                       modernStyles.roleButtonText,
-                      role === 'admin' && modernStyles.roleButtonTextActive,
+                      { color: theme.primary },
+                      role === 'admin' && { color: onPrimaryText },
                     ]}
                   >
                     Admin
@@ -224,19 +212,21 @@ export default function SignupScreen() {
                 <TouchableOpacity
                   style={[
                     modernStyles.roleButton,
-                    role === 'member' && modernStyles.roleButtonActive,
+                    { borderColor: theme.border.primary, backgroundColor: theme.surface },
+                    role === 'member' && { backgroundColor: theme.primary, borderColor: theme.primary },
                   ]}
                   onPress={() => setRole('member')}
                 >
                   <Ionicons
                     name={role === 'member' ? 'people' : 'people-outline'}
                     size={20}
-                    color={role === 'member' ? '#fff' : '#007AFF'}
+                    color={role === 'member' ? onPrimaryText : theme.primary}
                   />
                   <ThemedText
                     style={[
                       modernStyles.roleButtonText,
-                      role === 'member' && modernStyles.roleButtonTextActive,
+                      { color: theme.primary },
+                      role === 'member' && { color: onPrimaryText },
                     ]}
                   >
                     Member
@@ -245,80 +235,56 @@ export default function SignupScreen() {
               </View>
             </View>
 
-            <View style={modernStyles.inputWrapper}>
-              <Ionicons
-                name='lock-closed-outline'
-                size={20}
-                color='#007AFF'
-                style={modernStyles.inputIcon}
-              />
+            <View style={[modernStyles.inputWrapper, { backgroundColor: theme.surface, borderColor: theme.border.primary }]}>
+              <Ionicons name='lock-closed-outline' size={20} color={theme.primary} style={modernStyles.inputIcon} />
               <TextInput
-                style={modernStyles.input}
+                style={[modernStyles.input, { color: theme.text.primary }]}
                 placeholder='Password (min 6 chars, 1 uppercase, 1 lowercase, 1 number)'
-                placeholderTextColor='#b0b0b0'
+                placeholderTextColor={theme.text.tertiary}
                 secureTextEntry={!showPassword}
                 value={password}
                 onChangeText={setPassword}
               />
-              <Pressable
-                onPress={() => setShowPassword(!showPassword)}
-                style={modernStyles.passwordToggle}
-              >
-                <Ionicons
-                  name={showPassword ? 'eye-off' : 'eye'}
-                  size={20}
-                  color='#007AFF'
-                />
+              <Pressable onPress={() => setShowPassword(!showPassword)} style={modernStyles.passwordToggle}>
+                <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={20} color={theme.primary} />
               </Pressable>
             </View>
 
-            <View style={modernStyles.inputWrapper}>
-              <Ionicons
-                name='lock-closed-outline'
-                size={20}
-                color='#007AFF'
-                style={modernStyles.inputIcon}
-              />
+            <View style={[modernStyles.inputWrapper, { backgroundColor: theme.surface, borderColor: theme.border.primary }]}>
+              <Ionicons name='lock-closed-outline' size={20} color={theme.primary} style={modernStyles.inputIcon} />
               <TextInput
-                style={modernStyles.input}
+                style={[modernStyles.input, { color: theme.text.primary }]}
                 placeholder='Confirm Password'
-                placeholderTextColor='#b0b0b0'
+                placeholderTextColor={theme.text.tertiary}
                 secureTextEntry={!showConfirmPassword}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
               />
-              <Pressable
-                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                style={modernStyles.passwordToggle}
-              >
-                <Ionicons
-                  name={showConfirmPassword ? 'eye-off' : 'eye'}
-                  size={20}
-                  color='#007AFF'
-                />
+              <Pressable onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={modernStyles.passwordToggle}>
+                <Ionicons name={showConfirmPassword ? 'eye-off' : 'eye'} size={20} color={theme.primary} />
               </Pressable>
             </View>
 
             {error ? (
-              <ThemedText style={modernStyles.error}>{error}</ThemedText>
+              <ThemedText style={[modernStyles.error, { color: theme.status.error }]}>{error}</ThemedText>
             ) : null}
 
             <Pressable
-              style={modernStyles.button}
+              style={[modernStyles.button, { backgroundColor: theme.primary }]}
               onPress={handleSignup}
               disabled={loading}
             >
-              <ThemedText style={modernStyles.buttonText}>
+              <ThemedText style={[modernStyles.buttonText, { color: onPrimaryText }]}>
                 {loading ? 'Creating Account...' : 'Sign Up'}
               </ThemedText>
             </Pressable>
 
             <View style={modernStyles.footer}>
-              <ThemedText style={modernStyles.footerText}>
+              <ThemedText style={[modernStyles.footerText, { color: theme.text.secondary }]}>
                 Already have an account?{' '}
               </ThemedText>
               <Pressable onPress={() => router.replace('/LoginScreen')}>
-                <ThemedText style={modernStyles.linkText}>Sign In</ThemedText>
+                <ThemedText style={[modernStyles.linkText, { color: theme.primary }]}>Sign In</ThemedText>
               </Pressable>
             </View>
           </ThemedView>
@@ -345,9 +311,7 @@ const modernStyles = StyleSheet.create({
     width: 340,
     padding: 32,
     borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.95)',
     alignItems: 'center',
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 16,
@@ -355,12 +319,10 @@ const modernStyles = StyleSheet.create({
   },
   title: {
     marginBottom: 8,
-    color: '#222',
     fontWeight: 'bold',
     fontSize: 24,
   },
   subtitle: {
-    color: '#888',
     marginBottom: 24,
     fontSize: 15,
     textAlign: 'center',
@@ -368,12 +330,10 @@ const modernStyles = StyleSheet.create({
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
     borderRadius: 12,
     marginBottom: 16,
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: '#e9ecef',
   },
   inputIcon: {
     marginRight: 12,
@@ -382,20 +342,17 @@ const modernStyles = StyleSheet.create({
     flex: 1,
     height: 50,
     fontSize: 16,
-    color: '#333',
   },
   passwordToggle: {
     padding: 8,
     marginLeft: 4,
   },
   error: {
-    color: '#ef4444',
     fontSize: 14,
     marginBottom: 16,
     textAlign: 'center',
   },
   button: {
-    backgroundColor: '#007AFF',
     paddingVertical: 16,
     paddingHorizontal: 32,
     borderRadius: 12,
@@ -404,7 +361,6 @@ const modernStyles = StyleSheet.create({
     marginBottom: 16,
   },
   buttonText: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -414,11 +370,9 @@ const modernStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   footerText: {
-    color: '#666',
     fontSize: 14,
   },
   linkText: {
-    color: '#007AFF',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -429,7 +383,6 @@ const modernStyles = StyleSheet.create({
   roleLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
     marginBottom: 12,
     textAlign: 'center',
   },
@@ -447,20 +400,10 @@ const modernStyles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#e9ecef',
-    backgroundColor: '#f8f9fa',
     gap: 8,
-  },
-  roleButtonActive: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
   },
   roleButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#007AFF',
-  },
-  roleButtonTextActive: {
-    color: '#fff',
   },
 });

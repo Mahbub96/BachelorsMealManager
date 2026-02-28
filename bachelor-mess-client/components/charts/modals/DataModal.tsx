@@ -9,6 +9,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import type { IconName } from '@/constants/IconTypes';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTheme } from '@/context/ThemeContext';
 import { ThemedText } from '../../ThemedText';
 
 interface ChartData {
@@ -58,16 +59,16 @@ export const DataModal: React.FC<DataModalProps> = ({
     }
   };
 
+  const { theme } = useTheme();
   const getTrendColor = (trend?: string) => {
     switch (trend) {
       case 'up':
-        return '#10b981';
+        return theme.status.success;
       case 'down':
-        return '#ef4444';
+        return theme.status.error;
       case 'stable':
-        return '#6b7280';
       default:
-        return '#6b7280';
+        return theme.text.secondary;
     }
   };
 
@@ -80,19 +81,19 @@ export const DataModal: React.FC<DataModalProps> = ({
       animationType='slide'
       onRequestClose={onClose}
     >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
+      <View style={[styles.modalOverlay, { backgroundColor: theme.overlay.medium }]}>
+        <View style={[styles.modalContent, { backgroundColor: theme.modal }]}>
           <LinearGradient
-            colors={['#667eea', '#764ba2']}
+            colors={theme.gradient.primary as [string, string]}
             style={styles.modalHeaderGradient}
           >
             <View style={styles.modalHeaderContent}>
-              <ThemedText style={styles.modalTitleWhite}>{title}</ThemedText>
+              <ThemedText style={[styles.modalTitleWhite, { color: theme.onPrimary?.text ?? theme.text.inverse }]}>{title}</ThemedText>
               <TouchableOpacity
                 onPress={onClose}
                 style={styles.closeButtonWhite}
               >
-                <Ionicons name='close' size={24} color='#fff' />
+                <Ionicons name='close' size={24} color={theme.onPrimary?.text ?? theme.text.inverse} />
               </TouchableOpacity>
             </View>
           </LinearGradient>
@@ -101,82 +102,82 @@ export const DataModal: React.FC<DataModalProps> = ({
             style={styles.modalBody}
             showsVerticalScrollIndicator={false}
           >
-            <View style={styles.valueCard}>
+            <View style={[styles.valueCard, { backgroundColor: theme.surface }]}>
               <View style={styles.valueCardHeader}>
-                <Ionicons name='analytics' size={24} color='#667eea' />
-                <ThemedText style={styles.valueCardLabel}>
+                <Ionicons name='analytics' size={24} color={theme.primary} />
+                <ThemedText style={[styles.valueCardLabel, { color: theme.text.secondary }]}>
                   Current Value
                 </ThemedText>
               </View>
-              <ThemedText style={styles.valueCardValue}>
+              <ThemedText style={[styles.valueCardValue, { color: theme.text.primary }]}>
                 {formatValue(data.value)}
               </ThemedText>
             </View>
 
             {data.trend && (
-              <View style={styles.trendCard}>
+              <View style={[styles.trendCard, { backgroundColor: theme.surface }]}>
                 <View style={styles.trendCardHeader}>
                   <Ionicons
                     name={getTrendIcon(data.trend) as IconName}
                     size={20}
                     color={getTrendColor(data.trend)}
                   />
-                  <ThemedText style={styles.trendCardLabel}>
+                  <ThemedText style={[styles.trendCardLabel, { color: theme.text.secondary }]}>
                     Trend Analysis
                   </ThemedText>
                 </View>
-                <ThemedText style={styles.trendCardValue}>
+                <ThemedText style={[styles.trendCardValue, { color: theme.text.primary }]}>
                   {data.trend.charAt(0).toUpperCase() + data.trend.slice(1)}
                 </ThemedText>
               </View>
             )}
 
             {data.forecast && (
-              <View style={styles.forecastCard}>
+              <View style={[styles.forecastCard, { backgroundColor: theme.surface }]}>
                 <View style={styles.forecastCardHeader}>
-                  <Ionicons name='trending-up' size={20} color='#f59e0b' />
-                  <ThemedText style={styles.forecastCardLabel}>
+                  <Ionicons name='trending-up' size={20} color={theme.status.warning} />
+                  <ThemedText style={[styles.forecastCardLabel, { color: theme.text.secondary }]}>
                     Forecast
                   </ThemedText>
                 </View>
-                <ThemedText style={styles.forecastCardValue}>
+                <ThemedText style={[styles.forecastCardValue, { color: theme.text.primary }]}>
                   {formatValue(data.forecast)}
                 </ThemedText>
               </View>
             )}
 
             {data.details?.description && (
-              <View style={styles.descriptionCard}>
+              <View style={[styles.descriptionCard, { backgroundColor: theme.surface }]}>
                 <View style={styles.descriptionCardHeader}>
                   <Ionicons
                     name='information-circle'
                     size={20}
-                    color='#6b7280'
+                    color={theme.icon.secondary}
                   />
-                  <ThemedText style={styles.descriptionCardLabel}>
+                  <ThemedText style={[styles.descriptionCardLabel, { color: theme.text.secondary }]}>
                     Description
                   </ThemedText>
                 </View>
-                <ThemedText style={styles.descriptionCardText}>
+                <ThemedText style={[styles.descriptionCardText, { color: theme.text.primary }]}>
                   {data.details.description}
                 </ThemedText>
               </View>
             )}
 
             {data.details?.breakdown && data.details.breakdown.length > 0 && (
-              <View style={styles.breakdownCard}>
+              <View style={[styles.breakdownCard, { backgroundColor: theme.surface }]}>
                 <View style={styles.breakdownCardHeader}>
-                  <Ionicons name='list' size={20} color='#6b7280' />
-                  <ThemedText style={styles.breakdownCardLabel}>
+                  <Ionicons name='list' size={20} color={theme.icon.secondary} />
+                  <ThemedText style={[styles.breakdownCardLabel, { color: theme.text.secondary }]}>
                     Breakdown
                   </ThemedText>
                 </View>
                 {data.details.breakdown.map((item, index) => (
-                  <View key={index} style={styles.breakdownItem}>
-                    <ThemedText style={styles.breakdownItemLabel}>
+                  <View key={index} style={[styles.breakdownItem, { borderBottomColor: theme.border.primary }]}>
+                    <ThemedText style={[styles.breakdownItemLabel, { color: theme.text.primary }]}>
                       {item.label}
                     </ThemedText>
-                    <ThemedText style={styles.breakdownItemValue}>
+                    <ThemedText style={[styles.breakdownItemValue, { color: theme.text.primary }]}>
                       ৳{item.value.toLocaleString()}
                     </ThemedText>
                   </View>
@@ -185,16 +186,16 @@ export const DataModal: React.FC<DataModalProps> = ({
             )}
 
             {data.details?.notes && (
-              <View style={styles.notesCard}>
+              <View style={[styles.notesCard, { backgroundColor: theme.surface }]}>
                 <View style={styles.notesCardHeader}>
                   <Ionicons
                     name='chatbubble-outline'
                     size={20}
-                    color='#6b7280'
+                    color={theme.icon.secondary}
                   />
-                  <ThemedText style={styles.notesCardLabel}>Notes</ThemedText>
+                  <ThemedText style={[styles.notesCardLabel, { color: theme.text.secondary }]}>Notes</ThemedText>
                 </View>
-                <ThemedText style={styles.notesCardText}>
+                <ThemedText style={[styles.notesCardText, { color: theme.text.primary }]}>
                   {data.details.notes}
                 </ThemedText>
               </View>
@@ -209,12 +210,10 @@ export const DataModal: React.FC<DataModalProps> = ({
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: '#fff',
     borderRadius: 16,
     width: '90%',
     maxHeight: '80%',
@@ -230,7 +229,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   modalTitleWhite: {
-    color: '#fff',
     fontSize: 18,
     fontWeight: '600',
   },
@@ -241,7 +239,6 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   valueCard: {
-    backgroundColor: '#f8fafc',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -253,16 +250,13 @@ const styles = StyleSheet.create({
   },
   valueCardLabel: {
     fontSize: 14,
-    color: '#6b7280',
     marginLeft: 8,
   },
   valueCardValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1f2937',
   },
   trendCard: {
-    backgroundColor: '#f0f9ff',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -274,16 +268,13 @@ const styles = StyleSheet.create({
   },
   trendCardLabel: {
     fontSize: 14,
-    color: '#6b7280',
     marginLeft: 8,
   },
   trendCardValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1f2937',
   },
   forecastCard: {
-    backgroundColor: '#fffbeb',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -295,16 +286,13 @@ const styles = StyleSheet.create({
   },
   forecastCardLabel: {
     fontSize: 14,
-    color: '#6b7280',
     marginLeft: 8,
   },
   forecastCardValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1f2937',
   },
   descriptionCard: {
-    backgroundColor: '#f9fafb',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -316,16 +304,13 @@ const styles = StyleSheet.create({
   },
   descriptionCardLabel: {
     fontSize: 14,
-    color: '#6b7280',
     marginLeft: 8,
   },
   descriptionCardText: {
     fontSize: 14,
-    color: '#374151',
     lineHeight: 20,
   },
   breakdownCard: {
-    backgroundColor: '#f9fafb',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -337,7 +322,6 @@ const styles = StyleSheet.create({
   },
   breakdownCardLabel: {
     fontSize: 14,
-    color: '#6b7280',
     marginLeft: 8,
   },
   breakdownItem: {
@@ -346,19 +330,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
   },
   breakdownItemLabel: {
     fontSize: 14,
-    color: '#374151',
   },
   breakdownItemValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1f2937',
   },
   notesCard: {
-    backgroundColor: '#f9fafb',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -370,12 +350,10 @@ const styles = StyleSheet.create({
   },
   notesCardLabel: {
     fontSize: 14,
-    color: '#6b7280',
     marginLeft: 8,
   },
   notesCardText: {
     fontSize: 14,
-    color: '#374151',
     lineHeight: 20,
   },
 });

@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { useTheme } from '@/context/ThemeContext';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
 import { Ionicons } from '@expo/vector-icons';
@@ -42,6 +43,10 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
   showStats = false,
   stats,
 }) => {
+  const { theme } = useTheme();
+  const onPrimaryText = theme.onPrimary?.text ?? theme.text.inverse;
+  const onPrimaryOverlay = theme.onPrimary?.overlay;
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -63,7 +68,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
   };
 
   const getStatusColor = (status: string) => {
-    return status === 'active' ? '#10b981' : '#6b7280';
+    return status === 'active' ? theme.status.success : theme.text.secondary;
   };
 
   const getInitials = (name: string) => {
@@ -80,59 +85,46 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
   };
 
   return (
-    <ThemedView style={[styles.container, compact && styles.compactContainer]}>
+    <ThemedView style={[styles.container, compact && styles.compactContainer, { backgroundColor: theme.surface, shadowColor: theme.shadow.light }]}>
       {/* Header with gradient background */}
       <LinearGradient
-        colors={['#667eea', '#764ba2']}
+        colors={theme.gradient.primary as [string, string]}
         style={styles.headerGradient}
       >
         <View style={styles.header}>
           <View style={styles.avatarContainer}>
-            <View style={styles.avatar}>
-              <ThemedText style={styles.avatarText}>
+            <View style={[styles.avatar, { backgroundColor: onPrimaryOverlay, borderColor: onPrimaryOverlay ?? onPrimaryText }]}>
+              <ThemedText style={[styles.avatarText, { color: onPrimaryText }]}>
                 {getInitials(user.name)}
               </ThemedText>
             </View>
             {user.isEmailVerified && (
-              <View style={styles.verifiedBadge}>
-                <Ionicons name='checkmark-circle' size={16} color='#10b981' />
+              <View style={[styles.verifiedBadge, { backgroundColor: theme.surface }]}>
+                <Ionicons name='checkmark-circle' size={16} color={theme.status.success} />
               </View>
             )}
           </View>
           <View style={styles.userInfo}>
-            <ThemedText style={[styles.name, compact && styles.compactName]}>
+            <ThemedText style={[styles.name, compact && styles.compactName, { color: onPrimaryText }]}>
               {user.name}
             </ThemedText>
-            <ThemedText style={[styles.email, compact && styles.compactEmail]}>
+            <ThemedText style={[styles.email, compact && styles.compactEmail, { color: onPrimaryOverlay ?? onPrimaryText }]}>
               {user.email}
             </ThemedText>
             <View style={styles.badges}>
-              <View style={styles.badgeContainer}>
-                <Ionicons
-                  name={getRoleIcon(user.role) as IconName}
-                  size={12}
-                  color='#fff'
-                />
-                <ThemedText style={styles.badgeText}>
+              <View style={[styles.badgeContainer, { backgroundColor: onPrimaryOverlay }]}>
+                <Ionicons name={getRoleIcon(user.role) as IconName} size={12} color={onPrimaryText} />
+                <ThemedText style={[styles.badgeText, { color: onPrimaryText }]}>
                   {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
                 </ThemedText>
               </View>
-              <View
-                style={[
-                  styles.badgeContainer,
-                  { backgroundColor: getStatusColor(user.status) },
-                ]}
-              >
+              <View style={[styles.badgeContainer, { backgroundColor: getStatusColor(user.status) }]}>
                 <Ionicons
-                  name={
-                    user.status === 'active'
-                      ? 'checkmark-circle'
-                      : 'close-circle'
-                  }
+                  name={user.status === 'active' ? 'checkmark-circle' : 'close-circle'}
                   size={12}
-                  color='#fff'
+                  color={onPrimaryText}
                 />
-                <ThemedText style={styles.badgeText}>
+                <ThemedText style={[styles.badgeText, { color: onPrimaryText }]}>
                   {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
                 </ThemedText>
               </View>
@@ -143,26 +135,26 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
 
       {/* Details Section */}
       {!compact && (
-        <View style={styles.details}>
+        <View style={[styles.details, { borderTopColor: theme.border.secondary }]}>
           {user.phone && (
             <View style={styles.detailItem}>
-              <View style={styles.detailIcon}>
-                <Ionicons name='call' size={16} color='#667eea' />
+              <View style={[styles.detailIcon, { backgroundColor: theme.surface }]}>
+                <Ionicons name='call' size={16} color={theme.primary} />
               </View>
               <View style={styles.detailContent}>
-                <ThemedText style={styles.detailLabel}>Phone</ThemedText>
-                <ThemedText style={styles.detailText}>{user.phone}</ThemedText>
+                <ThemedText style={[styles.detailLabel, { color: theme.text.secondary }]}>Phone</ThemedText>
+                <ThemedText style={[styles.detailText, { color: theme.text.primary }]}>{user.phone}</ThemedText>
               </View>
             </View>
           )}
 
           <View style={styles.detailItem}>
-            <View style={styles.detailIcon}>
-              <Ionicons name='calendar' size={16} color='#667eea' />
+            <View style={[styles.detailIcon, { backgroundColor: theme.surface }]}>
+              <Ionicons name='calendar' size={16} color={theme.primary} />
             </View>
             <View style={styles.detailContent}>
-              <ThemedText style={styles.detailLabel}>Member Since</ThemedText>
-              <ThemedText style={styles.detailText}>
+              <ThemedText style={[styles.detailLabel, { color: theme.text.secondary }]}>Member Since</ThemedText>
+              <ThemedText style={[styles.detailText, { color: theme.text.primary }]}>
                 {formatDate(user.joinDate)}
               </ThemedText>
             </View>
@@ -170,12 +162,12 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
 
           {user.lastLogin && (
             <View style={styles.detailItem}>
-              <View style={styles.detailIcon}>
-                <Ionicons name='time' size={16} color='#667eea' />
+              <View style={[styles.detailIcon, { backgroundColor: theme.surface }]}>
+                <Ionicons name='time' size={16} color={theme.primary} />
               </View>
               <View style={styles.detailContent}>
-                <ThemedText style={styles.detailLabel}>Last Login</ThemedText>
-                <ThemedText style={styles.detailText}>
+                <ThemedText style={[styles.detailLabel, { color: theme.text.secondary }]}>Last Login</ThemedText>
+                <ThemedText style={[styles.detailText, { color: theme.text.primary }]}>
                   {formatRelativeDate(user.lastLogin)}
                 </ThemedText>
               </View>
@@ -186,50 +178,42 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
 
       {/* Stats Section */}
       {showStats && stats && (
-        <View style={styles.statsSection}>
-          <ThemedText style={styles.statsTitle}>Activity Summary</ThemedText>
+        <View style={[styles.statsSection, { borderTopColor: theme.border.secondary, backgroundColor: theme.surface }]}>
+          <ThemedText style={[styles.statsTitle, { color: theme.text.primary }]}>Activity Summary</ThemedText>
           <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
-              <Ionicons name='fast-food' size={20} color='#f59e0b' />
-              <ThemedText style={styles.statValue}>
-                {stats.totalMeals || 0}
-              </ThemedText>
-              <ThemedText style={styles.statLabel}>Total Meals</ThemedText>
+            <View style={[styles.statCard, { backgroundColor: theme.surface, shadowColor: theme.shadow.light }]}>
+              <Ionicons name='fast-food' size={20} color={theme.status.warning} />
+              <ThemedText style={[styles.statValue, { color: theme.text.primary }]}>{stats.totalMeals || 0}</ThemedText>
+              <ThemedText style={[styles.statLabel, { color: theme.text.secondary }]}>Total Meals</ThemedText>
             </View>
-            <View style={styles.statCard}>
-              <Ionicons name='cart' size={20} color='#10b981' />
-              <ThemedText style={styles.statValue}>
-                {stats.totalBazar || 0}
-              </ThemedText>
-              <ThemedText style={styles.statLabel}>Bazar Entries</ThemedText>
+            <View style={[styles.statCard, { backgroundColor: theme.surface, shadowColor: theme.shadow.light }]}>
+              <Ionicons name='cart' size={20} color={theme.status.success} />
+              <ThemedText style={[styles.statValue, { color: theme.text.primary }]}>{stats.totalBazar || 0}</ThemedText>
+              <ThemedText style={[styles.statLabel, { color: theme.text.secondary }]}>Bazar Entries</ThemedText>
             </View>
-            <View style={styles.statCard}>
-              <Ionicons name='card' size={20} color='#ef4444' />
-              <ThemedText style={styles.statValue}>
+            <View style={[styles.statCard, { backgroundColor: theme.surface, shadowColor: theme.shadow.light }]}>
+              <Ionicons name='card' size={20} color={theme.status.error} />
+              <ThemedText style={[styles.statValue, { color: theme.text.primary }]}>
                 ৳{(stats.totalAmount || 0).toLocaleString()}
               </ThemedText>
-              <ThemedText style={styles.statLabel}>Total Spent</ThemedText>
+              <ThemedText style={[styles.statLabel, { color: theme.text.secondary }]}>Total Spent</ThemedText>
             </View>
           </View>
         </View>
       )}
 
-      {/* Actions Section */}
       {showActions && (
-        <View style={styles.actions}>
+        <View style={[styles.actions, { borderTopColor: theme.border.secondary }]}>
           {onEditPress && (
-            <TouchableOpacity style={styles.actionButton} onPress={onEditPress}>
-              <Ionicons name='create' size={20} color='#667eea' />
-              <ThemedText style={styles.actionText}>Edit Profile</ThemedText>
+            <TouchableOpacity style={[styles.actionButton, { backgroundColor: theme.surface }]} onPress={onEditPress}>
+              <Ionicons name='create' size={20} color={theme.primary} />
+              <ThemedText style={[styles.actionText, { color: theme.primary }]}>Edit Profile</ThemedText>
             </TouchableOpacity>
           )}
           {onViewDetailsPress && (
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={onViewDetailsPress}
-            >
-              <Ionicons name='eye' size={20} color='#667eea' />
-              <ThemedText style={styles.actionText}>View Details</ThemedText>
+            <TouchableOpacity style={[styles.actionButton, { backgroundColor: theme.surface }]} onPress={onViewDetailsPress}>
+              <Ionicons name='eye' size={20} color={theme.primary} />
+              <ThemedText style={[styles.actionText, { color: theme.primary }]}>View Details</ThemedText>
             </TouchableOpacity>
           )}
         </View>
@@ -240,11 +224,9 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
     borderRadius: 16,
     overflow: 'hidden',
     marginBottom: 16,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -268,22 +250,18 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   avatarText: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
   },
   verifiedBadge: {
     position: 'absolute',
     bottom: -2,
     right: -2,
-    backgroundColor: '#fff',
     borderRadius: 10,
     padding: 2,
   },
@@ -293,7 +271,6 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
     marginBottom: 4,
   },
   compactName: {
@@ -301,7 +278,6 @@ const styles = StyleSheet.create({
   },
   email: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
     marginBottom: 8,
   },
   compactEmail: {
@@ -315,7 +291,6 @@ const styles = StyleSheet.create({
   badgeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -324,12 +299,10 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#fff',
   },
   details: {
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
   },
   detailItem: {
     flexDirection: 'row',
@@ -340,7 +313,6 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#f3f4f6',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -350,24 +322,19 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     fontSize: 12,
-    color: '#6b7280',
     marginBottom: 2,
   },
   detailText: {
     fontSize: 14,
-    color: '#374151',
     fontWeight: '500',
   },
   statsSection: {
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-    backgroundColor: '#f8fafc',
   },
   statsTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#374151',
     marginBottom: 16,
   },
   statsGrid: {
@@ -376,11 +343,9 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -389,13 +354,11 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1f2937',
     marginTop: 8,
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 12,
-    color: '#6b7280',
     textAlign: 'center',
   },
   actions: {
@@ -403,14 +366,12 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 12,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
   },
   actionButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f3f4f6',
     paddingVertical: 12,
     borderRadius: 8,
     gap: 8,
@@ -418,6 +379,5 @@ const styles = StyleSheet.create({
   actionText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#667eea',
   },
 });

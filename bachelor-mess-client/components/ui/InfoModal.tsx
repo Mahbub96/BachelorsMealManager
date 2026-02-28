@@ -30,19 +30,19 @@ const variantConfig = (
 ): Record<InfoModalVariant, { icon: 'checkmark-circle' | 'close-circle' | 'warning' | 'information-circle'; color: string }> => ({
   success: {
     icon: 'checkmark-circle',
-    color: theme.status?.success ?? theme.gradient?.success?.[0] ?? '#10b981',
+    color: theme.status?.success ?? theme.gradient?.success?.[0] ?? theme.text.primary,
   },
   error: {
     icon: 'close-circle',
-    color: theme.status?.error ?? theme.gradient?.error?.[0] ?? '#ef4444',
+    color: theme.status?.error ?? theme.gradient?.error?.[0] ?? theme.text.primary,
   },
   warning: {
     icon: 'warning',
-    color: theme.status?.warning ?? theme.gradient?.warning?.[0] ?? '#f59e0b',
+    color: theme.status?.warning ?? theme.gradient?.warning?.[0] ?? theme.text.primary,
   },
   info: {
     icon: 'information-circle',
-    color: theme.status?.info ?? theme.primary ?? '#667eea',
+    color: theme.status?.info ?? theme.primary ?? theme.text.primary,
   },
 });
 
@@ -73,15 +73,15 @@ export const InfoModal: React.FC<InfoModalProps> = ({
       transparent
       onRequestClose={onClose}
     >
-      <Pressable style={styles.overlay} onPress={onClose}>
+      <Pressable style={[styles.overlay, { backgroundColor: theme.overlay.medium }]} onPress={onClose}>
         <Pressable
-          style={[styles.content, { backgroundColor: theme.modal ?? theme.background ?? '#fff' }]}
+          style={[styles.content, { backgroundColor: theme.modal ?? theme.background }]}
           onPress={e => e.stopPropagation()}
         >
           <View
             style={[
               styles.header,
-              { borderBottomColor: theme.border?.secondary ?? 'rgba(0,0,0,0.08)' },
+              { borderBottomColor: theme.border?.secondary },
             ]}
           >
             <View style={styles.titleRow}>
@@ -94,14 +94,14 @@ export const InfoModal: React.FC<InfoModalProps> = ({
               <Ionicons
                 name="close"
                 size={24}
-                color={theme.icon?.secondary ?? '#6b7280'}
+                color={theme.icon?.secondary}
               />
             </TouchableOpacity>
           </View>
 
           <View style={styles.body}>
             <ThemedText
-              style={[styles.message, { color: theme.text?.secondary ?? '#6b7280' }]}
+              style={[styles.message, { color: theme.text?.secondary }]}
             >
               {message}
             </ThemedText>
@@ -110,18 +110,18 @@ export const InfoModal: React.FC<InfoModalProps> = ({
           <View
             style={[
               styles.footer,
-              { borderTopColor: theme.border?.secondary ?? 'rgba(0,0,0,0.08)' },
+              { borderTopColor: theme.border?.secondary },
               secondaryButtonText && styles.footerRow,
             ]}
           >
             {secondaryButtonText ? (
               <>
                 <TouchableOpacity
-                  style={[styles.secondaryButton, { borderColor: theme.border?.secondary ?? '#d1d5db' }]}
+                  style={[styles.secondaryButton, { borderColor: theme.border?.secondary }]}
                   onPress={onClose}
                   activeOpacity={0.85}
                 >
-                  <ThemedText style={[styles.secondaryButtonText, { color: theme.text?.secondary ?? '#6b7280' }]}>
+                  <ThemedText style={[styles.secondaryButtonText, { color: theme.text?.secondary }]}>
                     {secondaryButtonText}
                   </ThemedText>
                 </TouchableOpacity>
@@ -130,7 +130,7 @@ export const InfoModal: React.FC<InfoModalProps> = ({
                   onPress={handlePrimaryPress}
                   activeOpacity={0.85}
                 >
-                  <ThemedText style={styles.primaryButtonText}>{buttonText}</ThemedText>
+                  <ThemedText style={[styles.primaryButtonText, { color: theme.button?.primary?.text ?? theme.onPrimary?.text }]}>{buttonText}</ThemedText>
                 </TouchableOpacity>
               </>
             ) : (
@@ -139,7 +139,7 @@ export const InfoModal: React.FC<InfoModalProps> = ({
                 onPress={handlePrimaryPress}
                 activeOpacity={0.85}
               >
-                <ThemedText style={styles.primaryButtonText}>{buttonText}</ThemedText>
+                <ThemedText style={[styles.primaryButtonText, { color: theme.button?.primary?.text ?? theme.onPrimary?.text }]}>{buttonText}</ThemedText>
               </TouchableOpacity>
             )}
           </View>
@@ -152,7 +152,6 @@ export const InfoModal: React.FC<InfoModalProps> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
@@ -226,7 +225,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   primaryButtonText: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },

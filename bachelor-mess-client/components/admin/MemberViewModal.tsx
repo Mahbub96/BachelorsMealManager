@@ -45,10 +45,10 @@ export const MemberViewModal: React.FC<MemberViewModalProps> = ({
       transparent
       onRequestClose={onClose}
     >
-      <View style={styles.modalOverlay}>
+      <View style={[styles.modalOverlay, { backgroundColor: theme.overlay.medium }]}>
         <View style={[styles.modalContent, { backgroundColor: theme.modal ?? theme.background }]}>
           {/* Header */}
-          <View style={[styles.header, { borderBottomColor: theme.border?.secondary ?? '#e5e7eb' }]}>
+          <View style={[styles.header, { borderBottomColor: theme.border?.secondary }]}>
             <ThemedText style={styles.headerTitle}>Member Details</ThemedText>
             <View style={styles.headerActions}>
               {onEdit && (
@@ -220,7 +220,7 @@ export const MemberViewModal: React.FC<MemberViewModalProps> = ({
               style={[styles.primaryButton, { backgroundColor: theme.primary }]}
               onPress={onClose}
             >
-              <ThemedText style={styles.primaryButtonText}>Close</ThemedText>
+              <ThemedText style={[styles.primaryButtonText, { color: theme.button?.primary?.text ?? theme.onPrimary?.text }]}>Close</ThemedText>
             </TouchableOpacity>
           </View>
         </View>
@@ -232,7 +232,6 @@ export const MemberViewModal: React.FC<MemberViewModalProps> = ({
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -386,7 +385,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   primaryButtonText: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },

@@ -1,5 +1,6 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { useTheme } from '@/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -16,6 +17,7 @@ import authService from '@/services/authService';
 import { useAuth } from '@/context/AuthContext';
 
 export default function LoginScreen() {
+  const { theme } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -76,7 +78,7 @@ export default function LoginScreen() {
 
   return (
     <LinearGradient
-      colors={['#e0eafc', '#cfdef3']}
+      colors={theme.gradient.primary as [string, string]}
       style={modernStyles.gradient}
     >
       <KeyboardAvoidingView
@@ -88,47 +90,47 @@ export default function LoginScreen() {
           width: '100%',
         }}
       >
-        <ThemedView style={modernStyles.card}>
+        <ThemedView style={[modernStyles.card, { backgroundColor: theme.modal, shadowColor: theme.shadow.light }]}>
           <Ionicons
             name='person-circle-outline'
             size={64}
-            color='#007AFF'
+            color={theme.primary}
             style={{ marginBottom: 16 }}
           />
-          <ThemedText type='title' style={modernStyles.title}>
+          <ThemedText type='title' style={[modernStyles.title, { color: theme.text.primary }]}>
             Sign in to Continue
           </ThemedText>
-          <ThemedText style={modernStyles.subtitle}>
+          <ThemedText style={[modernStyles.subtitle, { color: theme.text.secondary }]}>
             Welcome back! Please login to your account.
           </ThemedText>
-          <View style={modernStyles.inputWrapper}>
+          <View style={[modernStyles.inputWrapper, { backgroundColor: theme.input.background, borderColor: theme.input.border }]}>
             <Ionicons
               name='mail-outline'
               size={20}
-              color='#007AFF'
+              color={theme.primary}
               style={modernStyles.inputIcon}
             />
             <TextInput
-              style={modernStyles.input}
+              style={[modernStyles.input, { color: theme.input.text }]}
               placeholder='Email'
-              placeholderTextColor='#b0b0b0'
+              placeholderTextColor={theme.input.placeholder}
               autoCapitalize='none'
               keyboardType='email-address'
               value={email}
               onChangeText={setEmail}
             />
           </View>
-          <View style={modernStyles.inputWrapper}>
+          <View style={[modernStyles.inputWrapper, { backgroundColor: theme.input.background, borderColor: theme.input.border }]}>
             <Ionicons
               name='lock-closed-outline'
               size={20}
-              color='#007AFF'
+              color={theme.primary}
               style={modernStyles.inputIcon}
             />
             <TextInput
-              style={modernStyles.input}
+              style={[modernStyles.input, { color: theme.input.text }]}
               placeholder='Password'
-              placeholderTextColor='#b0b0b0'
+              placeholderTextColor={theme.input.placeholder}
               secureTextEntry={!showPassword}
               value={password}
               onChangeText={setPassword}
@@ -140,29 +142,29 @@ export default function LoginScreen() {
               <Ionicons
                 name={showPassword ? 'eye-off' : 'eye'}
                 size={20}
-                color='#007AFF'
+                color={theme.primary}
               />
             </Pressable>
           </View>
           {error ? (
-            <ThemedText style={modernStyles.error}>{error}</ThemedText>
+            <ThemedText style={[modernStyles.error, { color: theme.status.error }]}>{error}</ThemedText>
           ) : null}
           <Pressable
-            style={modernStyles.button}
+            style={[modernStyles.button, { backgroundColor: theme.button.primary.background }]}
             onPress={handleLogin}
             disabled={loading}
           >
-            <ThemedText style={modernStyles.buttonText}>
+            <ThemedText style={[modernStyles.buttonText, { color: theme.button.primary.text }]}>
               {loading ? 'Logging in...' : 'Login'}
             </ThemedText>
           </Pressable>
 
-                    <View style={modernStyles.footer}>
-            <ThemedText style={modernStyles.footerText}>
+          <View style={modernStyles.footer}>
+            <ThemedText style={[modernStyles.footerText, { color: theme.text.secondary }]}>
               Don&apos;t have an account?{' '}
             </ThemedText>
             <Pressable onPress={() => router.push('/SignupScreen')}>
-              <ThemedText style={modernStyles.linkText}>Sign Up</ThemedText>
+              <ThemedText style={[modernStyles.linkText, { color: theme.primary }]}>Sign Up</ThemedText>
             </Pressable>
           </View>
         </ThemedView>
@@ -182,9 +184,7 @@ const modernStyles = StyleSheet.create({
     maxWidth: 340,
     padding: 32,
     borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.95)',
     alignItems: 'center',
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 16,
@@ -192,12 +192,10 @@ const modernStyles = StyleSheet.create({
   },
   title: {
     marginBottom: 8,
-    color: '#222',
     fontWeight: 'bold',
     fontSize: 24,
   },
   subtitle: {
-    color: '#888',
     marginBottom: 24,
     fontSize: 15,
     textAlign: 'center',
@@ -205,12 +203,10 @@ const modernStyles = StyleSheet.create({
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f4f7fa',
     borderRadius: 8,
     marginBottom: 16,
     paddingHorizontal: 12,
     borderWidth: 1,
-    borderColor: '#e0eafc',
   },
   inputIcon: {
     marginRight: 8,
@@ -219,7 +215,6 @@ const modernStyles = StyleSheet.create({
     flex: 1,
     height: 48,
     fontSize: 16,
-    color: '#222',
     backgroundColor: 'transparent',
   },
   passwordToggle: {
@@ -227,7 +222,6 @@ const modernStyles = StyleSheet.create({
     marginLeft: 4,
   },
   button: {
-    backgroundColor: '#007AFF',
     paddingVertical: 12,
     paddingHorizontal: 64,
     borderRadius: 8,
@@ -236,12 +230,10 @@ const modernStyles = StyleSheet.create({
     alignItems: 'center',
   },
   buttonText: {
-    color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
   },
   error: {
-    color: 'red',
     marginBottom: 8,
     marginTop: -8,
     fontSize: 14,
@@ -253,11 +245,9 @@ const modernStyles = StyleSheet.create({
     marginTop: 16,
   },
   footerText: {
-    color: '#666',
     fontSize: 14,
   },
   linkText: {
-    color: '#007AFF',
     fontSize: 14,
     fontWeight: '600',
   },

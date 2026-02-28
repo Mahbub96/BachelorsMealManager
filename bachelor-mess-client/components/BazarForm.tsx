@@ -808,8 +808,8 @@ export const BazarForm: React.FC<BazarFormProps> = ({
           animationType='slide'
           onRequestClose={() => setShowDatePicker(false)}
         >
-          <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
-            <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
+          <View style={[styles.modalOverlay, { backgroundColor: theme.overlay.medium }]}>
+            <View style={[styles.modalContent, { backgroundColor: theme.background, shadowColor: theme.shadow.light }]}>
               <View style={[styles.modalHeader, { borderBottomColor: theme.border.secondary }]}>
                 <ThemedText style={[styles.modalTitle, { color: theme.text.primary }]}>Select Date</ThemedText>
                 <TouchableOpacity
@@ -1172,21 +1172,17 @@ const styles = StyleSheet.create({
   submitButtonTextSmall: {
     fontSize: 14,
   },
-  // Modal styles for date picker
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: '#fff',
     borderRadius: 16,
     padding: 20,
     margin: 20,
     width: '90%',
     maxWidth: 400,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 12,
@@ -1201,7 +1197,6 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#1f2937',
   },
   closeButton: {
     padding: 4,

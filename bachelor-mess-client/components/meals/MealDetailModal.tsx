@@ -21,13 +21,13 @@ interface MealDetailModalProps {
 const getStatusColor = (status: string, theme: ReturnType<typeof useTheme>['theme']) => {
   switch (status) {
     case 'pending':
-      return theme.status?.warning ?? theme.gradient?.warning?.[0] ?? '#f59e0b';
+      return theme.status?.warning ?? theme.gradient?.warning?.[0];
     case 'approved':
-      return theme.status?.success ?? theme.gradient?.success?.[0] ?? '#10b981';
+      return theme.status?.success ?? theme.gradient?.success?.[0];
     case 'rejected':
-      return theme.status?.error ?? theme.gradient?.error?.[0] ?? '#ef4444';
+      return theme.status?.error ?? theme.gradient?.error?.[0];
     default:
-      return theme.text?.secondary ?? '#6b7280';
+      return theme.text?.secondary;
   }
 };
 
@@ -61,19 +61,19 @@ export const MealDetailModal: React.FC<MealDetailModalProps> = ({
       transparent
       onRequestClose={onClose}
     >
-      <Pressable style={styles.overlay} onPress={onClose}>
+      <Pressable style={[styles.overlay, { backgroundColor: theme.overlay.medium }]} onPress={onClose}>
         <Pressable style={[styles.content, { backgroundColor: theme.modal }]} onPress={e => e.stopPropagation()}>
-          <View style={[styles.header, { borderBottomColor: theme.border?.secondary ?? 'rgba(0,0,0,0.08)' }]}>
+          <View style={[styles.header, { borderBottomColor: theme.border?.secondary }]}>
             <ThemedText style={styles.title}>Meal Details</ThemedText>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn} hitSlop={12}>
-              <Ionicons name="close" size={24} color={theme.icon?.secondary ?? '#6b7280'} />
+              <Ionicons name="close" size={24} color={theme.icon?.secondary} />
             </TouchableOpacity>
           </View>
 
           <View style={styles.body}>
-            <View style={styles.detailRow}>
+            <View style={[styles.detailRow, { borderBottomColor: theme.border?.secondary }]}>
               <View style={styles.detailLabelWrap}>
-                <Ionicons name="calendar-outline" size={20} color={theme.icon?.secondary ?? '#6b7280'} />
+                <Ionicons name="calendar-outline" size={20} color={theme.icon?.secondary} />
                 <ThemedText style={styles.detailLabel}>Date</ThemedText>
               </View>
               <ThemedText style={styles.detailValue}>
@@ -82,9 +82,9 @@ export const MealDetailModal: React.FC<MealDetailModalProps> = ({
             </View>
 
             {meal.createdAt && (
-              <View style={styles.detailRow}>
+              <View style={[styles.detailRow, { borderBottomColor: theme.border?.secondary }]}>
                 <View style={styles.detailLabelWrap}>
-                  <Ionicons name="time-outline" size={20} color={theme.icon?.secondary ?? '#6b7280'} />
+                  <Ionicons name="time-outline" size={20} color={theme.icon?.secondary} />
                   <ThemedText style={styles.detailLabel}>Added</ThemedText>
                 </View>
                 <ThemedText style={styles.detailValue}>
@@ -93,9 +93,9 @@ export const MealDetailModal: React.FC<MealDetailModalProps> = ({
               </View>
             )}
 
-            <View style={styles.detailRow}>
+            <View style={[styles.detailRow, { borderBottomColor: theme.border?.secondary }]}>
               <View style={styles.detailLabelWrap}>
-                <Ionicons name="time-outline" size={20} color={theme.icon?.secondary ?? '#6b7280'} />
+                <Ionicons name="time-outline" size={20} color={theme.icon?.secondary} />
                 <ThemedText style={styles.detailLabel}>Status</ThemedText>
               </View>
               <View style={[styles.statusBadge, { backgroundColor: statusColor + '22' }]}>
@@ -107,9 +107,9 @@ export const MealDetailModal: React.FC<MealDetailModalProps> = ({
             </View>
 
             {mealTypes.length > 0 && (
-              <View style={styles.detailRow}>
+              <View style={[styles.detailRow, { borderBottomColor: theme.border?.secondary }]}>
                 <View style={styles.detailLabelWrap}>
-                  <Ionicons name="restaurant-outline" size={20} color={theme.icon?.secondary ?? '#6b7280'} />
+                  <Ionicons name="restaurant-outline" size={20} color={theme.icon?.secondary} />
                   <ThemedText style={styles.detailLabel}>Meals</ThemedText>
                 </View>
                 <ThemedText style={styles.detailValue}>
@@ -119,9 +119,9 @@ export const MealDetailModal: React.FC<MealDetailModalProps> = ({
             )}
 
             {hasGuestMeals && (
-              <View style={styles.detailRow}>
+              <View style={[styles.detailRow, { borderBottomColor: theme.border?.secondary }]}>
                 <View style={styles.detailLabelWrap}>
-                  <Ionicons name="people-outline" size={20} color={theme.icon?.secondary ?? '#6b7280'} />
+                  <Ionicons name="people-outline" size={20} color={theme.icon?.secondary} />
                   <ThemedText style={styles.detailLabel}>Guest Meals</ThemedText>
                 </View>
                 <ThemedText style={styles.detailValue}>
@@ -131,8 +131,8 @@ export const MealDetailModal: React.FC<MealDetailModalProps> = ({
             )}
 
             {meal.notes ? (
-              <View style={[styles.notesRow, { backgroundColor: theme.surface ?? theme.cardBackground ?? 'rgba(0,0,0,0.04)' }]}>
-                <Ionicons name="chatbubble-outline" size={18} color={theme.text?.secondary ?? '#6b7280'} />
+              <View style={[styles.notesRow, { backgroundColor: theme.surface ?? theme.cardBackground }]}>
+                <Ionicons name="chatbubble-outline" size={18} color={theme.text?.secondary} />
                 <ThemedText style={[styles.notesText, { color: theme.text?.secondary }]} numberOfLines={4}>
                   {meal.notes}
                 </ThemedText>
@@ -140,13 +140,13 @@ export const MealDetailModal: React.FC<MealDetailModalProps> = ({
             ) : null}
           </View>
 
-          <View style={[styles.footer, { borderTopColor: theme.border?.secondary ?? 'rgba(0,0,0,0.08)' }]}>
+          <View style={[styles.footer, { borderTopColor: theme.border?.secondary }]}>
             <TouchableOpacity
               style={[styles.primaryButton, { backgroundColor: theme.primary }]}
               onPress={onClose}
               activeOpacity={0.85}
             >
-              <ThemedText style={styles.primaryButtonText}>OK</ThemedText>
+              <ThemedText style={[styles.primaryButtonText, { color: theme.button?.primary?.text ?? theme.onPrimary?.text }]}>OK</ThemedText>
             </TouchableOpacity>
           </View>
         </Pressable>
@@ -158,7 +158,6 @@ export const MealDetailModal: React.FC<MealDetailModalProps> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
@@ -194,7 +193,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
   },
   detailLabelWrap: {
     flexDirection: 'row',
@@ -249,7 +247,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   primaryButtonText: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },

@@ -22,7 +22,7 @@ export const StatCard: React.FC<StatCardProps> = ({
   title,
   value,
   icon,
-  gradient = ['#667eea', '#764ba2'],
+  gradient,
   onPress,
   subtitle,
   trend,
@@ -30,6 +30,9 @@ export const StatCard: React.FC<StatCardProps> = ({
   compact = false,
 }) => {
   const { theme } = useTheme();
+  const gradientResolved = gradient ?? (theme.gradient.primary as unknown as readonly [string, string]);
+  const onPrimaryText = theme.onPrimary?.text ?? theme.text.inverse;
+  const onPrimaryOverlay = theme.onPrimary?.overlay;
   const Container = onPress ? TouchableOpacity : View;
 
   const getTrendIcon = (trend?: string) => {
@@ -60,29 +63,29 @@ export const StatCard: React.FC<StatCardProps> = ({
 
   return (
     <Container
-      style={[styles.container, compact && styles.compactContainer]}
+      style={[styles.container, compact && styles.compactContainer, { shadowColor: theme.shadow.light }]}
       onPress={onPress}
       activeOpacity={onPress ? 0.8 : 1}
     >
-      <LinearGradient colors={gradient} style={styles.gradient}>
+      <LinearGradient colors={gradientResolved} style={styles.gradient}>
         <View style={styles.content}>
-          <View style={styles.iconContainer}>
+          <View style={[styles.iconContainer, { backgroundColor: onPrimaryOverlay }]}>
             <Ionicons
               name={icon as IconName}
               size={compact ? 20 : 24}
-              color={theme.text.inverse}
+              color={onPrimaryText}
             />
           </View>
           <View style={styles.textContainer}>
-            <ThemedText style={[styles.title, compact && styles.compactTitle]}>
+            <ThemedText style={[styles.title, compact && styles.compactTitle, { color: onPrimaryText }]}>
               {title}
             </ThemedText>
-            <ThemedText style={[styles.value, compact && styles.compactValue]}>
+            <ThemedText style={[styles.value, compact && styles.compactValue, { color: onPrimaryText }]}>
               {value}
             </ThemedText>
             {subtitle && (
               <ThemedText
-                style={[styles.subtitle, compact && styles.compactSubtitle]}
+                style={[styles.subtitle, compact && styles.compactSubtitle, { color: onPrimaryOverlay ?? onPrimaryText }]}
               >
                 {subtitle}
               </ThemedText>
@@ -100,6 +103,7 @@ export const StatCard: React.FC<StatCardProps> = ({
                   style={[
                     styles.trendValue,
                     compact && styles.compactTrendValue,
+                    { color: onPrimaryText },
                   ]}
                 >
                   {trendValue}
@@ -117,7 +121,6 @@ const styles = StyleSheet.create({
   container: {
     borderRadius: 12,
     overflow: 'hidden',
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -137,7 +140,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -149,7 +151,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     marginBottom: 4,
-    color: '#fff',
   },
   compactTitle: {
     fontSize: 12,
@@ -158,14 +159,12 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 4,
-    color: '#fff',
   },
   compactValue: {
     fontSize: 18,
   },
   subtitle: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
   },
   compactSubtitle: {
     fontSize: 10,
@@ -176,7 +175,6 @@ const styles = StyleSheet.create({
   trendValue: {
     fontSize: 12,
     marginTop: 2,
-    color: '#fff',
   },
   compactTrendValue: {
     fontSize: 10,

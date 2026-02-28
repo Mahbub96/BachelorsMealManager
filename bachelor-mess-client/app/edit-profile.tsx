@@ -15,6 +15,7 @@ import { ScreenLayout } from '@/components/layout';
 import { Ionicons } from '@expo/vector-icons';
 import type { IconName } from '@/constants/IconTypes';
 import { useAuth } from '@/context/AuthContext';
+import { useTheme } from '@/context/ThemeContext';
 import { useUsers } from '@/hooks/useUsers';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -56,6 +57,9 @@ interface Preferences {
 
 export default function EditProfileScreen() {
   const { user } = useAuth();
+  const { theme, isDark, setTheme } = useTheme();
+  const switchTrack = { false: theme.border.primary, true: theme.primary };
+  const switchThumb = theme.button?.primary?.text ?? theme.onPrimary?.text ?? theme.text.inverse;
   const { updateProfile, loading } = useUsers();
   const router = useRouter();
 
@@ -231,7 +235,7 @@ export default function EditProfileScreen() {
   };
 
   const getPasswordStrength = (password: string) => {
-    if (!password) return { strength: 0, color: '#e5e7eb', text: '' };
+    if (!password) return { strength: 0, color: theme.border.primary, text: '' };
 
     let strength = 0;
     if (password.length >= 6) strength++;
@@ -240,14 +244,10 @@ export default function EditProfileScreen() {
     if (/\d/.test(password)) strength++;
     if (/[^A-Za-z0-9]/.test(password)) strength++;
 
-    const colors = ['#ef4444', '#f59e0b', '#f59e0b', '#10b981', '#10b981'];
+    const colors = [theme.status.error, theme.status.warning, theme.status.warning, theme.status.success, theme.status.success];
     const texts = ['Very Weak', 'Weak', 'Fair', 'Good', 'Strong'];
-
-    return {
-      strength: Math.min(strength, 4),
-      color: colors[Math.min(strength, 4)],
-      text: texts[Math.min(strength, 4)],
-    };
+    const i = Math.min(strength, 4);
+    return { strength: i, color: colors[i], text: texts[i] };
   };
 
   const renderSectionTab = (
@@ -258,19 +258,20 @@ export default function EditProfileScreen() {
     <TouchableOpacity
       style={[
         styles.sectionTab,
-        activeSection === section && styles.activeSectionTab,
+        activeSection === section && [styles.activeSectionTab, { backgroundColor: theme.surface }],
       ]}
       onPress={() => setActiveSection(section)}
     >
       <Ionicons
         name={icon as IconName}
         size={20}
-        color={activeSection === section ? '#667eea' : '#6b7280'}
+        color={activeSection === section ? theme.primary : theme.text.secondary}
       />
       <ThemedText
         style={[
           styles.sectionTabText,
-          activeSection === section && styles.activeSectionTabText,
+          { color: theme.text.secondary },
+          activeSection === section && [styles.activeSectionTabText, { color: theme.primary }],
         ]}
       >
         {title}
@@ -280,12 +281,12 @@ export default function EditProfileScreen() {
 
   const renderBasicInfo = () => (
     <View style={styles.section}>
-      <ThemedText style={styles.sectionTitle}>Basic Information</ThemedText>
+      <ThemedText style={[styles.sectionTitle, { color: theme.text.primary }]}>Basic Information</ThemedText>
 
       {/* Name Field */}
       <View style={styles.fieldContainer}>
         <View style={styles.fieldHeader}>
-          <Ionicons name='person' size={16} color='#667eea' />
+          <Ionicons name='person' size={16} color={theme.primary} />
           <ThemedText style={styles.fieldLabel}>Full Name</ThemedText>
         </View>
         <TextInput
@@ -293,7 +294,7 @@ export default function EditProfileScreen() {
           value={formData.name}
           onChangeText={value => handleInputChange('name', value)}
           placeholder='Enter your full name'
-          placeholderTextColor='#9ca3af'
+          placeholderTextColor={theme.input.placeholder}
         />
         {errors.name && (
           <ThemedText style={styles.errorText}>{errors.name}</ThemedText>
@@ -303,7 +304,7 @@ export default function EditProfileScreen() {
       {/* Dietary Restrictions */}
       <View style={styles.fieldContainer}>
         <View style={styles.fieldHeader}>
-          <Ionicons name='restaurant' size={16} color='#667eea' />
+          <Ionicons name='restaurant' size={16} color={theme.primary} />
           <ThemedText style={styles.fieldLabel}>
             Dietary Restrictions
           </ThemedText>
@@ -318,7 +319,7 @@ export default function EditProfileScreen() {
             handleInputChange('dietaryRestrictions', value)
           }
           placeholder='e.g., Vegetarian, No dairy, Allergies'
-          placeholderTextColor='#9ca3af'
+          placeholderTextColor={theme.input.placeholder}
           multiline
           numberOfLines={2}
         />
@@ -333,12 +334,12 @@ export default function EditProfileScreen() {
 
   const renderContactInfo = () => (
     <View style={styles.section}>
-      <ThemedText style={styles.sectionTitle}>Contact Information</ThemedText>
+      <ThemedText style={[styles.sectionTitle, { color: theme.text.primary }]}>Contact Information</ThemedText>
 
       {/* Phone Field */}
       <View style={styles.fieldContainer}>
         <View style={styles.fieldHeader}>
-          <Ionicons name='call' size={16} color='#667eea' />
+          <Ionicons name='call' size={16} color={theme.primary} />
           <ThemedText style={styles.fieldLabel}>Phone Number</ThemedText>
         </View>
         <TextInput
@@ -346,7 +347,7 @@ export default function EditProfileScreen() {
           value={formData.phone}
           onChangeText={value => handleInputChange('phone', value)}
           placeholder='Enter your phone number'
-          placeholderTextColor='#9ca3af'
+          placeholderTextColor={theme.input.placeholder}
           keyboardType='phone-pad'
         />
         {errors.phone && (
@@ -357,7 +358,7 @@ export default function EditProfileScreen() {
       {/* Email Field */}
       <View style={styles.fieldContainer}>
         <View style={styles.fieldHeader}>
-          <Ionicons name='mail' size={16} color='#667eea' />
+          <Ionicons name='mail' size={16} color={theme.primary} />
           <ThemedText style={styles.fieldLabel}>Email Address</ThemedText>
         </View>
         <TextInput
@@ -365,7 +366,7 @@ export default function EditProfileScreen() {
           value={formData.email}
           onChangeText={value => handleInputChange('email', value)}
           placeholder='Enter your email address'
-          placeholderTextColor='#9ca3af'
+          placeholderTextColor={theme.input.placeholder}
           keyboardType='email-address'
           autoCapitalize='none'
         />
@@ -377,7 +378,7 @@ export default function EditProfileScreen() {
       {/* Address Field */}
       <View style={styles.fieldContainer}>
         <View style={styles.fieldHeader}>
-          <Ionicons name='location' size={16} color='#667eea' />
+          <Ionicons name='location' size={16} color={theme.primary} />
           <ThemedText style={styles.fieldLabel}>Address</ThemedText>
         </View>
         <TextInput
@@ -389,7 +390,7 @@ export default function EditProfileScreen() {
           value={formData.address}
           onChangeText={value => handleInputChange('address', value)}
           placeholder='Enter your address'
-          placeholderTextColor='#9ca3af'
+          placeholderTextColor={theme.input.placeholder}
           multiline
           numberOfLines={3}
         />
@@ -401,7 +402,7 @@ export default function EditProfileScreen() {
       {/* Emergency Contact */}
       <View style={styles.fieldContainer}>
         <View style={styles.fieldHeader}>
-          <Ionicons name='medical' size={16} color='#667eea' />
+          <Ionicons name='medical' size={16} color={theme.primary} />
           <ThemedText style={styles.fieldLabel}>Emergency Contact</ThemedText>
         </View>
         <TextInput
@@ -409,7 +410,7 @@ export default function EditProfileScreen() {
           value={formData.emergencyContact}
           onChangeText={value => handleInputChange('emergencyContact', value)}
           placeholder='Emergency contact phone number'
-          placeholderTextColor='#9ca3af'
+          placeholderTextColor={theme.input.placeholder}
           keyboardType='phone-pad'
         />
         {errors.emergencyContact && (
@@ -423,7 +424,7 @@ export default function EditProfileScreen() {
 
   const renderPreferences = () => (
     <View style={styles.section}>
-      <ThemedText style={styles.sectionTitle}>Preferences</ThemedText>
+      <ThemedText style={[styles.sectionTitle, { color: theme.text.primary }]}>Preferences</ThemedText>
 
       {/* Notification Preferences */}
       <View style={styles.preferenceGroup}>
@@ -433,7 +434,7 @@ export default function EditProfileScreen() {
 
         <View style={styles.preferenceItem}>
           <View style={styles.preferenceLeft}>
-            <Ionicons name='notifications' size={20} color='#667eea' />
+            <Ionicons name='notifications' size={20} color={theme.primary} />
             <View style={styles.preferenceContent}>
               <ThemedText style={styles.preferenceTitle}>
                 All Notifications
@@ -448,14 +449,14 @@ export default function EditProfileScreen() {
             onValueChange={value =>
               handlePreferenceChange('notifications', value)
             }
-            trackColor={{ false: '#e5e7eb', true: '#667eea' }}
-            thumbColor='#fff'
+            trackColor={switchTrack}
+            thumbColor={switchThumb}
           />
         </View>
 
         <View style={styles.preferenceItem}>
           <View style={styles.preferenceLeft}>
-            <Ionicons name='mail' size={20} color='#667eea' />
+            <Ionicons name='mail' size={20} color={theme.primary} />
             <View style={styles.preferenceContent}>
               <ThemedText style={styles.preferenceTitle}>
                 Email Notifications
@@ -470,14 +471,14 @@ export default function EditProfileScreen() {
             onValueChange={value =>
               handlePreferenceChange('emailNotifications', value)
             }
-            trackColor={{ false: '#e5e7eb', true: '#667eea' }}
-            thumbColor='#fff'
+            trackColor={switchTrack}
+            thumbColor={switchThumb}
           />
         </View>
 
         <View style={styles.preferenceItem}>
           <View style={styles.preferenceLeft}>
-            <Ionicons name='phone-portrait' size={20} color='#667eea' />
+            <Ionicons name='phone-portrait' size={20} color={theme.primary} />
             <View style={styles.preferenceContent}>
               <ThemedText style={styles.preferenceTitle}>
                 Push Notifications
@@ -492,8 +493,8 @@ export default function EditProfileScreen() {
             onValueChange={value =>
               handlePreferenceChange('pushNotifications', value)
             }
-            trackColor={{ false: '#e5e7eb', true: '#667eea' }}
-            thumbColor='#fff'
+            trackColor={switchTrack}
+            thumbColor={switchThumb}
           />
         </View>
       </View>
@@ -504,7 +505,7 @@ export default function EditProfileScreen() {
 
         <View style={styles.preferenceItem}>
           <View style={styles.preferenceLeft}>
-            <Ionicons name='fast-food' size={20} color='#667eea' />
+            <Ionicons name='fast-food' size={20} color={theme.primary} />
             <View style={styles.preferenceContent}>
               <ThemedText style={styles.preferenceTitle}>
                 Meal Reminders
@@ -519,14 +520,14 @@ export default function EditProfileScreen() {
             onValueChange={value =>
               handlePreferenceChange('mealReminders', value)
             }
-            trackColor={{ false: '#e5e7eb', true: '#667eea' }}
-            thumbColor='#fff'
+            trackColor={switchTrack}
+            thumbColor={switchThumb}
           />
         </View>
 
         <View style={styles.preferenceItem}>
           <View style={styles.preferenceLeft}>
-            <Ionicons name='card' size={20} color='#667eea' />
+            <Ionicons name='card' size={20} color={theme.primary} />
             <View style={styles.preferenceContent}>
               <ThemedText style={styles.preferenceTitle}>
                 Payment Reminders
@@ -541,8 +542,8 @@ export default function EditProfileScreen() {
             onValueChange={value =>
               handlePreferenceChange('paymentReminders', value)
             }
-            trackColor={{ false: '#e5e7eb', true: '#667eea' }}
-            thumbColor='#fff'
+            trackColor={switchTrack}
+            thumbColor={switchThumb}
           />
         </View>
       </View>
@@ -555,7 +556,7 @@ export default function EditProfileScreen() {
 
         <View style={styles.preferenceItem}>
           <View style={styles.preferenceLeft}>
-            <Ionicons name='moon' size={20} color='#667eea' />
+            <Ionicons name='moon' size={20} color={theme.primary} />
             <View style={styles.preferenceContent}>
               <ThemedText style={styles.preferenceTitle}>Dark Mode</ThemedText>
               <ThemedText style={styles.preferenceSubtitle}>
@@ -564,16 +565,16 @@ export default function EditProfileScreen() {
             </View>
           </View>
           <Switch
-            value={preferences.darkMode}
-            onValueChange={value => handlePreferenceChange('darkMode', value)}
-            trackColor={{ false: '#e5e7eb', true: '#667eea' }}
-            thumbColor='#fff'
+            value={isDark}
+            onValueChange={value => setTheme(value ? 'dark' : 'light')}
+            trackColor={switchTrack}
+            thumbColor={switchThumb}
           />
         </View>
 
         <View style={styles.preferenceItem}>
           <View style={styles.preferenceLeft}>
-            <Ionicons name='sync' size={20} color='#667eea' />
+            <Ionicons name='sync' size={20} color={theme.primary} />
             <View style={styles.preferenceContent}>
               <ThemedText style={styles.preferenceTitle}>Auto Sync</ThemedText>
               <ThemedText style={styles.preferenceSubtitle}>
@@ -584,8 +585,8 @@ export default function EditProfileScreen() {
           <Switch
             value={preferences.autoSync}
             onValueChange={value => handlePreferenceChange('autoSync', value)}
-            trackColor={{ false: '#e5e7eb', true: '#667eea' }}
-            thumbColor='#fff'
+            trackColor={switchTrack}
+            thumbColor={switchThumb}
           />
         </View>
       </View>
@@ -594,25 +595,25 @@ export default function EditProfileScreen() {
 
   const renderSecurity = () => (
     <View style={styles.section}>
-      <ThemedText style={styles.sectionTitle}>Security Settings</ThemedText>
+      <ThemedText style={[styles.sectionTitle, { color: theme.text.primary }]}>Security Settings</ThemedText>
 
       {/* Password Change Section */}
       <TouchableOpacity
-        style={styles.passwordToggle}
+        style={[styles.passwordToggle, { backgroundColor: theme.surface, borderColor: theme.border.primary }]}
         onPress={() => setShowPasswordFields(!showPasswordFields)}
       >
         <View style={styles.passwordToggleHeader}>
           <Ionicons
             name={showPasswordFields ? 'lock-open' : 'lock-closed'}
             size={20}
-            color='#667eea'
+            color={theme.primary}
           />
-          <ThemedText style={styles.sectionTitle}>Change Password</ThemedText>
+          <ThemedText style={[styles.sectionTitle, { color: theme.text.primary }]}>Change Password</ThemedText>
         </View>
         <Ionicons
           name={showPasswordFields ? 'chevron-up' : 'chevron-down'}
           size={20}
-          color='#667eea'
+          color={theme.primary}
         />
       </TouchableOpacity>
 
@@ -621,7 +622,7 @@ export default function EditProfileScreen() {
           {/* Current Password */}
           <View style={styles.fieldContainer}>
             <View style={styles.fieldHeader}>
-              <Ionicons name='key' size={16} color='#667eea' />
+              <Ionicons name='key' size={16} color={theme.primary} />
               <ThemedText style={styles.fieldLabel}>
                 Current Password
               </ThemedText>
@@ -636,7 +637,7 @@ export default function EditProfileScreen() {
                 handleInputChange('currentPassword', value)
               }
               placeholder='Enter your current password'
-              placeholderTextColor='#9ca3af'
+              placeholderTextColor={theme.input.placeholder}
               secureTextEntry={true}
             />
             {errors.currentPassword && (
@@ -649,7 +650,7 @@ export default function EditProfileScreen() {
           {/* New Password */}
           <View style={styles.fieldContainer}>
             <View style={styles.fieldHeader}>
-              <Ionicons name='lock-closed' size={16} color='#667eea' />
+              <Ionicons name='lock-closed' size={16} color={theme.primary} />
               <ThemedText style={styles.fieldLabel}>New Password</ThemedText>
             </View>
             <View style={styles.passwordInputContainer}>
@@ -662,7 +663,7 @@ export default function EditProfileScreen() {
                 value={formData.newPassword}
                 onChangeText={value => handleInputChange('newPassword', value)}
                 placeholder='Enter new password'
-                placeholderTextColor='#9ca3af'
+                placeholderTextColor={theme.input.placeholder}
                 secureTextEntry={!showNewPassword}
               />
               <TouchableOpacity
@@ -672,7 +673,7 @@ export default function EditProfileScreen() {
                 <Ionicons
                   name={showNewPassword ? 'eye-off' : 'eye'}
                   size={20}
-                  color='#6b7280'
+                  color={theme.text.secondary}
                 />
               </TouchableOpacity>
             </View>
@@ -690,7 +691,7 @@ export default function EditProfileScreen() {
                             backgroundColor:
                               index <= strength.strength
                                 ? strength.color
-                                : '#e5e7eb',
+                                : theme.border.primary,
                           },
                         ]}
                       />
@@ -717,7 +718,7 @@ export default function EditProfileScreen() {
           {/* Confirm Password */}
           <View style={styles.fieldContainer}>
             <View style={styles.fieldHeader}>
-              <Ionicons name='checkmark-circle' size={16} color='#667eea' />
+              <Ionicons name='checkmark-circle' size={16} color={theme.primary} />
               <ThemedText style={styles.fieldLabel}>
                 Confirm Password
               </ThemedText>
@@ -734,7 +735,7 @@ export default function EditProfileScreen() {
                   handleInputChange('confirmPassword', value)
                 }
                 placeholder='Confirm new password'
-                placeholderTextColor='#9ca3af'
+                placeholderTextColor={theme.input.placeholder}
                 secureTextEntry={!showConfirmPassword}
               />
               <TouchableOpacity
@@ -744,7 +745,7 @@ export default function EditProfileScreen() {
                 <Ionicons
                   name={showConfirmPassword ? 'eye-off' : 'eye'}
                   size={20}
-                  color='#6b7280'
+                  color={theme.text.secondary}
                 />
               </TouchableOpacity>
             </View>
@@ -761,7 +762,7 @@ export default function EditProfileScreen() {
       <View style={styles.securityOptions}>
         <TouchableOpacity style={styles.securityOption}>
           <View style={styles.securityOptionLeft}>
-            <Ionicons name='finger-print' size={20} color='#667eea' />
+            <Ionicons name='finger-print' size={20} color={theme.primary} />
             <View style={styles.securityOptionContent}>
               <ThemedText style={styles.securityOptionTitle}>
                 Biometric Login
@@ -771,12 +772,12 @@ export default function EditProfileScreen() {
               </ThemedText>
             </View>
           </View>
-          <Ionicons name='chevron-forward' size={20} color='#9ca3af' />
+          <Ionicons name='chevron-forward' size={20} color={theme.icon.secondary} />
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.securityOption}>
           <View style={styles.securityOptionLeft}>
-            <Ionicons name='shield' size={20} color='#667eea' />
+            <Ionicons name='shield' size={20} color={theme.primary} />
             <View style={styles.securityOptionContent}>
               <ThemedText style={styles.securityOptionTitle}>
                 Two-Factor Authentication
@@ -786,15 +787,15 @@ export default function EditProfileScreen() {
               </ThemedText>
             </View>
           </View>
-          <Ionicons name='chevron-forward' size={20} color='#9ca3af' />
+          <Ionicons name='chevron-forward' size={20} color={theme.icon.secondary} />
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.securityOption}>
           <View style={styles.securityOptionLeft}>
-            <Ionicons name='trash' size={20} color='#ef4444' />
+            <Ionicons name='trash' size={20} color={theme.status.error} />
             <View style={styles.securityOptionContent}>
               <ThemedText
-                style={[styles.securityOptionTitle, { color: '#ef4444' }]}
+                style={[styles.securityOptionTitle, { color: theme.status.error }]}
               >
                 Delete Account
               </ThemedText>
@@ -803,7 +804,7 @@ export default function EditProfileScreen() {
               </ThemedText>
             </View>
           </View>
-          <Ionicons name='chevron-forward' size={20} color='#9ca3af' />
+          <Ionicons name='chevron-forward' size={20} color={theme.icon.secondary} />
         </TouchableOpacity>
       </View>
     </View>
@@ -836,23 +837,23 @@ export default function EditProfileScreen() {
                     <ThemedText style={styles.profileImageText}>📷</ThemedText>
                   </View>
                 ) : (
-                  <View style={styles.profileImage}>
-                    <ThemedText style={styles.profileImageText}>
+                  <View style={[styles.profileImage, { backgroundColor: theme.surface, borderColor: theme.primary }]}>
+                    <ThemedText style={[styles.profileImageText, { color: theme.primary }]}>
                       {getInitials(formData.name)}
                     </ThemedText>
                   </View>
                 )}
-                <View style={styles.editIcon}>
-                  <Ionicons name='camera' size={16} color='#fff' />
+                <View style={[styles.editIcon, { backgroundColor: theme.primary }]}>
+                  <Ionicons name='camera' size={16} color={switchThumb} />
                 </View>
               </TouchableOpacity>
-              <ThemedText style={styles.profileHint}>
+              <ThemedText style={[styles.profileHint, { color: theme.text.secondary }]}>
                 Tap to change profile picture
               </ThemedText>
             </View>
 
             {/* Section Tabs */}
-            <View style={styles.sectionTabs}>
+            <View style={[styles.sectionTabs, { backgroundColor: theme.surface, shadowColor: theme.shadow.light }]}>
               {renderSectionTab('basic', 'Basic', 'person')}
               {renderSectionTab('contact', 'Contact', 'call')}
               {renderSectionTab('preferences', 'Preferences', 'settings')}
@@ -873,15 +874,14 @@ export default function EditProfileScreen() {
               ]}
               onPress={handleSubmit}
               disabled={loading}
+              activeOpacity={0.9}
             >
               <LinearGradient
-                colors={
-                  loading ? ['#9ca3af', '#6b7280'] : ['#667eea', '#764ba2']
-                }
+                colors={(loading ? [theme.button.disabled.background, theme.button.disabled.border] : theme.gradient.primary) as [string, string]}
                 style={styles.submitButtonGradient}
               >
-                <Ionicons name='checkmark' size={20} color='#fff' />
-                <ThemedText style={styles.submitButtonText}>
+                <Ionicons name='checkmark' size={20} color={switchThumb} />
+                <ThemedText style={[styles.submitButtonText, { color: switchThumb }]}>
                   {loading ? 'Updating...' : 'Update Profile'}
                 </ThemedText>
               </LinearGradient>
@@ -916,36 +916,29 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#f3f4f6',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
-    borderColor: '#667eea',
   },
   profileImageText: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#667eea',
   },
   editIcon: {
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: '#667eea',
     borderRadius: 12,
     padding: 4,
   },
   profileHint: {
     fontSize: 14,
-    color: '#6b7280',
   },
   sectionTabs: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 4,
     marginBottom: 24,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -960,35 +953,27 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     gap: 8,
   },
-  activeSectionTab: {
-    backgroundColor: '#f3f4f6',
-  },
+  activeSectionTab: {},
   sectionTabText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#6b7280',
   },
-  activeSectionTabText: {
-    color: '#667eea',
-  },
+  activeSectionTabText: {},
   section: {
     marginBottom: 24,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#374151',
     marginBottom: 16,
   },
   passwordToggle: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#f8fafc',
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
   },
   passwordToggleHeader: {
     flexDirection: 'row',
