@@ -41,6 +41,57 @@ export interface UserDashboardStats {
   };
 }
 
+export type PaymentStatus = 'paid' | 'pending' | 'overdue';
+export type PaymentMethod = 'cash' | 'bank_transfer' | 'mobile_banking';
+
+export interface PaymentHistoryEntry {
+  amount: number;
+  date: string;
+  method: PaymentMethod;
+  status: string;
+  notes?: string;
+}
+
+export interface PaymentRequestEntry {
+  id: string;
+  amount: number;
+  type: 'full_due' | 'custom';
+  status: 'pending' | 'approved' | 'rejected';
+  method: string;
+  notes?: string;
+  requestedAt: string;
+  approvedAt?: string;
+  rejectionNote?: string;
+}
+
+export interface SettlementInfo {
+  due: number;
+  receive: number;
+  balance: number;
+  mealRate: number;
+  flatSharePerPerson: number;
+  totalMeals?: number;
+  totalMealBazar?: number;
+  totalFlatBazar?: number;
+  memberCount?: number;
+  mealCost?: number;
+  flatShare?: number;
+  mealBazarPaid?: number;
+  flatBazarPaid?: number;
+  paymentsTotal?: number;
+}
+
+export interface PaymentStatsAndHistory {
+  monthlyContribution: number;
+  lastPaymentDate: string | null;
+  paymentStatus: PaymentStatus;
+  totalPaid: number;
+  due?: number;
+  settlement?: SettlementInfo | null;
+  paymentHistory: PaymentHistoryEntry[];
+  paymentRequests?: PaymentRequestEntry[];
+}
+
 export interface UserStatsService {
   getUserDashboardStats: () => Promise<ApiResponse<UserDashboardStats>>;
   getUserMealStats: () => Promise<ApiResponse<UserDashboardStats['meals']>>;
@@ -48,6 +99,7 @@ export interface UserStatsService {
   getUserPaymentStats: () => Promise<
     ApiResponse<UserDashboardStats['currentMealRate']>
   >;
+  getPaymentStatsAndHistory: () => Promise<ApiResponse<PaymentStatsAndHistory>>;
   getUserDashboard: () => Promise<ApiResponse<any>>;
 }
 
@@ -161,23 +213,47 @@ class UserStatsServiceImpl implements UserStatsService {
     ApiResponse<UserDashboardStats['currentMealRate']>
   > {
     try {
-      // Use dashboard endpoint to get current meal rate
       const dashboardResponse = await this.getUserDashboardStats();
-      
       if (!dashboardResponse.success || !dashboardResponse.data) {
         return {
           success: false,
           error: dashboardResponse.error || 'Failed to fetch current meal rate',
         };
       }
-
       return {
         success: true,
         data: dashboardResponse.data.currentMealRate,
       };
     } catch (error) {
       const appError = errorHandler.handleError(error, 'Current Meal Rate');
+      return {
+        success: false,
+        error: appError.message,
+      };
+    }
+  }
 
+  async getPaymentStatsAndHistory(): Promise<
+    ApiResponse<PaymentStatsAndHistory>
+  > {
+    try {
+      const response = await httpClient.get<PaymentStatsAndHistory>(
+        API_ENDPOINTS.PAYMENTS.LIST,
+        { cache: false, retries: 2, timeout: 10000 }
+      );
+      if (!response.success) {
+        const appError = errorHandler.handleApiResponse(
+          response,
+          'Payment stats and history'
+        );
+        return {
+          success: false,
+          error: appError?.message || 'Failed to fetch payment data',
+        };
+      }
+      return response;
+    } catch (error) {
+      const appError = errorHandler.handleError(error, 'Payment stats');
       return {
         success: false,
         error: appError.message,

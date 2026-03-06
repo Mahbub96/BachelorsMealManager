@@ -282,7 +282,7 @@ export const UserDashboard: React.FC = () => {
         break;
       case 'make-payment':
       case 'payments':
-        Alert.alert('Payments', 'Payment management coming soon!');
+        router.push('/payments');
         break;
       case 'view-profile':
         router.push('/profile');
@@ -345,7 +345,7 @@ export const UserDashboard: React.FC = () => {
         router.push('/(tabs)/explore');
         break;
       case 'card':
-        Alert.alert('Payment Details', 'Payment management coming soon!');
+        router.push('/payments');
         break;
       case 'person':
         router.push('/profile');

@@ -10,6 +10,7 @@ const {
   sendSuccessResponse,
   sendErrorResponse,
 } = require('../utils/responseHandler');
+const ledgerService = require('../services/ledgerService');
 
 class MealController {
 
@@ -118,6 +119,16 @@ class MealController {
           guestBreakfast: Math.min(99, Math.max(0, parseInt(guestBreakfast, 10) || 0)),
           guestLunch: Math.min(99, Math.max(0, parseInt(guestLunch, 10) || 0)),
           guestDinner: Math.min(99, Math.max(0, parseInt(guestDinner, 10) || 0)),
+        });
+
+        await ledgerService.createEntry(req.user, {
+          userId: meal.userId,
+          type: 'meal_entry',
+          amount: 0,
+          refType: 'Meal',
+          refId: meal._id,
+          description: `Meal entry ${new Date(normalizedDate).toISOString().split('T')[0]}`,
+          meta: { breakfast: !!breakfast, lunch: !!lunch, dinner: !!dinner },
         });
       } catch (createError) {
         // Handle duplicate key error (E11000) as a fallback

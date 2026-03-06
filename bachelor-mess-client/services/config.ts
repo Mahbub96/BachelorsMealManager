@@ -176,6 +176,21 @@ export const API_ENDPOINTS = {
     BAZAR: '/api/user-stats/bazar', // Group-scoped: my total + group total (this month)
     PAYMENTS: '/api/user-stats/payments',
   },
+  PAYMENTS: {
+    LIST: '/api/user-stats/payments',
+    SUBMIT: '/api/payments',
+    REQUEST: '/api/payments/request',
+    REQUESTS: '/api/payments/requests',
+    DUES: '/api/payments/dues',
+    APPROVE: (id: string) => `/api/payments/requests/${id}/approve`,
+    REJECT: (id: string) => `/api/payments/requests/${id}/reject`,
+  },
+  REFUNDS: {
+    LIST: '/api/refunds',
+    SEND: '/api/refunds',
+    ACKNOWLEDGE: (id: string) => `/api/refunds/${id}/acknowledge`,
+  },
+  LEDGER: '/api/ledger',
   REMOVAL_REQUESTS: {
     BASE: '/api/removal-requests',
     ACCEPT: (id: string) => `/api/removal-requests/${id}/accept`,

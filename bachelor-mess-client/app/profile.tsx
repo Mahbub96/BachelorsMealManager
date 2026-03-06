@@ -424,7 +424,7 @@ export default function ProfileScreen() {
           );
           break;
         case 'payments':
-          Alert.alert('Coming Soon', 'Payments screen will be available soon');
+          router.push('/payments');
           break;
         case 'expenses':
           Alert.alert('Coming Soon', 'Expense reports will be available soon');

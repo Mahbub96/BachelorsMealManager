@@ -50,6 +50,7 @@ export const PaymentStatusCard: React.FC<PaymentStatusCardProps> = ({
         styles.paymentCard,
         {
           backgroundColor: theme.cardBackground,
+          borderColor: theme.cardBorder ?? theme.border?.primary,
           shadowColor: theme.cardShadow,
         },
       ]}
@@ -90,6 +91,18 @@ export const PaymentStatusCard: React.FC<PaymentStatusCardProps> = ({
           <ThemedText
             style={[styles.paymentLabel, { color: theme.text.secondary }]}
           >
+            Paid this month:
+          </ThemedText>
+          <ThemedText
+            style={[styles.paymentValue, { color: theme.text.primary }]}
+          >
+            ৳{(payments.totalPaid ?? 0).toLocaleString()}
+          </ThemedText>
+        </View>
+        <View style={styles.paymentRow}>
+          <ThemedText
+            style={[styles.paymentLabel, { color: theme.text.secondary }]}
+          >
             Last Payment:
           </ThemedText>
           <ThemedText
@@ -120,14 +133,14 @@ export const PaymentStatusCard: React.FC<PaymentStatusCardProps> = ({
 
 const styles = StyleSheet.create({
   paymentCard: {
-    marginHorizontal: 20,
     marginBottom: 24,
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 16,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowRadius: 4,
+    elevation: 2,
   },
   paymentHeader: {
     flexDirection: 'row',
@@ -137,7 +150,7 @@ const styles = StyleSheet.create({
   },
   paymentTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   statusIndicator: {
     width: 32,
@@ -163,6 +176,6 @@ const styles = StyleSheet.create({
   },
   paymentStatus: {
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
 });

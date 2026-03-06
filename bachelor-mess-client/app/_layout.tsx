@@ -83,6 +83,8 @@ function AppContent() {
           headerShown: false,
         }}
       />
+      <Stack.Screen name='payments' options={{ headerShown: false }} />
+      <Stack.Screen name='ledger' options={{ headerShown: false }} />
       <Stack.Screen name='bazar-list' options={{ headerShown: false }} />
       <Stack.Screen name='super-admin' options={{ headerShown: false }} />
       <Stack.Screen name='+not-found' options={{ headerShown: false }} />

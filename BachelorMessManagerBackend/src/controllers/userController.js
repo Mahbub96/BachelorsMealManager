@@ -389,32 +389,60 @@ class UserController {
     }
   }
 
-  // Get payment statistics for user
+  // Get payment statistics for user (current month: Bazar by date + paymentHistory by date, full calendar month — aligned with settlementService)
   async getPaymentStats(userId) {
     try {
-
       const now = new Date();
       const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+      const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
-      const user = await User.findById(userId);
+      const user = await User.findById(userId).select(
+        'monthlyContribution paymentHistory'
+      );
+      const monthlyContribution = user?.monthlyContribution ?? 5000;
 
-      // Get last bazar entry date as proxy for last payment
-      const lastBazarEntry = await Bazar.findOne({ userId, createdAt: { $gte: firstDayOfMonth, $lte: today } }).sort({
-        createdAt: -1,
+      // Bazar contribution this month (use date field, same as settlementService)
+      const lastBazarEntry = await Bazar.findOne({
+        userId,
+        date: { $gte: firstDayOfMonth, $lte: lastDayOfMonth },
+        status: 'approved',
+      }).sort({ date: -1 });
+      const bazarEntries = await Bazar.find({
+        userId,
+        date: { $gte: firstDayOfMonth, $lte: lastDayOfMonth },
+        status: 'approved',
       });
-      const lastPaymentDate = lastBazarEntry
-        ? lastBazarEntry.createdAt.toISOString().split('T')[0]
+      const bazarTotal = bazarEntries.reduce((sum, entry) => sum + (entry.totalAmount || 0), 0);
+      const lastBazarDate = lastBazarEntry
+        ? (lastBazarEntry.date ? new Date(lastBazarEntry.date).toISOString().split('T')[0] : null)
         : null;
 
-      // Calculate payment status based on bazar entries
-      const bazarEntries = await Bazar.find({ userId, createdAt: { $gte: firstDayOfMonth, $lte: today } });
-      const totalPaid = bazarEntries
-        .filter(entry => entry.status === 'approved')
-        .reduce((sum, entry) => sum + entry.totalAmount, 0);
+      // Payment history this month (completed only, full calendar month — aligned with settlementService)
+      const history = user?.paymentHistory ?? [];
+      const firstDayStr = firstDayOfMonth.toISOString().split('T')[0];
+      const lastDayStr = lastDayOfMonth.toISOString().split('T')[0];
+      let paymentHistoryTotal = 0;
+      let lastPaymentHistoryDate = null;
+      for (const p of history) {
+        if (p.status !== 'completed') continue;
+        const d = p.date ? new Date(p.date) : null;
+        if (!d) continue;
+        const ds = d.toISOString().split('T')[0];
+        if (ds < firstDayStr || ds > lastDayStr) continue;
+        paymentHistoryTotal += p.amount || 0;
+        if (!lastPaymentHistoryDate || ds > lastPaymentHistoryDate) {
+          lastPaymentHistoryDate = ds;
+        }
+      }
+
+      const totalPaid = bazarTotal + paymentHistoryTotal;
+      const lastPaymentDate =
+        [lastBazarDate, lastPaymentHistoryDate]
+          .filter(Boolean)
+          .sort()
+          .pop() || null;
 
       let paymentStatus = 'pending';
-      const monthlyContribution = user.monthlyContribution;
       if (totalPaid >= monthlyContribution) {
         paymentStatus = 'paid';
       } else if (now.getDate() > 15) {
@@ -422,10 +450,10 @@ class UserController {
       }
 
       return {
-        monthlyContribution: monthlyContribution,
-        lastPaymentDate: lastPaymentDate,
-        paymentStatus: paymentStatus,
-        totalPaid: totalPaid,
+        monthlyContribution,
+        lastPaymentDate,
+        paymentStatus,
+        totalPaid,
       };
     } catch (error) {
       logger.error('Error getting payment stats:', error);
@@ -436,6 +464,34 @@ class UserController {
         totalPaid: 0,
       };
     }
+  }
+
+  // Record a payment (add to paymentHistory, used for "Record Payment" and approve-request flow)
+  async recordPayment(userId, body) {
+    const { amount, method = 'cash', notes } = body || {};
+    const numAmount = Number(amount);
+    if (!Number.isFinite(numAmount) || numAmount <= 0) {
+      throw new Error('Invalid amount');
+    }
+    const allowedMethods = ['cash', 'bank_transfer', 'mobile_banking'];
+    const payMethod = allowedMethods.includes(method) ? method : 'cash';
+
+    const entry = {
+      amount: numAmount,
+      date: new Date(),
+      method: payMethod,
+      status: 'completed',
+      notes: notes ? String(notes).trim().slice(0, 500) : undefined,
+    };
+
+    const updated = await User.findByIdAndUpdate(
+      userId,
+      { $push: { paymentHistory: entry } },
+      { new: true, runValidators: true }
+    );
+    if (!updated) throw new Error('User not found');
+
+    return entry;
   }
 
   // Get All payment statistics for user

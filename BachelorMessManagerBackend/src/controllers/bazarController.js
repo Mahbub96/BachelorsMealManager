@@ -15,6 +15,7 @@ const {
   sendSuccessResponse,
   sendErrorResponse,
 } = require('../utils/responseHandler');
+const ledgerService = require('../services/ledgerService');
 
 class BazarController {
   // Submit bazar entry
@@ -53,6 +54,15 @@ class BazarController {
         receiptImage,
         type: bazarType,
         status: config.business.autoApproveBazar ? 'approved' : 'pending',
+      });
+
+      await ledgerService.createEntry(req.user, {
+        userId: bazar.userId,
+        type: bazarType === 'flat' ? 'flat_bazar' : 'meal_bazar',
+        amount: bazar.totalAmount,
+        refType: 'Bazar',
+        refId: bazar._id,
+        description: `${bazarType === 'flat' ? 'Flat' : 'Meal'} bazar ৳${bazar.totalAmount}`,
       });
 
       // Populate user information
@@ -169,6 +179,18 @@ class BazarController {
       bazar.approvedAt = new Date();
 
       await bazar.save();
+
+      if (status === 'approved') {
+        const ledgerType = bazar.type === 'flat' ? 'flat_bazar' : 'meal_bazar';
+        await ledgerService.createEntry(req.user, {
+          userId: bazar.userId,
+          type: ledgerType,
+          amount: bazar.totalAmount,
+          refType: 'Bazar',
+          refId: bazar._id,
+          description: `Bazar approved: ৳${bazar.totalAmount}`,
+        });
+      }
 
       // Populate user information
       await bazar.populate('userId', 'name email');
@@ -650,6 +672,15 @@ class BazarController {
         approvedBy: adminId,
         approvedAt: new Date(),
         notes: `Created by admin ${req.user.email}`,
+      });
+
+      await ledgerService.createEntry(req.user, {
+        userId: bazar.userId,
+        type: bazarType === 'flat' ? 'flat_bazar' : 'meal_bazar',
+        amount: bazar.totalAmount,
+        refType: 'Bazar',
+        refId: bazar._id,
+        description: `Admin: ${bazarType === 'flat' ? 'Flat' : 'Meal'} bazar ৳${bazar.totalAmount}`,
       });
 
       // Populate user information

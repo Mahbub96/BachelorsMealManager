@@ -9,6 +9,9 @@ const Statistics = require('../src/models/Statistics');
 const AdminChangeRequest = require('../src/models/AdminChangeRequest');
 const Election = require('../src/models/Election');
 const RemovalRequest = require('../src/models/RemovalRequest');
+const PaymentRequest = require('../src/models/PaymentRequest');
+const Refund = require('../src/models/Refund');
+const LedgerEntry = require('../src/models/LedgerEntry');
 
 const connectDB = async () => {
   try {
@@ -146,6 +149,58 @@ const sampleBazarEntries = [
   }
 ];
 
+// Month boundary helpers (UTC)
+function getMonthStart(monthOffset) {
+  const d = new Date();
+  d.setUTCDate(1);
+  d.setUTCHours(0, 0, 0, 0);
+  d.setUTCMonth(d.getUTCMonth() + monthOffset);
+  return d;
+}
+function getMonthEnd(monthOffset) {
+  const d = getMonthStart(monthOffset + 1);
+  d.setUTCMilliseconds(-1);
+  return d;
+}
+
+// Bazar entries for a given month (last month = -1, current = 0)
+const bazarTemplatesLastMonth = [
+  { type: 'meal', items: [{ name: 'Rice', quantity: '12 kg', price: 600 }, { name: 'Dal', quantity: '2 kg', price: 140 }], totalAmount: 740, description: 'Staples', status: 'approved' },
+  { type: 'meal', items: [{ name: 'Vegetables', quantity: '5 kg', price: 250 }, { name: 'Eggs', quantity: '30 pcs', price: 300 }], totalAmount: 550, description: 'Produce', status: 'approved' },
+  { type: 'meal', items: [{ name: 'Chicken', quantity: '3 kg', price: 600 }, { name: 'Spices', quantity: '1 set', price: 150 }], totalAmount: 750, description: 'Protein', status: 'approved' },
+  { type: 'flat', items: [{ name: 'Electricity', quantity: '1 month', price: 900 }, { name: 'Gas', quantity: '1 cylinder', price: 1100 }], totalAmount: 2000, description: 'Utilities', status: 'approved' },
+  { type: 'meal', items: [{ name: 'Oil', quantity: '2 L', price: 500 }, { name: 'Salt/Sugar', quantity: '1 kg each', price: 120 }], totalAmount: 620, description: 'Kitchen', status: 'approved' },
+  { type: 'meal', items: [{ name: 'Fish', quantity: '2 kg', price: 400 }], totalAmount: 400, description: 'Fish week', status: 'pending' },
+];
+
+const bazarTemplatesCurrentMonth = [
+  { type: 'meal', items: [{ name: 'Rice (Basmati)', quantity: '10 kg', price: 500 }, { name: 'Lentils', quantity: '3 kg', price: 180 }], totalAmount: 680, description: 'Weekly grocery', status: 'approved' },
+  { type: 'meal', items: [{ name: 'Beef', quantity: '2 kg', price: 400 }, { name: 'Potato', quantity: '4 kg', price: 80 }], totalAmount: 480, description: 'Protein', status: 'approved' },
+  { type: 'meal', items: [{ name: 'Onions', quantity: '5 kg', price: 150 }, { name: 'Tomato', quantity: '3 kg', price: 120 }], totalAmount: 270, description: 'Vegetables', status: 'pending' },
+  { type: 'flat', items: [{ name: 'Gas bill', quantity: '1 month', price: 1200 }, { name: 'WiFi', quantity: '1 month', price: 800 }], totalAmount: 2000, description: 'Shared utilities', status: 'approved' },
+  { type: 'meal', items: [{ name: 'Milk', quantity: '6 L', price: 360 }, { name: 'Bread', quantity: '10 pcs', price: 200 }], totalAmount: 560, description: 'Breakfast', status: 'approved' },
+  { type: 'meal', items: [{ name: 'Fruits', quantity: '2 kg', price: 300 }], totalAmount: 300, description: 'Fruits', status: 'pending' },
+];
+
+function randomDateInRange(start, end) {
+  const s = start.getTime();
+  const e = end.getTime();
+  return new Date(s + Math.floor(Math.random() * (e - s + 1)));
+}
+
+function generateBazarForMonth(members, admin, monthOffset) {
+  const start = getMonthStart(monthOffset);
+  const end = getMonthEnd(monthOffset);
+  const templates = monthOffset === 0 ? bazarTemplatesCurrentMonth : bazarTemplatesLastMonth;
+  return templates.map((t, i) => ({
+    ...t,
+    userId: members[i % members.length]._id,
+    date: randomDateInRange(start, end),
+    approvedBy: t.status === 'approved' ? admin._id : null,
+    approvedAt: t.status === 'approved' ? new Date() : null,
+  }));
+}
+
 // Generate meal entries for past 7 days (includes optional guest meal counts)
 const generateMealEntries = (members, admin) => {
   const meals = [];
@@ -189,6 +244,9 @@ const seedDatabase = async () => {
     await AdminChangeRequest.deleteMany({});
     await Election.deleteMany({});
     await RemovalRequest.deleteMany({});
+    await PaymentRequest.deleteMany({});
+    await Refund.deleteMany({});
+    await LedgerEntry.deleteMany({});
     console.log('🗑️ Cleared previous data');
 
     // Create users (order: super_admin, admin, then members so we can set createdBy)
@@ -282,9 +340,9 @@ const seedDatabase = async () => {
       }
     }
 
-    // Create bazar entries (Bazar model requires date; totalAmount must equal sum of item prices)
+    // Create bazar entries: original samples + last month + current month (for full feature testing)
     const now = new Date();
-    const bazarData = sampleBazarEntries.map((entry, idx) => ({
+    const bazarSamples = sampleBazarEntries.map((entry, idx) => ({
       ...entry,
       type: entry.type || 'meal',
       userId: members[idx % members.length]._id,
@@ -292,13 +350,46 @@ const seedDatabase = async () => {
       approvedBy: entry.status === 'approved' ? admin._id : null,
       approvedAt: entry.status === 'approved' ? new Date() : null
     }));
+    const bazarLastMonth = generateBazarForMonth(members, admin, -1);
+    const bazarCurrentMonth = generateBazarForMonth(members, admin, 0);
+    const bazarData = [...bazarSamples, ...bazarLastMonth, ...bazarCurrentMonth];
     await Bazar.insertMany(bazarData);
-    console.log(`✅ Created ${bazarData.length} bazar entries`);
+    console.log(`✅ Created ${bazarData.length} bazar entries (samples + last month + current month)`);
 
     // Create meals
     const meals = generateMealEntries(members, admin);
     await Meal.insertMany(meals);
     console.log(`✅ Created ${meals.length} meal entries`);
+
+    // Payment requests: pending (admin can approve/reject), approved, rejected
+    const member0 = members[0];
+    const member1 = members[1];
+    const paymentRequestDocs = [
+      { userId: member1._id, amount: 5000, type: 'full_due', status: 'pending', method: 'mobile_banking', notes: 'Monthly due', requestedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) },
+      { userId: member0._id, amount: 5000, type: 'full_due', status: 'approved', method: 'cash', notes: 'Paid', requestedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), approvedAt: new Date(), approvedBy: admin._id },
+      { userId: member1._id, amount: 2000, type: 'custom', status: 'rejected', method: 'bank_transfer', notes: 'Partial', requestedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), approvedAt: new Date(), approvedBy: admin._id, rejectionNote: 'Please pay full due first' },
+    ];
+    const createdPaymentRequests = await PaymentRequest.insertMany(paymentRequestDocs);
+    console.log(`✅ Created ${createdPaymentRequests.length} payment requests`);
+
+    // Refunds: one sent (member can acknowledge), one acknowledged
+    const refundDocs = [
+      { userId: member0._id, amount: 500, status: 'sent', method: 'cash', notes: 'Overpayment refund', sentAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), sentBy: admin._id },
+      { userId: member1._id, amount: 300, status: 'acknowledged', method: 'mobile_banking', notes: 'Refund received', sentAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), sentBy: admin._id, acknowledgedAt: new Date() },
+    ];
+    const createdRefunds = await Refund.insertMany(refundDocs);
+    console.log(`✅ Created ${createdRefunds.length} refunds`);
+
+    // Ledger entries for transparency (refIds from inserted payment/refund docs)
+    const approvedReq = createdPaymentRequests.find(r => r.status === 'approved');
+    const sentRefund = createdRefunds.find(r => r.status === 'sent');
+    const ledgerEntries = [];
+    if (approvedReq) ledgerEntries.push({ groupId: admin._id, userId: member0._id, type: 'payment_recorded', amount: 5000, refType: 'PaymentRequest', refId: approvedReq._id, description: 'Payment recorded' });
+    if (sentRefund) ledgerEntries.push({ groupId: admin._id, userId: member0._id, type: 'refund_sent', amount: 500, refType: 'Refund', refId: sentRefund._id, description: 'Refund sent' });
+    if (ledgerEntries.length > 0) {
+      await LedgerEntry.insertMany(ledgerEntries);
+      console.log(`✅ Created ${ledgerEntries.length} ledger entries`);
+    }
 
     // Initialize statistics using model static methods to stay in sync with dashboard/reports
     await Statistics.updateAllStatistics();

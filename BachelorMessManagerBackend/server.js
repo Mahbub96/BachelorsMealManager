@@ -52,6 +52,9 @@ const superAdminRoutes = require('./src/routes/superAdmin');
 const uiConfigRoutes = require('./src/routes/uiConfig');
 const removalRequestRoutes = require('./src/routes/removalRequests');
 const groupAdminRoutes = require('./src/routes/groupAdmin');
+const paymentsRoutes = require('./src/routes/payments');
+const refundsRoutes = require('./src/routes/refunds');
+const ledgerRoutes = require('./src/routes/ledger');
 
 // Import statistics service
 const StatisticsService = require('./src/services/statisticsService');
@@ -386,6 +389,9 @@ function startServer() {
   app.use(`${config.apiPrefix}/ui-config`, uiConfigRoutes);
   app.use(`${config.apiPrefix}/removal-requests`, removalRequestRoutes);
   app.use(`${config.apiPrefix}/group-admin`, groupAdminRoutes);
+  app.use(`${config.apiPrefix}/payments`, paymentsRoutes);
+  app.use(`${config.apiPrefix}/refunds`, refundsRoutes);
+  app.use(`${config.apiPrefix}/ledger`, ledgerRoutes);
 
   // API Documentation endpoint
   app.get(`${config.apiPrefix}/docs`, (req, res) => {

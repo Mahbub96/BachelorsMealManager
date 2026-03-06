@@ -22,6 +22,9 @@ const {
   ratioPercent,
   safeAverage,
 } = require('../utils/userStatsHelper');
+const userController = require('../controllers/userController');
+const PaymentRequest = require('../models/PaymentRequest');
+const settlementService = require('../services/settlementService');
 
 /**
  * @route   GET /api/user-stats/dashboard
@@ -283,7 +286,7 @@ router.get('/bazar', protect, async (req, res) => {
 
 /**
  * @route   GET /api/user-stats/payments
- * @desc    Get user payment statistics
+ * @desc    Get user payment statistics, due, payment history, and my payment requests
  * @access  Private
  */
 router.get('/payments', protect, async (req, res) => {
@@ -291,20 +294,56 @@ router.get('/payments', protect, async (req, res) => {
     const userId = normalizeUserId(req, res);
     if (!userId) return;
 
-    const user = await User.findById(userId).select(
-      'monthlyContribution lastPaymentDate paymentStatus totalPaid'
-    );
+    const paymentStatistics = await userController.getPaymentStats(userId);
+    let due = Math.max(0, paymentStatistics.monthlyContribution - paymentStatistics.totalPaid);
 
-    const paymentStatistics = {
-      monthlyContribution: user?.monthlyContribution || 5000,
-      lastPaymentDate: user?.lastPaymentDate || null,
-      paymentStatus: user?.paymentStatus || 'pending',
-      totalPaid: user?.totalPaid || 0,
-    };
+    let settlement = null;
+    try {
+      settlement = await settlementService.getCurrentMonthSettlementForUser(req.user);
+      if (settlement && (settlement.due > 0 || settlement.receive > 0 || settlement.balance !== undefined)) {
+        due = settlement.due;
+      }
+    } catch (settleErr) {
+      logger.warn('Settlement for payments failed, using legacy due', settleErr?.message);
+    }
+
+    const user = await User.findById(userId).select('paymentHistory').lean();
+    const paymentHistory = (user?.paymentHistory ?? [])
+      .map((p) => ({
+        amount: p.amount,
+        date: p.date,
+        method: p.method,
+        status: p.status,
+        notes: p.notes,
+      }))
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    const paymentRequests = await PaymentRequest.find({ userId })
+      .sort({ requestedAt: -1 })
+      .lean()
+      .then((list) =>
+        list.map((r) => ({
+          id: r._id,
+          amount: r.amount,
+          type: r.type,
+          status: r.status,
+          method: r.method,
+          notes: r.notes,
+          requestedAt: r.requestedAt,
+          approvedAt: r.approvedAt,
+          rejectionNote: r.rejectionNote,
+        }))
+      );
 
     res.json({
       success: true,
-      data: paymentStatistics,
+      data: {
+        ...paymentStatistics,
+        due,
+        settlement,
+        paymentHistory,
+        paymentRequests,
+      },
     });
   } catch (error) {
     logger.error('Error fetching payment stats:', error);

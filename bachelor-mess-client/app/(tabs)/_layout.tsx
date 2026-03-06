@@ -17,6 +17,7 @@ const TAB_LABELS: Record<string, string> = {
   '/(tabs)/': 'Welcome',
   '/(tabs)/explore': 'Bazar',
   '/(tabs)/meals': 'Meals',
+  '/(tabs)/accounts': 'My Accounts',
   '/(tabs)/admin': 'Admin',
   '/(tabs)/reports': 'Analysis',
   '/(tabs)/super-admin': 'Super Admin',
@@ -26,12 +27,12 @@ export default function TabLayout() {
   const { user } = useAuth();
   const { theme } = useTheme();
   const pathname = usePathname();
-  const headerLabel = TAB_LABELS[pathname] ?? (pathname?.includes('explore') ? 'Bazar' : pathname?.includes('meals') ? 'Meals' : pathname?.includes('reports') ? 'Analysis' : pathname?.includes('admin') ? 'Admin' : 'Welcome');
+  const headerLabel = TAB_LABELS[pathname] ?? (pathname?.includes('explore') ? 'Bazar' : pathname?.includes('meals') ? 'Meals' : pathname?.includes('accounts') ? 'My Accounts' : pathname?.includes('reports') ? 'Analysis' : pathname?.includes('admin') ? 'Admin' : 'Welcome');
 
   const backgroundColor = theme.background;
   const borderColor = theme.border?.secondary ?? theme.tab?.border;
-  const tabActiveColor = theme.tab?.active ?? theme.primary;
-  const tabInactiveColor = theme.tab?.inactive ?? theme.text.secondary;
+  const tabActiveColor = theme?.tab?.active ?? theme?.primary;
+  const tabInactiveColor = theme?.tab?.inactive ?? theme?.text?.secondary;
   const shadowColor = theme.shadow?.light ?? theme.cardShadow;
 
   // Tab visibility by role: Admin tab for admin/super_admin, Analysis tab for member only
@@ -117,6 +118,19 @@ export default function TabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'restaurant' : 'restaurant-outline'}
+              size={24}
+              color={color}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name='accounts'
+        options={{
+          title: 'My Accounts',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? 'wallet' : 'wallet-outline'}
               size={24}
               color={color}
             />
