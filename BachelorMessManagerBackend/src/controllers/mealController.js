@@ -11,6 +11,7 @@ const {
   sendErrorResponse,
 } = require('../utils/responseHandler');
 const ledgerService = require('../services/ledgerService');
+const notificationService = require('../services/notificationService');
 
 class MealController {
 
@@ -190,6 +191,23 @@ class MealController {
         'Meals submitted successfully',
         meal
       );
+
+      // Notify admin if meal is pending approval
+      if (meal.status === 'pending') {
+        try {
+          const submitter = await User.findById(userId).select('name createdBy').lean();
+          const adminId = submitter?.createdBy;
+          if (adminId) {
+            notificationService.createNotification(
+              adminId,
+              'meal_submitted',
+              'Meal Submitted 🍽️',
+              `${submitter?.name || 'A member'} submitted a meal entry for ${new Date(normalizedDate).toLocaleDateString()}.`,
+              { refType: 'Meal', refId: meal._id }
+            );
+          }
+        } catch { /* non-critical */ }
+      }
     } catch (error) {
       logger.error('Error submitting meal:', error);
       next(error);
@@ -363,6 +381,18 @@ class MealController {
         200,
         'Meal status updated successfully',
         meal
+      );
+
+      // Notify the member whose meal was updated
+      const notifType = status === 'approved' ? 'meal_approved' : 'meal_rejected';
+      const notifTitle = status === 'approved' ? 'Meal Approved ✅' : 'Meal Rejected';
+      const mealDate = new Date(meal.date).toLocaleDateString();
+      notificationService.createNotification(
+        meal.userId._id || meal.userId,
+        notifType,
+        notifTitle,
+        `Your meal for ${mealDate} was ${status}.`,
+        { refType: 'Meal', refId: meal._id }
       );
     } catch (error) {
       next(error);

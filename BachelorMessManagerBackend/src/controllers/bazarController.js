@@ -16,6 +16,7 @@ const {
   sendErrorResponse,
 } = require('../utils/responseHandler');
 const ledgerService = require('../services/ledgerService');
+const notificationService = require('../services/notificationService');
 
 class BazarController {
   // Submit bazar entry
@@ -67,6 +68,23 @@ class BazarController {
 
       // Populate user information
       await bazar.populate('userId', 'name email');
+
+      // Notify admin when member submits a new pending bazar entry
+      if (bazar.status === 'pending') {
+        try {
+          const submitter = await User.findById(userId).select('name createdBy').lean();
+          const adminId = submitter?.createdBy;
+          if (adminId) {
+            notificationService.createNotification(
+              adminId,
+              'bazar_submitted',
+              'New Bazar Entry 🛒',
+              `${submitter?.name || 'A member'} submitted a ৳${totalAmount} ${bazarType} bazar entry.`,
+              { refType: 'Bazar', refId: bazar._id }
+            );
+          }
+        } catch { /* non-critical */ }
+      }
 
       logger.info(
         `Bazar entry submitted by user ${req.user.email} for amount ${totalAmount}`
@@ -195,6 +213,17 @@ class BazarController {
       // Populate user information
       await bazar.populate('userId', 'name email');
       await bazar.populate('approvedBy', 'name');
+
+      // Notify the member who submitted this bazar
+      const notifType = status === 'approved' ? 'bazar_approved' : 'bazar_rejected';
+      const notifTitle = status === 'approved' ? 'Bazar Approved ✅' : 'Bazar Rejected';
+      notificationService.createNotification(
+        bazar.userId._id || bazar.userId,
+        notifType,
+        notifTitle,
+        `Your ৳${bazar.totalAmount} ${bazar.type} bazar entry has been ${status}.`,
+        { refType: 'Bazar', refId: bazar._id }
+      );
 
       logger.info(
         `Bazar status updated by admin ${req.user.email} to ${status}`

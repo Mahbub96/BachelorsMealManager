@@ -5,6 +5,7 @@ const { getGroupMemberIds } = require('../utils/groupHelper');
 const settlementService = require('../services/settlementService');
 const ledgerService = require('../services/ledgerService');
 const logger = require('../utils/logger');
+const notificationService = require('../services/notificationService');
 
 function normalizeUserId(req, res) {
   const userId = req.user?._id ?? req.user?.id;
@@ -77,6 +78,16 @@ async function sendRefund(req, res) {
     });
 
     const data = refund.toObject ? refund.toObject() : refund;
+
+    // Notify the member: you have a refund waiting
+    notificationService.createNotification(
+      targetId,
+      'refund_sent',
+      'Refund Received 💰',
+      `Admin sent you a ৳${numAmount} refund via ${method}.`,
+      { refType: 'Refund', refId: refund._id }
+    );
+
     res.status(201).json({ success: true, message: 'Refund sent', data });
   } catch (err) {
     logger.error('sendRefund error:', err);
@@ -173,6 +184,22 @@ async function acknowledgeRefund(req, res) {
     });
 
     const data = refund.toObject ? refund.toObject() : refund;
+
+    // Notify the admin: member acknowledged the refund
+    try {
+      const member = await User.findById(currentUserId).select('name createdBy').lean();
+      const adminId = member?.createdBy;
+      if (adminId) {
+        notificationService.createNotification(
+          adminId,
+          'refund_acknowledged',
+          'Refund Acknowledged ✅',
+          `${member?.name || 'A member'} acknowledged the ৳${refund.amount} refund.`,
+          { refType: 'Refund', refId: refund._id }
+        );
+      }
+    } catch { /* non-critical */ }
+
     res.json({ success: true, message: 'Refund acknowledged', data });
   } catch (err) {
     logger.error('acknowledgeRefund error:', err);

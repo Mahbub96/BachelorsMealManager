@@ -6,6 +6,7 @@ const {
   sendErrorResponse,
 } = require('../utils/responseHandler');
 const { getGroupMemberIds } = require('../utils/groupHelper');
+const notificationService = require('../services/notificationService');
 
 class GroupAdminController {
   /**
@@ -117,6 +118,8 @@ class GroupAdminController {
         'Admin change request created. All group members must vote.',
         populated
       );
+
+      // Note: notification is sent below after response (fire-and-forget)
     } catch (error) {
       logger.error('Error in createChangeRequest:', error);
       next(error);

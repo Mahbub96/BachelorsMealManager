@@ -55,6 +55,7 @@ const groupAdminRoutes = require('./src/routes/groupAdmin');
 const paymentsRoutes = require('./src/routes/payments');
 const refundsRoutes = require('./src/routes/refunds');
 const ledgerRoutes = require('./src/routes/ledger');
+const notificationRoutes = require('./src/routes/notifications');
 
 // Import statistics service
 const StatisticsService = require('./src/services/statisticsService');
@@ -392,6 +393,7 @@ function startServer() {
   app.use(`${config.apiPrefix}/payments`, paymentsRoutes);
   app.use(`${config.apiPrefix}/refunds`, refundsRoutes);
   app.use(`${config.apiPrefix}/ledger`, ledgerRoutes);
+  app.use(`${config.apiPrefix}/notifications`, notificationRoutes);
 
   // API Documentation endpoint
   app.get(`${config.apiPrefix}/docs`, (req, res) => {

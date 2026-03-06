@@ -5,6 +5,7 @@ const {
   sendSuccessResponse,
   sendErrorResponse,
 } = require('../utils/responseHandler');
+const notificationService = require('../services/notificationService');
 
 class RemovalRequestController {
   /**
@@ -40,6 +41,19 @@ class RemovalRequestController {
           const populated = await RemovalRequest.findById(request._id)
             .populate('userId', 'name email')
             .populate('requestedBy', 'name email');
+
+          // Notify admin: member wants to leave
+          const adminId = currentUser.createdBy;
+          if (adminId) {
+            notificationService.createNotification(
+              adminId,
+              'removal_requested',
+              'Leave Request 🚨',
+              `${currentUser.name || 'A member'} submitted a leave request.`,
+              { refType: 'RemovalRequest', refId: request._id }
+            );
+          }
+
           return sendSuccessResponse(
             res,
             201,
@@ -179,6 +193,16 @@ class RemovalRequestController {
         await removalRequest.save();
         await User.findByIdAndDelete(removalRequest.userId._id);
         logger.info(`Leave request accepted; user ${removalRequest.userId._id} deleted by ${currentUser.email}`);
+
+        // Notify the member: leave was accepted
+        notificationService.createNotification(
+          removalRequest.userId._id,
+          'removal_resolved',
+          'Leave Request Accepted',
+          'Your leave request was accepted. You have been removed from the group.',
+          { refType: 'RemovalRequest', refId: removalRequest._id }
+        );
+
         return sendSuccessResponse(res, 200, 'Leave request accepted. Member has been removed.', {
           request: removalRequest,
         });
@@ -236,6 +260,16 @@ class RemovalRequestController {
         removalRequest.resolvedAt = new Date();
         removalRequest.resolvedBy = currentUser._id;
         await removalRequest.save();
+
+        // Notify the member: leave was rejected
+        notificationService.createNotification(
+          removalRequest.userId._id,
+          'removal_resolved',
+          'Leave Request Rejected',
+          'Your leave request was rejected by the admin.',
+          { refType: 'RemovalRequest', refId: removalRequest._id }
+        );
+
         return sendSuccessResponse(res, 200, 'Leave request rejected.', { request: removalRequest });
       }
 

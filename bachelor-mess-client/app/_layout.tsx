@@ -3,6 +3,7 @@ import { AuthProvider } from '@/context/AuthContext';
 import { AppRefreshProvider } from '@/context/AppRefreshContext';
 import { BazarProvider } from '@/context/BazarContext';
 import { ThemeProvider } from '@/context/ThemeContext';
+import { NotificationProvider } from '@/context/NotificationContext';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
@@ -106,9 +107,11 @@ export default function RootLayout() {
         <AuthProvider>
           <BazarProvider>
             <AppRefreshProvider>
-              <AuthGuard>
-                <AppContent />
-              </AuthGuard>
+              <NotificationProvider>
+                <AuthGuard>
+                  <AppContent />
+                </AuthGuard>
+              </NotificationProvider>
             </AppRefreshProvider>
           </BazarProvider>
         </AuthProvider>

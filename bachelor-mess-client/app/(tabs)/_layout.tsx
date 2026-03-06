@@ -1,15 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs, usePathname } from 'expo-router';
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
 
 import { HapticTab } from '@/components/HapticTab';
 import { AuthAvatar } from '@/components/AuthAvatar';
 import { LoginButton } from '@/components/LoginButton';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { AppTopBar } from '@/components/layout';
+import { ThemedText } from '@/components/ThemedText';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
+import { useNotifications } from '@/context/NotificationContext';
+import { useRouter as useTabRouter } from 'expo-router';
 
 const TAB_LABELS: Record<string, string> = {
   '/': 'Welcome',
@@ -27,6 +30,8 @@ export default function TabLayout() {
   const { user } = useAuth();
   const { theme } = useTheme();
   const pathname = usePathname();
+  const tabRouter = useTabRouter();
+  const { unreadCount } = useNotifications();
   const headerLabel = TAB_LABELS[pathname] ?? (pathname?.includes('explore') ? 'Bazar' : pathname?.includes('meals') ? 'Meals' : pathname?.includes('accounts') ? 'My Accounts' : pathname?.includes('reports') ? 'Analysis' : pathname?.includes('admin') ? 'Admin' : 'Welcome');
 
   const backgroundColor = theme.background;
@@ -51,7 +56,34 @@ export default function TabLayout() {
             <OfflineBanner />
             <AppTopBar
               title={user && headerLabel === 'Welcome' ? `Welcome, ${user.name?.split(' ')[0] || 'User'}` : headerLabel}
-              rightElement={user ? <AuthAvatar size={32} showDropdown /> : <LoginButton size={32} />}
+              rightElement={
+                user ? (
+                  <View style={styles.rightRow}>
+                    {/* Notification bell with unread badge */}
+                    <TouchableOpacity
+                      onPress={() => tabRouter.push('/notifications')}
+                      style={styles.bellBtn}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons
+                        name={unreadCount > 0 ? 'notifications' : 'notifications-outline'}
+                        size={24}
+                        color={theme.text?.primary ?? '#1f2937'}
+                      />
+                      {unreadCount > 0 && (
+                        <View style={styles.badge}>
+                          <ThemedText style={styles.badgeText}>
+                            {unreadCount > 99 ? '99+' : String(unreadCount)}
+                          </ThemedText>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                    <AuthAvatar size={32} showDropdown />
+                  </View>
+                ) : (
+                  <LoginButton size={32} />
+                )
+              }
               safeEdges={false}
             />
           </View>
@@ -191,5 +223,32 @@ const styles = StyleSheet.create({
     paddingTop: 48,
     borderBottomWidth: 1,
     zIndex: 10,
+  },
+  rightRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  bellBtn: {
+    position: 'relative',
+    padding: 2,
+  },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -6,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#ef4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#fff',
+    lineHeight: 14,
   },
 });

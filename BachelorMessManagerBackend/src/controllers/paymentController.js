@@ -6,6 +6,7 @@ const { getGroupMemberIds } = require('../utils/groupHelper');
 const settlementService = require('../services/settlementService');
 const ledgerService = require('../services/ledgerService');
 const logger = require('../utils/logger');
+const notificationService = require('../services/notificationService');
 
 function normalizeUserId(req, res) {
   let userId = req.user?._id ?? req.user?.id;
@@ -75,6 +76,22 @@ async function createRequest(req, res) {
     });
 
     const data = doc.toObject ? doc.toObject() : doc;
+
+    // Notify admin: a member submitted a payment request
+    try {
+      const member = await User.findById(userId).select('name createdBy').lean();
+      const adminId = member?.createdBy;
+      if (adminId) {
+        notificationService.createNotification(
+          adminId,
+          'payment_requested',
+          'New Payment Request',
+          `${member?.name || 'A member'} submitted a ৳${amount} payment request.`,
+          { refType: 'PaymentRequest', refId: doc._id }
+        );
+      }
+    } catch { /* non-critical */ }
+
     res.status(201).json({ success: true, message: 'Payment request created', data });
   } catch (err) {
     logger.error('createRequest error:', err);
@@ -190,6 +207,16 @@ async function approveRequest(req, res) {
     });
 
     const data = pr.toObject ? pr.toObject() : pr;
+
+    // Notify the member: payment was approved
+    notificationService.createNotification(
+      pr.userId,
+      'payment_approved',
+      'Payment Approved ✅',
+      `Your ৳${pr.amount} payment request has been approved.`,
+      { refType: 'PaymentRequest', refId: pr._id }
+    );
+
     res.json({ success: true, message: 'Payment confirmed and recorded', data });
   } catch (err) {
     logger.error('approveRequest error:', err);
@@ -233,6 +260,16 @@ async function rejectRequest(req, res) {
     await pr.save();
 
     const data = pr.toObject ? pr.toObject() : pr;
+
+    // Notify the member: payment was rejected
+    notificationService.createNotification(
+      pr.userId,
+      'payment_rejected',
+      'Payment Request Rejected',
+      `Your ৳${pr.amount} payment request was rejected.${rejectionNote ? ` Reason: ${rejectionNote}` : ''}`,
+      { refType: 'PaymentRequest', refId: pr._id }
+    );
+
     res.json({ success: true, message: 'Payment request rejected', data });
   } catch (err) {
     logger.error('rejectRequest error:', err);

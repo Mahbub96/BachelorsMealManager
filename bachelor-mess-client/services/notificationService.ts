@@ -587,3 +587,62 @@ class NotificationServiceImpl implements NotificationService {
 
 // Export singleton instance
 export const notificationService = new NotificationServiceImpl();
+
+// ─── REST API: Database-backed notification helpers ────────────────────────
+// These are completely separate from push notifications.
+// They communicate with the backend Notification model via HTTP.
+
+export interface NotificationItem {
+  _id: string;
+  userId: string;
+  type: string;
+  title: string;
+  message: string;
+  isRead: boolean;
+  refType?: string;
+  refId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NotificationsListResponse {
+  notifications: NotificationItem[];
+  total: number;
+  unreadCount: number;
+  page: number;
+  limit: number;
+}
+
+/** Fetch paginated notifications for the authenticated user */
+export async function fetchNotifications(page = 1, limit = 30): Promise<NotificationsListResponse | null> {
+  try {
+    const res = await httpClient.get<NotificationsListResponse>(`/notifications?page=${page}&limit=${limit}`);
+    return (res.data as NotificationsListResponse) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Lightweight unread count poll for badge */
+export async function fetchUnreadCount(): Promise<number> {
+  try {
+    const res = await httpClient.get<{ unreadCount: number }>('/notifications/unread-count');
+    return (res.data as { unreadCount: number })?.unreadCount ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+/** Mark a single notification as read */
+export async function markNotificationRead(id: string): Promise<void> {
+  try {
+    await httpClient.post(`/notifications/${id}/read`, {});
+  } catch { /* ignore */ }
+}
+
+/** Mark all notifications as read */
+export async function markAllNotificationsRead(): Promise<void> {
+  try {
+    await httpClient.post('/notifications/read-all', {});
+  } catch { /* ignore */ }
+}
