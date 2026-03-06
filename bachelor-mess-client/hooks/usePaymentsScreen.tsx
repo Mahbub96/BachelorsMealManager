@@ -329,7 +329,7 @@ export function usePaymentsScreen(): UsePaymentsScreenReturn {
     setSendRefundLoading(true);
     try {
       const res = await refundService.sendRefund({
-        userId: sendRefundUserId,
+        memberId: sendRefundUserId,
         amount: num,
         method: sendRefundMethod,
         notes: sendRefundNotes.trim() || undefined,

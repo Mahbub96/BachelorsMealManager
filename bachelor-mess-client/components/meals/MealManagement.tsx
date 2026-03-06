@@ -31,7 +31,7 @@ import { useMealManagement } from '../../hooks/useMealManagement';
 import mealService from '../../services/mealService';
 import { useThemeColor } from '../../hooks/useThemeColor';
 import { ScreenBackButton } from '../ui/ScreenBackButton';
-import { InfoModal, type InfoModalVariant } from '../ui';
+import { InfoModal, TransactionList, type InfoModalVariant } from '../ui';
 import { MealDetailModal } from './MealDetailModal';
 import { PendingMealDeleteRequests } from './PendingMealDeleteRequests';
 import { MealListFilters, type MealListFiltersState } from './MealListFilters';
@@ -646,72 +646,26 @@ export const MealManagement: React.FC<MealManagementProps> = ({
               onFilterChange={setMealListFilters}
             />
           </SearchAndFilterRow>
-          <View
-            style={[
-              styles.mealsList,
-              {
-                backgroundColor: theme.cardBackground ?? theme.surface,
-                borderColor: theme.border?.secondary ?? theme.cardBorder,
-                borderWidth: 1,
-                shadowColor: theme.shadow?.light ?? theme.cardShadow,
-              },
-            ]}
-          >
-            {filteredMealsHistory.map((meal, index) => (
-              <ActivityCard
-                key={meal.id || `meal-${index}`}
-                title={`Meal on ${formatDate(meal.date || new Date().toISOString())}`}
-                description={getMealSummary(meal)}
-                icon='restaurant'
-                iconBackgroundColor={theme.status?.success ?? theme.primary}
-                timestamp={meal.date || new Date().toISOString()}
-                amount={getMealAmountLabel(meal)}
-                status={
-                  meal?.status === 'approved'
-                    ? 'success'
-                    : meal?.status === 'rejected'
-                      ? 'error'
-                      : 'warning'
-                }
-                onPress={() => handleMealPress(meal)}
-                variant='compact'
-                isSmallScreen={isSmallScreen}
-              />
-            ))}
-            {filteredMealsHistory.length === 0 && (
-              <View style={styles.emptyState}>
-                <Ionicons
-                  name='restaurant-outline'
-                  size={48}
-                  color={theme.text?.secondary ?? theme.icon?.secondary}
-                />
-                <ThemedText
-                  style={[
-                    styles.emptyStateText,
-                    { color: theme.text?.secondary },
-                  ]}
-                >
-                {mealSearchQuery.trim() || mealListFilters.status !== 'all' || (mealListFilters.dateRange !== 'month' && mealListFilters.dateRange !== 'all')
-                    ? 'No meals match your search or filters'
-                    : mealListFilters.scope === 'mine'
-                    ? 'No My Meals recorded yet'
-                    : "No one's meals in this period"}
-                </ThemedText>
-                <ThemedText
-                  style={[
-                    styles.emptyStateSubtext,
-                    { color: theme.text?.tertiary },
-                  ]}
-                >
-                  {mealSearchQuery.trim() || mealListFilters.status !== 'all' || (mealListFilters.dateRange !== 'month' && mealListFilters.dateRange !== 'all')
-                    ? 'Try adjusting your search or filters'
-                    : mealListFilters.scope === 'mine'
-                    ? 'Add your first My Meal to get started'
-                    : 'Switch to My Meals or change date range'}
-                </ThemedText>
-              </View>
-            )}
-          </View>
+          <TransactionList
+            loading={false}
+            emptyHint={
+              mealSearchQuery.trim() || mealListFilters.status !== 'all' || (mealListFilters.dateRange !== 'month' && mealListFilters.dateRange !== 'all')
+                ? 'No meals match your search or filters'
+                : mealListFilters.scope === 'mine'
+                ? 'No My Meals recorded yet'
+                : "No one's meals in this period"
+            }
+            items={filteredMealsHistory.map((meal, index) => ({
+              id: meal.id ?? `meal-${index}`,
+              title: `Meal on ${formatDate(meal.date || new Date().toISOString())}`,
+              subtitle: `${getMealAmountLabel(meal)} • ${getMealSummary(meal)}`,
+              icon: 'restaurant-outline',
+              iconBackgroundColor: (theme.status?.success ?? theme.primary) + '18',
+              iconColor: theme.status?.success ?? theme.primary,
+              amountText: meal?.status === 'approved' ? 'Approved' : meal?.status === 'rejected' ? 'Rejected' : 'Pending',
+              amountColor: meal?.status === 'approved' ? theme.status?.success : meal?.status === 'rejected' ? theme.status?.error : theme.status?.warning,
+            }))}
+          />
         </View>
       </ScrollView>
     );

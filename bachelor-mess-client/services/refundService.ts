@@ -55,7 +55,7 @@ function normalizeRefundItem(raw: unknown): RefundItem | null {
 }
 
 export async function sendRefund(params: {
-  userId: string;
+  memberId: string;
   amount: number;
   method?: string;
   notes?: string;

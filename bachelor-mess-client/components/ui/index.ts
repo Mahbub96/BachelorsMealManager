@@ -45,3 +45,4 @@ export type { ListCardProps } from './ListCard';
 export type { SummaryCardProps } from './SummaryCard';
 export type { StatusRowProps } from './StatusRow';
 export type { ActionRowProps } from './ActionRow';
+export * from './TransactionList';

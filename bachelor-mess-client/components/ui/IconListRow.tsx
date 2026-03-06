@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { ThemedText } from '../ThemedText';
 import { useTheme } from '@/context/ThemeContext';
 import { DESIGN_SYSTEM } from '@/components/dashboard/DesignSystem';
@@ -13,6 +13,7 @@ export interface IconListRowProps {
   right?: React.ReactNode;
   borderBottomColor?: string;
   backgroundColor?: string;
+  onPress?: () => void;
 }
 
 export const IconListRow: React.FC<IconListRowProps> = ({
@@ -23,6 +24,7 @@ export const IconListRow: React.FC<IconListRowProps> = ({
   right,
   borderBottomColor,
   backgroundColor,
+  onPress,
 }) => {
   const { theme } = useTheme();
   const bg = backgroundColor ?? theme.cardBackground;
@@ -30,7 +32,12 @@ export const IconListRow: React.FC<IconListRowProps> = ({
   const iconBg = iconBackgroundColor ?? theme.primary + '18';
 
   return (
-    <View style={[styles.row, { backgroundColor: bg, borderBottomColor: borderColor }]}>
+    <TouchableOpacity
+      style={[styles.row, { backgroundColor: bg, borderBottomColor: borderColor }]}
+      onPress={onPress}
+      disabled={!onPress}
+      activeOpacity={0.7}
+    >
       <View style={[styles.iconWrap, { backgroundColor: iconBg }]}>
         {icon}
       </View>
@@ -45,7 +52,7 @@ export const IconListRow: React.FC<IconListRowProps> = ({
         )}
       </View>
       {right != null ? <View style={styles.right}>{right}</View> : null}
-    </View>
+    </TouchableOpacity>
   );
 };
 

@@ -28,7 +28,11 @@ async function sendRefund(req, res) {
       return res.status(403).json({ success: false, error: 'Admin access required' });
     }
 
-    const { userId: targetUserId, amount, method = 'cash', notes } = req.body || {};
+    const { memberId, userId: legacyUserId, amount, method = 'cash', notes } = req.body || {};
+    const targetUserId = memberId ?? legacyUserId; // support both field names for compatibility
+    if (!targetUserId) {
+      return res.status(400).json({ success: false, error: 'memberId (target member) is required' });
+    }
     const numAmount = Number(amount);
     if (!Number.isFinite(numAmount) || numAmount <= 0) {
       return res.status(400).json({ success: false, error: 'Invalid amount' });

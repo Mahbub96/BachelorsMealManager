@@ -19,19 +19,19 @@ export const MealStats: React.FC<MealStatsProps> = ({ stats }) => {
       title: 'Total Meals',
       value: stats.totalMeals,
       icon: 'fast-food' as const,
-      colors: theme.gradient.primary as readonly [string, string],
+      colors: theme.gradient.primary as unknown as readonly [string, string],
     },
     {
       title: 'Approved',
       value: stats.approvedCount,
       icon: 'trending-up' as const,
-      colors: theme.gradient.success as readonly [string, string],
+      colors: theme.gradient.success as unknown as readonly [string, string],
     },
     {
       title: 'Pending',
       value: stats.pendingCount,
       icon: 'time' as const,
-      colors: theme.gradient.warning as readonly [string, string],
+      colors: theme.gradient.warning as unknown as readonly [string, string],
     },
   ];
 

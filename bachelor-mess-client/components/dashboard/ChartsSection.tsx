@@ -22,11 +22,6 @@ export const ChartsSection: React.FC<ChartsSectionProps> = ({
   const { theme } = useTheme();
   const [selectedPeriod, setSelectedPeriod] = useState('current');
 
-  console.log('📈 ChartsSection received data:', {
-    monthlyRevenueCount: monthlyRevenue?.length || 0,
-    monthlyRevenueData: monthlyRevenue,
-    currentMonthRevenue,
-  });
 
   // Generate meaningful chart data with safety checks
   const revenueChartData = ((monthlyRevenue || []).slice(-6) || []).map(
@@ -45,7 +40,6 @@ export const ChartsSection: React.FC<ChartsSectionProps> = ({
     }
   );
 
-  console.log('📊 Processed revenue chart data:', revenueChartData);
 
   // Create expense breakdown data from API with theme colors
   const expenseChartData = (expenseBreakdown || []).map((item: Record<string, unknown>, index: number) => {

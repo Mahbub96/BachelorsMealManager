@@ -14,6 +14,7 @@ export interface StatusRowProps {
   statusColor: string;
   borderBottomColor?: string;
   backgroundColor?: string;
+  onPress?: () => void;
 }
 
 export const StatusRow: React.FC<StatusRowProps> = ({
@@ -25,6 +26,7 @@ export const StatusRow: React.FC<StatusRowProps> = ({
   statusColor,
   borderBottomColor,
   backgroundColor,
+  onPress,
 }) => {
   return (
     <IconListRow
@@ -35,6 +37,7 @@ export const StatusRow: React.FC<StatusRowProps> = ({
       right={<StatusBadge label={statusLabel} color={statusColor} />}
       borderBottomColor={borderBottomColor}
       backgroundColor={backgroundColor}
+      onPress={onPress}
     />
   );
 };

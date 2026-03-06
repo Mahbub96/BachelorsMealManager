@@ -117,7 +117,7 @@ async function getRequests(status?: 'pending' | 'approved' | 'rejected'): Promis
     const url = status
       ? `${API_ENDPOINTS.PAYMENTS.REQUESTS}?status=${status}`
       : API_ENDPOINTS.PAYMENTS.REQUESTS;
-    const response = await httpClient.get<{ success?: boolean; data?: PaymentRequestItem[] }>(url, {
+    const response = await httpClient.get<PaymentRequestItem[]>(url, {
       cache: false,
       retries: 2,
     });
@@ -162,7 +162,7 @@ async function rejectRequest(id: string, rejectionNote?: string): Promise<
 
 async function getDuesOverview(): Promise<ApiResponse<DuesOverviewItem[]>> {
   try {
-    const response = await httpClient.get<{ success?: boolean; data?: DuesOverviewItem[] }>(
+    const response = await httpClient.get<DuesOverviewItem[]>(
       API_ENDPOINTS.PAYMENTS.DUES,
       { cache: false, retries: 2 }
     );

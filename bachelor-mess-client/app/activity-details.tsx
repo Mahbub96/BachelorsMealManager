@@ -37,26 +37,18 @@ export default function ActivityDetailsScreen(_props: ActivityDetailsScreenProps
       const activityId = params.id as string;
 
       if (!activityId) {
-        console.error('❌ No activity ID provided');
         setError('No activity ID provided');
         return;
       }
 
-      console.log('🔍 Loading activity details for ID:', activityId);
-
-      // Get activity from API
       const response = await activityService.getActivityById(activityId);
-      console.log('📡 Activity details response:', response);
 
       if (response.success && response.data) {
-        console.log('✅ Activity loaded successfully:', response.data);
         setActivity(response.data);
       } else {
-        console.error('❌ Failed to load activity:', response.error);
         setError(response.error || 'Activity not found');
       }
     } catch (error) {
-      console.error('❌ Error loading activity details:', error);
       setError('Network error. Please check your connection.');
     } finally {
       setLoading(false);
@@ -68,12 +60,10 @@ export default function ActivityDetailsScreen(_props: ActivityDetailsScreenProps
   };
 
   const handleEdit = () => {
-    console.log('✏️ Edit activity pressed');
     Alert.alert('Edit', 'Edit functionality will be implemented soon');
   };
 
   const handleDelete = () => {
-    console.log('🗑️ Delete activity pressed');
     Alert.alert(
       'Delete Activity',
       'Are you sure you want to delete this activity?',
@@ -83,7 +73,6 @@ export default function ActivityDetailsScreen(_props: ActivityDetailsScreenProps
           text: 'Delete',
           style: 'destructive',
           onPress: () => {
-            console.log('🗑️ Delete functionality not implemented yet');
             Alert.alert('Success', 'Activity deleted successfully');
             router.back();
           },

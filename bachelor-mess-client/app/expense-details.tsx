@@ -42,21 +42,16 @@ export default function ExpenseDetailsPage() {
     try {
       setLoading(true);
       setError(null);
-      console.log('🔍 Loading expense data...');
 
       // Fetch statistics data
       const statsResponse = await statisticsService.getCompleteStatistics();
-      console.log('📊 Statistics response:', statsResponse);
 
       if (statsResponse.success && statsResponse.data) {
         setExpenseData(statsResponse.data as unknown as ExpenseDetailsData);
-        console.log('✅ Expense data loaded successfully');
       } else {
-        console.error('❌ Failed to load expense data:', statsResponse.error);
         setError(statsResponse.error || 'Failed to load expense data');
       }
     } catch (error) {
-      console.error('❌ Error loading expense data:', error);
       setError('Network error. Please check your connection.');
     } finally {
       setLoading(false);
@@ -195,7 +190,6 @@ export default function ExpenseDetailsPage() {
   };
 
   const handleCategoryPress = (category: string) => {
-    console.log('📊 Category pressed:', category);
     setSelectedCategory(category);
   };
 
@@ -241,9 +235,7 @@ export default function ExpenseDetailsPage() {
               },
             }))}
             color={data.color}
-            onPointPress={(point) => {
-              console.log('📈 Chart point pressed:', point);
-            }}
+            onPointPress={(_point) => {}}
           />
         </DetailCard>
 

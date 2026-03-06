@@ -22,7 +22,9 @@ import { BazarFilters } from './BazarFilters';
 import { SearchBar } from '../shared';
 import { BazarErrorState } from './BazarErrorState';
 import { PendingBazarDeleteRequests } from './PendingBazarDeleteRequests';
-import { BazarCard } from '../cards/BazarCard';
+import { ActionRow, StatusRow } from '../ui';
+import { formatDate } from '../../utils/dateUtils';
+import { Ionicons } from '@expo/vector-icons';
 import type { BazarCardBazar } from '../cards/BazarCard';
 import type {
   BazarEntry,
@@ -345,28 +347,56 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
     ]
   );
 
+
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'approved': return theme.status?.success ?? '#10b981';
+      case 'rejected': return theme.status?.error ?? '#ef4444';
+      default: return theme.status?.warning ?? '#f59e0b';
+    }
+  };
+
+  const getItemsSummary = (items: { name: string }[]) => {
+    if (!items || items.length === 0) return 'No items';
+    if (items.length <= 2) return items.map(i => i.name).join(', ');
+    return `${items[0].name}, ${items[1].name} +${items.length - 2} more`;
+  };
+
   const renderBazarItem = useCallback(
-    ({ item: bazar }: { item: BazarEntry }) => (
-      <BazarCard
-        bazar={{
-          id: bazar.id,
-          type: bazar.type ?? 'meal',
-          items: bazar.items ?? [],
-          totalAmount: bazar.totalAmount ?? 0,
-          date: bazar.date ?? new Date().toISOString(),
-          status: bazar.status ?? 'pending',
-          userId: bazar.userId ?? '',
-          description: bazar.description ?? '',
-          createdAt: bazar.createdAt,
-        }}
-        onPress={handleBazarPress}
-        onStatusUpdate={handleStatusUpdate}
-        onDelete={handleDelete}
-        showActions={isAdmin}
-        isAdmin={isAdmin}
-      />
-    ),
-    [isAdmin, handleBazarPress, handleStatusUpdate, handleDelete]
+    ({ item: bazar }: { item: BazarEntry }) => {
+      const title = `${getBazarOwnerName(bazar)} • ৳${(bazar.totalAmount ?? 0).toLocaleString()}`;
+      const subtitle = `${getItemsSummary(bazar.items ?? [])} • ${formatDate(bazar.date ?? new Date().toISOString())}`;
+      
+      if (isAdmin && bazar.status === 'pending') {
+        return (
+          <ActionRow
+            icon={<Ionicons name="cart-outline" size={20} color={theme.primary} />}
+            iconBackgroundColor={theme.primary + '18'}
+            title={title}
+            subtitle={subtitle}
+            primaryLabel="Approve"
+            onPrimary={() => handleStatusUpdate(bazar.id, 'approved')}
+            dangerLabel="Reject"
+            onDanger={() => handleStatusUpdate(bazar.id, 'rejected')}
+            onPress={() => handleBazarPress(bazar)}
+          />
+        );
+      }
+
+      return (
+        <StatusRow
+          icon={<Ionicons name="cart-outline" size={20} color={theme.primary} />}
+          iconBackgroundColor={theme.primary + '18'}
+          title={title}
+          subtitle={subtitle}
+          statusLabel={bazar.status?.charAt(0).toUpperCase() + (bazar.status?.slice(1) ?? '')}
+          statusColor={getStatusColor(bazar.status ?? 'pending')}
+          onPress={() => handleBazarPress(bazar)}
+        />
+      );
+    },
+    [isAdmin, handleBazarPress, handleStatusUpdate, theme]
   );
 
   if (!user) {

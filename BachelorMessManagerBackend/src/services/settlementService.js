@@ -100,8 +100,8 @@ async function getCurrentMonthSettlementForUser(reqUser) {
   const totalOut = roundMoney(mealCost + flatShare);
   const totalIn = roundMoney(mealBazarPaid + flatBazarPaid + paymentsTotal);
   const balance = roundMoney(totalIn - totalOut);
-  const due = balance > 0 ? balance : 0;
-  const receive = balance < 0 ? -balance : 0;
+  const due = balance < 0 ? Math.abs(balance) : 0;
+  const receive = balance > 0 ? balance : 0;
 
   return {
     due: roundMoney(due),
@@ -190,8 +190,8 @@ async function getCurrentMonthSettlementForGroup(reqUser) {
     const totalOut = roundMoney(mealCost + flatShare);
     const totalIn = roundMoney(mealBazarPaid + flatBazarPaid + paymentsTotal);
     const balance = roundMoney(totalIn - totalOut);
-    const due = balance > 0 ? balance : 0;
-    const receive = balance < 0 ? -balance : 0;
+    const due = balance < 0 ? Math.abs(balance) : 0;
+    const receive = balance > 0 ? balance : 0;
 
     return {
       userId: mid,

@@ -62,9 +62,9 @@ export const DESIGN_SYSTEM = {
 };
 
 export const GRADIENTS = {
-  primary: LightTheme.gradient.primary as readonly [string, string],
-  secondary: LightTheme.gradient.secondary as readonly [string, string],
-  success: LightTheme.gradient.success as readonly [string, string],
-  warning: LightTheme.gradient.warning as readonly [string, string],
-  info: LightTheme.gradient.info as readonly [string, string],
+  primary: LightTheme.gradient.primary as unknown as readonly [string, string],
+  secondary: LightTheme.gradient.secondary as unknown as readonly [string, string],
+  success: LightTheme.gradient.success as unknown as readonly [string, string],
+  warning: LightTheme.gradient.warning as unknown as readonly [string, string],
+  info: LightTheme.gradient.info as unknown as readonly [string, string],
 };

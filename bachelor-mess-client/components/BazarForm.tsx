@@ -321,7 +321,7 @@ export const BazarForm: React.FC<BazarFormProps> = ({
         {/* Header */}
         <View style={styles.header}>
           <LinearGradient
-            colors={theme.gradient?.primary?.length ? theme.gradient.primary : [theme.primary, theme.secondary]}
+            colors={(theme.gradient?.primary?.length ? theme.gradient.primary : [theme.primary, theme.secondary]) as unknown as readonly [string, string]}
             style={styles.headerGradient}
           >
             <View style={[styles.headerContent, { alignItems: 'center' }]}>

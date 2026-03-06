@@ -19,6 +19,7 @@ export interface ActionRowProps {
   onDanger: () => void;
   loading?: boolean;
   disabled?: boolean;
+  onPress?: () => void;
 }
 
 export const ActionRow: React.FC<ActionRowProps> = ({
@@ -32,6 +33,7 @@ export const ActionRow: React.FC<ActionRowProps> = ({
   onDanger,
   loading = false,
   disabled = false,
+  onPress,
 }) => {
   const right = (
     <View style={styles.actions}>
@@ -60,6 +62,7 @@ export const ActionRow: React.FC<ActionRowProps> = ({
       title={title}
       subtitle={subtitle}
       right={right}
+      onPress={onPress}
     />
   );
 };

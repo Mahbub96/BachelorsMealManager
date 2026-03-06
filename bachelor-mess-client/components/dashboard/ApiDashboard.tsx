@@ -69,31 +69,17 @@ export const ApiDashboard: React.FC = () => {
     if (isMounted.current) setError(null);
 
     try {
-      console.log('Loading dashboard data from API...');
       const response = await dashboardService.getCombinedData();
-
-      console.log('Dashboard response:', response);
 
       if (response.success && response.data) {
         if (isMounted.current) {
           setDashboardData(response.data);
         }
-        console.log('✅ Dashboard data loaded successfully');
       } else {
         const errorMessage = response.error || 'Failed to load dashboard data';
         if (isMounted.current) {
           setError(errorMessage);
         }
-        console.error('❌ Failed to load dashboard data:', errorMessage);
-
-        // Don't show alert for every error, let the UI handle it
-        console.log('🚨 Error Handler:', {
-          context: 'Dashboard Data',
-          message: errorMessage,
-          severity: 'MEDIUM',
-          timestamp: new Date().toISOString(),
-          type: 'UNKNOWN',
-        });
       }
     } catch (err) {
       const errorMessage =
@@ -101,16 +87,6 @@ export const ApiDashboard: React.FC = () => {
       if (isMounted.current) {
         setError(errorMessage);
       }
-      console.error('❌ Error loading dashboard data:', err);
-
-      // Log the error for debugging
-      console.log('🚨 Error Handler:', {
-        context: 'Dashboard Data',
-        message: errorMessage,
-        severity: 'MEDIUM',
-        timestamp: new Date().toISOString(),
-        type: 'UNKNOWN',
-      });
     } finally {
       if (isMounted.current) {
         setLoading(false);
@@ -123,8 +99,8 @@ export const ApiDashboard: React.FC = () => {
     try {
       const { default: dashboardService } = await import('@/services/dashboardService');
       await dashboardService.refreshDashboard();
-    } catch (error) {
-      console.log('⚠️ Could not refresh dashboard service cache:', error);
+    } catch {
+      // Silently handle cache refresh errors
     }
     await loadDashboardData();
   }, []);
@@ -159,8 +135,7 @@ export const ApiDashboard: React.FC = () => {
 
     const stats = dashboardData.stats;
 
-    console.log("Total meals and bazar are ", stats.totalMeals, stats)
-    
+
     // Calculate meal rate: totalBazarAmount / totalMeals
     const mealRate =
       stats.totalMeals > 0 && stats.monthlyExpense > 0
@@ -221,7 +196,6 @@ export const ApiDashboard: React.FC = () => {
 
   const getChartsData = () => {
     if (!dashboardData?.charts) {
-      console.log('❌ No charts data available');
       return {
         monthlyRevenue: [],
         currentMonthRevenue: {
@@ -231,21 +205,13 @@ export const ApiDashboard: React.FC = () => {
       };
     }
 
-    const chartsData = {
+    return {
       monthlyRevenue: (dashboardData.charts?.monthlyRevenue as Record<string, unknown>[]) || [],
       currentMonthRevenue: {
         revenue: safeNumber(dashboardData.stats?.balance || 0),
         expenses: safeNumber(dashboardData.stats?.monthlyExpense || 0),
       },
     };
-
-    console.log('📊 Charts data:', {
-      monthlyRevenueCount: chartsData.monthlyRevenue.length,
-      monthlyRevenueData: chartsData.monthlyRevenue,
-      currentMonthRevenue: chartsData.currentMonthRevenue,
-    });
-
-    return chartsData;
   };
 
   const handleQuickAction = (action: string) => {

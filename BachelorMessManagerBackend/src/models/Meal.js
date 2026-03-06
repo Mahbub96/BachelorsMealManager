@@ -73,10 +73,9 @@ mealSchema.index({ approvedBy: 1 });
 mealSchema.index({ createdAt: -1 });
 
 // Pre-save middleware to calculate total meals
-mealSchema.pre('save', function (next) {
+mealSchema.pre('save', function () {
   this.totalMeals =
     (this.breakfast ? 1 : 0) + (this.lunch ? 1 : 0) + (this.dinner ? 1 : 0);
-  next();
 });
 
 // Virtual for meal summary

@@ -114,7 +114,7 @@ bazarSchema.index({ approvedBy: 1 });
 bazarSchema.index({ createdAt: -1 });
 
 // Pre-save middleware to calculate item count and validate total amount
-bazarSchema.pre('save', function (next) {
+bazarSchema.pre('save', function () {
   // Calculate item count
   this.itemCount = this.items.length;
 
@@ -123,10 +123,8 @@ bazarSchema.pre('save', function (next) {
 
   // Validate that total amount matches calculated total
   if (Math.abs(this.totalAmount - calculatedTotal) > 0.01) {
-    return next(new Error('Total amount does not match sum of item prices'));
+    throw new Error('Total amount does not match sum of item prices');
   }
-
-  next();
 });
 
 // Virtual for bazar summary

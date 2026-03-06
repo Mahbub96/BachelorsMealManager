@@ -179,31 +179,24 @@ userSchema.virtual('fullProfile').get(function () {
 });
 
 // Pre-save middleware to hash password
-userSchema.pre('save', async function (next) {
+userSchema.pre('save', async function () {
   // Only hash the password if it has been modified (or is new)
-  if (!this.isModified('password')) return next();
+  if (!this.isModified('password')) return;
 
-  try {
-    // Hash password with cost of 12
-    const salt = await bcrypt.genSalt(
-      parseInt(process.env.BCRYPT_ROUNDS) || 12
-    );
-    this.password = await bcrypt.hash(this.password, salt);
+  // Hash password with cost of 12
+  const rounds = process.env.BCRYPT_ROUNDS ? parseInt(process.env.BCRYPT_ROUNDS, 10) : 12;
+  const salt = await bcrypt.genSalt(rounds);
+  this.password = await bcrypt.hash(this.password, salt);
 
-    // Set passwordChangedAt
-    this.passwordChangedAt = Date.now() - 1000; // Subtract 1 second to ensure token is created after password change
-    next();
-  } catch (error) {
-    next(error);
-  }
+  // Set passwordChangedAt
+  this.passwordChangedAt = Date.now() - 1000; // Subtract 1 second to ensure token is created after password change
 });
 
 // Pre-save middleware to update passwordChangedAt
-userSchema.pre('save', function (next) {
-  if (!this.isModified('password') || this.isNew) return next();
+userSchema.pre('save', function () {
+  if (!this.isModified('password') || this.isNew) return;
 
   this.passwordChangedAt = Date.now() - 1000;
-  next();
 });
 
 // Instance method to check if password matches
