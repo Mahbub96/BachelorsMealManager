@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -91,11 +92,10 @@ export default function LoginScreen() {
         }}
       >
         <ThemedView style={[modernStyles.card, { backgroundColor: theme.modal, shadowColor: theme.shadow.light }]}>
-          <Ionicons
-            name='person-circle-outline'
-            size={64}
-            color={theme.primary}
-            style={{ marginBottom: 16 }}
+          <Image
+            source={require('../assets/images/icon.png')}
+            style={modernStyles.logo}
+            resizeMode="contain"
           />
           <ThemedText type='title' style={[modernStyles.title, { color: theme.text.primary }]}>
             Sign in to Continue
@@ -178,6 +178,11 @@ const modernStyles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  logo: {
+    width: 80,
+    height: 80,
+    marginBottom: 16,
   },
   card: {
     width: '90%',

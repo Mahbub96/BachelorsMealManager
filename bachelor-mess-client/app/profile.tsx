@@ -43,11 +43,22 @@ export default function ProfileScreen() {
     averageDailyMeals: 0,
     averageBazarAmount: 0,
   });
-  const [recentActivity, setRecentActivity] = useState<{ icon?: string; action?: string; date?: string; id?: string; type?: string; title?: string }[]>([]);
+  const [recentActivity, setRecentActivity] = useState<
+    {
+      icon?: string;
+      action?: string;
+      date?: string;
+      id?: string;
+      type?: string;
+      title?: string;
+    }[]
+  >([]);
   const [showAdvancedStats, setShowAdvancedStats] = useState(false);
   const [removalRequests, setRemovalRequests] = useState<RemovalRequest[]>([]);
   const [leaveRequestLoading, setLeaveRequestLoading] = useState(false);
-  const [removalActionLoading, setRemovalActionLoading] = useState<string | null>(null);
+  const [removalActionLoading, setRemovalActionLoading] = useState<
+    string | null
+  >(null);
 
   const accountMenuItems = [
     {
@@ -220,8 +231,19 @@ export default function ProfileScreen() {
 
       if (response.success && response.data) {
         const data = response.data as {
-          meals?: { total?: number; approved?: number; averagePerDay?: number; lastMealDate?: string; daysSinceLastMeal?: number };
-          bazar?: { totalEntries?: number; totalAmount?: number; approvedAmount?: number; averageAmount?: number };
+          meals?: {
+            total?: number;
+            approved?: number;
+            averagePerDay?: number;
+            lastMealDate?: string;
+            daysSinceLastMeal?: number;
+          };
+          bazar?: {
+            totalEntries?: number;
+            totalAmount?: number;
+            approvedAmount?: number;
+            averageAmount?: number;
+          };
           payments?: { lastPaymentDate?: string; monthlyContribution?: number };
         };
         const meals = data.meals ?? {};
@@ -239,7 +261,12 @@ export default function ProfileScreen() {
           averageBazarAmount: bazar.averageAmount ?? 0,
         });
 
-        const realActivity: { type?: string; action?: string; date?: string; icon?: string }[] = [];
+        const realActivity: {
+          type?: string;
+          action?: string;
+          date?: string;
+          icon?: string;
+        }[] = [];
         if (meals?.lastMealDate) {
           realActivity.push({
             type: 'meal',
@@ -310,10 +337,10 @@ export default function ProfileScreen() {
   }, [router]);
 
   const hasPendingLeaveRequest = removalRequests.some(
-    (r) => r.type === 'member_leave' && r.status === 'pending'
+    r => r.type === 'member_leave' && r.status === 'pending'
   );
   const adminRemovalRequest = removalRequests.find(
-    (r) => r.type === 'admin_removal' && r.status === 'pending'
+    r => r.type === 'admin_removal' && r.status === 'pending'
   );
 
   const handleRequestLeave = useCallback(async () => {
@@ -322,12 +349,15 @@ export default function ProfileScreen() {
     try {
       const res = await removalRequestService.createLeaveRequest();
       if (res.success && res.data) {
-        setRemovalRequests((prev) => [res.data!, ...prev]);
+        setRemovalRequests(prev => [res.data!, ...prev]);
       } else {
         Alert.alert('Error', res.error ?? 'Failed to submit leave request.');
       }
     } catch (e) {
-      Alert.alert('Error', (e as Error).message ?? 'Failed to submit leave request.');
+      Alert.alert(
+        'Error',
+        (e as Error).message ?? 'Failed to submit leave request.'
+      );
     } finally {
       setLeaveRequestLoading(false);
     }
@@ -357,9 +387,7 @@ export default function ProfileScreen() {
     try {
       const res = await removalRequestService.reject(requestId);
       if (res.success) {
-        setRemovalRequests((prev) =>
-          prev.filter((r) => r._id !== requestId)
-        );
+        setRemovalRequests(prev => prev.filter(r => r._id !== requestId));
       } else {
         Alert.alert('Error', res.error ?? 'Failed to decline.');
       }
@@ -382,7 +410,11 @@ export default function ProfileScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- load once on mount
   }, []);
 
-  const handleMenuPress = (item: { id?: string; action?: string; path?: string }) => {
+  const handleMenuPress = (item: {
+    id?: string;
+    action?: string;
+    path?: string;
+  }) => {
     if (item.action === 'logout') {
       Alert.alert('Logout', 'Are you sure you want to logout?', [
         {
@@ -487,7 +519,18 @@ export default function ProfileScreen() {
     }
   };
 
-  const renderMenuSection = (title: string, items: { id: string; title: string; subtitle?: string; icon: string; action?: string; path?: string; color?: string }[]) => (
+  const renderMenuSection = (
+    title: string,
+    items: {
+      id: string;
+      title: string;
+      subtitle?: string;
+      icon: string;
+      action?: string;
+      path?: string;
+      color?: string;
+    }[]
+  ) => (
     <View style={styles.menuSection}>
       <ThemedText style={styles.sectionTitle}>{title}</ThemedText>
       {items.map(item => (
@@ -500,7 +543,11 @@ export default function ProfileScreen() {
             <View
               style={[styles.menuIcon, { backgroundColor: item.color + '20' }]}
             >
-              <Ionicons name={item.icon as IconName} size={20} color={item.color} />
+              <Ionicons
+                name={item.icon as IconName}
+                size={20}
+                color={item.color}
+              />
             </View>
             <View style={styles.menuContent}>
               <ThemedText style={styles.menuTitle}>{item.title}</ThemedText>
@@ -574,7 +621,11 @@ export default function ProfileScreen() {
       {recentActivity.map((activity, index) => (
         <View key={index} style={styles.activityItem}>
           <View style={styles.activityIcon}>
-            <Ionicons name={activity.icon as IconName} size={16} color='#667eea' />
+            <Ionicons
+              name={activity.icon as IconName}
+              size={16}
+              color='#667eea'
+            />
           </View>
           <View style={styles.activityContent}>
             <ThemedText style={styles.activityText}>
@@ -597,8 +648,8 @@ export default function ProfileScreen() {
 
   return (
     <ScreenLayout
-      title="Profile"
-      subtitle="Manage your account and preferences"
+      title='Profile'
+      subtitle='Manage your account and preferences'
       showBack
       onBackPress={handleBack}
     >
@@ -626,25 +677,39 @@ export default function ProfileScreen() {
                   <View style={styles.removalActions}>
                     <TouchableOpacity
                       style={[styles.removalBtn, styles.declineBtn]}
-                      onPress={() => handleDeclineRemoval(adminRemovalRequest._id)}
-                      disabled={removalActionLoading === adminRemovalRequest._id}
+                      onPress={() =>
+                        handleDeclineRemoval(adminRemovalRequest._id)
+                      }
+                      disabled={
+                        removalActionLoading === adminRemovalRequest._id
+                      }
                     >
-                      <ThemedText style={styles.declineBtnText}>Decline</ThemedText>
+                      <ThemedText style={styles.declineBtnText}>
+                        Decline
+                      </ThemedText>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[styles.removalBtn, styles.acceptRemovalBtn]}
-                      onPress={() => handleAcceptRemoval(adminRemovalRequest._id)}
-                      disabled={removalActionLoading === adminRemovalRequest._id}
+                      onPress={() =>
+                        handleAcceptRemoval(adminRemovalRequest._id)
+                      }
+                      disabled={
+                        removalActionLoading === adminRemovalRequest._id
+                      }
                     >
                       <ThemedText style={styles.acceptRemovalBtnText}>
-                        {removalActionLoading === adminRemovalRequest._id ? '...' : 'Accept'}
+                        {removalActionLoading === adminRemovalRequest._id
+                          ? '...'
+                          : 'Accept'}
                       </ThemedText>
                     </TouchableOpacity>
                   </View>
                 </View>
               )}
               <View style={styles.removalCard}>
-                <ThemedText style={styles.removalCardTitle}>Leave group</ThemedText>
+                <ThemedText style={styles.removalCardTitle}>
+                  Leave group
+                </ThemedText>
                 <ThemedText style={styles.removalCardSubtitle}>
                   {hasPendingLeaveRequest
                     ? 'Your leave request is pending. Admin will review it.'
@@ -657,7 +722,9 @@ export default function ProfileScreen() {
                     disabled={leaveRequestLoading}
                   >
                     <ThemedText style={styles.leaveRequestBtnText}>
-                      {leaveRequestLoading ? 'Submitting...' : 'Request to leave'}
+                      {leaveRequestLoading
+                        ? 'Submitting...'
+                        : 'Request to leave'}
                     </ThemedText>
                   </TouchableOpacity>
                 )}
