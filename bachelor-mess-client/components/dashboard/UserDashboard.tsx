@@ -16,6 +16,7 @@ import logger from '@/utils/logger';
 import { useRouter, useFocusEffect } from 'expo-router';
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
+  Dimensions,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -40,6 +41,10 @@ import {
   type StatItem,
 } from './index';
 import { ModernLoader } from '../ui/ModernLoader';
+
+const { height: screenHeight } = Dimensions.get('window');
+/** Recent Activity section height (match Meals/Bazar): ~74% of screen, min 360, max 700 */
+const RECENT_ACTIVITY_SECTION_HEIGHT = Math.max(360, Math.min(700, screenHeight * 0.74));
 
 export const UserDashboard: React.FC = () => {
   const isMounted = useRef(true);
@@ -752,7 +757,10 @@ export const UserDashboard: React.FC = () => {
           </ThemedText>
         )}
         {!activitiesLoading && (
-          <ScrollableSection>
+          <ScrollableSection
+            maxHeight={RECENT_ACTIVITY_SECTION_HEIGHT}
+            minHeight={360}
+          >
             <RecentActivity
               activities={recentActivities}
               maxItems={recentActivities.length}

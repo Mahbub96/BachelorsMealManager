@@ -26,7 +26,9 @@ import { RecentActivity } from './RecentActivity';
 import { useTheme } from '@/context/ThemeContext';
 import { ThemedView } from '../ThemedView';
 
-const { width: screenWidth } = Dimensions.get('window');
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+/** Recent Activity section height (match Meals/Bazar/UserDashboard): ~74% of screen, min 360, max 700 */
+const RECENT_ACTIVITY_SECTION_HEIGHT = Math.max(360, Math.min(700, screenHeight * 0.74));
 
 // Removed hardcoded design system - using theme instead
 
@@ -384,7 +386,10 @@ export const ApiDashboard: React.FC = () => {
         />
 
         {/* Recent Activity */}
-        <ScrollableSection>
+        <ScrollableSection
+          maxHeight={RECENT_ACTIVITY_SECTION_HEIGHT}
+          minHeight={360}
+        >
           <RecentActivity
             activities={(activities || []).map(activity => ({
               ...activity,

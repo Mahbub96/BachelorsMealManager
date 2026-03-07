@@ -1,11 +1,20 @@
 import React, { useCallback, useMemo } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl, Platform } from 'react-native';
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  RefreshControl,
+  Platform,
+  Dimensions,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import {
+  ListCard,
   ListSection,
+  ScrollableSection,
   StatusRow,
   ThemeButton,
   ErrorBanner,
@@ -18,11 +27,22 @@ import {
 } from '@/components/ui';
 import { useTheme } from '@/context/ThemeContext';
 import { useAccountsTab } from '@/hooks/useAccountsTab';
-import { formatPaymentDate, getPaymentMethodLabel, getRefundStatusLabel } from '@/components/payments';
-import { getLedgerTypeLabel, type LedgerEntryItem } from '@/services/ledgerService';
+import {
+  formatPaymentDate,
+  getPaymentMethodLabel,
+  getRefundStatusLabel,
+} from '@/components/payments';
+import {
+  getLedgerTypeLabel,
+  type LedgerEntryItem,
+} from '@/services/ledgerService';
 import type { PaymentHistoryEntry } from '@/services/userStatsService';
 import type { RefundItem } from '@/services/refundService';
 import { DESIGN_SYSTEM } from '@/components/dashboard/DesignSystem';
+
+const { height: screenHeight } = Dimensions.get('window');
+/** List section height (match Home tab Recent Activity): ~74% of screen, min 360, max 700 */
+const LIST_SECTION_HEIGHT = Math.max(360, Math.min(700, screenHeight * 0.74));
 
 export default function AccountsTabScreen() {
   const router = useRouter();
@@ -48,10 +68,30 @@ export default function AccountsTabScreen() {
 
   const overviewGridItems = useMemo(
     () => [
-      { label: 'Pool this month', value: fundAtHome, valuePrefix: '৳', tintColor: theme?.primary },
-      { label: 'Reserved for flat', value: totalFlatBazar, valuePrefix: '৳', tintColor: theme?.primary },
-      { label: 'Due this month', value: due, valuePrefix: '৳', tintColor: theme?.status?.warning ?? '#f59e0b' },
-      { label: 'Expected', value: receive, valuePrefix: '৳', tintColor: theme?.status?.success ?? '#10b981' },
+      {
+        label: 'Pool this month',
+        value: fundAtHome,
+        valuePrefix: '৳',
+        tintColor: theme?.primary,
+      },
+      {
+        label: 'Reserved for flat',
+        value: totalFlatBazar,
+        valuePrefix: '৳',
+        tintColor: theme?.primary,
+      },
+      {
+        label: 'Due this month',
+        value: due,
+        valuePrefix: '৳',
+        tintColor: theme?.status?.warning ?? '#f59e0b',
+      },
+      {
+        label: 'Expected',
+        value: receive,
+        valuePrefix: '৳',
+        tintColor: theme?.status?.success ?? '#10b981',
+      },
     ],
     [fundAtHome, totalFlatBazar, due, receive, theme?.primary, theme?.status]
   );
@@ -59,7 +99,13 @@ export default function AccountsTabScreen() {
   const renderPaymentHistoryRow = useCallback(
     (entry: PaymentHistoryEntry) => (
       <StatusRow
-        icon={<Ionicons name="checkmark-circle-outline" size={20} color={theme.status?.success} />}
+        icon={
+          <Ionicons
+            name='checkmark-circle-outline'
+            size={20}
+            color={theme.status?.success}
+          />
+        }
         iconBackgroundColor={(theme.status?.success ?? '#10b981') + '20'}
         title={`৳${(Number(entry.amount) || 0).toLocaleString()}`}
         subtitle={`${getPaymentMethodLabel(entry.method)} · ${formatPaymentDate(entry.date)}`}
@@ -73,17 +119,17 @@ export default function AccountsTabScreen() {
   const renderRefundRow = useCallback(
     (r: RefundItem) => (
       <StatusRow
-        icon={<Ionicons name="cash-outline" size={20} color={theme.primary} />}
+        icon={<Ionicons name='cash-outline' size={20} color={theme.primary} />}
         iconBackgroundColor={theme.primary + '18'}
         title={`৳${(Number(r.amount) || 0).toLocaleString()}`}
         subtitle={r.sentAt ? formatPaymentDate(r.sentAt) : ''}
         statusLabel={getRefundStatusLabel(r.status)}
         statusColor={
           r.status === 'acknowledged'
-            ? theme.status?.success ?? '#10b981'
+            ? (theme.status?.success ?? '#10b981')
             : r.status === 'sent'
-              ? theme.status?.warning ?? '#f59e0b'
-              : theme.text?.secondary ?? '#6b7280'
+              ? (theme.status?.warning ?? '#f59e0b')
+              : (theme.text?.secondary ?? '#6b7280')
         }
       />
     ),
@@ -93,12 +139,14 @@ export default function AccountsTabScreen() {
   const renderLedgerRow = useCallback(
     (e: LedgerEntryItem) => (
       <StatusRow
-        icon={<Ionicons name="receipt-outline" size={20} color={theme.primary} />}
+        icon={
+          <Ionicons name='receipt-outline' size={20} color={theme.primary} />
+        }
         iconBackgroundColor={theme.primary + '18'}
         title={e.description ?? getLedgerTypeLabel(e.type)}
         subtitle={`${typeof e.userId === 'object' && e.userId?.name ? e.userId.name : ''} · ৳${(Number(e.amount) || 0).toLocaleString()}`}
-        statusLabel=""
-        statusColor="transparent"
+        statusLabel=''
+        statusColor='transparent'
       />
     ),
     [theme]
@@ -107,40 +155,48 @@ export default function AccountsTabScreen() {
   if (loading) {
     return (
       <ThemedView style={styles.centered}>
-        <ModernLoader visible text="Loading…" />
+        <ModernLoader visible text='Loading…' />
       </ThemedView>
     );
   }
 
-  const contentPadding = Platform.OS === 'web' ? DESIGN_SYSTEM.spacing.xl : DESIGN_SYSTEM.spacing.md;
+  const contentPadding =
+    Platform.OS === 'web' ? DESIGN_SYSTEM.spacing.xl : DESIGN_SYSTEM.spacing.md;
 
   return (
     <ScrollView
       style={[styles.scrollView, { backgroundColor: theme.background }]}
       contentContainerStyle={styles.scrollContent}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={refresh} />
+      }
       showsVerticalScrollIndicator={false}
     >
       <View style={[styles.content, { paddingHorizontal: contentPadding }]}>
         {error && <ErrorBanner message={error} onRetry={refresh} />}
 
         <View style={styles.header}>
-          <ThemedText style={[styles.screenTitle, { color: theme.text?.primary }]}>
+          <ThemedText
+            style={[styles.screenTitle, { color: theme.text?.primary }]}
+          >
             My Accounts
           </ThemedText>
-          <ThemedText style={[styles.screenSubtitle, { color: theme.text?.secondary }]} numberOfLines={1}>
+          <ThemedText
+            style={[styles.screenSubtitle, { color: theme.text?.secondary }]}
+            numberOfLines={1}
+          >
             This month
           </ThemedText>
         </View>
 
-        <Section title="Overview" headerVariant="label">
+        <Section title='Overview' headerVariant='label'>
           <StatGrid items={overviewGridItems} />
           <View style={styles.totalPaidWrap}>
             <HighlightCard
-              label="Total paid"
+              label='Total paid'
               value={totalPaidAllTime}
-              valuePrefix="৳"
-              subtitle="All time"
+              valuePrefix='৳'
+              subtitle='All time'
               tintColor={theme.primary}
               compact
             />
@@ -149,47 +205,69 @@ export default function AccountsTabScreen() {
 
         <Divider verticalMargin={DESIGN_SYSTEM.spacing.xl} />
 
-        <Section title="Activity" headerVariant="label">
+        <Section title='Activity' headerVariant='label'>
           <ListSection
-            title="Payment history"
+            title='Payment history'
             items={paymentHistory}
             keyExtractor={(e, i) => `${e.date ?? ''}-${e.amount}-${i}`}
             renderItem={renderPaymentHistoryRow}
-            emptyHint="No payments yet."
+            emptyHint='No payments yet.'
           />
-          <ListSection
-            title="Refunds"
-            items={refunds}
-            keyExtractor={(r, i) => r.id ?? `refund-${i}`}
-            renderItem={renderRefundRow}
-            emptyHint="No refunds yet."
-          />
+          <ScrollableSection maxHeight={LIST_SECTION_HEIGHT} minHeight={360}>
+            <ListSection
+              title='Refunds'
+              items={refunds}
+              keyExtractor={(r, i) => r.id ?? `refund-${i}`}
+              renderItem={renderRefundRow}
+              emptyHint='No refunds yet.'
+            />
+          </ScrollableSection>
           <View style={styles.ctaWrap}>
             <ThemeButton
-              title="View full ledger"
+              title='View full ledger'
               onPress={() => router.push('/ledger')}
-              variant="secondary"
+              variant='secondary'
             />
           </View>
         </Section>
 
         <Divider verticalMargin={DESIGN_SYSTEM.spacing.xl} />
 
-        <Section title="By month" headerVariant="label">
+        {/* By month – same layout as Home tab Recent Activity: title, selector, then scrollable list */}
+        <View style={[styles.sectionBlock, { paddingHorizontal: contentPadding }]}>
+          <View style={styles.sectionHeader}>
+            <ThemedText style={[styles.sectionTitle, { color: theme.text?.primary }]}>
+              Transactions ({ledgerEntries.length})
+            </ThemedText>
+            <ThemedText style={[styles.sectionSubtitle, { color: theme.text?.secondary }]}>
+              Ledger for selected month
+            </ThemedText>
+          </View>
           <MonthYearSelector
             month={selectedMonth}
             year={selectedYear}
             onPrev={goPrevMonth}
             onNext={goNextMonth}
-            subtitle="Transactions"
+            subtitle='Month'
           />
-          <ListSection
-            items={ledgerEntries}
-            keyExtractor={(e, i) => e._id ?? `ledger-${i}`}
-            renderItem={renderLedgerRow}
-            emptyHint="No transactions this month."
-          />
-        </Section>
+          <ScrollableSection maxHeight={LIST_SECTION_HEIGHT} minHeight={360}>
+            {ledgerEntries.length === 0 ? (
+              <View style={styles.emptyState}>
+                <ThemedText style={[styles.emptyText, { color: theme.text?.secondary }]}>
+                  No transactions this month.
+                </ThemedText>
+              </View>
+            ) : (
+              <ListCard>
+                {ledgerEntries.map((e, i) => (
+                  <React.Fragment key={e._id ?? `ledger-${i}`}>
+                    {renderLedgerRow(e)}
+                  </React.Fragment>
+                ))}
+              </ListCard>
+            )}
+          </ScrollableSection>
+        </View>
       </View>
     </ScrollView>
   );
@@ -215,4 +293,30 @@ const styles = StyleSheet.create({
   },
   totalPaidWrap: { marginTop: DESIGN_SYSTEM.spacing.sm, width: '100%' },
   ctaWrap: { marginTop: DESIGN_SYSTEM.spacing.md },
+  /* By month block – same as Home tab Recent Activity */
+  sectionBlock: {
+    marginBottom: 8,
+  },
+  sectionHeader: {
+    marginBottom: 14,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+    marginBottom: 2,
+  },
+  sectionSubtitle: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  emptyState: {
+    paddingVertical: 32,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
 });

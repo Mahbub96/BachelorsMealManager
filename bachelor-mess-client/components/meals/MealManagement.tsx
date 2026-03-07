@@ -39,7 +39,9 @@ import { MealListFilters, type MealListFiltersState } from './MealListFilters';
 import { SearchAndFilterRow } from '../shared';
 import { toLocalDateString, formatDate } from '../../utils/dateUtils';
 
-const { width: screenWidth } = Dimensions.get('window');
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+/** Meals History gets more vertical space: ~74% of screen, min 400, max 700 */
+const MEALS_HISTORY_SECTION_HEIGHT = Math.max(400, Math.min(700, screenHeight * 0.74));
 
 type MealLike = {
   breakfast?: boolean;
@@ -656,7 +658,10 @@ export const MealManagement: React.FC<MealManagementProps> = ({
               onFilterChange={setMealListFilters}
             />
           </SearchAndFilterRow>
-          <ScrollableSection>
+          <ScrollableSection
+            maxHeight={MEALS_HISTORY_SECTION_HEIGHT}
+            minHeight={360}
+          >
             <TransactionList
               loading={false}
               emptyHint={

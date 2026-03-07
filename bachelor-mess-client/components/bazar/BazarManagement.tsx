@@ -2,8 +2,9 @@ import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   StyleSheet,
-  FlatList,
+  ScrollView,
   RefreshControl,
+  Dimensions,
   type ViewStyle,
   type TextStyle,
 } from 'react-native';
@@ -30,6 +31,10 @@ import type {
   BazarEntry,
   BazarFilters as BazarFiltersType,
 } from '../../services/bazarService';
+
+const { height: screenHeight } = Dimensions.get('window');
+/** Bazar History section height (match Meals tab): ~74% of screen, min 360, max 700 */
+const BAZAR_HISTORY_SECTION_HEIGHT = Math.max(360, Math.min(700, screenHeight * 0.74));
 
 type BazarManagementHeaderStyles = {
   mainContainer: ViewStyle;
@@ -360,14 +365,15 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
     return `${items[0].name}, ${items[1].name} +${items.length - 2} more`;
   };
 
-  const renderBazarItem = useCallback(
-    ({ item: bazar }: { item: BazarEntry }) => {
+  const renderBazarRow = useCallback(
+    (bazar: BazarEntry) => {
       const title = `${getBazarOwnerName(bazar)} • ৳${(bazar.totalAmount ?? 0).toLocaleString()}`;
       const subtitle = `${getItemsSummary(bazar.items ?? [])} • ${formatDate(bazar.date ?? new Date().toISOString())}`;
-      
+
       if (isAdmin && bazar.status === 'pending') {
         return (
           <ActionRow
+            key={bazar.id ?? (bazar as { _id?: string })._id ?? `bazar-${bazar.date}`}
             icon={<Ionicons name="cart-outline" size={20} color={theme.primary} />}
             iconBackgroundColor={theme.primary + '18'}
             title={title}
@@ -380,9 +386,9 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
           />
         );
       }
-
       return (
         <StatusRow
+          key={bazar.id ?? (bazar as { _id?: string })._id ?? `bazar-${bazar.date}`}
           icon={<Ionicons name="cart-outline" size={20} color={theme.primary} />}
           iconBackgroundColor={theme.primary + '18'}
           title={title}
@@ -429,43 +435,42 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
 
   return (
     <ThemedView style={styles.container}>
-      <View style={styles.listHeaderWrapper}>
-        {listHeaderElement}
-      </View>
-      <ScrollableSection mode="container" fillContainer style={styles.listSection}>
-        <FlatList
-          data={bazarEntriesToShow}
-          renderItem={renderBazarItem}
-          keyExtractor={(item, index) =>
-            item.id ?? (item as { _id?: string })._id ?? `bazar-${index}`
-          }
-          contentContainerStyle={styles.listContent}
-          style={styles.flatList}
-          showsVerticalScrollIndicator={true}
-          keyboardShouldPersistTaps="handled"
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handlePullRefresh}
-            />
-          }
-          ListEmptyComponent={
-            listError ? (
-              <View style={styles.emptyMessage}>
-                <ThemedText style={{ color: theme.text?.secondary }}>
-                  {listError}
-                </ThemedText>
-              </View>
-            ) : (
-              <View style={styles.emptyMessage}>
-                <ThemedText style={{ color: theme.text?.secondary }}>
-                  No bazar items yet
-                </ThemedText>
-              </View>
-            )
-          }
-        />
-      </ScrollableSection>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handlePullRefresh}
+          />
+        }
+      >
+        <View style={styles.listHeaderWrapper}>
+          {listHeaderElement}
+        </View>
+        <ScrollableSection
+          maxHeight={BAZAR_HISTORY_SECTION_HEIGHT}
+          minHeight={360}
+        >
+          {listError ? (
+            <View style={styles.emptyMessage}>
+              <ThemedText style={{ color: theme.text?.secondary }}>
+                {listError}
+              </ThemedText>
+            </View>
+          ) : bazarEntriesToShow.length === 0 ? (
+            <View style={styles.emptyMessage}>
+              <ThemedText style={{ color: theme.text?.secondary }}>
+                No bazar items yet
+              </ThemedText>
+            </View>
+          ) : (
+            bazarEntriesToShow.map(renderBazarRow)
+          )}
+        </ScrollableSection>
+      </ScrollView>
     </ThemedView>
   );
 };
@@ -474,18 +479,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 28,
+  },
   listHeaderWrapper: {
-    flexShrink: 0,
+    paddingBottom: 16,
   },
   headerFixedContainer: {
     paddingVertical: 12,
-  },
-  listSection: {
-    flex: 1,
-    minHeight: 0,
-  },
-  flatList: {
-    flex: 1,
   },
   mainContainer: {
     flex: 1,
@@ -516,10 +520,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     letterSpacing: -0.5,
-  },
-  listContent: {
-    flexGrow: 1,
-    paddingBottom: 20,
   },
   emptyMessage: {
     padding: 16,
