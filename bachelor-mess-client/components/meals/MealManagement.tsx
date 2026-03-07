@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -11,6 +11,7 @@ import {
   Platform,
   Modal,
 } from 'react-native';
+import { KeyboardAwareScrollView } from '@/contexts/KeyboardScrollContext';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
@@ -31,7 +32,7 @@ import { useMealManagement } from '../../hooks/useMealManagement';
 import mealService from '../../services/mealService';
 import { useThemeColor } from '../../hooks/useThemeColor';
 import { ScreenBackButton } from '../ui/ScreenBackButton';
-import { InfoModal, TransactionList, type InfoModalVariant } from '../ui';
+import { InfoModal, ScrollableSection, TransactionList, type InfoModalVariant } from '../ui';
 import { MealDetailModal } from './MealDetailModal';
 import { PendingMealDeleteRequests } from './PendingMealDeleteRequests';
 import { MealListFilters, type MealListFiltersState } from './MealListFilters';
@@ -108,6 +109,15 @@ export const MealManagement: React.FC<MealManagementProps> = ({
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [historyFilter, setHistoryFilter] = useState<'total' | 'my'>('total');
   const [mealSearchQuery, setMealSearchQuery] = useState('');
+
+  const addMealInputRefs = useRef<Record<string, TextInput | null>>({});
+  const addMealFocusScrollRef = useRef<(r: TextInput | null) => void>(() => {});
+  const onAddMealScrollReady = useCallback((api: { focusScroll: (r: TextInput | null) => void }) => {
+    addMealFocusScrollRef.current = api.focusScroll;
+  }, []);
+  const addMealFocusScroll = useCallback((key: string) => {
+    addMealFocusScrollRef.current(addMealInputRefs.current[key] ?? null);
+  }, []);
   const [mealListFilters, setMealListFilters] = useState<MealListFiltersState>({
     scope: 'mine',
     status: 'all',
@@ -646,26 +656,28 @@ export const MealManagement: React.FC<MealManagementProps> = ({
               onFilterChange={setMealListFilters}
             />
           </SearchAndFilterRow>
-          <TransactionList
-            loading={false}
-            emptyHint={
-              mealSearchQuery.trim() || mealListFilters.status !== 'all' || (mealListFilters.dateRange !== 'month' && mealListFilters.dateRange !== 'all')
-                ? 'No meals match your search or filters'
-                : mealListFilters.scope === 'mine'
-                ? 'No My Meals recorded yet'
-                : "No one's meals in this period"
-            }
-            items={filteredMealsHistory.map((meal, index) => ({
-              id: meal.id ?? `meal-${index}`,
-              title: `Meal on ${formatDate(meal.date || new Date().toISOString())}`,
-              subtitle: `${getMealAmountLabel(meal)} • ${getMealSummary(meal)}`,
-              icon: 'restaurant-outline',
-              iconBackgroundColor: (theme.status?.success ?? theme.primary) + '18',
-              iconColor: theme.status?.success ?? theme.primary,
-              amountText: meal?.status === 'approved' ? 'Approved' : meal?.status === 'rejected' ? 'Rejected' : 'Pending',
-              amountColor: meal?.status === 'approved' ? theme.status?.success : meal?.status === 'rejected' ? theme.status?.error : theme.status?.warning,
-            }))}
-          />
+          <ScrollableSection>
+            <TransactionList
+              loading={false}
+              emptyHint={
+                mealSearchQuery.trim() || mealListFilters.status !== 'all' || (mealListFilters.dateRange !== 'month' && mealListFilters.dateRange !== 'all')
+                  ? 'No meals match your search or filters'
+                  : mealListFilters.scope === 'mine'
+                  ? 'No My Meals recorded yet'
+                  : "No one's meals in this period"
+              }
+              items={filteredMealsHistory.map((meal, index) => ({
+                id: meal.id ?? `meal-${index}`,
+                title: `Meal on ${formatDate(meal.date || new Date().toISOString())}`,
+                subtitle: `${getMealAmountLabel(meal)} • ${getMealSummary(meal)}`,
+                icon: 'restaurant-outline',
+                iconBackgroundColor: (theme.status?.success ?? theme.primary) + '18',
+                iconColor: theme.status?.success ?? theme.primary,
+                amountText: meal?.status === 'approved' ? 'Approved' : meal?.status === 'rejected' ? 'Rejected' : 'Pending',
+                amountColor: meal?.status === 'approved' ? theme.status?.success : meal?.status === 'rejected' ? theme.status?.error : theme.status?.warning,
+              }))}
+            />
+          </ScrollableSection>
         </View>
       </ScrollView>
     );
@@ -681,10 +693,11 @@ export const MealManagement: React.FC<MealManagementProps> = ({
   };
 
   const renderAddMeal = () => (
-    <ScrollView
+    <KeyboardAwareScrollView
       style={styles.scrollView}
       contentContainerStyle={styles.addMealScrollContent}
       showsVerticalScrollIndicator={false}
+      onReady={onAddMealScrollReady}
     >
       <ScreenBackButton onPress={() => setActiveTab('overview')} />
       <DashboardHeader
@@ -891,6 +904,8 @@ export const MealManagement: React.FC<MealManagementProps> = ({
                     Breakfast
                   </ThemedText>
                   <TextInput
+                    ref={r => { addMealInputRefs.current['guestBreakfast'] = r; }}
+                    onFocus={() => addMealFocusScroll('guestBreakfast')}
                     style={[
                       styles.guestMealInput,
                       { backgroundColor, borderColor, color: textColor },
@@ -916,6 +931,8 @@ export const MealManagement: React.FC<MealManagementProps> = ({
                     Lunch
                   </ThemedText>
                   <TextInput
+                    ref={r => { addMealInputRefs.current['guestLunch'] = r; }}
+                    onFocus={() => addMealFocusScroll('guestLunch')}
                     style={[
                       styles.guestMealInput,
                       { backgroundColor, borderColor, color: textColor },
@@ -941,6 +958,8 @@ export const MealManagement: React.FC<MealManagementProps> = ({
                     Dinner
                   </ThemedText>
                   <TextInput
+                    ref={r => { addMealInputRefs.current['guestDinner'] = r; }}
+                    onFocus={() => addMealFocusScroll('guestDinner')}
                     style={[
                       styles.guestMealInput,
                       { backgroundColor, borderColor, color: textColor },
@@ -971,6 +990,8 @@ export const MealManagement: React.FC<MealManagementProps> = ({
             Notes (Optional)
           </ThemedText>
           <TextInput
+            ref={r => { addMealInputRefs.current['notes'] = r; }}
+            onFocus={() => addMealFocusScroll('notes')}
             style={[
               styles.notesInput,
               { backgroundColor, borderColor, color: textColor },
@@ -1053,7 +1074,7 @@ export const MealManagement: React.FC<MealManagementProps> = ({
           />
         )
       )}
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 
   const renderHistory = () => (
@@ -1128,9 +1149,10 @@ export const MealManagement: React.FC<MealManagementProps> = ({
           </TouchableOpacity>
         </View>
 
-        <FlatList
-          data={historyMeals}
-          style={styles.historyFlatList}
+        <View style={styles.historyListContainer}>
+          <FlatList
+            data={historyMeals}
+            style={styles.historyFlatList}
           keyExtractor={(item, index) => item.id || `meal-${index}`}
           renderItem={({ item: meal, index }) => (
             <ActivityCard
@@ -1179,7 +1201,8 @@ export const MealManagement: React.FC<MealManagementProps> = ({
           )}
           contentContainerStyle={styles.historyList}
           showsVerticalScrollIndicator={false}
-        />
+          />
+        </View>
       </View>
     </View>
   );
@@ -1418,6 +1441,11 @@ const styles = StyleSheet.create({
   historyContent: {
     flex: 1,
     padding: 20,
+    minHeight: 0,
+  },
+  historyListContainer: {
+    flex: 1,
+    minHeight: 0,
   },
   historyFlatList: {
     flex: 1,

@@ -3,12 +3,11 @@
  * Use for API payloads (YYYY-MM-DD) and display (locale-aware).
  */
 
-/** Format Date as YYYY-MM-DD for the calendar day (timezone-safe for API). */
+/** Format Date as YYYY-MM-DD for the calendar day the user sees (local date, for API). */
 export function toLocalDateString(d: Date): string {
-  const atNoon = new Date(d.getTime() + 12 * 60 * 60 * 1000);
-  const y = atNoon.getUTCFullYear();
-  const m = atNoon.getUTCMonth() + 1;
-  const day = atNoon.getUTCDate();
+  const y = d.getFullYear();
+  const m = d.getMonth() + 1;
+  const day = d.getDate();
   return `${y}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 

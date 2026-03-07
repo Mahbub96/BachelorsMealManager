@@ -332,18 +332,18 @@ export default function BazarListScreen(_props: BazarListScreenProps) {
             />
           }
           ListEmptyComponent={entriesError ? renderErrorState : renderEmptyState}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-        ListFooterComponent={<View style={styles.footer} />}
-        removeClippedSubviews={true}
-        maxToRenderPerBatch={10}
-        windowSize={10}
-        initialNumToRender={8}
-        getItemLayout={(data, index) => ({
-          length: 180,
-          offset: 180 * index,
-          index,
-        })}
-      />
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          ListFooterComponent={<View style={styles.footer} />}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={10}
+          windowSize={10}
+          initialNumToRender={8}
+          getItemLayout={(data, index) => ({
+            length: 180,
+            offset: 180 * index,
+            index,
+          })}
+        />
       </View>
     </ScreenLayout>
   );

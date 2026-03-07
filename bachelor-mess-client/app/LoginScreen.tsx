@@ -4,7 +4,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   Image,
   KeyboardAvoidingView,
@@ -14,6 +14,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { KeyboardAwareScrollView } from '@/contexts/KeyboardScrollContext';
 import authService from '@/services/authService';
 import { useAuth } from '@/context/AuthContext';
 
@@ -26,6 +27,15 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { setAuth } = useAuth();
+
+  const inputRefsMap = useRef<Record<string, TextInput | null>>({});
+  const focusScrollRef = useRef<(r: TextInput | null) => void>(() => {});
+  const onScrollReady = useCallback((api: { focusScroll: (r: TextInput | null) => void }) => {
+    focusScrollRef.current = api.focusScroll;
+  }, []);
+  const focusScroll = useCallback((key: string) => {
+    focusScrollRef.current(inputRefsMap.current[key] ?? null);
+  }, []);
 
   const handleLogin = async () => {
     setError('');
@@ -84,13 +94,14 @@ export default function LoginScreen() {
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{
-          flex: 1,
-          justifyContent: 'center',
-          alignItems: 'center',
-          width: '100%',
-        }}
+        style={{ flex: 1, width: '100%' }}
       >
+        <KeyboardAwareScrollView
+          contentContainerStyle={modernStyles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          onReady={onScrollReady}
+          keyboardShouldPersistTaps="handled"
+        >
         <ThemedView style={[modernStyles.card, { backgroundColor: theme.modal, shadowColor: theme.shadow.light }]}>
           <Image
             source={require('../assets/images/icon.png')}
@@ -111,6 +122,8 @@ export default function LoginScreen() {
               style={modernStyles.inputIcon}
             />
             <TextInput
+              ref={r => { inputRefsMap.current['email'] = r; }}
+              onFocus={() => focusScroll('email')}
               style={[modernStyles.input, { color: theme.input.text }]}
               placeholder='Email'
               placeholderTextColor={theme.input.placeholder}
@@ -128,6 +141,8 @@ export default function LoginScreen() {
               style={modernStyles.inputIcon}
             />
             <TextInput
+              ref={r => { inputRefsMap.current['password'] = r; }}
+              onFocus={() => focusScroll('password')}
               style={[modernStyles.input, { color: theme.input.text }]}
               placeholder='Password'
               placeholderTextColor={theme.input.placeholder}
@@ -168,6 +183,7 @@ export default function LoginScreen() {
             </Pressable>
           </View>
         </ThemedView>
+        </KeyboardAwareScrollView>
       </KeyboardAvoidingView>
     </LinearGradient>
   );
@@ -178,6 +194,12 @@ const modernStyles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 24,
   },
   logo: {
     width: 80,

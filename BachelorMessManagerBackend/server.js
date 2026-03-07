@@ -60,6 +60,10 @@ const notificationRoutes = require('./src/routes/notifications');
 // Import statistics service
 const StatisticsService = require('./src/services/statisticsService');
 
+// Centralized socket hub (one WS server, channel-based: notification, dashboard, etc.)
+const socketHub = require('./src/ws/socketHub');
+const { protect: authProtect } = require('./src/middleware/auth-simple');
+
 // Configuration
 const config = {
   port: process.env.PORT || 3000,
@@ -84,6 +88,7 @@ const config = {
   enableMetrics: process.env.ENABLE_METRICS === 'true',
   gracefulShutdownTimeout:
     parseInt(process.env.GRACEFUL_SHUTDOWN_TIMEOUT) || 30000,
+  wsPort: parseInt(process.env.WS_PORT) || 3001,
 };
 
 // Clustering for better performance in production
@@ -114,6 +119,7 @@ if (
 
 function startServer() {
   const app = express();
+  let httpServer = null;
 
   // Connect to MongoDB
   connectDB();
@@ -324,14 +330,14 @@ function startServer() {
       }
     };
 
-    // Public health check endpoint (without /api prefix)
+    // Public health check (minimal: alive + db) — no sensitive data
     app.get('/health', healthCheckHandler);
 
     // API health check endpoint (with /api prefix) - for client compatibility
     app.get(`${config.apiPrefix}/health`, healthCheckHandler);
 
-    // Detailed health check for monitoring systems
-    app.get('/health/detailed', async (req, res) => {
+    // Detailed health (memory, cpu, db host, etc.) — auth required so unauthenticated attackers cannot probe
+    app.get('/health/detailed', authProtect, async (req, res) => {
       try {
         const detailedHealth = {
           success: true,
@@ -429,10 +435,10 @@ function startServer() {
   // Graceful shutdown handling
   const gracefulShutdown = signal => {
     logger.info(`${signal} received, shutting down gracefully`);
+    if (socketHub.stop) socketHub.stop();
 
-    const server = app.listen();
-    if (server) {
-      server.close(() => {
+    if (httpServer) {
+      httpServer.close(() => {
         logger.info('HTTP server closed');
 
         // Close database connection
@@ -477,7 +483,7 @@ function startServer() {
   });
 
   // Start server
-  const server = app.listen(config.port, '0.0.0.0', () => {
+  httpServer = app.listen(config.port, '0.0.0.0', () => {
     logger.info(
       `Server running in ${config.nodeEnv} mode on port ${config.port}`
     );
@@ -494,6 +500,11 @@ function startServer() {
     logger.info(
       `Network accessible at: http://192.168.0.130:${config.port}${config.apiPrefix}`
     );
+    if (socketHub.isAvailable() && socketHub.start(config.wsPort)) {
+      logger.info(`Real-time socket (uWebSockets) at ws://0.0.0.0:${config.wsPort} – connect with ?token=JWT`);
+    } else if (!socketHub.isAvailable()) {
+      logger.warn('Real-time socket skipped: uWebSockets.js not loaded (yarn install and ensure native build succeeded)');
+    }
   });
 
   // Initialize request counters for metrics
@@ -508,5 +519,5 @@ function startServer() {
     });
   }
 
-  module.exports = server;
+  module.exports = httpServer;
 }

@@ -649,13 +649,12 @@ class HttpClient {
     endpoint: string,
     file: { uri: string; type: string; name: string },
     additionalData?: Record<string, any>,
-    config: Omit<RequestConfig, 'method' | 'body'> = {}
+    config: Omit<RequestConfig, 'method' | 'body'> & { fileFieldName?: string } = {}
   ): Promise<ApiResponse<T>> {
     try {
       const requestConfig = await this.createRequestConfig(endpoint, config);
+      const fieldName = config.fileFieldName ?? 'file';
       const url = `${this.baseURL}${endpoint}`;
-
-      console.log(`📤 Uploading file: ${file.name} to ${url}`);
 
       // Check if online
       const online = await this.isOnline();
@@ -665,7 +664,6 @@ class HttpClient {
             ...requestConfig,
             body: { file, ...additionalData },
           });
-          console.log(`💾 File upload stored for offline retry: ${requestId}`);
           return {
             success: false,
             error:
@@ -678,9 +676,8 @@ class HttpClient {
         };
       }
 
-      // Create form data
       const formData = new FormData();
-      formData.append('file', {
+      formData.append(fieldName, {
         uri: file.uri,
         type: file.type,
         name: file.name,

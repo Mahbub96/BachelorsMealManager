@@ -172,8 +172,8 @@ class AuthController {
         return sendErrorResponse(res, 400, 'Refresh token is required');
       }
 
-      // Verify refresh token
-      const decoded = jwt.verify(refreshToken, config.jwt.refreshSecret);
+      // Verify refresh token (explicit algorithm)
+      const decoded = jwt.verify(refreshToken, config.jwt.refreshSecret, { algorithms: ['HS256'] });
 
       if (decoded.type !== 'refresh') {
         return sendErrorResponse(res, 401, 'Invalid token type');

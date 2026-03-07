@@ -22,7 +22,7 @@ import { BazarFilters } from './BazarFilters';
 import { SearchBar } from '../shared';
 import { BazarErrorState } from './BazarErrorState';
 import { PendingBazarDeleteRequests } from './PendingBazarDeleteRequests';
-import { ActionRow, StatusRow } from '../ui';
+import { ActionRow, ScrollableSection, StatusRow } from '../ui';
 import { formatDate } from '../../utils/dateUtils';
 import { Ionicons } from '@expo/vector-icons';
 import type { BazarCardBazar } from '../cards/BazarCard';
@@ -318,17 +318,17 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
           onError={(msg) => showAppAlert('Error', msg, { variant: 'error' })}
         />
         <BazarManagementListHeader
-        title={title}
-        subtitle={subtitle}
-        showAddButton={showAddButton}
-        onAddPress={handleAddBazar}
-        showSearch={showSearch}
-        showFilters={showFilters}
-        showStatistics={showStatistics}
-        showFiltersPanel={showFiltersPanel}
-        onToggleFilters={() => setShowFiltersPanel(s => !s)}
-        headerStyles={styles as BazarManagementHeaderStyles}
-      />
+          title={title}
+          subtitle={subtitle}
+          showAddButton={showAddButton}
+          onAddPress={handleAddBazar}
+          showSearch={showSearch}
+          showFilters={showFilters}
+          showStatistics={showStatistics}
+          showFiltersPanel={showFiltersPanel}
+          onToggleFilters={() => setShowFiltersPanel(s => !s)}
+          headerStyles={{ ...styles, mainContainer: styles.headerFixedContainer } as BazarManagementHeaderStyles}
+        />
       </>
     ),
     [
@@ -429,44 +429,62 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
 
   return (
     <ThemedView style={styles.container}>
-      <FlatList
-        data={bazarEntriesToShow}
-        renderItem={renderBazarItem}
-        keyExtractor={(item, index) =>
-          item.id ?? (item as { _id?: string })._id ?? `bazar-${index}`
-        }
-        ListHeaderComponent={listHeaderElement}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps='handled'
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handlePullRefresh}
-          />
-        }
-        ListEmptyComponent={
-          listError ? (
-            <View style={styles.emptyMessage}>
-              <ThemedText style={{ color: theme.text?.secondary }}>
-                {listError}
-              </ThemedText>
-            </View>
-          ) : (
-            <View style={styles.emptyMessage}>
-              <ThemedText style={{ color: theme.text?.secondary }}>
-                No bazar items yet
-              </ThemedText>
-            </View>
-          )
-        }
-      />
+      <View style={styles.listHeaderWrapper}>
+        {listHeaderElement}
+      </View>
+      <ScrollableSection mode="container" fillContainer style={styles.listSection}>
+        <FlatList
+          data={bazarEntriesToShow}
+          renderItem={renderBazarItem}
+          keyExtractor={(item, index) =>
+            item.id ?? (item as { _id?: string })._id ?? `bazar-${index}`
+          }
+          contentContainerStyle={styles.listContent}
+          style={styles.flatList}
+          showsVerticalScrollIndicator={true}
+          keyboardShouldPersistTaps="handled"
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handlePullRefresh}
+            />
+          }
+          ListEmptyComponent={
+            listError ? (
+              <View style={styles.emptyMessage}>
+                <ThemedText style={{ color: theme.text?.secondary }}>
+                  {listError}
+                </ThemedText>
+              </View>
+            ) : (
+              <View style={styles.emptyMessage}>
+                <ThemedText style={{ color: theme.text?.secondary }}>
+                  No bazar items yet
+                </ThemedText>
+              </View>
+            )
+          }
+        />
+      </ScrollableSection>
     </ThemedView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  listHeaderWrapper: {
+    flexShrink: 0,
+  },
+  headerFixedContainer: {
+    paddingVertical: 12,
+  },
+  listSection: {
+    flex: 1,
+    minHeight: 0,
+  },
+  flatList: {
     flex: 1,
   },
   mainContainer: {

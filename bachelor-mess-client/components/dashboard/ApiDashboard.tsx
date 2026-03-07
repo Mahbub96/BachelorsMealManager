@@ -18,6 +18,7 @@ import {
 import httpClient from '@/services/httpClient';
 import { StatsGrid } from '../ModernCharts';
 import { ModernLoader } from '../ui/ModernLoader';
+import { ScrollableSection } from '../ui/ScrollableSection';
 import { ChartsSection } from './ChartsSection';
 import { DashboardHeader } from './DashboardHeader';
 import { QuickActions } from './QuickActions';
@@ -383,14 +384,16 @@ export const ApiDashboard: React.FC = () => {
         />
 
         {/* Recent Activity */}
-        <RecentActivity
-          activities={(activities || []).map(activity => ({
-            ...activity,
-            colors: [theme.primary, theme.secondary] as [string, string],
-            amount: activity.amount?.toString(),
-          }))}
-          maxItems={3}
-        />
+        <ScrollableSection>
+          <RecentActivity
+            activities={(activities || []).map(activity => ({
+              ...activity,
+              colors: [theme.primary, theme.secondary] as [string, string],
+              amount: activity.amount?.toString(),
+            }))}
+            maxItems={(activities || []).length}
+          />
+        </ScrollableSection>
       </ScrollView>
     </ThemedView>
   );

@@ -6,12 +6,12 @@ import {
   RefreshControl,
   TouchableOpacity,
 } from 'react-native';
-import { useRouter, type Href } from 'expo-router';
+import { useRouter, useFocusEffect, type Href } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenLayout } from '@/components/layout';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { ModernLoader } from '@/components/ui';
+import { ListCard, ModernLoader, StatusRow } from '@/components/ui';
 import { useTheme } from '@/context/ThemeContext';
 import { useNotifications } from '@/context/NotificationContext';
 import { useThrottledCallback, PRESS_THROTTLE_MS } from '@/hooks/useDebounce';
@@ -23,11 +23,9 @@ import {
   notificationTimeAgo,
 } from '@/utils/notificationUtils';
 
-// ─── Group by date label ───────────────────────────────────────────────────
 function groupByDate(items: NotificationItem[]): { label: string; data: NotificationItem[] }[] {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
-
   const groups: Record<string, NotificationItem[]> = {};
   for (const n of items) {
     const d = new Date(n.createdAt); d.setHours(0, 0, 0, 0);
@@ -39,40 +37,6 @@ function groupByDate(items: NotificationItem[]): { label: string; data: Notifica
   }
   const ORDER = ['Today', 'Yesterday', 'Earlier'];
   return ORDER.filter((l) => groups[l]).map((l) => ({ label: l, data: groups[l] }));
-}
-
-// ─── NotificationCard ──────────────────────────────────────────────────────
-function NotificationCard({
-  item,
-  onPress,
-}: {
-  item: NotificationItem;
-  onPress: (item: NotificationItem) => void;
-}) {
-  const cfg = getNotificationTypeConfig(item.type);
-  return (
-    <TouchableOpacity
-      style={[styles.card, !item.isRead && styles.cardUnread]}
-      onPress={() => onPress(item)}
-      activeOpacity={0.75}
-      accessibilityRole="button"
-      accessibilityLabel={`${item.title}. ${item.message}. ${item.isRead ? 'Read' : 'Unread'}`}
-    >
-      {!item.isRead && <View style={styles.unreadDot} />}
-      <View style={[styles.iconCircle, { backgroundColor: cfg.bg }]}>
-        <Ionicons name={cfg.icon as IconName} size={22} color={cfg.color} />
-      </View>
-      <View style={styles.cardContent}>
-        <ThemedText style={styles.cardTitle} numberOfLines={1}>
-          {item.title}
-        </ThemedText>
-        <ThemedText style={styles.cardMessage} numberOfLines={2}>
-          {item.message}
-        </ThemedText>
-        <ThemedText style={styles.cardTime}>{notificationTimeAgo(item.createdAt)}</ThemedText>
-      </View>
-    </TouchableOpacity>
-  );
 }
 
 // ─── Main screen ───────────────────────────────────────────────────────────
@@ -91,6 +55,13 @@ export default function NotificationsScreen() {
   } = useNotifications();
 
   const groups = groupByDate(notifications);
+
+  // Refresh when screen is focused so we pick up new notifications (e.g. after adding bazar) if socket missed
+  useFocusEffect(
+    useCallback(() => {
+      refresh();
+    }, [refresh])
+  );
 
   const onMarkAllRead = useThrottledCallback(markAllRead, PRESS_THROTTLE_MS);
 
@@ -129,15 +100,17 @@ export default function NotificationsScreen() {
         )}
 
         {unreadCount > 0 && (
-          <View style={styles.actionsBar}>
+          <View style={[styles.actionsBar, { borderBottomColor: theme.border?.secondary }]}>
             <TouchableOpacity
-              style={styles.markAllBtn}
+              style={[styles.markAllBtn, { backgroundColor: (theme.primary ?? '#667eea') + '18' }]}
               onPress={onMarkAllRead}
               accessibilityRole="button"
               accessibilityLabel="Mark all notifications as read"
             >
-              <Ionicons name="checkmark-done" size={16} color="#667eea" />
-              <ThemedText style={styles.markAllText}>Mark all as read</ThemedText>
+              <Ionicons name="checkmark-done" size={16} color={theme.primary ?? '#667eea'} />
+              <ThemedText style={[styles.markAllText, { color: theme.primary ?? '#667eea' }]}>
+                Mark all as read
+              </ThemedText>
             </TouchableOpacity>
           </View>
         )}
@@ -149,37 +122,60 @@ export default function NotificationsScreen() {
         ) : notifications.length === 0 ? (
           <View style={styles.center}>
             <View style={styles.emptyBox}>
-              <Ionicons name="notifications-off-outline" size={56} color="#9ca3af" />
-              <ThemedText style={styles.emptyTitle}>No notifications yet</ThemedText>
-              <ThemedText style={styles.emptySubtitle}>
+              <Ionicons name="notifications-off-outline" size={56} color={theme.text?.tertiary ?? theme.text?.secondary} />
+              <ThemedText style={[styles.emptyTitle, { color: theme.text?.primary }]}>No notifications yet</ThemedText>
+              <ThemedText style={[styles.emptySubtitle, { color: theme.text?.secondary }]}>
                 Events like meal approvals, payments, and votes will appear here.
               </ThemedText>
             </View>
           </View>
         ) : (
-          <ScrollView
-            style={styles.scroll}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl
-                refreshing={isLoading}
-                onRefresh={refresh}
-                tintColor={theme.primary ?? '#667eea'}
-              />
-            }
-          >
-            {groups.map((group) => (
-              <View key={group.label}>
-                <ThemedText style={styles.groupLabel}>{group.label}</ThemedText>
-                {group.data.map((item) => (
-                  <NotificationCard key={item._id} item={item} onPress={handleCardPress} />
-                ))}
-              </View>
-            ))}
-            {/* Bottom padding */}
-            <View style={{ height: 24 }} />
-          </ScrollView>
+          <View style={styles.listSection}>
+            <ScrollView
+              style={styles.scrollView}
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={true}
+              refreshControl={
+                <RefreshControl
+                  refreshing={isLoading}
+                  onRefresh={refresh}
+                  tintColor={theme.primary}
+                />
+              }
+            >
+              {groups.map((group) => (
+                <View key={group.label} style={styles.group}>
+                  <ThemedText style={[styles.groupLabel, { color: theme.text?.tertiary ?? theme.text?.secondary }]}>
+                    {group.label}
+                  </ThemedText>
+                  <ListCard>
+                    {group.data.map((item) => {
+                      const cfg = getNotificationTypeConfig(item.type);
+                      return (
+                        <StatusRow
+                          key={item._id}
+                          icon={
+                            <Ionicons
+                              name={cfg.icon as IconName}
+                              size={20}
+                              color={cfg.color}
+                            />
+                          }
+                          iconBackgroundColor={cfg.bg}
+                          title={item.title}
+                          subtitle={item.message}
+                          statusLabel={notificationTimeAgo(item.createdAt)}
+                          statusColor={item.isRead ? (theme.text?.secondary ?? '#6b7280') : (theme.primary ?? '#667eea')}
+                          onPress={() => handleCardPress(item)}
+                        />
+                      );
+                    })}
+                  </ListCard>
+                </View>
+              ))}
+              <View style={styles.bottomPad} />
+            </ScrollView>
+          </View>
         )}
       </ThemedView>
     </ScreenLayout>
@@ -218,7 +214,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
   },
   markAllBtn: {
     flexDirection: 'row',
@@ -227,82 +222,26 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 20,
-    backgroundColor: '#ede9fe',
   },
   markAllText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#667eea',
   },
 
-  scroll: { flex: 1 },
-  scrollContent: { padding: 16, gap: 0 },
-
+  listSection: { flex: 1, minHeight: 0 },
+  scrollView: { flex: 1 },
+  scrollContent: { padding: 16, paddingBottom: 24 },
+  group: { marginBottom: 16 },
   groupLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#9ca3af',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
-    marginTop: 16,
+    marginTop: 8,
     marginBottom: 8,
+    marginLeft: 4,
   },
-
-  card: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: '#f3f4f6',
-  },
-  cardUnread: {
-    borderColor: '#c7d2fe',
-    backgroundColor: '#fafafe',
-  },
-  unreadDot: {
-    position: 'absolute',
-    top: 14,
-    right: 14,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#667eea',
-  },
-  iconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-    flexShrink: 0,
-  },
-  cardContent: { flex: 1 },
-  cardTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 3,
-  },
-  cardMessage: {
-    fontSize: 13,
-    color: '#6b7280',
-    lineHeight: 18,
-    marginBottom: 6,
-  },
-  cardTime: {
-    fontSize: 11,
-    color: '#9ca3af',
-    fontWeight: '500',
-  },
+  bottomPad: { height: 24 },
 
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   emptyBox: { alignItems: 'center', gap: 12, maxWidth: 260 },

@@ -4,7 +4,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -12,10 +12,10 @@ import {
   StyleSheet,
   TextInput,
   View,
-  ScrollView,
   TouchableOpacity,
 } from 'react-native';
 import { showAppAlert } from '@/context/AppAlertContext';
+import { KeyboardAwareScrollView } from '@/contexts/KeyboardScrollContext';
 import authService from '@/services/authService';
 
 export default function SignupScreen() {
@@ -32,6 +32,15 @@ export default function SignupScreen() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const onPrimaryText = theme.button?.primary?.text ?? theme.onPrimary?.text ?? theme.text.inverse;
+
+  const inputRefsMap = useRef<Record<string, TextInput | null>>({});
+  const focusScrollRef = useRef<(r: TextInput | null) => void>(() => {});
+  const onScrollReady = useCallback((api: { focusScroll: (r: TextInput | null) => void }) => {
+    focusScrollRef.current = api.focusScroll;
+  }, []);
+  const focusScroll = useCallback((key: string) => {
+    focusScrollRef.current(inputRefsMap.current[key] ?? null);
+  }, []);
 
   const validateForm = () => {
     if (!name.trim()) {
@@ -119,9 +128,10 @@ export default function SignupScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={modernStyles.container}
       >
-        <ScrollView
+        <KeyboardAwareScrollView
           contentContainerStyle={modernStyles.scrollContent}
           showsVerticalScrollIndicator={false}
+          onReady={onScrollReady}
         >
           <ThemedView style={[modernStyles.card, { backgroundColor: theme.surface, shadowColor: theme.shadow.light }]}>
             <Ionicons
@@ -140,6 +150,8 @@ export default function SignupScreen() {
             <View style={[modernStyles.inputWrapper, { backgroundColor: theme.surface, borderColor: theme.border.primary }]}>
               <Ionicons name='person-outline' size={20} color={theme.primary} style={modernStyles.inputIcon} />
               <TextInput
+                ref={r => { inputRefsMap.current['name'] = r; }}
+                onFocus={() => focusScroll('name')}
                 style={[modernStyles.input, { color: theme.text.primary }]}
                 placeholder='Full Name'
                 placeholderTextColor={theme.text.tertiary}
@@ -152,6 +164,8 @@ export default function SignupScreen() {
             <View style={[modernStyles.inputWrapper, { backgroundColor: theme.surface, borderColor: theme.border.primary }]}>
               <Ionicons name='mail-outline' size={20} color={theme.primary} style={modernStyles.inputIcon} />
               <TextInput
+                ref={r => { inputRefsMap.current['email'] = r; }}
+                onFocus={() => focusScroll('email')}
                 style={[modernStyles.input, { color: theme.text.primary }]}
                 placeholder='Email'
                 placeholderTextColor={theme.text.tertiary}
@@ -165,6 +179,8 @@ export default function SignupScreen() {
             <View style={[modernStyles.inputWrapper, { backgroundColor: theme.surface, borderColor: theme.border.primary }]}>
               <Ionicons name='call-outline' size={20} color={theme.primary} style={modernStyles.inputIcon} />
               <TextInput
+                ref={r => { inputRefsMap.current['phone'] = r; }}
+                onFocus={() => focusScroll('phone')}
                 style={[modernStyles.input, { color: theme.text.primary }]}
                 placeholder='Phone Number'
                 placeholderTextColor={theme.text.tertiary}
@@ -233,6 +249,8 @@ export default function SignupScreen() {
             <View style={[modernStyles.inputWrapper, { backgroundColor: theme.surface, borderColor: theme.border.primary }]}>
               <Ionicons name='lock-closed-outline' size={20} color={theme.primary} style={modernStyles.inputIcon} />
               <TextInput
+                ref={r => { inputRefsMap.current['password'] = r; }}
+                onFocus={() => focusScroll('password')}
                 style={[modernStyles.input, { color: theme.text.primary }]}
                 placeholder='Password (min 6 chars, 1 uppercase, 1 lowercase, 1 number)'
                 placeholderTextColor={theme.text.tertiary}
@@ -248,6 +266,8 @@ export default function SignupScreen() {
             <View style={[modernStyles.inputWrapper, { backgroundColor: theme.surface, borderColor: theme.border.primary }]}>
               <Ionicons name='lock-closed-outline' size={20} color={theme.primary} style={modernStyles.inputIcon} />
               <TextInput
+                ref={r => { inputRefsMap.current['confirmPassword'] = r; }}
+                onFocus={() => focusScroll('confirmPassword')}
                 style={[modernStyles.input, { color: theme.text.primary }]}
                 placeholder='Confirm Password'
                 placeholderTextColor={theme.text.tertiary}
@@ -283,7 +303,7 @@ export default function SignupScreen() {
               </Pressable>
             </View>
           </ThemedView>
-        </ScrollView>
+        </KeyboardAwareScrollView>
       </KeyboardAvoidingView>
     </LinearGradient>
   );

@@ -29,6 +29,7 @@ import { SearchAndFilterRow } from '@/components/shared/SearchAndFilterRow';
 import { ThemedView } from '../ThemedView';
 import { ThemedText } from '../ThemedText';
 import { DataDisplay } from '../ui/DataDisplay';
+import { ScrollableSection } from '../ui/ScrollableSection';
 import {
   DashboardHeader,
   QuickActions,
@@ -751,12 +752,14 @@ export const UserDashboard: React.FC = () => {
           </ThemedText>
         )}
         {!activitiesLoading && (
-          <RecentActivity
-            activities={recentActivities}
-            maxItems={recentActivities.length}
-            isSmallScreen={false}
-            showSectionHeader={false}
-          />
+          <ScrollableSection>
+            <RecentActivity
+              activities={recentActivities}
+              maxItems={recentActivities.length}
+              isSmallScreen={false}
+              showSectionHeader={false}
+            />
+          </ScrollableSection>
         )}
       </ScrollView>
     </ThemedView>

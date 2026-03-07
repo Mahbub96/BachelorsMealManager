@@ -50,6 +50,7 @@ import { groupAdminService, type Election } from '../../services/groupAdminServi
 import { MemberFormModal } from './MemberFormModal';
 import { MemberViewModal } from './MemberViewModal';
 import { MonthlyReportDashboard } from './reports/MonthlyReportDashboard';
+import { KeyboardAwareScrollView } from '@/contexts/KeyboardScrollContext';
 import { logger } from '../../utils/logger';
 
 type AdminDashboardProps = Record<string, never>;
@@ -130,6 +131,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
     () => (resettingPasswordFor ? members.find((m) => m.id === resettingPasswordFor) : null),
     [resettingPasswordFor, members],
   );
+
+  const resetPasswordInputRef = useRef<TextInput | null>(null);
+  const resetPasswordFocusScrollRef = useRef<(r: TextInput | null) => void>(() => {});
+  const onResetPasswordScrollReady = useCallback((api: { focusScroll: (r: TextInput | null) => void }) => {
+    resetPasswordFocusScrollRef.current = api.focusScroll;
+  }, []);
 
   const loadAdminStats = useCallback(async () => {
     try {
@@ -1618,6 +1625,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={styles.resetPasswordModalContentWrap}
           >
+            <KeyboardAwareScrollView
+              contentContainerStyle={styles.resetPasswordModalScrollContent}
+              showsVerticalScrollIndicator={false}
+              onReady={onResetPasswordScrollReady}
+              keyboardShouldPersistTaps="handled"
+            >
             <View
               style={[
                 styles.resetPasswordModalContent,
@@ -1649,6 +1662,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                 </ThemedText>
                 <View style={styles.resetPasswordInputContainer}>
                   <TextInput
+                    ref={resetPasswordInputRef}
+                    onFocus={() => resetPasswordFocusScrollRef.current(resetPasswordInputRef.current)}
                     style={[
                       styles.resetPasswordInput,
                       {
@@ -1723,6 +1738,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                 </TouchableOpacity>
               </View>
             </View>
+            </KeyboardAwareScrollView>
           </KeyboardAvoidingView>
         </View>
       </Modal>
@@ -2147,6 +2163,9 @@ const styles = StyleSheet.create({
     width: '90%',
     maxWidth: 400,
     alignSelf: 'center',
+  },
+  resetPasswordModalScrollContent: {
+    flexGrow: 1,
   },
   resetPasswordModalContent: {
     width: '100%',

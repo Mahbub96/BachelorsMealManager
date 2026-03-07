@@ -8,14 +8,14 @@ import bazarService, {
 } from '@/services/bazarService';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   Image,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   StyleSheet,
   TextInput,
   TouchableOpacity,
@@ -23,6 +23,7 @@ import {
 } from 'react-native';
 import { showAppAlert } from '@/context/AppAlertContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from '@/contexts/KeyboardScrollContext';
 
 export default function NewBazarScreen() {
   const router = useRouter();
@@ -35,10 +36,26 @@ export default function NewBazarScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [receiptImage, setReceiptImage] = useState<string | null>(null);
+  const [receiptImageFile, setReceiptImageFile] = useState<{
+    uri: string;
+    type: string;
+    name: string;
+  } | null>(null);
   const [bazarType, setBazarType] = useState<BazarType>('meal');
 
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
+
+  const inputRefsMap = useRef<Record<string, TextInput | null>>({});
+  const focusScrollRef = useRef<(inputRef: TextInput | null) => void>(() => {});
+
+  const onScrollReady = useCallback((api: { focusScroll: (r: TextInput | null) => void }) => {
+    focusScrollRef.current = api.focusScroll;
+  }, []);
+
+  const focusScroll = useCallback((key: string) => {
+    focusScrollRef.current(inputRefsMap.current[key] ?? null);
+  }, []);
 
   // All colors from Theme.ts (works for light & dark)
   const totalGradientColors = (theme.gradient?.primary ?? [
@@ -87,22 +104,40 @@ export default function NewBazarScreen() {
   const calculateTotal = () =>
     items.reduce((sum, item) => sum + (item.price || 0), 0);
 
-  const handleReceiptUpload = () => {
-    showAppAlert(
-      'Receipt Upload',
-      'Receipt upload functionality would be implemented here with image picker integration.',
-      {
-        variant: 'info',
-        secondaryButtonText: 'Cancel',
-        buttonText: 'Simulate Upload',
-        onConfirm: () => {
-          setReceiptImage(
-            'https://via.placeholder.com/300x200/10b981/ffffff?text=Receipt+Image'
-          );
-          showAppAlert('Success', 'Receipt uploaded successfully!', { variant: 'success' });
-        },
-      }
-    );
+  const handleReceiptUpload = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      showAppAlert(
+        'Permission needed',
+        'Allow access to photos to attach a receipt.',
+        { variant: 'error' }
+      );
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+    });
+    if (result.canceled || !result.assets?.[0]) return;
+    const asset = result.assets[0];
+    const uri = asset.uri;
+    const ext = uri.split('.').pop()?.toLowerCase() || 'jpg';
+    const mime =
+      ext === 'png'
+        ? 'image/png'
+        : ext === 'webp'
+          ? 'image/webp'
+          : 'image/jpeg';
+    const name = `receipt-${Date.now()}.${ext}`;
+    setReceiptImage(uri);
+    setReceiptImageFile({ uri, type: mime, name });
+  };
+
+  const handleRemoveReceipt = () => {
+    setReceiptImage(null);
+    setReceiptImageFile(null);
   };
 
   const validateForm = () => {
@@ -112,11 +147,15 @@ export default function NewBazarScreen() {
       return false;
     }
     if (items.some(item => (item.price ?? 0) <= 0)) {
-      showAppAlert('Error', 'All items must have a valid price', { variant: 'error' });
+      showAppAlert('Error', 'All items must have a valid price', {
+        variant: 'error',
+      });
       return false;
     }
     if (calculateTotal() <= 0) {
-      showAppAlert('Error', 'Total amount must be greater than 0', { variant: 'error' });
+      showAppAlert('Error', 'Total amount must be greater than 0', {
+        variant: 'error',
+      });
       return false;
     }
     return true;
@@ -147,6 +186,7 @@ export default function NewBazarScreen() {
         totalAmount: calculateTotal(),
         description: description.trim() || undefined,
         date,
+        ...(receiptImageFile && { receiptImage: receiptImageFile }),
       };
 
       const response = await bazarService.submitBazar(bazarData);
@@ -164,10 +204,16 @@ export default function NewBazarScreen() {
           onCancel: () => router.back(),
         });
       } else {
-        showAppAlert('Error', response.error || 'Failed to submit bazar entry', { variant: 'error' });
+        showAppAlert(
+          'Error',
+          response.error || 'Failed to submit bazar entry',
+          { variant: 'error' }
+        );
       }
     } catch {
-      showAppAlert('Error', 'An unexpected error occurred', { variant: 'error' });
+      showAppAlert('Error', 'An unexpected error occurred', {
+        variant: 'error',
+      });
     } finally {
       setLoading(false);
     }
@@ -182,579 +228,619 @@ export default function NewBazarScreen() {
     >
       <KeyboardAvoidingView
         style={[styles.keyboardView, { backgroundColor: theme.background }]}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
         <View style={styles.scrollArea}>
-          <ScrollView
+          <KeyboardAwareScrollView
             style={[styles.content, { backgroundColor: theme.background }]}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={[
               styles.scrollContent,
               { paddingBottom: scrollBottomPadding },
             ]}
-            keyboardShouldPersistTaps='handled'
+            onReady={onScrollReady}
           >
-            {/* Bazar Type Tabs: Meal (groceries) vs Flat (shared) */}
-            <View
-              style={[
-                styles.tabRow,
-                {
-                  backgroundColor: theme.tab.background,
-                  borderColor: theme.tab.border,
-                  borderWidth: 1,
-                  borderRadius: 14,
-                  padding: 6,
-                },
-              ]}
-            >
-              <TouchableOpacity
-                style={[
-                  styles.tabButton,
-                  { borderColor: theme.tab.border },
-                  bazarType === 'meal' && {
-                    backgroundColor: theme.tab.active,
-                    borderColor: theme.tab.active,
-                  },
-                ]}
-                onPress={() => setBazarType('meal')}
-              >
-                <Ionicons
-                  name='restaurant'
-                  size={20}
-                  color={
-                    bazarType === 'meal' ? theme.icon.inverse : theme.tab.active
-                  }
-                />
-                <ThemedText
-                  style={[
-                    styles.tabButtonText,
-                    { color: theme.tab.inactive },
-                    bazarType === 'meal' && { color: theme.icon.inverse },
-                  ]}
-                >
-                  Meal Bazar
-                </ThemedText>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.tabButton,
-                  { borderColor: theme.tab.border },
-                  bazarType === 'flat' && {
-                    backgroundColor: theme.tab.active,
-                    borderColor: theme.tab.active,
-                  },
-                ]}
-                onPress={() => setBazarType('flat')}
-              >
-                <Ionicons
-                  name='home'
-                  size={20}
-                  color={
-                    bazarType === 'flat' ? theme.icon.inverse : theme.tab.active
-                  }
-                />
-                <ThemedText
-                  style={[
-                    styles.tabButtonText,
-                    { color: theme.tab.inactive },
-                    bazarType === 'flat' && { color: theme.icon.inverse },
-                  ]}
-                >
-                  Flat Bazar
-                </ThemedText>
-              </TouchableOpacity>
-            </View>
-            <ThemedText
-              style={[styles.tabHint, { color: theme.text.tertiary }]}
-            >
-              Meal = used for meal rate. Flat = split equally (e.g. fridge,
-              stove).
-            </ThemedText>
-
-            {/* Info Card */}
-            <View style={styles.infoCard}>
+            <View collapsable={false}>
+              {/* Bazar Type Tabs: Meal (groceries) vs Flat (shared) */}
               <View
                 style={[
-                  styles.infoCardGradient,
+                  styles.tabRow,
                   {
-                    backgroundColor: theme.surface,
-                    borderColor: theme.border.primary,
+                    backgroundColor: theme.tab.background,
+                    borderColor: theme.tab.border,
+                    borderWidth: 1,
+                    borderRadius: 14,
+                    padding: 6,
                   },
                 ]}
               >
-                <Ionicons
-                  name='information-circle-outline'
-                  size={20}
-                  color={theme.primary}
-                />
-                <ThemedText
-                  style={[styles.infoText, { color: theme.text.primary }]}
+                <TouchableOpacity
+                  style={[
+                    styles.tabButton,
+                    { borderColor: theme.tab.border },
+                    bazarType === 'meal' && {
+                      backgroundColor: theme.tab.active,
+                      borderColor: theme.tab.active,
+                    },
+                  ]}
+                  onPress={() => setBazarType('meal')}
                 >
-                  Add all the items you purchased during this shopping trip.
-                  Each item should have a name, quantity, and price.
-                </ThemedText>
+                  <Ionicons
+                    name='restaurant'
+                    size={20}
+                    color={
+                      bazarType === 'meal'
+                        ? theme.icon.inverse
+                        : theme.tab.active
+                    }
+                  />
+                  <ThemedText
+                    style={[
+                      styles.tabButtonText,
+                      { color: theme.tab.inactive },
+                      bazarType === 'meal' && { color: theme.icon.inverse },
+                    ]}
+                  >
+                    Meal Bazar
+                  </ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.tabButton,
+                    { borderColor: theme.tab.border },
+                    bazarType === 'flat' && {
+                      backgroundColor: theme.tab.active,
+                      borderColor: theme.tab.active,
+                    },
+                  ]}
+                  onPress={() => setBazarType('flat')}
+                >
+                  <Ionicons
+                    name='home'
+                    size={20}
+                    color={
+                      bazarType === 'flat'
+                        ? theme.icon.inverse
+                        : theme.tab.active
+                    }
+                  />
+                  <ThemedText
+                    style={[
+                      styles.tabButtonText,
+                      { color: theme.tab.inactive },
+                      bazarType === 'flat' && { color: theme.icon.inverse },
+                    ]}
+                  >
+                    Flat Bazar
+                  </ThemedText>
+                </TouchableOpacity>
               </View>
-            </View>
-
-            {/* Date Input */}
-            <View style={styles.inputGroup}>
               <ThemedText
-                style={[styles.inputLabel, { color: theme.text.primary }]}
+                style={[styles.tabHint, { color: theme.text.tertiary }]}
               >
-                <Ionicons
-                  name='calendar'
-                  size={16}
-                  color={theme.icon.secondary}
-                />{' '}
-                Shopping Date
+                Meal = used for meal rate. Flat = split equally (e.g. fridge,
+                stove).
               </ThemedText>
-              <TouchableOpacity
-                style={[
-                  styles.dateInput,
-                  {
-                    backgroundColor: theme.input.background,
-                    borderColor: theme.input.border,
-                  },
-                ]}
-                onPress={showDatePickerModal}
-              >
-                <ThemedText
-                  style={[styles.dateInputText, { color: theme.input.text }]}
+
+              {/* Info Card */}
+              <View style={styles.infoCard}>
+                <View
+                  style={[
+                    styles.infoCardGradient,
+                    {
+                      backgroundColor: theme.surface,
+                      borderColor: theme.border.primary,
+                    },
+                  ]}
                 >
-                  {date || 'Select a date'}
-                </ThemedText>
-                <Ionicons
-                  name='calendar-outline'
-                  size={20}
-                  color={theme.icon.secondary}
-                />
-              </TouchableOpacity>
-            </View>
+                  <Ionicons
+                    name='information-circle-outline'
+                    size={20}
+                    color={theme.primary}
+                  />
+                  <ThemedText
+                    style={[styles.infoText, { color: theme.text.primary }]}
+                  >
+                    Add all the items you purchased during this shopping trip.
+                    Each item should have a name, quantity, and price.
+                  </ThemedText>
+                </View>
+              </View>
 
-            {/* Description Input */}
-            <View style={styles.inputGroup}>
-              <ThemedText
-                style={[styles.inputLabel, { color: theme.text.primary }]}
-              >
-                <Ionicons
-                  name='document-text-outline'
-                  size={16}
-                  color={theme.icon.secondary}
-                />{' '}
-                Notes (Optional)
-              </ThemedText>
-              <TextInput
-                style={[
-                  styles.textInput,
-                  styles.textArea,
-                  {
-                    backgroundColor: theme.input.background,
-                    borderColor: theme.input.border,
-                    color: theme.input.text,
-                  },
-                ]}
-                value={description}
-                onChangeText={setDescription}
-                placeholder='Add any notes about this shopping trip...'
-                placeholderTextColor={theme.input.placeholder}
-                multiline
-                numberOfLines={3}
-              />
-            </View>
-
-            {/* Items Section */}
-            <View style={styles.inputGroup}>
-              <View style={styles.itemsHeader}>
+              {/* Date Input */}
+              <View style={styles.inputGroup}>
                 <ThemedText
                   style={[styles.inputLabel, { color: theme.text.primary }]}
                 >
                   <Ionicons
-                    name='basket-outline'
+                    name='calendar'
                     size={16}
                     color={theme.icon.secondary}
                   />{' '}
-                  Shopping Items
+                  Shopping Date
                 </ThemedText>
                 <TouchableOpacity
-                  style={styles.addItemButton}
-                  onPress={addItem}
+                  style={[
+                    styles.dateInput,
+                    {
+                      backgroundColor: theme.input.background,
+                      borderColor: theme.input.border,
+                    },
+                  ]}
+                  onPress={showDatePickerModal}
                 >
-                  <Ionicons name='add-circle' size={24} color={theme.primary} />
+                  <ThemedText
+                    style={[styles.dateInputText, { color: theme.input.text }]}
+                  >
+                    {date || 'Select a date'}
+                  </ThemedText>
+                  <Ionicons
+                    name='calendar-outline'
+                    size={20}
+                    color={theme.icon.secondary}
+                  />
                 </TouchableOpacity>
               </View>
 
-              {items.map((item, index) => (
-                <View
-                  key={index}
-                  style={[
-                    styles.itemCard,
-                    { backgroundColor: theme.cardBackground, shadowColor: theme.shadow.light },
-                  ]}
+              {/* Description Input */}
+              <View style={styles.inputGroup}>
+                <ThemedText
+                  style={[styles.inputLabel, { color: theme.text.primary }]}
                 >
+                  <Ionicons
+                    name='document-text-outline'
+                    size={16}
+                    color={theme.icon.secondary}
+                  />{' '}
+                  Notes (Optional)
+                </ThemedText>
+                <TextInput
+                  ref={r => {
+                    inputRefsMap.current['desc'] = r;
+                  }}
+                  onFocus={() => focusScroll('desc')}
+                  style={[
+                    styles.textInput,
+                    styles.textArea,
+                    {
+                      backgroundColor: theme.input.background,
+                      borderColor: theme.input.border,
+                      color: theme.input.text,
+                    },
+                  ]}
+                  value={description}
+                  onChangeText={setDescription}
+                  placeholder='Add any notes about this shopping trip...'
+                  placeholderTextColor={theme.input.placeholder}
+                  multiline
+                  numberOfLines={3}
+                />
+              </View>
+
+              {/* Items Section */}
+              <View style={styles.inputGroup}>
+                <View style={styles.itemsHeader}>
+                  <ThemedText
+                    style={[styles.inputLabel, { color: theme.text.primary }]}
+                  >
+                    <Ionicons
+                      name='basket-outline'
+                      size={16}
+                      color={theme.icon.secondary}
+                    />{' '}
+                    Shopping Items
+                  </ThemedText>
+                  <TouchableOpacity
+                    style={styles.addItemButton}
+                    onPress={addItem}
+                  >
+                    <Ionicons
+                      name='add-circle'
+                      size={24}
+                      color={theme.primary}
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                {items.map((item, index) => (
                   <View
+                    key={index}
                     style={[
-                      styles.itemCardGradient,
+                      styles.itemCard,
                       {
                         backgroundColor: theme.cardBackground,
-                        borderColor: theme.cardBorder,
                         shadowColor: theme.shadow.light,
                       },
                     ]}
                   >
-                    <View style={styles.itemLabels}>
-                      <ThemedText
-                        style={[
-                          styles.itemLabel,
-                          styles.itemLabelName,
-                          { color: theme.text.tertiary },
-                        ]}
-                        numberOfLines={1}
-                      >
-                        Item Name
-                      </ThemedText>
-                      <ThemedText
-                        style={[
-                          styles.itemLabel,
-                          styles.itemLabelQty,
-                          { color: theme.text.tertiary },
-                        ]}
-                        numberOfLines={1}
-                      >
-                        Qty
-                      </ThemedText>
-                      <ThemedText
-                        style={[
-                          styles.itemLabel,
-                          styles.itemLabelPrice,
-                          { color: theme.text.tertiary },
-                        ]}
-                        numberOfLines={1}
-                      >
-                        Price
-                      </ThemedText>
-                      {items.length > 1 ? (
-                        <View style={styles.itemLabelRemove} />
-                      ) : null}
+                    <View
+                      style={[
+                        styles.itemCardGradient,
+                        {
+                          backgroundColor: theme.cardBackground,
+                          borderColor: theme.cardBorder,
+                          shadowColor: theme.shadow.light,
+                        },
+                      ]}
+                    >
+                      <View style={styles.itemLabels}>
+                        <ThemedText
+                          style={[
+                            styles.itemLabel,
+                            styles.itemLabelName,
+                            { color: theme.text.tertiary },
+                          ]}
+                          numberOfLines={1}
+                        >
+                          Item Name
+                        </ThemedText>
+                        <ThemedText
+                          style={[
+                            styles.itemLabel,
+                            styles.itemLabelQty,
+                            { color: theme.text.tertiary },
+                          ]}
+                          numberOfLines={1}
+                        >
+                          Qty
+                        </ThemedText>
+                        <ThemedText
+                          style={[
+                            styles.itemLabel,
+                            styles.itemLabelPrice,
+                            { color: theme.text.tertiary },
+                          ]}
+                          numberOfLines={1}
+                        >
+                          Price
+                        </ThemedText>
+                        {items.length > 1 ? (
+                          <View style={styles.itemLabelRemove} />
+                        ) : null}
+                      </View>
+                      <View style={styles.itemRow}>
+                        <TextInput
+                          ref={r => {
+                            inputRefsMap.current[`item-${index}-name`] = r;
+                          }}
+                          onFocus={() => focusScroll(`item-${index}-name`)}
+                          style={[
+                            styles.textInput,
+                            styles.itemInput,
+                            styles.itemInputName,
+                            {
+                              backgroundColor: theme.input.background,
+                              borderColor: theme.input.border,
+                              color: theme.input.text,
+                            },
+                          ]}
+                          value={item.name}
+                          onChangeText={text => updateItem(index, 'name', text)}
+                          placeholder='Name'
+                          placeholderTextColor={theme.input.placeholder}
+                        />
+                        <TextInput
+                          ref={r => {
+                            inputRefsMap.current[`item-${index}-qty`] = r;
+                          }}
+                          onFocus={() => focusScroll(`item-${index}-qty`)}
+                          style={[
+                            styles.textInput,
+                            styles.itemInput,
+                            styles.itemInputQty,
+                            {
+                              backgroundColor: theme.input.background,
+                              borderColor: theme.input.border,
+                              color: theme.input.text,
+                            },
+                          ]}
+                          value={item.quantity}
+                          onChangeText={text =>
+                            updateItem(index, 'quantity', text)
+                          }
+                          placeholder='1'
+                          placeholderTextColor={theme.input.placeholder}
+                          keyboardType='decimal-pad'
+                        />
+                        <TextInput
+                          ref={r => {
+                            inputRefsMap.current[`item-${index}-price`] = r;
+                          }}
+                          onFocus={() => focusScroll(`item-${index}-price`)}
+                          style={[
+                            styles.textInput,
+                            styles.itemInput,
+                            styles.itemInputPrice,
+                            {
+                              backgroundColor: theme.input.background,
+                              borderColor: theme.input.border,
+                              color: theme.input.text,
+                            },
+                          ]}
+                          value={
+                            (item.price ?? 0) === 0
+                              ? ''
+                              : String(item.price ?? 0)
+                          }
+                          onChangeText={text =>
+                            updateItem(index, 'price', parseFloat(text) || 0)
+                          }
+                          placeholder='৳'
+                          placeholderTextColor={theme.input.placeholder}
+                          keyboardType='decimal-pad'
+                        />
+                        {items.length > 1 && (
+                          <TouchableOpacity
+                            style={styles.removeItemButton}
+                            onPress={() => removeItem(index)}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Ionicons
+                              name='trash-outline'
+                              size={20}
+                              color={theme.status.error}
+                            />
+                          </TouchableOpacity>
+                        )}
+                      </View>
                     </View>
-                    <View style={styles.itemRow}>
-                      <TextInput
-                        style={[
-                          styles.textInput,
-                          styles.itemInput,
-                          styles.itemInputName,
-                          {
-                            backgroundColor: theme.input.background,
-                            borderColor: theme.input.border,
-                            color: theme.input.text,
-                          },
-                        ]}
-                        value={item.name}
-                        onChangeText={text => updateItem(index, 'name', text)}
-                        placeholder='Name'
-                        placeholderTextColor={theme.input.placeholder}
-                      />
-                      <TextInput
-                        style={[
-                          styles.textInput,
-                          styles.itemInput,
-                          styles.itemInputQty,
-                          {
-                            backgroundColor: theme.input.background,
-                            borderColor: theme.input.border,
-                            color: theme.input.text,
-                          },
-                        ]}
-                        value={item.quantity}
-                        onChangeText={text =>
-                          updateItem(index, 'quantity', text)
-                        }
-                        placeholder='1'
-                        placeholderTextColor={theme.input.placeholder}
-                        keyboardType='decimal-pad'
-                      />
-                      <TextInput
-                        style={[
-                          styles.textInput,
-                          styles.itemInput,
-                          styles.itemInputPrice,
-                          {
-                            backgroundColor: theme.input.background,
-                            borderColor: theme.input.border,
-                            color: theme.input.text,
-                          },
-                        ]}
-                        value={
-                          (item.price ?? 0) === 0 ? '' : String(item.price ?? 0)
-                        }
-                        onChangeText={text =>
-                          updateItem(index, 'price', parseFloat(text) || 0)
-                        }
-                        placeholder='৳'
-                        placeholderTextColor={theme.input.placeholder}
-                        keyboardType='decimal-pad'
-                      />
-                      {items.length > 1 && (
-                        <TouchableOpacity
-                          style={styles.removeItemButton}
-                          onPress={() => removeItem(index)}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  </View>
+                ))}
+
+                {/* Total Amount and Receipt Section */}
+                <View style={styles.summarySection}>
+                  {/* Total Shopping Amount Card */}
+                  <View style={styles.totalCard}>
+                    <LinearGradient
+                      colors={totalGradientColors}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={[
+                        styles.totalCardGradient,
+                        {
+                          borderColor: onPrimaryOverlay,
+                          shadowColor: theme.shadow.light,
+                        },
+                      ]}
+                    >
+                      <View style={styles.totalHeader}>
+                        <View
+                          style={[
+                            styles.totalIconContainer,
+                            { backgroundColor: onPrimaryOverlay },
+                          ]}
                         >
                           <Ionicons
-                            name='trash-outline'
-                            size={20}
-                            color={theme.status.error}
+                            name='wallet-outline'
+                            size={26}
+                            color={onPrimaryText}
                           />
+                        </View>
+                        <View style={styles.totalTextContainer}>
+                          <ThemedText
+                            style={[
+                              styles.totalLabel,
+                              { color: onPrimaryText },
+                            ]}
+                          >
+                            Total Shopping Amount
+                          </ThemedText>
+                          <ThemedText
+                            style={[
+                              styles.totalSubtext,
+                              { color: onPrimaryText, opacity: 0.9 },
+                            ]}
+                          >
+                            {items.length} item{items.length !== 1 ? 's' : ''} ·{' '}
+                            {date}
+                          </ThemedText>
+                        </View>
+                      </View>
+                      <View
+                        style={[
+                          styles.totalDivider,
+                          { backgroundColor: onPrimaryOverlay },
+                        ]}
+                      />
+                      <View style={styles.totalAmountRow}>
+                        <ThemedText
+                          style={[
+                            styles.totalCurrency,
+                            { color: onPrimaryText },
+                          ]}
+                        >
+                          ৳
+                        </ThemedText>
+                        <ThemedText
+                          style={[styles.totalValue, { color: onPrimaryText }]}
+                        >
+                          {totalAmount.toLocaleString()}
+                        </ThemedText>
+                        <View
+                          style={[
+                            styles.totalBadge,
+                            { backgroundColor: badgeColor },
+                          ]}
+                        >
+                          <ThemedText
+                            style={[
+                              styles.totalBadgeText,
+                              { color: theme.button.primary.text },
+                            ]}
+                          >
+                            {amountTier === 'high'
+                              ? 'High'
+                              : amountTier === 'medium'
+                                ? 'Medium'
+                                : 'Low'}
+                          </ThemedText>
+                        </View>
+                      </View>
+                    </LinearGradient>
+                  </View>
+
+                  {/* Receipt Upload Card */}
+                  <View style={styles.receiptCard}>
+                    <View
+                      style={[
+                        styles.receiptCardInner,
+                        {
+                          backgroundColor: theme.cardBackground,
+                          borderColor: receiptImage
+                            ? theme.border.primary
+                            : theme.status.info + '80',
+                          borderStyle: receiptImage ? 'solid' : 'dashed',
+                          shadowColor: theme.shadow.light,
+                        },
+                      ]}
+                    >
+                      <View style={styles.receiptHeader}>
+                        <View
+                          style={[
+                            styles.receiptIconWrap,
+                            { backgroundColor: theme.status.info + '22' },
+                          ]}
+                        >
+                          <Ionicons
+                            name='receipt-outline'
+                            size={22}
+                            color={theme.status.info}
+                          />
+                        </View>
+                        <View style={styles.receiptHeaderText}>
+                          <ThemedText
+                            style={[
+                              styles.receiptLabel,
+                              { color: theme.text.primary },
+                            ]}
+                          >
+                            Receipt
+                          </ThemedText>
+                          <ThemedText
+                            style={[
+                              styles.receiptHint,
+                              { color: theme.text.tertiary },
+                            ]}
+                          >
+                            {receiptImage
+                              ? 'Tap below to change or remove'
+                              : 'Optional — add a photo for records'}
+                          </ThemedText>
+                        </View>
+                      </View>
+
+                      {receiptImage ? (
+                        <View style={styles.receiptPreview}>
+                          <Image
+                            source={{ uri: receiptImage }}
+                            style={[
+                              styles.receiptImage,
+                              { backgroundColor: theme.surface },
+                            ]}
+                            resizeMode='cover'
+                          />
+                          <View style={styles.receiptActions}>
+                            <TouchableOpacity
+                              style={[
+                                styles.receiptActionButton,
+                                {
+                                  backgroundColor:
+                                    theme.button.secondary.background,
+                                  borderColor: theme.button.secondary.border,
+                                },
+                              ]}
+                              onPress={() => handleReceiptUpload()}
+                            >
+                              <Ionicons
+                                name='camera'
+                                size={18}
+                                color={theme.status.info}
+                              />
+                              <ThemedText
+                                style={[
+                                  styles.receiptActionText,
+                                  { color: theme.button.secondary.text },
+                                ]}
+                              >
+                                Change
+                              </ThemedText>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={[
+                                styles.receiptActionButton,
+                                {
+                                  backgroundColor:
+                                    theme.button.danger.background + '18',
+                                  borderColor: theme.status.error + '50',
+                                },
+                              ]}
+                              onPress={handleRemoveReceipt}
+                            >
+                              <Ionicons
+                                name='trash-outline'
+                                size={18}
+                                color={theme.status.error}
+                              />
+                              <ThemedText
+                                style={[
+                                  styles.receiptActionText,
+                                  { color: theme.status.error },
+                                ]}
+                              >
+                                Remove
+                              </ThemedText>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      ) : (
+                        <TouchableOpacity
+                          style={[
+                            styles.uploadButton,
+                            {
+                              borderColor: theme.status.info + '70',
+                              backgroundColor: theme.status.info + '12',
+                            },
+                          ]}
+                          onPress={handleReceiptUpload}
+                          activeOpacity={0.7}
+                        >
+                          <View
+                            style={[
+                              styles.uploadIconWrap,
+                              { backgroundColor: theme.status.info + '22' },
+                            ]}
+                          >
+                            <Ionicons
+                              name='cloud-upload-outline'
+                              size={32}
+                              color={theme.status.info}
+                            />
+                          </View>
+                          <ThemedText
+                            style={[
+                              styles.uploadTitle,
+                              { color: theme.text.primary },
+                            ]}
+                          >
+                            Add receipt photo
+                          </ThemedText>
+                          <ThemedText
+                            style={[
+                              styles.uploadText,
+                              { color: theme.text.tertiary },
+                            ]}
+                          >
+                            JPG, PNG or WebP · optional
+                          </ThemedText>
                         </TouchableOpacity>
                       )}
                     </View>
                   </View>
                 </View>
-              ))}
-
-              {/* Total Amount and Receipt Section */}
-              <View style={styles.summarySection}>
-                {/* Total Shopping Amount Card */}
-                <View style={styles.totalCard}>
-                  <LinearGradient
-                    colors={totalGradientColors}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={[
-                      styles.totalCardGradient,
-                      { borderColor: onPrimaryOverlay, shadowColor: theme.shadow.light },
-                    ]}
-                  >
-                    <View style={styles.totalHeader}>
-                      <View
-                        style={[
-                          styles.totalIconContainer,
-                          { backgroundColor: onPrimaryOverlay },
-                        ]}
-                      >
-                        <Ionicons
-                          name='wallet-outline'
-                          size={26}
-                          color={onPrimaryText}
-                        />
-                      </View>
-                      <View style={styles.totalTextContainer}>
-                        <ThemedText
-                          style={[styles.totalLabel, { color: onPrimaryText }]}
-                        >
-                          Total Shopping Amount
-                        </ThemedText>
-                        <ThemedText
-                          style={[
-                            styles.totalSubtext,
-                            { color: onPrimaryText, opacity: 0.9 },
-                          ]}
-                        >
-                          {items.length} item{items.length !== 1 ? 's' : ''} ·{' '}
-                          {date}
-                        </ThemedText>
-                      </View>
-                    </View>
-                    <View
-                      style={[
-                        styles.totalDivider,
-                        { backgroundColor: onPrimaryOverlay },
-                      ]}
-                    />
-                    <View style={styles.totalAmountRow}>
-                      <ThemedText
-                        style={[styles.totalCurrency, { color: onPrimaryText }]}
-                      >
-                        ৳
-                      </ThemedText>
-                      <ThemedText
-                        style={[styles.totalValue, { color: onPrimaryText }]}
-                      >
-                        {totalAmount.toLocaleString()}
-                      </ThemedText>
-                      <View
-                        style={[
-                          styles.totalBadge,
-                          { backgroundColor: badgeColor },
-                        ]}
-                      >
-                        <ThemedText
-                          style={[
-                            styles.totalBadgeText,
-                            { color: theme.button.primary.text },
-                          ]}
-                        >
-                          {amountTier === 'high'
-                            ? 'High'
-                            : amountTier === 'medium'
-                              ? 'Medium'
-                              : 'Low'}
-                        </ThemedText>
-                      </View>
-                    </View>
-                  </LinearGradient>
-                </View>
-
-                {/* Receipt Upload Card */}
-                <View style={styles.receiptCard}>
-                  <View
-                    style={[
-                      styles.receiptCardInner,
-                      {
-                        backgroundColor: theme.cardBackground,
-                        borderColor: receiptImage
-                          ? theme.border.primary
-                          : theme.status.info + '80',
-                        borderStyle: receiptImage ? 'solid' : 'dashed',
-                        shadowColor: theme.shadow.light,
-                      },
-                    ]}
-                  >
-                    <View style={styles.receiptHeader}>
-                      <View
-                        style={[
-                          styles.receiptIconWrap,
-                          { backgroundColor: theme.status.info + '22' },
-                        ]}
-                      >
-                        <Ionicons
-                          name='receipt-outline'
-                          size={22}
-                          color={theme.status.info}
-                        />
-                      </View>
-                      <View style={styles.receiptHeaderText}>
-                        <ThemedText
-                          style={[
-                            styles.receiptLabel,
-                            { color: theme.text.primary },
-                          ]}
-                        >
-                          Receipt
-                        </ThemedText>
-                        <ThemedText
-                          style={[
-                            styles.receiptHint,
-                            { color: theme.text.tertiary },
-                          ]}
-                        >
-                          {receiptImage
-                            ? 'Tap below to change or remove'
-                            : 'Optional — add a photo for records'}
-                        </ThemedText>
-                      </View>
-                    </View>
-
-                    {receiptImage ? (
-                      <View style={styles.receiptPreview}>
-                        <Image
-                          source={{ uri: receiptImage }}
-                          style={[
-                            styles.receiptImage,
-                            { backgroundColor: theme.surface },
-                          ]}
-                          resizeMode='cover'
-                        />
-                        <View style={styles.receiptActions}>
-                          <TouchableOpacity
-                            style={[
-                              styles.receiptActionButton,
-                              {
-                                backgroundColor:
-                                  theme.button.secondary.background,
-                                borderColor: theme.button.secondary.border,
-                              },
-                            ]}
-                            onPress={handleReceiptUpload}
-                          >
-                            <Ionicons
-                              name='camera'
-                              size={18}
-                              color={theme.status.info}
-                            />
-                            <ThemedText
-                              style={[
-                                styles.receiptActionText,
-                                { color: theme.button.secondary.text },
-                              ]}
-                            >
-                              Change
-                            </ThemedText>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={[
-                              styles.receiptActionButton,
-                              {
-                                backgroundColor:
-                                  theme.button.danger.background + '18',
-                                borderColor: theme.status.error + '50',
-                              },
-                            ]}
-                            onPress={() => setReceiptImage(null)}
-                          >
-                            <Ionicons
-                              name='trash-outline'
-                              size={18}
-                              color={theme.status.error}
-                            />
-                            <ThemedText
-                              style={[
-                                styles.receiptActionText,
-                                { color: theme.status.error },
-                              ]}
-                            >
-                              Remove
-                            </ThemedText>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    ) : (
-                      <TouchableOpacity
-                        style={[
-                          styles.uploadButton,
-                          {
-                            borderColor: theme.status.info + '70',
-                            backgroundColor: theme.status.info + '12',
-                          },
-                        ]}
-                        onPress={handleReceiptUpload}
-                        activeOpacity={0.7}
-                      >
-                        <View
-                          style={[
-                            styles.uploadIconWrap,
-                            { backgroundColor: theme.status.info + '22' },
-                          ]}
-                        >
-                          <Ionicons
-                            name='cloud-upload-outline'
-                            size={32}
-                            color={theme.status.info}
-                          />
-                        </View>
-                        <ThemedText
-                          style={[
-                            styles.uploadTitle,
-                            { color: theme.text.primary },
-                          ]}
-                        >
-                          Add receipt photo
-                        </ThemedText>
-                        <ThemedText
-                          style={[
-                            styles.uploadText,
-                            { color: theme.text.tertiary },
-                          ]}
-                        >
-                          JPG, PNG or WebP · optional
-                        </ThemedText>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                </View>
               </View>
             </View>
-          </ScrollView>
+          </KeyboardAwareScrollView>
         </View>
 
         {/* Submit Button - fixed at bottom like on open */}

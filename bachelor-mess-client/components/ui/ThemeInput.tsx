@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback, forwardRef } from 'react';
 import { TextInput, View, StyleSheet, TextInputProps, type StyleProp, type ViewStyle } from 'react-native';
 import { ThemedText } from '../ThemedText';
 import { useTheme } from '@/context/ThemeContext';
+import { useKeyboardScroll } from '@/contexts/KeyboardScrollContext';
 
 interface ThemeInputProps extends TextInputProps {
   label?: string;
@@ -12,18 +13,48 @@ interface ThemeInputProps extends TextInputProps {
   containerStyle?: StyleProp<ViewStyle>;
 }
 
-export const ThemeInput: React.FC<ThemeInputProps> = ({
-  label,
-  error,
-  helper,
-  leftIcon,
-  rightIcon,
-  containerStyle,
-  style,
-  ...props
-}) => {
+export const ThemeInput = forwardRef<TextInput, ThemeInputProps>(function ThemeInput(
+  {
+    label,
+    error,
+    helper,
+    leftIcon,
+    rightIcon,
+    containerStyle,
+    style,
+    onFocus,
+    onBlur,
+    ...props
+  },
+  ref
+) {
   const { theme } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
+  const inputRef = useRef<TextInput>(null);
+  const keyboardScroll = useKeyboardScroll();
+  const setRef = useCallback(
+    (node: TextInput | null) => {
+      (inputRef as React.MutableRefObject<TextInput | null>).current = node;
+      if (typeof ref === 'function') ref(node);
+      else if (ref) (ref as React.MutableRefObject<TextInput | null>).current = node;
+    },
+    [ref]
+  );
+  const handleFocus = useCallback(
+    (e: any) => {
+      setIsFocused(true);
+      keyboardScroll?.focusScroll(inputRef.current);
+      onFocus?.(e);
+    },
+    [keyboardScroll, onFocus]
+  );
+  const handleBlur = useCallback(
+    (e: any) => {
+      setIsFocused(false);
+      onBlur?.(e);
+    },
+    [onBlur]
+  );
 
   const getInputColors = () => {
     if (error) {
@@ -70,6 +101,7 @@ export const ThemeInput: React.FC<ThemeInputProps> = ({
         )}
         
         <TextInput
+          ref={setRef}
           style={[
             styles.input,
             {
@@ -81,8 +113,8 @@ export const ThemeInput: React.FC<ThemeInputProps> = ({
             style,
           ]}
           placeholderTextColor={colors.placeholder}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
           {...props}
         />
         
@@ -105,7 +137,7 @@ export const ThemeInput: React.FC<ThemeInputProps> = ({
       )}
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {

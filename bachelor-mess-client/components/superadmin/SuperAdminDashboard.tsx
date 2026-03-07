@@ -17,6 +17,7 @@ import { ThemedText } from '../ThemedText';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import userService, { User } from '../../services/userService';
+import httpClient from '../../services/httpClient';
 
 interface SuperAdminDashboardProps {
   onNavigate?: (screen: string) => void;
@@ -58,18 +59,40 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
   const loadSystemStats = async () => {
     try {
       setLoading(true);
-      // Simulate API call for system stats
-      const stats: SystemStats = {
-        totalUsers: 156,
-        totalAdmins: 8,
-        totalMembers: 148,
-        activeUsers: 142,
-        pendingApprovals: 12,
-        systemHealth: 'excellent',
-      };
-      setSystemStats(stats);
-    } catch (error) {
-      console.error('Error loading system stats:', error);
+      const res = await httpClient.get<{
+        users?: { totalUsers?: number; activeUsers?: number; adminUsers?: number; memberUsers?: number };
+        meals?: { pendingMeals?: number };
+        bazar?: { pendingBazar?: number };
+        systemHealth?: { memoryUsage?: { heapUsed?: number; heapTotal?: number } };
+      }>('/api/super-admin/overview');
+      const data = res?.data ?? res;
+      if (!data) {
+        setSystemStats(prev => ({ ...prev }));
+        return;
+      }
+      const users = data.users ?? {};
+      const meals = data.meals ?? {};
+      const bazar = data.bazar ?? {};
+      const pendingMeals = typeof meals.pendingMeals === 'number' ? meals.pendingMeals : 0;
+      const pendingBazar = typeof bazar.pendingBazar === 'number' ? bazar.pendingBazar : 0;
+      let systemHealth: SystemStats['systemHealth'] = 'excellent';
+      if (data.systemHealth?.memoryUsage?.heapTotal) {
+        const used = data.systemHealth.memoryUsage.heapUsed ?? 0;
+        const total = data.systemHealth.memoryUsage.heapTotal;
+        if (total > 0 && used / total > 0.9) systemHealth = 'critical';
+        else if (used / total > 0.75) systemHealth = 'warning';
+        else if (used / total > 0.5) systemHealth = 'good';
+      }
+      setSystemStats({
+        totalUsers: users.totalUsers ?? 0,
+        totalAdmins: users.adminUsers ?? 0,
+        totalMembers: users.memberUsers ?? 0,
+        activeUsers: users.activeUsers ?? 0,
+        pendingApprovals: pendingMeals + pendingBazar,
+        systemHealth,
+      });
+    } catch {
+      setSystemStats(prev => ({ ...prev }));
     } finally {
       setLoading(false);
     }

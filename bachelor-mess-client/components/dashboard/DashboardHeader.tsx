@@ -4,7 +4,8 @@ import type { IconName } from '@/constants/IconTypes';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { ThrottledTouchableOpacity } from '@/components/ui';
 import { ThemedText } from '../ThemedText';
 
 interface DashboardHeaderProps {
@@ -31,11 +32,8 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   const { theme } = useTheme();
 
   const handleNotificationPress = () => {
-    if (onNotificationPress) {
-      onNotificationPress();
-    } else {
-      router.push('/notifications');
-    }
+    if (onNotificationPress) onNotificationPress();
+    else router.push('/notifications');
   };
 
   const onGradientText = theme.onPrimary?.text ?? theme.button?.primary?.text;
@@ -73,12 +71,12 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
             </ThemedText>
           </View>
           {showNotificationButton && (
-            <TouchableOpacity
+            <ThrottledTouchableOpacity
               style={[styles.notifBtn, { backgroundColor: iconBgOverlay }]}
               onPress={handleNotificationPress}
             >
               <Ionicons name="notifications-outline" size={isSmallScreen ? 20 : 24} color={onGradientText} />
-            </TouchableOpacity>
+            </ThrottledTouchableOpacity>
           )}
         </View>
       </LinearGradient>

@@ -1,7 +1,7 @@
 {
   "name": "bachelor-mess-api",
   "version": "1.0.0",
-  "description": "Bachelor Mess Management API - A comprehensive RESTful API for managing bachelor mess operations",
+  "description": "Bachelor Mess Management API with real-time WebSocket (uWebSockets.js). Single process: API + socket start together for minimal memory.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -17,8 +17,8 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "lint:check": "eslint . --max-warnings=0",
-    "security-check": "npm audit",
-    "security-fix": "npm audit fix",
+    "security-check": "yarn audit",
+    "security-fix": "yarn audit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "docker:build": "docker build -t bachelor-mess-api .",
@@ -42,8 +42,8 @@
     "backup:list": "node scripts/backup-list.js",
     "monitor:start": "node scripts/monitor.js",
     "monitor:status": "node scripts/monitor-status.js",
-    "deploy:staging": "npm run test:ci && npm run lint:check && npm run security-check",
-    "deploy:production": "npm run deploy:staging && npm run docker:build"
+    "deploy:staging": "yarn test:ci && yarn lint:check && yarn security-check",
+    "deploy:production": "yarn deploy:staging && yarn docker:build"
   },
   "keywords": [
     "express",
@@ -82,6 +82,7 @@
     "multer": "^1.4.5-lts.1",
     "multer-storage-cloudinary": "^4.0.0",
     "node-cache": "^5.1.2",
+    "uWebSockets.js": "https://github.com/uNetworking/uWebSockets.js#v20.58.0",
     "winston": "^3.11.0",
     "xss-clean": "^0.1.4"
   },
@@ -114,7 +115,12 @@
   },
   "engines": {
     "node": ">=18.0.0",
-    "npm": ">=8.0.0"
+    "yarn": ">=1.22.0"
+  },
+  "packageManager": "yarn@1.22.19",
+  "config": {
+    "apiPort": "3000",
+    "wsPort": "3001"
   },
   "repository": {
     "type": "git",

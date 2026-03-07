@@ -429,12 +429,10 @@ class ActivityService {
   }
 
   /**
-   * Clear activity cache
+   * Clear activity cache (delegates to httpClient).
    */
   clearCache(): void {
-    console.log('🗑️ Clearing activity cache...');
-    // This would be implemented in the httpClient
-    // For now, we'll just log it
+    httpClient.clearCache();
   }
 
   /**

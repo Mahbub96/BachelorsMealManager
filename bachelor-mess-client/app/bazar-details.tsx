@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -8,6 +8,7 @@ import {
   TextInput,
 } from 'react-native';
 import { showAppAlert } from '@/context/AppAlertContext';
+import { KeyboardAwareScrollView } from '@/contexts/KeyboardScrollContext';
 import { Ionicons } from '@expo/vector-icons';
 import type { IconName } from '@/constants/IconTypes';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -40,6 +41,15 @@ export default function BazarDetailsScreen() {
   const [editing, setEditing] = useState(false);
   const [editData, setEditData] = useState<Partial<BazarEntry>>({});
   const [showEditModal, setShowEditModal] = useState(false);
+
+  const inputRefsMap = useRef<Record<string, TextInput | null>>({});
+  const focusScrollRef = useRef<(r: TextInput | null) => void>(() => {});
+  const onScrollReady = useCallback((api: { focusScroll: (r: TextInput | null) => void }) => {
+    focusScrollRef.current = api.focusScroll;
+  }, []);
+  const focusScroll = useCallback((key: string) => {
+    focusScrollRef.current(inputRefsMap.current[key] ?? null);
+  }, []);
 
   const bazarId = params.id as string;
 
@@ -529,11 +539,13 @@ export default function BazarDetailsScreen() {
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.modalContent}>
+          <KeyboardAwareScrollView style={styles.modalContent} onReady={onScrollReady}>
             {/* Date */}
             <View style={styles.inputGroup}>
               <ThemedText style={[styles.inputLabel, { color: theme.text.primary }]}>Date</ThemedText>
               <TextInput
+                ref={r => { inputRefsMap.current['date'] = r; }}
+                onFocus={() => focusScroll('date')}
                 style={[styles.textInput, { backgroundColor: theme.input.background, borderColor: theme.input.border, color: theme.input.text }]}
                 value={editData.date}
                 onChangeText={text =>
@@ -548,6 +560,8 @@ export default function BazarDetailsScreen() {
             <View style={styles.inputGroup}>
               <ThemedText style={[styles.inputLabel, { color: theme.text.primary }]}>Description</ThemedText>
               <TextInput
+                ref={r => { inputRefsMap.current['description'] = r; }}
+                onFocus={() => focusScroll('description')}
                 style={[styles.textInput, styles.textArea, { backgroundColor: theme.input.background, borderColor: theme.input.border, color: theme.input.text }]}
                 value={editData.description}
                 onChangeText={text =>
@@ -576,6 +590,8 @@ export default function BazarDetailsScreen() {
                 <View key={index} style={[styles.itemEditCard, { backgroundColor: theme.cardBackground, shadowColor: theme.cardShadow }]}>
                   <View style={[styles.itemEditRow, { alignItems: 'center' }]}>
                     <TextInput
+                      ref={r => { inputRefsMap.current[`item-${index}-name`] = r; }}
+                      onFocus={() => focusScroll(`item-${index}-name`)}
                       style={[styles.textInput, styles.itemInput, { backgroundColor: theme.input.background, borderColor: theme.input.border, color: theme.input.text }]}
                       value={item.name}
                       onChangeText={text => updateItem(index, 'name', text)}
@@ -583,6 +599,8 @@ export default function BazarDetailsScreen() {
                       placeholderTextColor={theme.input.placeholder}
                     />
                     <TextInput
+                      ref={r => { inputRefsMap.current[`item-${index}-qty`] = r; }}
+                      onFocus={() => focusScroll(`item-${index}-qty`)}
                       style={[styles.textInput, styles.itemInput, { backgroundColor: theme.input.background, borderColor: theme.input.border, color: theme.input.text }]}
                       value={item.quantity}
                       onChangeText={text =>
@@ -593,6 +611,8 @@ export default function BazarDetailsScreen() {
                       keyboardType='numeric'
                     />
                     <TextInput
+                      ref={r => { inputRefsMap.current[`item-${index}-price`] = r; }}
+                      onFocus={() => focusScroll(`item-${index}-price`)}
                       style={[styles.textInput, styles.itemInput, { backgroundColor: theme.input.background, borderColor: theme.input.border, color: theme.input.text }]}
                       value={item.price.toString()}
                       onChangeText={text =>
@@ -620,7 +640,7 @@ export default function BazarDetailsScreen() {
                 </ThemedText>
               </View>
             </View>
-          </ScrollView>
+          </KeyboardAwareScrollView>
 
           {/* Modal Actions */}
           <View style={[styles.modalActions, { borderTopColor: theme.border.secondary }]}>

@@ -35,8 +35,8 @@ const protect = async (req, res, next) => {
       throw new AuthenticationError('Invalid token format');
     }
 
-    // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // Verify token (explicit algorithm to prevent algorithm confusion)
+    const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
 
     // Check if token is expired
     if (decoded.exp && Date.now() >= decoded.exp * 1000) {

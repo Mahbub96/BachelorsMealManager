@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   TextInput,
   Modal,
   ActivityIndicator,
 } from 'react-native';
 import { showAppAlert } from '@/context/AppAlertContext';
+import { KeyboardAwareScrollView } from '@/contexts/KeyboardScrollContext';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '../ThemedText';
 import { ModernLoader } from '../ui/ModernLoader';
@@ -34,6 +34,15 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
 }) => {
   const { theme } = useTheme();
   const isEditMode = mode === 'edit';
+
+  const inputRefsMap = useRef<Record<string, TextInput | null>>({});
+  const focusScrollRef = useRef<(r: TextInput | null) => void>(() => {});
+  const onScrollReady = useCallback((api: { focusScroll: (r: TextInput | null) => void }) => {
+    focusScrollRef.current = api.focusScroll;
+  }, []);
+  const focusScroll = useCallback((key: string) => {
+    focusScrollRef.current(inputRefsMap.current[key] ?? null);
+  }, []);
 
   const [formData, setFormData] = useState<CreateUserData | UpdateUserData>({
     name: '',
@@ -130,10 +139,12 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.modalBody}>
+          <KeyboardAwareScrollView style={styles.modalBody} onReady={onScrollReady}>
             <View style={styles.formGroup}>
               <ThemedText style={styles.formLabel}>Name *</ThemedText>
               <TextInput
+                ref={r => { inputRefsMap.current['name'] = r; }}
+                onFocus={() => focusScroll('name')}
                 style={[styles.formInput, { 
                   backgroundColor: theme.input.background,
                   borderColor: theme.input.border,
@@ -152,7 +163,9 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
             <View style={styles.formGroup}>
               <ThemedText style={styles.formLabel}>Email *</ThemedText>
               <TextInput
-                style={[styles.formInput, { 
+                ref={r => { inputRefsMap.current['email'] = r; }}
+                onFocus={() => focusScroll('email')}
+                style={[styles.formInput, {
                   backgroundColor: theme.input.background,
                   borderColor: theme.input.border,
                   color: theme.input.text,
@@ -173,6 +186,8 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
               <View style={styles.formGroup}>
                 <ThemedText style={styles.formLabel}>Password *</ThemedText>
                 <TextInput
+                  ref={r => { inputRefsMap.current['password'] = r; }}
+                  onFocus={() => focusScroll('password')}
                   style={[styles.formInput, { 
                     backgroundColor: theme.input.background,
                     borderColor: theme.input.border,
@@ -193,7 +208,9 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
             <View style={styles.formGroup}>
               <ThemedText style={styles.formLabel}>Phone</ThemedText>
               <TextInput
-                style={[styles.formInput, { 
+                ref={r => { inputRefsMap.current['phone'] = r; }}
+                onFocus={() => focusScroll('phone')}
+                style={[styles.formInput, {
                   backgroundColor: theme.input.background,
                   borderColor: theme.input.border,
                   color: theme.input.text,
@@ -236,7 +253,7 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
                 </View>
               </View>
             )}
-          </ScrollView>
+          </KeyboardAwareScrollView>
 
           <View style={[styles.modalFooter, { borderTopColor: theme.border.secondary }]}>
             <TouchableOpacity

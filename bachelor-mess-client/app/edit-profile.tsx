@@ -1,8 +1,7 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   StyleSheet,
-  ScrollView,
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
@@ -10,6 +9,7 @@ import {
   TextInput,
 } from 'react-native';
 import { showAppAlert } from '@/context/AppAlertContext';
+import { KeyboardAwareScrollView } from '@/contexts/KeyboardScrollContext';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { ScreenLayout } from '@/components/layout';
@@ -94,6 +94,15 @@ export default function EditProfileScreen() {
   const [activeSection, setActiveSection] = useState<
     'basic' | 'contact' | 'preferences' | 'security'
   >('basic');
+
+  const inputRefsMap = useRef<Record<string, TextInput | null>>({});
+  const focusScrollRef = useRef<(r: TextInput | null) => void>(() => {});
+  const onScrollReady = useCallback((api: { focusScroll: (r: TextInput | null) => void }) => {
+    focusScrollRef.current = api.focusScroll;
+  }, []);
+  const focusScroll = useCallback((key: string) => {
+    focusScrollRef.current(inputRefsMap.current[key] ?? null);
+  }, []);
 
   const validateForm = useCallback((): boolean => {
     const newErrors: FormErrors = {};
@@ -291,6 +300,8 @@ export default function EditProfileScreen() {
           <ThemedText style={styles.fieldLabel}>Full Name</ThemedText>
         </View>
         <TextInput
+          ref={r => { inputRefsMap.current['name'] = r; }}
+          onFocus={() => focusScroll('name')}
           style={[styles.input, errors.name && styles.inputError]}
           value={formData.name}
           onChangeText={value => handleInputChange('name', value)}
@@ -311,6 +322,8 @@ export default function EditProfileScreen() {
           </ThemedText>
         </View>
         <TextInput
+          ref={r => { inputRefsMap.current['dietaryRestrictions'] = r; }}
+          onFocus={() => focusScroll('dietaryRestrictions')}
           style={[
             styles.input,
             errors.dietaryRestrictions && styles.inputError,
@@ -344,6 +357,8 @@ export default function EditProfileScreen() {
           <ThemedText style={styles.fieldLabel}>Phone Number</ThemedText>
         </View>
         <TextInput
+          ref={r => { inputRefsMap.current['phone'] = r; }}
+          onFocus={() => focusScroll('phone')}
           style={[styles.input, errors.phone && styles.inputError]}
           value={formData.phone}
           onChangeText={value => handleInputChange('phone', value)}
@@ -363,6 +378,8 @@ export default function EditProfileScreen() {
           <ThemedText style={styles.fieldLabel}>Email Address</ThemedText>
         </View>
         <TextInput
+          ref={r => { inputRefsMap.current['email'] = r; }}
+          onFocus={() => focusScroll('email')}
           style={[styles.input, errors.email && styles.inputError]}
           value={formData.email}
           onChangeText={value => handleInputChange('email', value)}
@@ -383,6 +400,8 @@ export default function EditProfileScreen() {
           <ThemedText style={styles.fieldLabel}>Address</ThemedText>
         </View>
         <TextInput
+          ref={r => { inputRefsMap.current['address'] = r; }}
+          onFocus={() => focusScroll('address')}
           style={[
             styles.input,
             styles.textArea,
@@ -407,6 +426,8 @@ export default function EditProfileScreen() {
           <ThemedText style={styles.fieldLabel}>Emergency Contact</ThemedText>
         </View>
         <TextInput
+          ref={r => { inputRefsMap.current['emergencyContact'] = r; }}
+          onFocus={() => focusScroll('emergencyContact')}
           style={[styles.input, errors.emergencyContact && styles.inputError]}
           value={formData.emergencyContact}
           onChangeText={value => handleInputChange('emergencyContact', value)}
@@ -629,6 +650,8 @@ export default function EditProfileScreen() {
               </ThemedText>
             </View>
             <TextInput
+              ref={r => { inputRefsMap.current['currentPassword'] = r; }}
+              onFocus={() => focusScroll('currentPassword')}
               style={[
                 styles.input,
                 errors.currentPassword && styles.inputError,
@@ -656,6 +679,8 @@ export default function EditProfileScreen() {
             </View>
             <View style={styles.passwordInputContainer}>
               <TextInput
+                ref={r => { inputRefsMap.current['newPassword'] = r; }}
+                onFocus={() => focusScroll('newPassword')}
                 style={[
                   styles.input,
                   styles.passwordInput,
@@ -726,6 +751,8 @@ export default function EditProfileScreen() {
             </View>
             <View style={styles.passwordInputContainer}>
               <TextInput
+                ref={r => { inputRefsMap.current['confirmPassword'] = r; }}
+                onFocus={() => focusScroll('confirmPassword')}
                 style={[
                   styles.input,
                   styles.passwordInput,
@@ -821,9 +848,10 @@ export default function EditProfileScreen() {
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <ScrollView
+        <KeyboardAwareScrollView
           style={styles.scrollView}
           showsVerticalScrollIndicator={false}
+          onReady={onScrollReady}
         >
           <ThemedView style={styles.container}>
             <View style={styles.content}>
@@ -889,7 +917,7 @@ export default function EditProfileScreen() {
             </TouchableOpacity>
             </View>
           </ThemedView>
-        </ScrollView>
+        </KeyboardAwareScrollView>
       </KeyboardAvoidingView>
     </ScreenLayout>
   );

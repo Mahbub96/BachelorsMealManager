@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   Modal,
   TextInput,
 } from 'react-native';
 import { showAppAlert } from '@/context/AppAlertContext';
+import { KeyboardAwareScrollView } from '@/contexts/KeyboardScrollContext';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from './ThemedText';
 import { ModernLoader } from './ui/ModernLoader';
@@ -58,6 +58,15 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
   const [selectedStatus, setSelectedStatus] = useState<
     'pending' | 'approved' | 'rejected'
   >('approved');
+
+  const inputRefsMap = useRef<Record<string, TextInput | null>>({});
+  const focusScrollRef = useRef<(r: TextInput | null) => void>(() => {});
+  const onScrollReady = useCallback((api: { focusScroll: (r: TextInput | null) => void }) => {
+    focusScrollRef.current = api.focusScroll;
+  }, []);
+  const focusScroll = useCallback((key: string) => {
+    focusScrollRef.current(inputRefsMap.current[key] ?? null);
+  }, []);
 
   // Get real users from API
   const [users, setUsers] = useState<User[]>([]);
@@ -288,7 +297,7 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
   };
 
   const renderCreateForm = () => (
-    <ScrollView style={[styles.formContainer, { backgroundColor: theme.background }]}>
+    <KeyboardAwareScrollView style={[styles.formContainer, { backgroundColor: theme.background }]} onReady={onScrollReady}>
       <ThemedText style={[styles.sectionTitle, { color: theme.text.primary }]}>Select User</ThemedText>
       {loadingUsers ? (
         <View style={styles.loader}>
@@ -321,6 +330,8 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
 
       <ThemedText style={[styles.sectionTitle, { color: theme.text.primary }]}>Bazar Details</ThemedText>
       <TextInput
+        ref={r => { inputRefsMap.current['description'] = r; }}
+        onFocus={() => focusScroll('description')}
         style={[styles.input, { borderColor: theme.border.secondary, color: theme.input.text, backgroundColor: theme.input.background }]}
         placeholder='Description'
         placeholderTextColor={theme.input.placeholder}
@@ -331,6 +342,8 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
       />
 
       <TextInput
+        ref={r => { inputRefsMap.current['date'] = r; }}
+        onFocus={() => focusScroll('date')}
         style={[styles.input, { borderColor: theme.border.secondary, color: theme.input.text, backgroundColor: theme.input.background }]}
         placeholder='Date (YYYY-MM-DD)'
         placeholderTextColor={theme.input.placeholder}
@@ -339,6 +352,8 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
       />
 
       <TextInput
+        ref={r => { inputRefsMap.current['totalAmount'] = r; }}
+        onFocus={() => focusScroll('totalAmount')}
         style={[styles.input, { borderColor: theme.border.secondary, color: theme.input.text, backgroundColor: theme.input.background }]}
         placeholder='Total Amount'
         placeholderTextColor={theme.input.placeholder}
@@ -372,6 +387,8 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
       {formData.items.map((item, index) => (
         <View key={index} style={styles.itemContainer}>
           <TextInput
+            ref={r => { inputRefsMap.current[`item-${index}-name`] = r; }}
+            onFocus={() => focusScroll(`item-${index}-name`)}
             style={[styles.itemInput, { borderColor: theme.border.secondary, color: theme.input.text, backgroundColor: theme.input.background }]}
             placeholder='Item name'
             placeholderTextColor={theme.input.placeholder}
@@ -379,6 +396,8 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
             onChangeText={text => updateItem(index, 'name', text)}
           />
           <TextInput
+            ref={r => { inputRefsMap.current[`item-${index}-qty`] = r; }}
+            onFocus={() => focusScroll(`item-${index}-qty`)}
             style={[styles.itemInput, { borderColor: theme.border.secondary, color: theme.input.text, backgroundColor: theme.input.background }]}
             placeholder='Quantity'
             placeholderTextColor={theme.input.placeholder}
@@ -386,6 +405,8 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
             onChangeText={text => updateItem(index, 'quantity', text)}
           />
           <TextInput
+            ref={r => { inputRefsMap.current[`item-${index}-price`] = r; }}
+            onFocus={() => focusScroll(`item-${index}-price`)}
             style={[styles.itemInput, { borderColor: theme.border.secondary, color: theme.input.text, backgroundColor: theme.input.background }]}
             placeholder='Price'
             placeholderTextColor={theme.input.placeholder}
@@ -405,11 +426,11 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
         <Ionicons name='add-circle' size={24} color={theme.status.success} />
         <ThemedText style={[styles.addButtonText, { color: theme.status.success }]}>Add Item</ThemedText>
       </TouchableOpacity>
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 
   const renderBulkForm = () => (
-    <ScrollView style={[styles.formContainer, { backgroundColor: theme.background }]}>
+    <KeyboardAwareScrollView style={[styles.formContainer, { backgroundColor: theme.background }]} onReady={onScrollReady}>
       <ThemedText style={[styles.sectionTitle, { color: theme.text.primary }]}>Bulk Operation</ThemedText>
 
       <View style={styles.operationSelector}>
@@ -431,6 +452,8 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
       </View>
 
       <TextInput
+        ref={r => { inputRefsMap.current['bulkNotes'] = r; }}
+        onFocus={() => focusScroll('bulkNotes')}
         style={[styles.textArea, { borderColor: theme.border.secondary, color: theme.input.text, backgroundColor: theme.input.background }]}
         placeholder='Notes (optional)'
         placeholderTextColor={theme.input.placeholder}
@@ -443,7 +466,7 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
       <ThemedText style={[styles.sectionTitle, { color: theme.text.primary }]}>
         Selected Entries: {selectedBazarIds.length}
       </ThemedText>
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 
   const renderContent = () => {

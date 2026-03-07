@@ -18,8 +18,8 @@ class AuthMiddleware {
 
         const token = authHeader.split(' ')[1];
 
-        // 2️⃣ Verify token
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        // 2️⃣ Verify token (explicit algorithm to prevent algorithm confusion)
+        const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
         if (!decoded.id) {
           return res.status(401).json({ success: false, error: 'Invalid token', errorCode: 'AUTHENTICATION_ERROR' });
         }
@@ -79,7 +79,7 @@ class AuthMiddleware {
         if (!authHeader || !authHeader.startsWith('Bearer ')) return next();
 
         const token = authHeader.split(' ')[1];
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
 
         const cacheKey = `user:${decoded.id}`;
         let user = cacheManager.get(cacheKey);
@@ -128,7 +128,7 @@ class AuthMiddleware {
         const { refreshToken } = req.body;
         if (!refreshToken) throw new AuthenticationError('Refresh token is required');
 
-        const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+        const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET, { algorithms: ['HS256'] });
         const user = await User.findById(decoded.id).select('-password');
         if (!user || user.status !== 'active') throw new AuthenticationError('Invalid user');
 

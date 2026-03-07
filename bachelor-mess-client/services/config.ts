@@ -40,12 +40,45 @@ const getApiUrl = (): string => {
   );
 };
 
+const apiUrl = getApiUrl();
+
+/** Centralized realtime socket (one WS for notification, dashboard, etc.). Same host as API, port from env or 3001. */
+function getRealtimeWsUrl(): string {
+  const envWs = process.env.EXPO_PUBLIC_WS_URL;
+  if (envWs) return envWs.replace(/\/$/, '');
+  try {
+    const u = new URL(apiUrl);
+    u.protocol = u.protocol === 'https:' ? 'wss:' : 'ws:';
+    u.port = process.env.EXPO_PUBLIC_WS_PORT || '3001';
+    u.pathname = '/';
+    u.search = '';
+    return u.toString().replace(/\/$/, '');
+  } catch {
+    return '';
+  }
+}
+
 export const config = {
-  apiUrl: getApiUrl(),
-  timeout: parseInt(process.env.EXPO_PUBLIC_API_TIMEOUT || String(APP_CONFIG.apiTimeoutMs), 10),
-  maxRetries: parseInt(process.env.EXPO_PUBLIC_API_MAX_RETRIES || String(APP_CONFIG.apiMaxRetries), 10),
-  retryDelay: parseInt(process.env.EXPO_PUBLIC_API_RETRY_DELAY || String(APP_CONFIG.apiRetryDelayMs), 10),
-  cacheDuration: parseInt(process.env.EXPO_PUBLIC_CACHE_DURATION || String(APP_CONFIG.apiCacheDurationMs), 10),
+  apiUrl,
+  realtimeWsUrl: getRealtimeWsUrl(),
+  timeout: parseInt(
+    process.env.EXPO_PUBLIC_API_TIMEOUT || String(APP_CONFIG.apiTimeoutMs),
+    10
+  ),
+  maxRetries: parseInt(
+    process.env.EXPO_PUBLIC_API_MAX_RETRIES || String(APP_CONFIG.apiMaxRetries),
+    10
+  ),
+  retryDelay: parseInt(
+    process.env.EXPO_PUBLIC_API_RETRY_DELAY ||
+      String(APP_CONFIG.apiRetryDelayMs),
+    10
+  ),
+  cacheDuration: parseInt(
+    process.env.EXPO_PUBLIC_CACHE_DURATION ||
+      String(APP_CONFIG.apiCacheDurationMs),
+    10
+  ),
 };
 
 // Validate configuration
@@ -110,7 +143,8 @@ export const API_ENDPOINTS = {
     DELETE: (id: string) => `/api/meals/${id}`,
     DELETE_REQUEST: (id: string) => `/api/meals/${id}/delete-request`,
     DELETE_REQUESTS: '/api/meals/delete-requests',
-    RESPOND_DELETE_REQUEST: (id: string) => `/api/meals/delete-requests/${id}/respond`,
+    RESPOND_DELETE_REQUEST: (id: string) =>
+      `/api/meals/delete-requests/${id}/respond`,
     STATS: '/api/meals/stats/overview',
     USER_STATS: '/api/meals/stats/user',
     BY_ID: (id: string) => `/api/meals/${id}`,
@@ -130,7 +164,8 @@ export const API_ENDPOINTS = {
     BULK_APPROVE: '/api/bazar/bulk-approve',
     DELETE_REQUEST: (id: string) => `/api/bazar/${id}/delete-request`,
     DELETE_REQUESTS: '/api/bazar/delete-requests',
-    RESPOND_DELETE_REQUEST: (id: string) => `/api/bazar/delete-requests/${id}/respond`,
+    RESPOND_DELETE_REQUEST: (id: string) =>
+      `/api/bazar/delete-requests/${id}/respond`,
   },
   UI_CONFIG: {
     ACTIVE: '/api/ui-config/active',

@@ -173,7 +173,7 @@ class BazarServiceImpl implements BazarService {
           API_ENDPOINTS.BAZAR.SUBMIT,
           data.receiptImage,
           additionalData,
-          { offlineFallback: true }
+          { offlineFallback: true, fileFieldName: 'receiptImage' }
         );
       } else {
         // Upload without file - format data to match backend expectations

@@ -2,9 +2,12 @@
  * notificationService — thin utility for creating notifications from controllers.
  * All notification creation goes through this single function so that
  * failures never crash the originating request (fire-and-forget).
+ * Pushes to connected clients via centralized socket hub (channel: notification).
  */
 const Notification = require('../models/Notification');
 const logger = require('../utils/logger');
+const socketHub = require('../ws/socketHub');
+const { NOTIFICATION } = require('../ws/channels');
 
 /**
  * Create a notification for one or more users.
@@ -30,9 +33,32 @@ async function createNotification(userIds, type, title, message, ref = {}) {
       refId: ref.refId ?? undefined,
     }));
 
-    await Notification.insertMany(docs, { ordered: false });
+    const result = await Notification.insertMany(docs, { ordered: false });
+    if (socketHub.isAvailable() && result.insertedIds) {
+      const insertedIds = Array.isArray(result.insertedIds)
+        ? result.insertedIds
+        : Object.values(result.insertedIds);
+      const inserted = await Notification.find({ _id: { $in: insertedIds } }).lean();
+      for (const doc of inserted) {
+        const userIdStr = String(doc.userId);
+        const unreadCount = await Notification.countDocuments({ userId: doc.userId, isRead: false });
+        const data = {
+          _id: String(doc._id),
+          userId: userIdStr,
+          type: doc.type,
+          title: doc.title,
+          message: doc.message,
+          isRead: doc.isRead,
+          refType: doc.refType,
+          refId: doc.refId ? String(doc.refId) : undefined,
+          createdAt: doc.createdAt?.toISOString?.(),
+          updatedAt: doc.updatedAt?.toISOString?.(),
+          unreadCount,
+        };
+        socketHub.pushToChannel(userIdStr, NOTIFICATION, data);
+      }
+    }
   } catch (err) {
-    // Never let notification creation crash the caller
     logger.warn('notificationService.createNotification failed', { type, error: err?.message });
   }
 }

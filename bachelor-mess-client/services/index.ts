@@ -126,6 +126,16 @@ export type { OfflineConfig, OfflineData, SyncQueueItem } from './offlineStorage
 // Group Admin (admin change voting) Service
 export { groupAdminService } from './groupAdminService';
 
+// Centralized realtime socket (one connection, channel-based: notification, dashboard, …)
+export {
+  CHANNELS,
+  connectRealtimeSocket,
+  disconnectRealtimeSocket,
+  onChannel,
+  isRealtimeConnected,
+} from './realtimeSocketClient';
+export type { ChannelName } from './realtimeSocketClient';
+
 // API Service Manager - For managing all services together
 export class ApiServiceManager {
   static async clearAllCache(): Promise<void> {

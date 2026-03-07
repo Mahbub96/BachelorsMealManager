@@ -69,12 +69,23 @@ class BazarController {
       // Populate user information
       await bazar.populate('userId', 'name email');
 
-      // Notify admin when member submits a new pending bazar entry
+      // Always notify the submitter so their UI shows the new entry in real-time
+      try {
+        notificationService.createNotification(
+          userId,
+          'bazar_submitted',
+          'Bazar Entry Submitted 🛒',
+          `You submitted a ৳${totalAmount} ${bazarType} bazar entry.`,
+          { refType: 'Bazar', refId: bazar._id }
+        );
+      } catch { /* non-critical */ }
+
+      // Also notify admin when a member submits a new pending bazar entry
       if (bazar.status === 'pending') {
         try {
           const submitter = await User.findById(userId).select('name createdBy').lean();
           const adminId = submitter?.createdBy;
-          if (adminId) {
+          if (adminId && String(adminId) !== String(userId)) {
             notificationService.createNotification(
               adminId,
               'bazar_submitted',

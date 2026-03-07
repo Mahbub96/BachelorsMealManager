@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Tabs, usePathname } from 'expo-router';
+import { Tabs, usePathname, useRouter as useTabRouter } from 'expo-router';
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 
 import { HapticTab } from '@/components/HapticTab';
 import { AuthAvatar } from '@/components/AuthAvatar';
@@ -9,10 +9,44 @@ import { LoginButton } from '@/components/LoginButton';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { AppTopBar } from '@/components/layout';
 import { ThemedText } from '@/components/ThemedText';
+import { ThrottledTouchableOpacity } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useNotifications } from '@/context/NotificationContext';
-import { useRouter as useTabRouter } from 'expo-router';
+
+/** Badge count from context, updated by socket callback and polling so it updates without user action. */
+function NotificationBellButton() {
+  const { unreadCount, subscribeToRealtime } = useNotifications();
+  const { theme } = useTheme();
+  const tabRouter = useTabRouter();
+  const [displayCount, setDisplayCount] = React.useState(unreadCount);
+  React.useEffect(() => {
+    setDisplayCount(unreadCount);
+  }, [unreadCount]);
+  React.useEffect(() => {
+    return subscribeToRealtime(({ unreadCount: count }) => setDisplayCount(count));
+  }, [subscribeToRealtime]);
+  return (
+    <ThrottledTouchableOpacity
+      onPress={() => tabRouter.push('/notifications')}
+      style={styles.bellBtn}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+    >
+      <Ionicons
+        name={displayCount > 0 ? 'notifications' : 'notifications-outline'}
+        size={24}
+        color={theme.text?.primary ?? '#1f2937'}
+      />
+      {displayCount > 0 && (
+        <View style={styles.badge}>
+          <ThemedText style={styles.badgeText}>
+            {displayCount > 99 ? '99+' : String(displayCount)}
+          </ThemedText>
+        </View>
+      )}
+    </ThrottledTouchableOpacity>
+  );
+}
 
 const TAB_LABELS: Record<string, string> = {
   '/': 'Welcome',
@@ -29,9 +63,9 @@ const TAB_LABELS: Record<string, string> = {
 export default function TabLayout() {
   const { user } = useAuth();
   const { theme } = useTheme();
+  const { unreadCount, realtimeTick } = useNotifications();
   const pathname = usePathname();
   const tabRouter = useTabRouter();
-  const { unreadCount } = useNotifications();
   const headerLabel = TAB_LABELS[pathname] ?? (pathname?.includes('explore') ? 'Bazar' : pathname?.includes('meals') ? 'Meals' : pathname?.includes('accounts') ? 'My Accounts' : pathname?.includes('reports') ? 'Analysis' : pathname?.includes('admin') ? 'Admin' : 'Welcome');
 
   const backgroundColor = theme.background;
@@ -59,25 +93,7 @@ export default function TabLayout() {
               rightElement={
                 user ? (
                   <View style={styles.rightRow}>
-                    {/* Notification bell with unread badge */}
-                    <TouchableOpacity
-                      onPress={() => tabRouter.push('/notifications')}
-                      style={styles.bellBtn}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <Ionicons
-                        name={unreadCount > 0 ? 'notifications' : 'notifications-outline'}
-                        size={24}
-                        color={theme.text?.primary ?? '#1f2937'}
-                      />
-                      {unreadCount > 0 && (
-                        <View style={styles.badge}>
-                          <ThemedText style={styles.badgeText}>
-                            {unreadCount > 99 ? '99+' : String(unreadCount)}
-                          </ThemedText>
-                        </View>
-                      )}
-                    </TouchableOpacity>
+                    <NotificationBellButton key={`notification-badge-${unreadCount}-${realtimeTick}`} />
                     <AuthAvatar size={32} showDropdown />
                   </View>
                 ) : (

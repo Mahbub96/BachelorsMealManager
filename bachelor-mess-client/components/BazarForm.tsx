@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
-  ScrollView,
   Modal,
   TextInput,
   KeyboardAvoidingView,
@@ -12,6 +11,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { showAppAlert } from '@/context/AppAlertContext';
+import { KeyboardAwareScrollView } from '@/contexts/KeyboardScrollContext';
 import { Ionicons } from '@expo/vector-icons';
 import type { IconName } from '@/constants/IconTypes';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -58,6 +58,15 @@ export const BazarForm: React.FC<BazarFormProps> = ({
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const inputRefsMap = useRef<Record<string, TextInput | null>>({});
+  const focusScrollRef = useRef<(r: TextInput | null) => void>(() => {});
+  const onScrollReady = useCallback((api: { focusScroll: (r: TextInput | null) => void }) => {
+    focusScrollRef.current = api.focusScroll;
+  }, []);
+  const focusScroll = useCallback((key: string) => {
+    focusScrollRef.current(inputRefsMap.current[key] ?? null);
+  }, []);
 
   // Sync selectedDate with formData.date when formData.date changes externally (e.g., from initialDate prop)
   useEffect(() => {
@@ -304,14 +313,14 @@ export const BazarForm: React.FC<BazarFormProps> = ({
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
     >
-      <ScrollView
+      <KeyboardAwareScrollView
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
           { padding: containerPadding },
         ]}
         showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps='handled'
+        onReady={onScrollReady}
       >
         {/* Header */}
         <View style={styles.header}>
@@ -529,6 +538,8 @@ export const BazarForm: React.FC<BazarFormProps> = ({
                     Name
                   </ThemedText>
                   <TextInput
+                    ref={r => { inputRefsMap.current[`item-${index}-name`] = r; }}
+                    onFocus={() => focusScroll(`item-${index}-name`)}
                     style={[
                       styles.textInput,
                       { height: inputHeight, backgroundColor: theme.input.background, borderColor: theme.border.secondary, color: theme.input.text },
@@ -552,6 +563,8 @@ export const BazarForm: React.FC<BazarFormProps> = ({
                     Quantity
                   </ThemedText>
                   <TextInput
+                    ref={r => { inputRefsMap.current[`item-${index}-qty`] = r; }}
+                    onFocus={() => focusScroll(`item-${index}-qty`)}
                     style={[
                       styles.textInput,
                       { height: inputHeight, backgroundColor: theme.input.background, borderColor: theme.border.secondary, color: theme.input.text },
@@ -576,6 +589,8 @@ export const BazarForm: React.FC<BazarFormProps> = ({
                   Price (৳)
                 </ThemedText>
                 <TextInput
+                  ref={r => { inputRefsMap.current[`item-${index}-price`] = r; }}
+                  onFocus={() => focusScroll(`item-${index}-price`)}
                   style={[
                     styles.textInput,
                     { height: inputHeight, backgroundColor: theme.input.background, borderColor: theme.border.secondary, color: theme.input.text },
@@ -612,6 +627,8 @@ export const BazarForm: React.FC<BazarFormProps> = ({
             Total Amount
           </ThemedText>
           <TextInput
+            ref={r => { inputRefsMap.current['totalAmount'] = r; }}
+            onFocus={() => focusScroll('totalAmount')}
             style={[
               styles.textInput,
               { height: inputHeight, backgroundColor: theme.input.background, borderColor: theme.border.secondary, color: theme.input.text },
@@ -649,6 +666,8 @@ export const BazarForm: React.FC<BazarFormProps> = ({
             Description (Optional)
           </ThemedText>
           <TextInput
+            ref={r => { inputRefsMap.current['description'] = r; }}
+            onFocus={() => focusScroll('description')}
             style={[styles.textArea, { height: isSmallScreen ? 80 : 100, backgroundColor: theme.input.background, borderColor: theme.border.secondary, color: theme.input.text }]}
             value={formData.description}
             onChangeText={value =>
@@ -793,7 +812,7 @@ export const BazarForm: React.FC<BazarFormProps> = ({
             )}
           </TouchableOpacity>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       {/* Date Picker Modal */}
       {Platform.OS === 'ios' ? (

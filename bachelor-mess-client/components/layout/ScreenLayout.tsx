@@ -1,5 +1,5 @@
 import React, { ReactNode } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { AppTopBar } from './AppTopBar';
 
 export interface ScreenLayoutProps {
@@ -9,11 +9,16 @@ export interface ScreenLayoutProps {
   onBackPress?: () => void;
   rightElement?: ReactNode;
   children: ReactNode;
+  /** When true (default), content shifts when keyboard opens so focused input stays visible. */
+  keyboardAvoiding?: boolean;
 }
+
+/** Offset for keyboard avoiding so content sits below header (status + top bar). */
+const KEYBOARD_VERTICAL_OFFSET = Platform.select({ ios: 100, android: 0, default: 0 });
 
 /**
  * Standard screen layout: top bar (with optional back) + content.
- * Use on stack screens (profile, settings, etc.) for consistent top bar.
+ * Wraps content in KeyboardAvoidingView so inputs are not overlapped by the soft keyboard.
  */
 export function ScreenLayout({
   title,
@@ -22,6 +27,7 @@ export function ScreenLayout({
   onBackPress,
   rightElement,
   children,
+  keyboardAvoiding = true,
 }: ScreenLayoutProps) {
   return (
     <View style={styles.container}>
@@ -33,7 +39,17 @@ export function ScreenLayout({
         rightElement={rightElement}
         safeEdges={['top']}
       />
-      <View style={styles.content}>{children}</View>
+      {keyboardAvoiding ? (
+        <KeyboardAvoidingView
+          style={styles.content}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={KEYBOARD_VERTICAL_OFFSET}
+        >
+          {children}
+        </KeyboardAvoidingView>
+      ) : (
+        <View style={styles.content}>{children}</View>
+      )}
     </View>
   );
 }

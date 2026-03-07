@@ -46,3 +46,7 @@ export type { SummaryCardProps } from './SummaryCard';
 export type { StatusRowProps } from './StatusRow';
 export type { ActionRowProps } from './ActionRow';
 export * from './TransactionList';
+export { ScrollableSection } from './ScrollableSection';
+export type { ScrollableSectionProps } from './ScrollableSection';
+export { ThrottledTouchableOpacity } from './ThrottledTouchableOpacity';
+export type { ThrottledTouchableOpacityProps } from './ThrottledTouchableOpacity';

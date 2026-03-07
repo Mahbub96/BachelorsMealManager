@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { ScreenLayout } from '@/components/layout';
-import { TransactionList, SectionHeader, ModernLoader, ErrorBanner } from '@/components/ui';
+import { TransactionList, SectionHeader, ModernLoader, ErrorBanner, ScrollableSection } from '@/components/ui';
 import { useTheme } from '@/context/ThemeContext';
 import { ledgerService, getLedgerTypeLabel, type LedgerEntryItem } from '@/services/ledgerService';
 import { DESIGN_SYSTEM } from '@/components/dashboard/DesignSystem';
@@ -74,16 +74,18 @@ export default function LedgerScreen() {
         <View style={[styles.content, { paddingHorizontal: DESIGN_SYSTEM.spacing.xl }]}>
           {error && <ErrorBanner message={error} onRetry={refresh} />}
           <SectionHeader title="Transactions" subtitle={`${total} entries`} />
-          <TransactionList
-            loading={false}
-            emptyHint="No ledger entries yet. Financial actions (bazar, payments, refunds) will appear here."
-            items={entries.map((e, idx) => ({
-              id: e._id ?? `ledger-${idx}`,
-              title: e.description ?? getLedgerTypeLabel(e.type),
-              subtitle: `${typeof e.userId === 'object' && e.userId?.name ? e.userId.name : ''} · ৳${(Number(e.amount) || 0).toLocaleString()}`,
-              icon: 'receipt-outline',
-            }))}
-          />
+          <ScrollableSection>
+            <TransactionList
+              loading={false}
+              emptyHint="No ledger entries yet. Financial actions (bazar, payments, refunds) will appear here."
+              items={entries.map((e, idx) => ({
+                id: e._id ?? `ledger-${idx}`,
+                title: e.description ?? getLedgerTypeLabel(e.type),
+                subtitle: `${typeof e.userId === 'object' && e.userId?.name ? e.userId.name : ''} · ৳${(Number(e.amount) || 0).toLocaleString()}`,
+                icon: 'receipt-outline',
+              }))}
+            />
+          </ScrollableSection>
         </View>
       </ScrollView>
     </ScreenLayout>
