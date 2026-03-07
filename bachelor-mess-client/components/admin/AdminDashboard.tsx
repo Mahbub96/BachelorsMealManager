@@ -11,7 +11,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   RefreshControl,
   Modal,
   TextInput,
@@ -19,6 +18,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { showAppAlert } from '@/context/AppAlertContext';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ModernLoader } from '../ui/ModernLoader';
@@ -327,23 +327,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
       return;
     }
     if (adminStats.pendingMeals > 0 && adminStats.pendingBazar > 0) {
-      Alert.alert(
+      showAppAlert(
         'Pending approvals',
         'Open pending meals or bazar?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: `Meals (${adminStats.pendingMeals})`,
-            onPress: () => {
-              setOpenPendingFor('meals');
-              setActiveTab('meals');
-            },
-          },
-          {
-            text: `Bazar (${adminStats.pendingBazar})`,
-            onPress: () => router.push({ pathname: '/(tabs)/explore', params: { status: 'pending' } }),
-          },
-        ]
+        {
+          variant: 'info',
+          secondaryButtonText: `Bazar (${adminStats.pendingBazar})`,
+          buttonText: `Meals (${adminStats.pendingMeals})`,
+          onConfirm: () => { setOpenPendingFor('meals'); setActiveTab('meals'); },
+          onCancel: () => router.push({ pathname: '/(tabs)/explore', params: { status: 'pending' } }),
+        }
       );
       return;
     }
@@ -423,28 +416,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   const handleQuickAction = useCallback((action: string) => {
     switch (action) {
       case 'approve-all':
-        Alert.alert(
+        showAppAlert(
           'Approve All',
           'Are you sure you want to approve all pending meals?',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Approve All',
-              onPress: () => {},
-            },
-          ]
+          { variant: 'info', secondaryButtonText: 'Cancel', buttonText: 'Approve All', onConfirm: () => {} }
         );
         break;
       case 'export-data':
-        Alert.alert('Export Data', 'Exporting meal data...', [
-          { text: 'OK', onPress: () => {} },
-        ]);
+        showAppAlert('Export Data', 'Exporting meal data...', { variant: 'info', buttonText: 'OK' });
         break;
       case 'send-notification':
-        Alert.alert('Send Notification', 'Send notification to all members?', [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Send', onPress: () => {} },
-        ]);
+        showAppAlert('Send Notification', 'Send notification to all members?', {
+          variant: 'info',
+          secondaryButtonText: 'Cancel',
+          buttonText: 'Send',
+          onConfirm: () => {},
+        });
         break;
     }
   }, []);
@@ -599,28 +586,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                   <TouchableOpacity
                     style={[styles.resetVoteButton, { backgroundColor: theme.primary, marginTop: 8 }]}
                     onPress={() => {
-                      Alert.alert(
+                      showAppAlert(
                         'Arrange election',
                         'Set an optional election date (members will see it). You can start the election later.',
-                        [
-                          { text: 'Cancel', style: 'cancel' },
-                          {
-                            text: 'Arrange',
-                            onPress: async () => {
-                              try {
-                                const res = await groupAdminService.createElection();
-                                if (res.success) {
-                                  await loadCurrentElection(true);
-                                  Alert.alert('Done', 'Election arranged. Members can now apply to be candidates.');
-                                } else {
-                                  Alert.alert('Error', res.error ?? 'Failed to arrange election.');
-                                }
-                              } catch {
-                                Alert.alert('Error', 'Failed to arrange election.');
+                        {
+                          variant: 'info',
+                          secondaryButtonText: 'Cancel',
+                          buttonText: 'Arrange',
+                          onConfirm: async () => {
+                            try {
+                              const res = await groupAdminService.createElection();
+                              if (res.success) {
+                                await loadCurrentElection(true);
+                                showAppAlert('Done', 'Election arranged. Members can now apply to be candidates.', { variant: 'success' });
+                              } else {
+                                showAppAlert('Error', res.error ?? 'Failed to arrange election.', { variant: 'error' });
                               }
-                            },
+                            } catch {
+                              showAppAlert('Error', 'Failed to arrange election.', { variant: 'error' });
+                            }
                           },
-                        ]
+                        }
                       );
                     }}
                   >
@@ -649,12 +635,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                           const res = await groupAdminService.startElection();
                           if (res.success) {
                             await loadCurrentElection(true);
-                            Alert.alert('Done', 'Election started. Members can now vote.');
+                            showAppAlert('Done', 'Election started. Members can now vote.', { variant: 'success' });
                           } else {
-                            Alert.alert('Error', res.error ?? 'Failed to start.');
+                            showAppAlert('Error', res.error ?? 'Failed to start.', { variant: 'error' });
                           }
                         } catch {
-                          Alert.alert('Error', 'Failed to start.');
+                          showAppAlert('Error', 'Failed to start.', { variant: 'error' });
                         }
                       }}
                     >
@@ -663,26 +649,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                     <TouchableOpacity
                       style={[styles.resetVoteButton, { flex: 1, backgroundColor: theme.status?.warning ?? theme.primary }]}
                       onPress={() => {
-                        Alert.alert('Cancel election', 'Cancel this election? Members will need a new one.', [
-                          { text: 'No', style: 'cancel' },
-                          {
-                            text: 'Cancel election',
-                            style: 'destructive',
-                            onPress: async () => {
-                              try {
-                                const res = await groupAdminService.cancelElection();
-                                if (res.success) {
-                                  await loadCurrentElection(true);
-                                  Alert.alert('Done', 'Election cancelled.');
-                                } else {
-                                  Alert.alert('Error', res.error ?? 'Failed.');
-                                }
-                              } catch {
-                                Alert.alert('Error', 'Failed.');
+                        showAppAlert('Cancel election', 'Cancel this election? Members will need a new one.', {
+                          variant: 'warning',
+                          secondaryButtonText: 'No',
+                          buttonText: 'Cancel election',
+                          onConfirm: async () => {
+                            try {
+                              const res = await groupAdminService.cancelElection();
+                              if (res.success) {
+                                await loadCurrentElection(true);
+                                showAppAlert('Done', 'Election cancelled.', { variant: 'success' });
+                              } else {
+                                showAppAlert('Error', res.error ?? 'Failed.', { variant: 'error' });
                               }
-                            },
+                            } catch {
+                              showAppAlert('Error', 'Failed.', { variant: 'error' });
+                            }
                           },
-                        ]);
+                        });
                       }}
                     >
                       <ThemedText style={styles.resetVoteButtonText}>Cancel</ThemedText>
@@ -701,26 +685,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                   <TouchableOpacity
                     style={[styles.resetVoteButton, { marginTop: 8, backgroundColor: theme.status?.warning ?? theme.primary }]}
                     onPress={() => {
-                      Alert.alert('Cancel election', 'Cancel this election?', [
-                        { text: 'No', style: 'cancel' },
-                        {
-                          text: 'Cancel',
-                          style: 'destructive',
-                          onPress: async () => {
-                            try {
-                              const res = await groupAdminService.cancelElection();
-                              if (res.success) {
-                                await loadCurrentElection(true);
-                                Alert.alert('Done', 'Election cancelled.');
-                              } else {
-                                Alert.alert('Error', res.error ?? 'Failed.');
-                              }
-                            } catch {
-                              Alert.alert('Error', 'Failed.');
+                      showAppAlert('Cancel election', 'Cancel this election?', {
+                        variant: 'warning',
+                        secondaryButtonText: 'No',
+                        buttonText: 'Cancel',
+                        onConfirm: async () => {
+                          try {
+                            const res = await groupAdminService.cancelElection();
+                            if (res.success) {
+                              await loadCurrentElection(true);
+                              showAppAlert('Done', 'Election cancelled.', { variant: 'success' });
+                            } else {
+                              showAppAlert('Error', res.error ?? 'Failed.', { variant: 'error' });
                             }
-                          },
+                          } catch {
+                            showAppAlert('Error', 'Failed.', { variant: 'error' });
+                          }
                         },
-                      ]);
+                      });
                     }}
                   >
                     <ThemedText style={styles.resetVoteButtonText}>Cancel election</ThemedText>
@@ -777,28 +759,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                   { backgroundColor: theme.status?.warning ?? theme.primary },
                 ]}
                 onPress={async () => {
-                  Alert.alert(
+                  showAppAlert(
                     'Reset vote round',
                     'Cancel the current vote? Members will be able to start or join a new vote.',
-                    [
-                      { text: 'Cancel', style: 'cancel' },
-                      {
-                        text: 'Reset',
-                        onPress: async () => {
-                          try {
-                            const res = await groupAdminService.cancelCurrent();
-                            if (res.success) {
-                              await loadAdminChangeStatus();
-                              Alert.alert('Done', 'Vote round reset. Members can vote again.');
-                            } else {
-                              Alert.alert('Error', res.error ?? 'Failed to reset vote.');
-                            }
-                          } catch {
-                            Alert.alert('Error', 'Failed to reset vote.');
+                    {
+                      variant: 'warning',
+                      secondaryButtonText: 'Cancel',
+                      buttonText: 'Reset',
+                      onConfirm: async () => {
+                        try {
+                          const res = await groupAdminService.cancelCurrent();
+                          if (res.success) {
+                            await loadAdminChangeStatus();
+                            showAppAlert('Done', 'Vote round reset. Members can vote again.', { variant: 'success' });
+                          } else {
+                            showAppAlert('Error', res.error ?? 'Failed to reset vote.', { variant: 'error' });
                           }
-                        },
+                        } catch {
+                          showAppAlert('Error', 'Failed to reset vote.', { variant: 'error' });
+                        }
                       },
-                    ]
+                    }
                   );
                 }}
               >
@@ -973,7 +954,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
         );
 
         if (response.success) {
-          Alert.alert('Success', 'Member updated successfully');
+          showAppAlert('Success', 'Member updated successfully', { variant: 'success' });
           setShowMemberModal(false);
           setEditingMember(null);
 
@@ -984,7 +965,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
             }
           }, 100);
         } else {
-          Alert.alert('Error', response.error || 'Failed to update member');
+          showAppAlert('Error', response.error || 'Failed to update member', { variant: 'error' });
         }
       }
     } catch (err) {
@@ -994,7 +975,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
         err instanceof Error
           ? err.message
           : `Failed to ${modalMode === 'add' ? 'create' : 'update'} member. Please try again.`;
-      Alert.alert('Error', errorMessage);
+      showAppAlert('Error', errorMessage, { variant: 'error' });
     } finally {
       setSubmittingMember(false);
     }
@@ -1011,10 +992,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
           setShowViewModal(false);
           setViewingMember(null);
         } else {
-          Alert.alert('Error', res.error ?? 'Failed to accept.');
+          showAppAlert('Error', res.error ?? 'Failed to accept.', { variant: 'error' });
         }
       } catch (e) {
-        Alert.alert('Error', (e as Error).message ?? 'Failed to accept.');
+        showAppAlert('Error', (e as Error).message ?? 'Failed to accept.', { variant: 'error' });
       } finally {
         setRemovalActionId(null);
       }
@@ -1030,10 +1011,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
         if (res.success && isMountedRef.current) {
           setPendingRemovalRequests((prev) => prev.filter((r) => r._id !== requestId));
         } else {
-          Alert.alert('Error', res.error ?? 'Failed to reject.');
+          showAppAlert('Error', res.error ?? 'Failed to reject.', { variant: 'error' });
         }
       } catch (e) {
-        Alert.alert('Error', (e as Error).message ?? 'Failed to reject.');
+        showAppAlert('Error', (e as Error).message ?? 'Failed to reject.', { variant: 'error' });
       } finally {
         setRemovalActionId(null);
       }
@@ -1044,107 +1025,96 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   const handleRequestRemoval = useCallback(
     (memberId: string) => {
       const member = members.find((m) => m.id === memberId);
-      Alert.alert(
+      showAppAlert(
         'Request removal',
         member
           ? `Send a removal request to ${member.name}? They must accept to be removed.`
           : 'Request removal for this member? They must accept to be removed.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Request removal',
-            style: 'destructive',
-            onPress: async () => {
-              setRequestRemovalLoading(true);
-              try {
-                const res = await removalRequestService.createRemovalRequest(memberId);
-                if (res.success && isMountedRef.current) {
-                  setShowViewModal(false);
-                  setViewingMember(null);
-                  await loadRemovalRequests();
-                  await loadMembers(true);
-                  Alert.alert('Done', 'Removal request sent. The member must accept to be removed.');
-                } else {
-                  Alert.alert('Error', res.error ?? 'Failed to send removal request.');
-                }
-              } catch (e) {
-                Alert.alert('Error', (e as Error).message ?? 'Failed to send removal request.');
-              } finally {
-                setRequestRemovalLoading(false);
+        {
+          variant: 'warning',
+          secondaryButtonText: 'Cancel',
+          buttonText: 'Request removal',
+          onConfirm: async () => {
+            setRequestRemovalLoading(true);
+            try {
+              const res = await removalRequestService.createRemovalRequest(memberId);
+              if (res.success && isMountedRef.current) {
+                setShowViewModal(false);
+                setViewingMember(null);
+                await loadRemovalRequests();
+                await loadMembers(true);
+                showAppAlert('Done', 'Removal request sent. The member must accept to be removed.', { variant: 'success' });
+              } else {
+                showAppAlert('Error', res.error ?? 'Failed to send removal request.', { variant: 'error' });
               }
-            },
+            } catch (e) {
+              showAppAlert('Error', (e as Error).message ?? 'Failed to send removal request.', { variant: 'error' });
+            } finally {
+              setRequestRemovalLoading(false);
+            }
           },
-        ]
+        }
       );
     },
     [members, loadRemovalRequests, loadMembers]
   );
 
   const handleDeleteMember = (memberId: string) => {
-    Alert.alert(
+    showAppAlert(
       'Delete Member',
       'Are you sure you want to delete this member? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            if (!isMountedRef.current) return;
+      {
+        variant: 'warning',
+        secondaryButtonText: 'Cancel',
+        buttonText: 'Delete',
+        onConfirm: async () => {
+          if (!isMountedRef.current) return;
 
-            setDeletingMemberId(memberId);
-            try {
-              const response = await userService.deleteUser(memberId);
+          setDeletingMemberId(memberId);
+          try {
+            const response = await userService.deleteUser(memberId);
 
-              if (response.success) {
-                Alert.alert('Success', 'Member deleted successfully');
+            if (response.success) {
+              showAppAlert('Success', 'Member deleted successfully', { variant: 'success' });
 
-                // Refresh members list immediately
-                if (isMountedRef.current) {
-                  loadMembers(true);
-                }
-              } else {
-                // Handle specific error cases
-                if (
-                  response.error?.includes('not found') ||
-                  response.error?.includes('404')
-                ) {
-                  // User already deleted or doesn't exist - refresh list to sync
-                  Alert.alert('Info', 'Member not found. Refreshing list...');
-                  if (isMountedRef.current) {
-                    loadMembers(true);
-                  }
-                } else {
-                  Alert.alert(
-                    'Error',
-                    response.error || 'Failed to delete member'
-                  );
-                }
+              if (isMountedRef.current) {
+                loadMembers(true);
               }
-            } catch (err) {
-              const errorMessage =
-                err instanceof Error
-                  ? err.message
-                  : 'Failed to delete member. Please try again.';
-
-              // If it's a "not found" error, refresh the list
+            } else {
               if (
-                errorMessage.includes('not found') ||
-                errorMessage.includes('404')
+                response.error?.includes('not found') ||
+                response.error?.includes('404')
               ) {
-                Alert.alert('Info', 'Member not found. Refreshing list...');
+                showAppAlert('Info', 'Member not found. Refreshing list...', { variant: 'info' });
                 if (isMountedRef.current) {
                   loadMembers(true);
                 }
               } else {
-                Alert.alert('Error', errorMessage);
+                showAppAlert('Error', response.error || 'Failed to delete member', { variant: 'error' });
               }
-            } finally {
-              setDeletingMemberId(null);
             }
-          },
+          } catch (err) {
+            const errorMessage =
+              err instanceof Error
+                ? err.message
+                : 'Failed to delete member. Please try again.';
+
+            if (
+              errorMessage.includes('not found') ||
+              errorMessage.includes('404')
+            ) {
+              showAppAlert('Info', 'Member not found. Refreshing list...', { variant: 'info' });
+              if (isMountedRef.current) {
+                loadMembers(true);
+              }
+            } else {
+              showAppAlert('Error', errorMessage, { variant: 'error' });
+            }
+          } finally {
+            setDeletingMemberId(null);
+          }
         },
-      ]
+      }
     );
   };
 
@@ -1157,7 +1127,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
 
   const handleConfirmResetPassword = async () => {
     if (!newPassword || newPassword.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters long');
+      showAppAlert('Error', 'Password must be at least 6 characters long', { variant: 'error' });
       return;
     }
 
@@ -1171,20 +1141,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
       );
 
       if (response.success) {
-        Alert.alert('Success', 'Password reset successfully');
+        showAppAlert('Success', 'Password reset successfully', { variant: 'success' });
         setShowResetPasswordModal(false);
         setNewPassword('');
         setResettingPasswordFor(null);
         setShowResetPassword(false);
       } else {
-        Alert.alert('Error', response.error || 'Failed to reset password');
+        showAppAlert('Error', response.error || 'Failed to reset password', { variant: 'error' });
       }
     } catch (err) {
       const errorMessage =
         err instanceof Error
           ? err.message
           : 'Failed to reset password. Please try again.';
-      Alert.alert('Error', errorMessage);
+      showAppAlert('Error', errorMessage, { variant: 'error' });
     } finally {
       setResettingPassword(false);
     }

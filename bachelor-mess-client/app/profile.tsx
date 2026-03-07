@@ -7,11 +7,11 @@ import {
   Pressable,
   StyleSheet,
   View,
-  Alert,
   ScrollView,
   RefreshControl,
   TouchableOpacity,
 } from 'react-native';
+import { showAppAlert } from '@/context/AppAlertContext';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'expo-router';
 import { useState, useCallback, useEffect } from 'react';
@@ -351,12 +351,13 @@ export default function ProfileScreen() {
       if (res.success && res.data) {
         setRemovalRequests(prev => [res.data!, ...prev]);
       } else {
-        Alert.alert('Error', res.error ?? 'Failed to submit leave request.');
+        showAppAlert('Error', res.error ?? 'Failed to submit leave request.', { variant: 'error' });
       }
     } catch (e) {
-      Alert.alert(
+      showAppAlert(
         'Error',
-        (e as Error).message ?? 'Failed to submit leave request.'
+        (e as Error).message ?? 'Failed to submit leave request.',
+        { variant: 'error' }
       );
     } finally {
       setLeaveRequestLoading(false);
@@ -371,10 +372,10 @@ export default function ProfileScreen() {
         if (res.success) {
           await logout();
         } else {
-          Alert.alert('Error', res.error ?? 'Failed to accept.');
+          showAppAlert('Error', res.error ?? 'Failed to accept.', { variant: 'error' });
         }
       } catch (e) {
-        Alert.alert('Error', (e as Error).message ?? 'Failed to accept.');
+        showAppAlert('Error', (e as Error).message ?? 'Failed to accept.', { variant: 'error' });
       } finally {
         setRemovalActionLoading(null);
       }
@@ -389,10 +390,10 @@ export default function ProfileScreen() {
       if (res.success) {
         setRemovalRequests(prev => prev.filter(r => r._id !== requestId));
       } else {
-        Alert.alert('Error', res.error ?? 'Failed to decline.');
+        showAppAlert('Error', res.error ?? 'Failed to decline.', { variant: 'error' });
       }
     } catch (e) {
-      Alert.alert('Error', (e as Error).message ?? 'Failed to decline.');
+      showAppAlert('Error', (e as Error).message ?? 'Failed to decline.', { variant: 'error' });
     } finally {
       setRemovalActionLoading(null);
     }
@@ -416,103 +417,70 @@ export default function ProfileScreen() {
     path?: string;
   }) => {
     if (item.action === 'logout') {
-      Alert.alert('Logout', 'Are you sure you want to logout?', [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            await logout();
-          },
-        },
-      ]);
+      showAppAlert('Logout', 'Are you sure you want to logout?', {
+        variant: 'warning',
+        secondaryButtonText: 'Cancel',
+        buttonText: 'Logout',
+        onConfirm: async () => { await logout(); },
+      });
     } else if (item.action === 'navigate') {
       switch (item.id) {
         case 'edit':
           router.push('/edit-profile');
           break;
         case 'security':
-          Alert.alert(
-            'Coming Soon',
-            'Security settings will be available soon'
-          );
+          showAppAlert('Coming Soon', 'Security settings will be available soon', { variant: 'info' });
           break;
         case 'notifications':
-          Alert.alert(
-            'Coming Soon',
-            'Notification settings will be available soon'
-          );
+          showAppAlert('Coming Soon', 'Notification settings will be available soon', { variant: 'info' });
           break;
         case 'privacy':
-          Alert.alert('Coming Soon', 'Privacy settings will be available soon');
+          showAppAlert('Coming Soon', 'Privacy settings will be available soon', { variant: 'info' });
           break;
         case 'flat-info':
-          Alert.alert(
-            'Coming Soon',
-            'Flat information screen will be available soon'
-          );
+          showAppAlert('Coming Soon', 'Flat information screen will be available soon', { variant: 'info' });
           break;
         case 'payments':
           router.push('/payments');
           break;
         case 'expenses':
-          Alert.alert('Coming Soon', 'Expense reports will be available soon');
+          showAppAlert('Coming Soon', 'Expense reports will be available soon', { variant: 'info' });
           break;
         case 'budget':
-          Alert.alert(
-            'Coming Soon',
-            'Budget management will be available soon'
-          );
+          showAppAlert('Coming Soon', 'Budget management will be available soon', { variant: 'info' });
           break;
         case 'roommates':
-          Alert.alert(
-            'Coming Soon',
-            'Roommate directory will be available soon'
-          );
+          showAppAlert('Coming Soon', 'Roommate directory will be available soon', { variant: 'info' });
           break;
         case 'meal-analytics':
-          Alert.alert('Coming Soon', 'Meal analytics will be available soon');
+          showAppAlert('Coming Soon', 'Meal analytics will be available soon', { variant: 'info' });
           break;
         case 'expense-analytics':
-          Alert.alert(
-            'Coming Soon',
-            'Expense analytics will be available soon'
-          );
+          showAppAlert('Coming Soon', 'Expense analytics will be available soon', { variant: 'info' });
           break;
         case 'reports':
-          Alert.alert('Coming Soon', 'Monthly reports will be available soon');
+          showAppAlert('Coming Soon', 'Monthly reports will be available soon', { variant: 'info' });
           break;
         case 'insights':
-          Alert.alert('Coming Soon', 'Smart insights will be available soon');
+          showAppAlert('Coming Soon', 'Smart insights will be available soon', { variant: 'info' });
           break;
         case 'help':
           router.push('/help');
           break;
         case 'feedback':
-          Alert.alert(
-            'Feedback',
-            'Thank you for your interest! Feedback feature will be available soon.'
-          );
+          showAppAlert('Feedback', 'Thank you for your interest! Feedback feature will be available soon.', { variant: 'info' });
           break;
         case 'bug-report':
-          Alert.alert(
-            'Bug Report',
-            'Bug reporting feature will be available soon.'
-          );
+          showAppAlert('Bug Report', 'Bug reporting feature will be available soon.', { variant: 'info' });
           break;
         case 'feature-request':
-          Alert.alert(
-            'Feature Request',
-            'Feature request system will be available soon.'
-          );
+          showAppAlert('Feature Request', 'Feature request system will be available soon.', { variant: 'info' });
           break;
         case 'about':
-          Alert.alert(
+          showAppAlert(
             'About Bachelor Flat Manager',
-            'Version 1.0.0\n\nA comprehensive flat management solution for bachelor students.\n\nFeatures:\n• Meal Management\n• Expense Tracking\n• Payment History\n• Analytics & Reports\n• Roommate Directory\n• Budget Management'
+            'Version 1.0.0\n\nA comprehensive flat management solution for bachelor students.\n\nFeatures:\n• Meal Management\n• Expense Tracking\n• Payment History\n• Analytics & Reports\n• Roommate Directory\n• Budget Management',
+            { variant: 'info' }
           );
           break;
       }

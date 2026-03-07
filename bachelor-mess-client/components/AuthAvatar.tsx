@@ -4,7 +4,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  Alert,
   Modal,
   Pressable,
   StyleSheet,
@@ -14,6 +13,7 @@ import {
   Animated,
   ScrollView,
 } from 'react-native';
+import { showAppAlert } from '@/context/AppAlertContext';
 import { useTheme } from '@/context/ThemeContext';
 import { ThemedText } from './ThemedText';
 import { useAuth } from '@/context/AuthContext';
@@ -37,19 +37,12 @@ export const AuthAvatar: React.FC<AuthAvatarProps> = ({
   const [slideAnim] = useState(new Animated.Value(50));
 
   const handleLogout = () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      {
-        text: 'Cancel',
-        style: 'cancel',
-      },
-      {
-        text: 'Logout',
-        style: 'destructive',
-        onPress: async () => {
-          await logout();
-        },
-      },
-    ]);
+    showAppAlert('Logout', 'Are you sure you want to logout?', {
+      variant: 'warning',
+      buttonText: 'Logout',
+      onConfirm: () => logout(),
+      secondaryButtonText: 'Cancel',
+    });
   };
 
   const handleAvatarPress = () => {

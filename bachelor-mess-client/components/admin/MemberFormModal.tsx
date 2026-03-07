@@ -7,8 +7,8 @@ import {
   TextInput,
   Modal,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
+import { showAppAlert } from '@/context/AppAlertContext';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '../ThemedText';
 import { ModernLoader } from '../ui/ModernLoader';
@@ -71,18 +71,18 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
   const handleSubmit = async () => {
     // Validation
     if (!formData.name?.trim()) {
-      Alert.alert('Validation Error', 'Name is required');
+      showAppAlert('Validation Error', 'Name is required', { variant: 'warning' });
       return;
     }
 
     if (!formData.email?.trim()) {
-      Alert.alert('Validation Error', 'Email is required');
+      showAppAlert('Validation Error', 'Email is required', { variant: 'warning' });
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
-      Alert.alert('Validation Error', 'Please enter a valid email address');
+      showAppAlert('Validation Error', 'Please enter a valid email address', { variant: 'warning' });
       return;
     }
 
@@ -90,7 +90,7 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
     if (!isEditMode) {
       const createData = formData as CreateUserData;
       if (!createData.password || createData.password.length < 6) {
-        Alert.alert('Validation Error', 'Password must be at least 6 characters long');
+        showAppAlert('Validation Error', 'Password must be at least 6 characters long', { variant: 'warning' });
         return;
       }
     }

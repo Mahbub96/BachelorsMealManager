@@ -6,7 +6,7 @@ import {
   MealSubmission,
 } from '@/services';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert } from 'react-native';
+import { showAppAlert } from '@/context/AppAlertContext';
 
 export interface UseMealsReturn {
   // Data
@@ -64,18 +64,18 @@ export const useMeals = (): UseMealsReturn => {
           // Refresh stats
           await getMealStats();
 
-          Alert.alert('Success', 'Meal entry submitted successfully!');
+          showAppAlert('Success', 'Meal entry submitted successfully!', { variant: 'success' });
           return true;
         } else {
           setError(response.error || 'Failed to submit meal');
-          Alert.alert('Error', response.error || 'Failed to submit meal');
+          showAppAlert('Error', response.error || 'Failed to submit meal', { variant: 'error' });
           return false;
         }
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : 'Failed to submit meal';
         setError(errorMessage);
-        Alert.alert('Error', errorMessage);
+        showAppAlert('Error', errorMessage, { variant: 'error' });
         return false;
       } finally {
         setLoading(false);
@@ -165,18 +165,18 @@ export const useMeals = (): UseMealsReturn => {
             prev.map(meal => (meal.id === mealId ? response.data! : meal))
           );
 
-          Alert.alert('Success', `Meal ${status} successfully!`);
+          showAppAlert('Success', `Meal ${status} successfully!`, { variant: 'success' });
           return true;
         } else {
           setError(response.error || `Failed to ${status} meal`);
-          Alert.alert('Error', response.error || `Failed to ${status} meal`);
+          showAppAlert('Error', response.error || `Failed to ${status} meal`, { variant: 'error' });
           return false;
         }
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : `Failed to ${status} meal`;
         setError(errorMessage);
-        Alert.alert('Error', errorMessage);
+        showAppAlert('Error', errorMessage, { variant: 'error' });
         return false;
       } finally {
         setLoading(false);

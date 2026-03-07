@@ -4,10 +4,10 @@ import {
   StyleSheet,
   FlatList,
   RefreshControl,
-  Alert,
   type ViewStyle,
   type TextStyle,
 } from 'react-native';
+import { showAppAlert } from '@/context/AppAlertContext';
 import { useRouter } from 'expo-router';
 import { ThemedView } from '../ThemedView';
 import { ThemedText } from '../ThemedText';
@@ -258,55 +258,52 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
       const isAdminUser = user?.role === 'admin' || user?.role === 'super_admin';
 
       if (isOwner) {
-        Alert.alert(
+        showAppAlert(
           'Delete Bazar Entry',
           'Are you sure you want to delete this bazar entry? This action cannot be undone.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Delete',
-              style: 'destructive',
-              onPress: async () => {
-                try {
-                  await deleteBazar(id);
-                } catch {
-                  // Ignore (e.g. unmounted); errors surfaced by context
-                }
-              },
+          {
+            variant: 'warning',
+            secondaryButtonText: 'Cancel',
+            buttonText: 'Delete',
+            onConfirm: async () => {
+              try {
+                await deleteBazar(id);
+              } catch {
+                // Ignore (e.g. unmounted); errors surfaced by context
+              }
             },
-          ]
+          }
         );
         return;
       }
 
       if (isAdminUser && bazar) {
         const ownerName = getBazarOwnerName(bazar);
-        Alert.alert(
+        showAppAlert(
           'Request Deletion',
           `Request deletion of ${ownerName}'s bazar entry? They will need to confirm.`,
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Request',
-              onPress: async () => {
-                try {
-                  const res = await requestBazarDeletion(id);
-                  if (res.success) {
-                    Alert.alert('Done', `${ownerName} will need to confirm to delete this entry.`);
-                  } else {
-                    Alert.alert('Error', res.error || res.message || 'Request failed');
-                  }
-                } catch {
-                  Alert.alert('Error', 'Request failed. Please try again.');
+          {
+            variant: 'info',
+            secondaryButtonText: 'Cancel',
+            buttonText: 'Request',
+            onConfirm: async () => {
+              try {
+                const res = await requestBazarDeletion(id);
+                if (res.success) {
+                  showAppAlert('Done', `${ownerName} will need to confirm to delete this entry.`, { variant: 'success' });
+                } else {
+                  showAppAlert('Error', res.error || res.message || 'Request failed', { variant: 'error' });
                 }
-              },
+              } catch {
+                showAppAlert('Error', 'Request failed. Please try again.', { variant: 'error' });
+              }
             },
-          ]
+          }
         );
         return;
       }
 
-      Alert.alert('Error', 'You can only delete your own bazar entries.');
+      showAppAlert('Error', 'You can only delete your own bazar entries.', { variant: 'error' });
     },
     [user?.id, user?.role, deleteBazar, requestBazarDeletion]
   );
@@ -318,7 +315,7 @@ export const BazarManagement: React.FC<BazarManagementProps> = ({
       <>
         <PendingBazarDeleteRequests
           onResponded={refreshData}
-          onError={(msg) => Alert.alert('Error', msg)}
+          onError={(msg) => showAppAlert('Error', msg, { variant: 'error' })}
         />
         <BazarManagementListHeader
         title={title}

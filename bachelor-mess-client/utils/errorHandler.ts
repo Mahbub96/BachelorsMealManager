@@ -1,4 +1,4 @@
-import { Alert } from 'react-native';
+import { showAppAlert } from '@/context/AppAlertContext';
 
 /**
  * Custom Error Classes for React Native
@@ -175,7 +175,7 @@ export class ErrorHandler {
       message = error.message || 'An unexpected error occurred';
     }
 
-    Alert.alert(title, message);
+    showAppAlert(title, message, { variant: 'error' });
   }
 
   /**

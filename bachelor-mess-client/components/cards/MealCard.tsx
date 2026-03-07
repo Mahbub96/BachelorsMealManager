@@ -3,8 +3,8 @@ import {
   View,
   StyleSheet,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
+import { showAppAlert } from '@/context/AppAlertContext';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '../ThemedText';
@@ -105,17 +105,10 @@ export const MealCard: React.FC<MealCardProps> = ({
   };
 
   const handleDelete = () => {
-    Alert.alert(
+    showAppAlert(
       'Delete Meal',
       'Are you sure you want to delete this meal entry?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => onDelete?.(meal.id),
-        },
-      ]
+      { variant: 'warning', secondaryButtonText: 'Cancel', buttonText: 'Delete', onConfirm: () => onDelete?.(meal.id) }
     );
   };
 

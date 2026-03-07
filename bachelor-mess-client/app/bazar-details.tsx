@@ -4,10 +4,10 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   Modal,
   TextInput,
 } from 'react-native';
+import { showAppAlert } from '@/context/AppAlertContext';
 import { Ionicons } from '@expo/vector-icons';
 import type { IconName } from '@/constants/IconTypes';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -87,14 +87,14 @@ export default function BazarDetailsScreen() {
 
       if (response.success) {
         setBazar(prev => (prev ? { ...prev, status } : null));
-        Alert.alert('Success', `Bazar entry ${status} successfully`);
+        showAppAlert('Success', `Bazar entry ${status} successfully`, { variant: 'success' });
       } else {
         logger.error('Status update failed', response.error);
-        Alert.alert('Error', response.error || 'Failed to update status');
+        showAppAlert('Error', response.error || 'Failed to update status', { variant: 'error' });
       }
     } catch (error) {
       logger.error('Status update error', error);
-      Alert.alert('Error', 'An unexpected error occurred');
+      showAppAlert('Error', 'An unexpected error occurred', { variant: 'error' });
     }
   };
 
@@ -123,14 +123,14 @@ export default function BazarDetailsScreen() {
         setBazar(response.data);
         setEditData(response.data);
         setShowEditModal(false);
-        Alert.alert('Success', 'Bazar entry updated successfully');
+        showAppAlert('Success', 'Bazar entry updated successfully', { variant: 'success' });
       } else {
         logger.error('Bazar update failed', response.error);
-        Alert.alert('Error', response.error || 'Failed to update bazar entry');
+        showAppAlert('Error', response.error || 'Failed to update bazar entry', { variant: 'error' });
       }
     } catch (error) {
       logger.error('Bazar update error', error);
-      Alert.alert('Error', 'An unexpected error occurred');
+      showAppAlert('Error', 'An unexpected error occurred', { variant: 'error' });
     } finally {
       setEditing(false);
     }
@@ -158,61 +158,59 @@ export default function BazarDetailsScreen() {
     const isAdminUser = user?.role === 'admin' || user?.role === 'super_admin';
 
     if (isOwner) {
-      Alert.alert(
+      showAppAlert(
         'Delete Bazar Entry',
         'Are you sure you want to delete this bazar entry?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Delete',
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                const response = await bazarService.deleteBazar(bazar.id);
-                if (response.success) {
-                  Alert.alert('Success', 'Bazar entry deleted successfully');
-                  router.back();
-                } else {
-                  Alert.alert('Error', response.error || 'Failed to delete bazar entry');
-                }
-              } catch {
-                Alert.alert('Error', 'An unexpected error occurred');
+        {
+          variant: 'warning',
+          secondaryButtonText: 'Cancel',
+          buttonText: 'Delete',
+          onConfirm: async () => {
+            try {
+              const response = await bazarService.deleteBazar(bazar.id);
+              if (response.success) {
+                showAppAlert('Success', 'Bazar entry deleted successfully', { variant: 'success' });
+                router.back();
+              } else {
+                showAppAlert('Error', response.error || 'Failed to delete bazar entry', { variant: 'error' });
               }
-            },
+            } catch {
+              showAppAlert('Error', 'An unexpected error occurred', { variant: 'error' });
+            }
           },
-        ]
+        }
       );
       return;
     }
 
     if (isAdminUser) {
       const ownerName = getOwnerName(bazar);
-      Alert.alert(
+      showAppAlert(
         'Request Deletion',
         `Request deletion of ${ownerName}'s bazar entry? They will need to confirm.`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Request',
-            onPress: async () => {
-              try {
-                const response = await bazarService.createBazarDeleteRequest(bazar.id);
-                Alert.alert(
-                  response.success ? 'Done' : 'Error',
-                  response.success ? `${ownerName} will need to confirm to delete this entry.` : (response.error || response.message || 'Request failed')
-                );
-                if (response.success) router.back();
-              } catch {
-                Alert.alert('Error', 'An unexpected error occurred');
-              }
-            },
+        {
+          variant: 'info',
+          secondaryButtonText: 'Cancel',
+          buttonText: 'Request',
+          onConfirm: async () => {
+            try {
+              const response = await bazarService.createBazarDeleteRequest(bazar.id);
+              showAppAlert(
+                response.success ? 'Done' : 'Error',
+                response.success ? `${ownerName} will need to confirm to delete this entry.` : (response.error || response.message || 'Request failed'),
+                { variant: response.success ? 'success' : 'error' }
+              );
+              if (response.success) router.back();
+            } catch {
+              showAppAlert('Error', 'An unexpected error occurred', { variant: 'error' });
+            }
           },
-        ]
+        }
       );
       return;
     }
 
-    Alert.alert('Error', 'You can only delete your own bazar entries.');
+    showAppAlert('Error', 'You can only delete your own bazar entries.', { variant: 'error' });
   };
 
   const addItem = () => {

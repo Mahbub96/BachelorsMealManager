@@ -12,7 +12,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
-  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -22,6 +21,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { showAppAlert } from '@/context/AppAlertContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function NewBazarScreen() {
@@ -88,37 +88,35 @@ export default function NewBazarScreen() {
     items.reduce((sum, item) => sum + (item.price || 0), 0);
 
   const handleReceiptUpload = () => {
-    // This would integrate with image picker in a real app
-    Alert.alert(
+    showAppAlert(
       'Receipt Upload',
       'Receipt upload functionality would be implemented here with image picker integration.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Simulate Upload',
-          onPress: () => {
-            setReceiptImage(
-              'https://via.placeholder.com/300x200/10b981/ffffff?text=Receipt+Image'
-            );
-            Alert.alert('Success', 'Receipt uploaded successfully!');
-          },
+      {
+        variant: 'info',
+        secondaryButtonText: 'Cancel',
+        buttonText: 'Simulate Upload',
+        onConfirm: () => {
+          setReceiptImage(
+            'https://via.placeholder.com/300x200/10b981/ffffff?text=Receipt+Image'
+          );
+          showAppAlert('Success', 'Receipt uploaded successfully!', { variant: 'success' });
         },
-      ]
+      }
     );
   };
 
   const validateForm = () => {
     const emptyItems = items.filter(item => !item.name.trim());
     if (emptyItems.length > 0) {
-      Alert.alert('Error', 'All items must have a name');
+      showAppAlert('Error', 'All items must have a name', { variant: 'error' });
       return false;
     }
     if (items.some(item => (item.price ?? 0) <= 0)) {
-      Alert.alert('Error', 'All items must have a valid price');
+      showAppAlert('Error', 'All items must have a valid price', { variant: 'error' });
       return false;
     }
     if (calculateTotal() <= 0) {
-      Alert.alert('Error', 'Total amount must be greater than 0');
+      showAppAlert('Error', 'Total amount must be greater than 0', { variant: 'error' });
       return false;
     }
     return true;
@@ -154,25 +152,22 @@ export default function NewBazarScreen() {
       const response = await bazarService.submitBazar(bazarData);
 
       if (response.success) {
-        Alert.alert('Success', 'Bazar entry submitted successfully!', [
-          {
-            text: 'View Details',
-            onPress: () =>
-              router.push({
-                pathname: '/bazar-details',
-                params: { id: response.data?.id },
-              }),
-          },
-          {
-            text: 'Back to List',
-            onPress: () => router.back(),
-          },
-        ]);
+        showAppAlert('Success', 'Bazar entry submitted successfully!', {
+          variant: 'success',
+          buttonText: 'View Details',
+          secondaryButtonText: 'Back to List',
+          onConfirm: () =>
+            router.push({
+              pathname: '/bazar-details',
+              params: { id: response.data?.id },
+            }),
+          onCancel: () => router.back(),
+        });
       } else {
-        Alert.alert('Error', response.error || 'Failed to submit bazar entry');
+        showAppAlert('Error', response.error || 'Failed to submit bazar entry', { variant: 'error' });
       }
     } catch {
-      Alert.alert('Error', 'An unexpected error occurred');
+      showAppAlert('Error', 'An unexpected error occurred', { variant: 'error' });
     } finally {
       setLoading(false);
     }

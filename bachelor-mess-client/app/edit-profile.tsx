@@ -3,12 +3,13 @@ import {
   View,
   StyleSheet,
   ScrollView,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
   Switch,
- TextInput } from 'react-native';
+  TextInput,
+} from 'react-native';
+import { showAppAlert } from '@/context/AppAlertContext';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { ScreenLayout } from '@/components/layout';
@@ -186,11 +187,11 @@ export default function EditProfileScreen() {
 
       const success = await updateProfile(updateData);
       if (success) {
-        Alert.alert('Success', 'Profile updated successfully!');
+        showAppAlert('Success', 'Profile updated successfully!', { variant: 'success' });
         router.back();
       }
     } catch {
-      Alert.alert('Error', 'Failed to update profile. Please try again.');
+      showAppAlert('Error', 'Failed to update profile. Please try again.', { variant: 'error' });
     }
   }, [formData, showPasswordFields, validateForm, updateProfile, router]);
 

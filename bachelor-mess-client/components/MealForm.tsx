@@ -3,12 +3,12 @@ import {
   View,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   // ActivityIndicator,
   ScrollView,
   Platform,
   Modal,
 } from 'react-native';
+import { showAppAlert } from '@/context/AppAlertContext';
 import { Ionicons } from '@expo/vector-icons';
 import type { IconName } from '@/constants/IconTypes';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -41,7 +41,7 @@ export const MealForm: React.FC<MealFormProps> = ({
   const alertOrModal = useCallback(
     (title: string, message: string, variant?: ShowAlertVariant) => {
       if (onShowAlert) onShowAlert(title, message, variant);
-      else Alert.alert(title, message);
+      else showAppAlert(title, message, { variant: variant || 'info' });
     },
     [onShowAlert]
   );
@@ -174,33 +174,33 @@ export const MealForm: React.FC<MealFormProps> = ({
 
         if (isDuplicateMeal && existingId) {
           setExistingMealId(existingId);
-          Alert.alert(
+          showAppAlert(
             'Meal Already Exists',
             'You have already submitted a meal entry for this date. Would you like to update your existing entry instead?',
-            [
-              { text: 'Cancel', style: 'cancel', onPress: () => clearWarnings() },
-              {
-                text: 'Update Existing',
-                onPress: async () => {
-                  setLoading(true);
-                  const updateRes = await mealService.updateMeal(existingId, {
-                    breakfast: formData.breakfast,
-                    lunch: formData.lunch,
-                    dinner: formData.dinner,
-                    notes: formData.notes,
-                  });
-                  setLoading(false);
-                  if (updateRes.success) {
-                    alertOrModal('Success', 'Meal entry updated successfully!', 'success');
-                    clearWarnings();
-                    onSuccess?.();
-                    resetForm();
-                  } else {
-                    alertOrModal('Error', updateRes.error || 'Failed to update meal', 'error');
-                  }
-                },
+            {
+              variant: 'warning',
+              secondaryButtonText: 'Cancel',
+              onCancel: clearWarnings,
+              buttonText: 'Update Existing',
+              onConfirm: async () => {
+                setLoading(true);
+                const updateRes = await mealService.updateMeal(existingId, {
+                  breakfast: formData.breakfast,
+                  lunch: formData.lunch,
+                  dinner: formData.dinner,
+                  notes: formData.notes,
+                });
+                setLoading(false);
+                if (updateRes.success) {
+                  alertOrModal('Success', 'Meal entry updated successfully!', 'success');
+                  clearWarnings();
+                  onSuccess?.();
+                  resetForm();
+                } else {
+                  alertOrModal('Error', updateRes.error || 'Failed to update meal', 'error');
+                }
               },
-            ]
+            }
           );
         } else if (isDuplicateMeal) {
           alertOrModal('Meal Already Exists', response.error || 'You already have a meal entry for this date.', 'warning');
@@ -208,19 +208,18 @@ export const MealForm: React.FC<MealFormProps> = ({
           response.error?.includes('offline') ||
           response.error?.includes('network')
         ) {
-          Alert.alert(
+          showAppAlert(
             'Offline Submission',
             'Your meal entry has been saved and will be submitted when you are back online.',
-            [
-              {
-                text: 'OK',
-                onPress: () => {
-                  clearWarnings(); // Clear warnings on offline success
-                  onSuccess?.();
-                  resetForm();
-                },
+            {
+              variant: 'info',
+              buttonText: 'OK',
+              onConfirm: () => {
+                clearWarnings();
+                onSuccess?.();
+                resetForm();
               },
-            ]
+            }
           );
         } else {
           alertOrModal('Error', response.error || 'Failed to submit meal', 'error');

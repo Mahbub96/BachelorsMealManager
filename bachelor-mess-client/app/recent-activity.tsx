@@ -5,9 +5,9 @@ import {
   FlatList,
   RefreshControl,
   TouchableOpacity,
-  Alert,
   StatusBar,
 } from 'react-native';
+import { showAppAlert } from '@/context/AppAlertContext';
 import { Ionicons } from '@expo/vector-icons';
 import type { IconName } from '@/constants/IconTypes';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -76,7 +76,7 @@ export default function RecentActivityScreen() {
           setActivities([]);
         }
       } catch (err) {
-        Alert.alert('Error', 'Failed to load activities. Please try again.');
+        showAppAlert('Error', 'Failed to load activities. Please try again.', { variant: 'error' });
         setActivities([]);
       } finally {
         setLoading(false);

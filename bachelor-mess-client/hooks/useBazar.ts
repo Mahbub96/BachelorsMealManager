@@ -6,7 +6,7 @@ import {
   BazarSubmission,
 } from '@/services';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert } from 'react-native';
+import { showAppAlert } from '@/context/AppAlertContext';
 
 export interface UseBazarReturn {
   // Data
@@ -72,21 +72,18 @@ export const useBazar = (): UseBazarReturn => {
           // Refresh stats
           await getBazarStats();
 
-          Alert.alert('Success', 'Bazar entry submitted successfully!');
+          showAppAlert('Success', 'Bazar entry submitted successfully!', { variant: 'success' });
           return true;
         } else {
           setError(response.error || 'Failed to submit bazar entry');
-          Alert.alert(
-            'Error',
-            response.error || 'Failed to submit bazar entry'
-          );
+          showAppAlert('Error', response.error || 'Failed to submit bazar entry', { variant: 'error' });
           return false;
         }
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : 'Failed to submit bazar entry';
         setError(errorMessage);
-        Alert.alert('Error', errorMessage);
+        showAppAlert('Error', errorMessage, { variant: 'error' });
         return false;
       } finally {
         setLoading(false);
@@ -172,13 +169,14 @@ export const useBazar = (): UseBazarReturn => {
             prev.map(entry => (entry.id === bazarId ? response.data! : entry))
           );
 
-          Alert.alert('Success', `Bazar entry ${status} successfully!`);
+          showAppAlert('Success', `Bazar entry ${status} successfully!`, { variant: 'success' });
           return true;
         } else {
           setError(response.error || `Failed to ${status} bazar entry`);
-          Alert.alert(
+          showAppAlert(
             'Error',
-            response.error || `Failed to ${status} bazar entry`
+            response.error || `Failed to ${status} bazar entry`,
+            { variant: 'error' }
           );
           return false;
         }
@@ -188,7 +186,7 @@ export const useBazar = (): UseBazarReturn => {
             ? err.message
             : `Failed to ${status} bazar entry`;
         setError(errorMessage);
-        Alert.alert('Error', errorMessage);
+        showAppAlert('Error', errorMessage, { variant: 'error' });
         return false;
       } finally {
         setLoading(false);
@@ -236,14 +234,14 @@ export const useBazar = (): UseBazarReturn => {
           return response.data.url;
         } else {
           setError(response.error || 'Failed to upload receipt');
-          Alert.alert('Error', response.error || 'Failed to upload receipt');
+          showAppAlert('Error', response.error || 'Failed to upload receipt', { variant: 'error' });
           return null;
         }
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : 'Failed to upload receipt';
         setError(errorMessage);
-        Alert.alert('Error', errorMessage);
+        showAppAlert('Error', errorMessage, { variant: 'error' });
         return null;
       }
     },

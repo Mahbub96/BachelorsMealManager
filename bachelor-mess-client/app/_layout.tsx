@@ -4,6 +4,7 @@ import { AppRefreshProvider } from '@/context/AppRefreshContext';
 import { BazarProvider } from '@/context/BazarContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { NotificationProvider } from '@/context/NotificationContext';
+import { AppAlertProvider } from '@/context/AppAlertContext';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
@@ -104,17 +105,19 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <AuthProvider>
-          <BazarProvider>
-            <AppRefreshProvider>
-              <NotificationProvider>
-                <AuthGuard>
-                  <AppContent />
-                </AuthGuard>
-              </NotificationProvider>
-            </AppRefreshProvider>
-          </BazarProvider>
-        </AuthProvider>
+        <AppAlertProvider>
+          <AuthProvider>
+            <BazarProvider>
+              <AppRefreshProvider>
+                <NotificationProvider>
+                  <AuthGuard>
+                    <AppContent />
+                  </AuthGuard>
+                </NotificationProvider>
+              </AppRefreshProvider>
+            </BazarProvider>
+          </AuthProvider>
+        </AppAlertProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );

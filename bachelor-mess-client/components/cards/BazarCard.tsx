@@ -3,8 +3,8 @@ import {
   View,
   StyleSheet,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
+import { showAppAlert } from '@/context/AppAlertContext';
 import { Ionicons } from '@expo/vector-icons';
 import type { IconName } from '@/constants/IconTypes';
 import { ThemedText } from '../ThemedText';
@@ -96,17 +96,15 @@ export const BazarCard: React.FC<BazarCardProps> = memo(
     };
 
     const handleStatusUpdate = (status: 'approved' | 'rejected') => {
-      Alert.alert(
+      showAppAlert(
         'Update Status',
         `Are you sure you want to ${status} this bazar entry?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Confirm',
-            style: status === 'approved' ? 'default' : 'destructive',
-            onPress: () => onStatusUpdate?.(bazar.id, status),
-          },
-        ]
+        {
+          variant: status === 'approved' ? 'info' : 'warning',
+          secondaryButtonText: 'Cancel',
+          buttonText: 'Confirm',
+          onConfirm: () => onStatusUpdate?.(bazar.id, status),
+        }
       );
     };
 

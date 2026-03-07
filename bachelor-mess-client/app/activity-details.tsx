@@ -4,9 +4,9 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
+import { showAppAlert } from '@/context/AppAlertContext';
 import { Ionicons } from '@expo/vector-icons';
 import type { IconName } from '@/constants/IconTypes';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -60,24 +60,22 @@ export default function ActivityDetailsScreen(_props: ActivityDetailsScreenProps
   };
 
   const handleEdit = () => {
-    Alert.alert('Edit', 'Edit functionality will be implemented soon');
+    showAppAlert('Edit', 'Edit functionality will be implemented soon', { variant: 'info' });
   };
 
   const handleDelete = () => {
-    Alert.alert(
+    showAppAlert(
       'Delete Activity',
       'Are you sure you want to delete this activity?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            Alert.alert('Success', 'Activity deleted successfully');
-            router.back();
-          },
+      {
+        variant: 'warning',
+        secondaryButtonText: 'Cancel',
+        buttonText: 'Delete',
+        onConfirm: () => {
+          showAppAlert('Success', 'Activity deleted successfully', { variant: 'success' });
+          router.back();
         },
-      ]
+      }
     );
   };
 

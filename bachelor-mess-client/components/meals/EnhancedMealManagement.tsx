@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { View, StyleSheet, Alert, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { showAppAlert } from '@/context/AppAlertContext';
 import type { InfoModalVariant } from '../ui';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -231,70 +232,68 @@ export const EnhancedMealManagement: React.FC<EnhancedMealManagementProps> = ({
       if (selectedMeals.length === 0) return;
 
       const actionText = action;
-      Alert.alert(
+      showAppAlert(
         `Bulk ${actionText}`,
         `Are you sure you want to ${actionText} ${selectedMeals.length} selected meals?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: actionText,
-            style: action === 'delete' ? 'destructive' : 'default',
-            onPress: async () => {
-              try {
-                if (action === 'delete') {
-                  const getOwnerId = (m: MealEntry | undefined) => {
-                    if (!m?.userId) return null;
-                    if (typeof m.userId === 'string') return m.userId;
-                    const u = m.userId as { _id?: string; id?: string };
-                    return u._id ?? u.id ?? null;
-                  };
-                  const results = await Promise.all(
-                    selectedMeals.map(async (mealId) => {
-                      const id = mealId && String(mealId).trim();
-                      if (!id) return false;
-                      const meal = meals.find(m => m.id === id);
-                      const ownerId = getOwnerId(meal);
-                      const isOwn = user?.id && ownerId && String(user.id) === String(ownerId);
-                      return isOwn ? deleteMealById(id) : requestDeletionForMeal(id);
-                    })
-                  );
-                  const successCount = results.filter(Boolean).length;
-                  const ownCount = selectedMeals.filter(mealId => {
-                    const meal = meals.find(m => m.id === mealId);
-                    return user?.id && getOwnerId(meal) && String(user.id) === String(getOwnerId(meal));
-                  }).length;
-                  const requestCount = selectedMeals.length - ownCount;
-                  if (ownCount > 0 && requestCount > 0) {
-                    showAlert('Done', `${ownCount} meal(s) deleted. Delete requests sent for ${requestCount} meal(s) — those members must confirm.`, 'success');
-                  } else if (requestCount > 0) {
-                    showAlert('Requests sent', `Delete requests sent for ${requestCount} meal(s). Members must confirm to delete.`, 'success');
-                  } else if (successCount < selectedMeals.length) {
-                    showAlert('Warning', `${successCount} of ${selectedMeals.length} meal(s) deleted. Some could not be removed.`, 'warning');
-                  } else {
-                    showAlert('Success', `${selectedMeals.length} meal(s) deleted.`, 'success');
-                  }
+        {
+          variant: action === 'delete' ? 'warning' : 'info',
+          secondaryButtonText: 'Cancel',
+          buttonText: actionText,
+          onConfirm: async () => {
+            try {
+              if (action === 'delete') {
+                const getOwnerId = (m: MealEntry | undefined) => {
+                  if (!m?.userId) return null;
+                  if (typeof m.userId === 'string') return m.userId;
+                  const u = m.userId as { _id?: string; id?: string };
+                  return u._id ?? u.id ?? null;
+                };
+                const results = await Promise.all(
+                  selectedMeals.map(async (mealId) => {
+                    const id = mealId && String(mealId).trim();
+                    if (!id) return false;
+                    const meal = meals.find(m => m.id === id);
+                    const ownerId = getOwnerId(meal);
+                    const isOwn = user?.id && ownerId && String(user.id) === String(ownerId);
+                    return isOwn ? deleteMealById(id) : requestDeletionForMeal(id);
+                  })
+                );
+                const successCount = results.filter(Boolean).length;
+                const ownCount = selectedMeals.filter(mealId => {
+                  const meal = meals.find(m => m.id === mealId);
+                  return user?.id && getOwnerId(meal) && String(user.id) === String(getOwnerId(meal));
+                }).length;
+                const requestCount = selectedMeals.length - ownCount;
+                if (ownCount > 0 && requestCount > 0) {
+                  showAlert('Done', `${ownCount} meal(s) deleted. Delete requests sent for ${requestCount} meal(s) — those members must confirm.`, 'success');
+                } else if (requestCount > 0) {
+                  showAlert('Requests sent', `Delete requests sent for ${requestCount} meal(s). Members must confirm to delete.`, 'success');
+                } else if (successCount < selectedMeals.length) {
+                  showAlert('Warning', `${successCount} of ${selectedMeals.length} meal(s) deleted. Some could not be removed.`, 'warning');
                 } else {
-                  await Promise.all(
-                    selectedMeals.map(mealId =>
-                      handleStatusUpdate(
-                        mealId,
-                        action as 'approved' | 'rejected'
-                      )
+                  showAlert('Success', `${selectedMeals.length} meal(s) deleted.`, 'success');
+                }
+              } else {
+                await Promise.all(
+                  selectedMeals.map(mealId =>
+                    handleStatusUpdate(
+                      mealId,
+                      action as 'approved' | 'rejected'
                     )
-                  );
-                }
-                setSelectedMeals([]);
-                try {
-                  await refreshMeals();
-                } catch {
-                  // Ignore refresh errors (e.g. unmounted)
-                }
-              } catch {
-                showAlert('Error', `Failed to ${actionText} meals`, 'error');
+                  )
+                );
               }
-            },
+              setSelectedMeals([]);
+              try {
+                await refreshMeals();
+              } catch {
+                // Ignore refresh errors (e.g. unmounted)
+              }
+            } catch {
+              showAlert('Error', `Failed to ${actionText} meals`, 'error');
+            }
           },
-        ]
+        }
       );
     },
     [

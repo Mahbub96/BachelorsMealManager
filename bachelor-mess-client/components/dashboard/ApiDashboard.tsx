@@ -1,6 +1,5 @@
 import React, { useState, useCallback, useRef } from 'react';
 import {
-  Alert,
   Dimensions,
   RefreshControl,
   ScrollView,
@@ -8,6 +7,7 @@ import {
   View,
   Text,
 } from 'react-native';
+import { showAppAlert } from '@/context/AppAlertContext';
 import { useRouter, useFocusEffect } from 'expo-router';
 import {
   dashboardService,
@@ -237,7 +237,7 @@ export const ApiDashboard: React.FC = () => {
         router.push('/admin');
         break;
       default:
-        Alert.alert('Coming Soon', 'This feature will be available soon!');
+        showAppAlert('Coming Soon', 'This feature will be available soon!', { variant: 'info' });
     }
   };
 

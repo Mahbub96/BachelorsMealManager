@@ -1,4 +1,4 @@
-import { Alert } from 'react-native';
+import { showAppAlert } from '@/context/AppAlertContext';
 import { logger as appLogger } from '@/utils/logger';
 
 // Error types for better categorization
@@ -222,26 +222,18 @@ class ErrorHandler {
     this.errorLog = [];
   }
 
-  // Show user-friendly error alert
+  // Show user-friendly error alert (theme-based custom modal)
   showErrorAlert(error: AppError, onRetry?: () => void): void {
-    const buttons: any[] = [
-      {
-        text: 'OK',
-        style: 'default' as const,
-      },
-    ];
-
     if (error.retryable && onRetry) {
-      buttons.unshift({
-        text: 'Retry',
-        style: 'default' as const,
-        onPress: onRetry,
+      showAppAlert('Error', error.userFriendlyMessage, {
+        variant: 'error',
+        buttonText: 'Retry',
+        onConfirm: onRetry,
+        secondaryButtonText: 'OK',
       });
+    } else {
+      showAppAlert('Error', error.userFriendlyMessage, { variant: 'error' });
     }
-
-    Alert.alert('Error', error.userFriendlyMessage, buttons, {
-      cancelable: true,
-    });
   }
 
   // Handle API response errors

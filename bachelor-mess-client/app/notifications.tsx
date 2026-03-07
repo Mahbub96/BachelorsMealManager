@@ -5,9 +5,8 @@ import {
   ScrollView,
   RefreshControl,
   TouchableOpacity,
-  Animated,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenLayout } from '@/components/layout';
 import { ThemedText } from '@/components/ThemedText';
@@ -15,48 +14,14 @@ import { ThemedView } from '@/components/ThemedView';
 import { ModernLoader } from '@/components/ui';
 import { useTheme } from '@/context/ThemeContext';
 import { useNotifications } from '@/context/NotificationContext';
+import { useThrottledCallback, PRESS_THROTTLE_MS } from '@/hooks/useDebounce';
 import type { NotificationItem } from '@/services/notificationService';
 import type { IconName } from '@/constants/IconTypes';
-
-// ─── Icon + colour map per notification type ───────────────────────────────
-const TYPE_CONFIG: Record<string, { icon: string; color: string; bg: string }> = {
-  bazar_submitted:    { icon: 'cart',              color: '#f59e0b', bg: '#fef3c7' },
-  bazar_approved:     { icon: 'cart',              color: '#10b981', bg: '#d1fae5' },
-  bazar_rejected:     { icon: 'cart',              color: '#ef4444', bg: '#fee2e2' },
-  meal_submitted:     { icon: 'restaurant',        color: '#f59e0b', bg: '#fef3c7' },
-  meal_approved:      { icon: 'restaurant',        color: '#10b981', bg: '#d1fae5' },
-  meal_rejected:      { icon: 'restaurant',        color: '#ef4444', bg: '#fee2e2' },
-  payment_requested:  { icon: 'cash',              color: '#6366f1', bg: '#ede9fe' },
-  payment_approved:   { icon: 'checkmark-circle',  color: '#10b981', bg: '#d1fae5' },
-  payment_rejected:   { icon: 'close-circle',      color: '#ef4444', bg: '#fee2e2' },
-  refund_sent:        { icon: 'cash-outline',       color: '#8b5cf6', bg: '#ede9fe' },
-  refund_acknowledged:{ icon: 'checkmark-done',    color: '#10b981', bg: '#d1fae5' },
-  vote_started:       { icon: 'people',            color: '#0ea5e9', bg: '#e0f2fe' },
-  vote_cast:          { icon: 'thumbs-up',         color: '#0ea5e9', bg: '#e0f2fe' },
-  election_started:   { icon: 'medal',             color: '#f97316', bg: '#ffedd5' },
-  removal_requested:  { icon: 'exit',              color: '#f97316', bg: '#ffedd5' },
-  removal_resolved:   { icon: 'exit',              color: '#6b7280', bg: '#f3f4f6' },
-};
-
-const DEFAULT_CONFIG = { icon: 'notifications', color: '#667eea', bg: '#ede9fe' };
-
-function getConfig(type: string) {
-  return TYPE_CONFIG[type] ?? DEFAULT_CONFIG;
-}
-
-// ─── Relative time helper ──────────────────────────────────────────────────
-function timeAgo(dateStr: string): string {
-  const now = Date.now();
-  const diff = now - new Date(dateStr).getTime();
-  const m = Math.floor(diff / 60000);
-  const h = Math.floor(diff / 3600000);
-  const d = Math.floor(diff / 86400000);
-  if (m < 1) return 'Just now';
-  if (m < 60) return `${m}m ago`;
-  if (h < 24) return `${h}h ago`;
-  if (d === 1) return 'Yesterday';
-  return `${d}d ago`;
-}
+import {
+  getNotificationTypeConfig,
+  getNotificationRoute,
+  notificationTimeAgo,
+} from '@/utils/notificationUtils';
 
 // ─── Group by date label ───────────────────────────────────────────────────
 function groupByDate(items: NotificationItem[]): { label: string; data: NotificationItem[] }[] {
@@ -82,24 +47,21 @@ function NotificationCard({
   onPress,
 }: {
   item: NotificationItem;
-  onPress: (id: string) => void;
+  onPress: (item: NotificationItem) => void;
 }) {
-  const cfg = getConfig(item.type);
+  const cfg = getNotificationTypeConfig(item.type);
   return (
     <TouchableOpacity
       style={[styles.card, !item.isRead && styles.cardUnread]}
-      onPress={() => onPress(item._id)}
+      onPress={() => onPress(item)}
       activeOpacity={0.75}
+      accessibilityRole="button"
+      accessibilityLabel={`${item.title}. ${item.message}. ${item.isRead ? 'Read' : 'Unread'}`}
     >
-      {/* Unread dot */}
       {!item.isRead && <View style={styles.unreadDot} />}
-
-      {/* Icon area */}
       <View style={[styles.iconCircle, { backgroundColor: cfg.bg }]}>
         <Ionicons name={cfg.icon as IconName} size={22} color={cfg.color} />
       </View>
-
-      {/* Text area */}
       <View style={styles.cardContent}>
         <ThemedText style={styles.cardTitle} numberOfLines={1}>
           {item.title}
@@ -107,7 +69,7 @@ function NotificationCard({
         <ThemedText style={styles.cardMessage} numberOfLines={2}>
           {item.message}
         </ThemedText>
-        <ThemedText style={styles.cardTime}>{timeAgo(item.createdAt)}</ThemedText>
+        <ThemedText style={styles.cardTime}>{notificationTimeAgo(item.createdAt)}</ThemedText>
       </View>
     </TouchableOpacity>
   );
@@ -117,17 +79,33 @@ function NotificationCard({
 export default function NotificationsScreen() {
   const router = useRouter();
   const { theme } = useTheme();
-  const { notifications, unreadCount, isLoading, refresh, markRead, markAllRead } =
-    useNotifications();
+  const {
+    notifications,
+    unreadCount,
+    isLoading,
+    error,
+    refresh,
+    clearError,
+    markRead,
+    markAllRead,
+  } = useNotifications();
 
   const groups = groupByDate(notifications);
 
-  const handleCardPress = useCallback(
-    async (id: string) => {
-      await markRead(id);
+  const onMarkAllRead = useThrottledCallback(markAllRead, PRESS_THROTTLE_MS);
+
+  const onCardPress = useCallback(
+    async (item: NotificationItem) => {
+      await markRead(item._id);
+      const route = getNotificationRoute(item.refType, item.refId, item.type);
+      if (route) {
+        const href = (route.params ? { pathname: route.pathname, params: route.params } : route.pathname) as Href;
+        setTimeout(() => router.push(href), 0);
+      }
     },
-    [markRead]
+    [markRead, router]
   );
+  const handleCardPress = useThrottledCallback(onCardPress, PRESS_THROTTLE_MS, (item) => item._id);
 
   return (
     <ScreenLayout
@@ -137,10 +115,27 @@ export default function NotificationsScreen() {
       onBackPress={() => router.back()}
     >
       <ThemedView style={styles.root}>
-        {/* Top actions bar */}
+        {error && (
+          <View style={styles.errorBar}>
+            <ThemedText style={styles.errorText}>{error}</ThemedText>
+            <TouchableOpacity
+              onPress={() => { clearError(); refresh(); }}
+              accessibilityRole="button"
+              accessibilityLabel="Retry loading notifications"
+            >
+              <ThemedText style={styles.errorRetry}>Retry</ThemedText>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {unreadCount > 0 && (
           <View style={styles.actionsBar}>
-            <TouchableOpacity style={styles.markAllBtn} onPress={markAllRead}>
+            <TouchableOpacity
+              style={styles.markAllBtn}
+              onPress={onMarkAllRead}
+              accessibilityRole="button"
+              accessibilityLabel="Mark all notifications as read"
+            >
               <Ionicons name="checkmark-done" size={16} color="#667eea" />
               <ThemedText style={styles.markAllText}>Mark all as read</ThemedText>
             </TouchableOpacity>
@@ -194,6 +189,28 @@ export default function NotificationsScreen() {
 // ─── Styles ────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   root: { flex: 1 },
+
+  errorBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#fef2f2',
+    borderBottomWidth: 1,
+    borderBottomColor: '#fecaca',
+  },
+  errorText: {
+    fontSize: 13,
+    color: '#b91c1c',
+    flex: 1,
+  },
+  errorRetry: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#667eea',
+    marginLeft: 12,
+  },
 
   actionsBar: {
     flexDirection: 'row',

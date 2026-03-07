@@ -6,7 +6,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -16,6 +15,7 @@ import {
   ScrollView,
   TouchableOpacity,
 } from 'react-native';
+import { showAppAlert } from '@/context/AppAlertContext';
 import authService from '@/services/authService';
 
 export default function SignupScreen() {
@@ -95,15 +95,10 @@ export default function SignupScreen() {
       });
 
       if (response.success) {
-        Alert.alert(
+        showAppAlert(
           'Success!',
           'Account created successfully. Please login with your credentials.',
-          [
-            {
-              text: 'OK',
-              onPress: () => router.replace('/LoginScreen'),
-            },
-          ]
+          { variant: 'success', onConfirm: () => router.replace('/LoginScreen') }
         );
       } else {
         setError(response.error || 'Registration failed');

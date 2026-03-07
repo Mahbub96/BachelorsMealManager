@@ -7,7 +7,7 @@ import {
   UserStats,
 } from '@/services';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert } from 'react-native';
+import { showAppAlert } from '@/context/AppAlertContext';
 
 export interface UseUsersReturn {
   // Data
@@ -134,18 +134,18 @@ export const useUsers = (): UseUsersReturn => {
             setAdminUsers(prev => [...prev, response.data!]);
           }
 
-          Alert.alert('Success', 'User created successfully!');
+          showAppAlert('Success', 'User created successfully!', { variant: 'success' });
           return true;
         } else {
           setError(response.error || 'Failed to create user');
-          Alert.alert('Error', response.error || 'Failed to create user');
+          showAppAlert('Error', response.error || 'Failed to create user', { variant: 'error' });
           return false;
         }
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : 'Failed to create user';
         setError(errorMessage);
-        Alert.alert('Error', errorMessage);
+        showAppAlert('Error', errorMessage, { variant: 'error' });
         return false;
       } finally {
         setLoading(false);
@@ -179,18 +179,18 @@ export const useUsers = (): UseUsersReturn => {
             setCurrentUser(response.data);
           }
 
-          Alert.alert('Success', 'User updated successfully!');
+          showAppAlert('Success', 'User updated successfully!', { variant: 'success' });
           return true;
         } else {
           setError(response.error || 'Failed to update user');
-          Alert.alert('Error', response.error || 'Failed to update user');
+          showAppAlert('Error', response.error || 'Failed to update user', { variant: 'error' });
           return false;
         }
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : 'Failed to update user';
         setError(errorMessage);
-        Alert.alert('Error', errorMessage);
+        showAppAlert('Error', errorMessage, { variant: 'error' });
         return false;
       } finally {
         setLoading(false);
@@ -212,18 +212,18 @@ export const useUsers = (): UseUsersReturn => {
         setActiveUsers(prev => prev.filter(user => user.id !== userId));
         setAdminUsers(prev => prev.filter(user => user.id !== userId));
 
-        Alert.alert('Success', 'User deleted successfully!');
+        showAppAlert('Success', 'User deleted successfully!', { variant: 'success' });
         return true;
       } else {
         setError(response.error || 'Failed to delete user');
-        Alert.alert('Error', response.error || 'Failed to delete user');
+        showAppAlert('Error', response.error || 'Failed to delete user', { variant: 'error' });
         return false;
       }
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : 'Failed to delete user';
       setError(errorMessage);
-      Alert.alert('Error', errorMessage);
+      showAppAlert('Error', errorMessage, { variant: 'error' });
       return false;
     } finally {
       setLoading(false);
@@ -298,18 +298,18 @@ export const useUsers = (): UseUsersReturn => {
             )
           );
 
-          Alert.alert('Success', 'Profile updated successfully!');
+          showAppAlert('Success', 'Profile updated successfully!', { variant: 'success' });
           return true;
         } else {
           setError(response.error || 'Failed to update profile');
-          Alert.alert('Error', response.error || 'Failed to update profile');
+          showAppAlert('Error', response.error || 'Failed to update profile', { variant: 'error' });
           return false;
         }
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : 'Failed to update profile';
         setError(errorMessage);
-        Alert.alert('Error', errorMessage);
+        showAppAlert('Error', errorMessage, { variant: 'error' });
         return false;
       } finally {
         setLoading(false);

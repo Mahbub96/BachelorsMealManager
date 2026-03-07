@@ -4,8 +4,8 @@ import {
   StyleSheet,
   TouchableOpacity,
   Dimensions,
-  Alert,
 } from 'react-native';
+import { showAppAlert } from '@/context/AppAlertContext';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '../ThemedText';
 import { useTheme } from '../../context/ThemeContext';
@@ -70,43 +70,26 @@ export const BazarItemCard: React.FC<BazarItemCardProps> = ({
   };
 
   const handleApprove = () => {
-    Alert.alert(
+    showAppAlert(
       'Approve Bazar',
       'Are you sure you want to approve this bazar entry?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Approve', onPress: () => onApprove?.(item.id) },
-      ]
+      { variant: 'info', secondaryButtonText: 'Cancel', buttonText: 'Approve', onConfirm: () => onApprove?.(item.id) }
     );
   };
 
   const handleReject = () => {
-    Alert.alert(
+    showAppAlert(
       'Reject Bazar',
       'Are you sure you want to reject this bazar entry?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reject',
-          style: 'destructive',
-          onPress: () => onReject?.(item.id),
-        },
-      ]
+      { variant: 'warning', secondaryButtonText: 'Cancel', buttonText: 'Reject', onConfirm: () => onReject?.(item.id) }
     );
   };
 
   const handleDelete = () => {
-    Alert.alert(
+    showAppAlert(
       'Delete Bazar',
       'Are you sure you want to delete this bazar entry?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => onDelete?.(item.id),
-        },
-      ]
+      { variant: 'warning', secondaryButtonText: 'Cancel', buttonText: 'Delete', onConfirm: () => onDelete?.(item.id) }
     );
   };
 

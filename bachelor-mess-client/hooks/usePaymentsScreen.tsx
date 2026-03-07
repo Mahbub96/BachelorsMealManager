@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { Alert } from 'react-native';
+import { showAppAlert } from '@/context/AppAlertContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
@@ -233,7 +233,7 @@ export function usePaymentsScreen(): UsePaymentsScreenReturn {
     if (requestMode === 'custom') {
       const num = Number(requestAmount?.replace(/,/g, ''));
       if (!Number.isFinite(num) || num <= 0) {
-        Alert.alert('Invalid amount', 'Please enter a valid amount.');
+        showAppAlert('Invalid amount', 'Please enter a valid amount.', { variant: 'warning' });
         return;
       }
     }
@@ -249,9 +249,9 @@ export function usePaymentsScreen(): UsePaymentsScreenReturn {
         setRequestModalVisible(false);
         await load();
         await loadAdminData();
-        Alert.alert('Done', 'Payment request submitted. Admin will confirm when received.');
+        showAppAlert('Done', 'Payment request submitted. Admin will confirm when received.', { variant: 'success' });
       } else {
-        Alert.alert('Error', res.error ?? 'Failed to submit request.');
+        showAppAlert('Error', res.error ?? 'Failed to submit request.', { variant: 'error' });
       }
     } finally {
       setRequestLoading(false);
@@ -261,7 +261,7 @@ export function usePaymentsScreen(): UsePaymentsScreenReturn {
   const submitRecord = useCallback(async () => {
     const num = Number(recordAmount?.replace(/,/g, ''));
     if (!Number.isFinite(num) || num <= 0) {
-      Alert.alert('Invalid amount', 'Please enter a valid amount.');
+      showAppAlert('Invalid amount', 'Please enter a valid amount.', { variant: 'warning' });
       return;
     }
     setRecordLoading(true);
@@ -275,9 +275,9 @@ export function usePaymentsScreen(): UsePaymentsScreenReturn {
         setRecordModalVisible(false);
         await load();
         await loadAdminData();
-        Alert.alert('Success', 'Payment recorded.');
+        showAppAlert('Success', 'Payment recorded.', { variant: 'success' });
       } else {
-        Alert.alert('Error', res.error ?? 'Failed to record payment.');
+        showAppAlert('Error', res.error ?? 'Failed to record payment.', { variant: 'error' });
       }
     } finally {
       setRecordLoading(false);
@@ -291,9 +291,9 @@ export function usePaymentsScreen(): UsePaymentsScreenReturn {
       if (res.success) {
         await load();
         await loadAdminData();
-        Alert.alert('Done', 'Payment confirmed and recorded.');
+        showAppAlert('Done', 'Payment confirmed and recorded.', { variant: 'success' });
       } else {
-        Alert.alert('Error', res.error ?? 'Failed to approve.');
+        showAppAlert('Error', res.error ?? 'Failed to approve.', { variant: 'error' });
       }
     } finally {
       setActionId(null);
@@ -306,9 +306,9 @@ export function usePaymentsScreen(): UsePaymentsScreenReturn {
       const res = await paymentService.rejectRequest(id);
       if (res.success) {
         await loadAdminData();
-        Alert.alert('Done', 'Request rejected.');
+        showAppAlert('Done', 'Request rejected.', { variant: 'success' });
       } else {
-        Alert.alert('Error', res.error ?? 'Failed to reject.');
+        showAppAlert('Error', res.error ?? 'Failed to reject.', { variant: 'error' });
       }
     } finally {
       setActionId(null);
@@ -317,13 +317,13 @@ export function usePaymentsScreen(): UsePaymentsScreenReturn {
 
   const submitSendRefund = useCallback(async () => {
     if (!sendRefundUserId) {
-      Alert.alert('Select a member', 'Please select a member to send the refund to.');
+      showAppAlert('Select a member', 'Please select a member to send the refund to.', { variant: 'warning' });
       return;
     }
     const num = Number(sendRefundAmount?.replace(/,/g, ''));
     const max = dues.find((d) => String(d.userId) === sendRefundUserId)?.receive ?? 0;
     if (!Number.isFinite(num) || num <= 0 || num > max) {
-      Alert.alert('Invalid amount', `Enter an amount between 1 and ${max.toLocaleString()}.`);
+      showAppAlert('Invalid amount', `Enter an amount between 1 and ${max.toLocaleString()}.`, { variant: 'warning' });
       return;
     }
     setSendRefundLoading(true);
@@ -339,9 +339,9 @@ export function usePaymentsScreen(): UsePaymentsScreenReturn {
         await load();
         await loadAdminData();
         await loadRefunds();
-        Alert.alert('Done', 'Refund sent. Member can acknowledge when received.');
+        showAppAlert('Done', 'Refund sent. Member can acknowledge when received.', { variant: 'success' });
       } else {
-        Alert.alert('Error', res.error ?? 'Failed to send refund.');
+        showAppAlert('Error', res.error ?? 'Failed to send refund.', { variant: 'error' });
       }
     } finally {
       setSendRefundLoading(false);
@@ -355,9 +355,9 @@ export function usePaymentsScreen(): UsePaymentsScreenReturn {
       if (res.success) {
         await loadRefunds();
         await load();
-        Alert.alert('Done', 'Refund acknowledged.');
+        showAppAlert('Done', 'Refund acknowledged.', { variant: 'success' });
       } else {
-        Alert.alert('Error', res.error ?? 'Failed to acknowledge.');
+        showAppAlert('Error', res.error ?? 'Failed to acknowledge.', { variant: 'error' });
       }
     } finally {
       setRefundAckId(null);

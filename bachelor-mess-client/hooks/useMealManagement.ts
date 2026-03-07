@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Alert } from 'react-native';
+import { showAppAlert } from '@/context/AppAlertContext';
 import httpClient from '../services/httpClient';
 import mealService, {
   MealFilters,
@@ -61,7 +61,7 @@ export const useMealManagement = (
   const alert = useCallback(
     (title: string, message: string, variant?: 'info' | 'success' | 'error' | 'warning') => {
       if (showAlert) showAlert(title, message, variant);
-      else Alert.alert(title, message);
+      else showAppAlert(title, message, { variant: variant || 'info' });
     },
     [showAlert]
   );
@@ -268,29 +268,27 @@ export const useMealManagement = (
       if (isAdmin && !isOwnMeal && meal) {
         const title = `Request deletion of ${ownerLabel || 'this'}'s meal?`;
         const message = `A delete request will be sent to ${ownerLabel || 'the meal owner'}. The meal will only be removed after they confirm.`;
-        Alert.alert(title, message, [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Request deletion',
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                const response = await mealService.createMealDeleteRequest(id);
-                if (response.success) {
-                  if (showAlert) showAlert('Request sent', `${ownerLabel || 'The member'} will need to confirm to delete this meal.`, 'success');
-                  else Alert.alert('Request sent', `${ownerLabel || 'The member'} will need to confirm to delete this meal.`);
-                  try { await loadMeals(true); } catch { /* ignore */ }
-                } else {
-                  if (showAlert) showAlert('Error', response.message || response.error || 'Failed to send delete request', 'error');
-                  else Alert.alert('Error', response.message || response.error || 'Failed to send delete request');
-                }
-              } catch {
-                if (showAlert) showAlert('Error', 'Failed to send delete request', 'error');
-                else Alert.alert('Error', 'Failed to send delete request');
+        showAppAlert(title, message, {
+          variant: 'warning',
+          secondaryButtonText: 'Cancel',
+          buttonText: 'Request deletion',
+          onConfirm: async () => {
+            try {
+              const response = await mealService.createMealDeleteRequest(id);
+              if (response.success) {
+                if (showAlert) showAlert('Request sent', `${ownerLabel || 'The member'} will need to confirm to delete this meal.`, 'success');
+                else showAppAlert('Request sent', `${ownerLabel || 'The member'} will need to confirm to delete this meal.`, { variant: 'success' });
+                try { await loadMeals(true); } catch { /* ignore */ }
+              } else {
+                if (showAlert) showAlert('Error', response.message || response.error || 'Failed to send delete request', 'error');
+                else showAppAlert('Error', response.message || response.error || 'Failed to send delete request', { variant: 'error' });
               }
-            },
+            } catch {
+              if (showAlert) showAlert('Error', 'Failed to send delete request', 'error');
+              else showAppAlert('Error', 'Failed to send delete request', { variant: 'error' });
+            }
           },
-        ]);
+        });
         return;
       }
 
@@ -301,30 +299,28 @@ export const useMealManagement = (
           ? `Remove the meal for ${dateLabel}? This cannot be undone.`
           : 'Are you sure you want to delete this meal? This action cannot be undone.';
 
-      Alert.alert(title, message, [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const response = await mealService.deleteMeal(id);
-              if (response.success) {
-                setMeals(prevMeals => prevMeals.filter(m => m.id !== id));
-                if (showAlert) showAlert('Success', 'Meal deleted successfully', 'success');
-                else Alert.alert('Success', 'Meal deleted successfully');
-                try { await loadMealStats(); } catch { /* ignore */ }
-              } else {
-                if (showAlert) showAlert('Error', response.message || response.error || 'Failed to delete meal', 'error');
-                else Alert.alert('Error', response.message || response.error || 'Failed to delete meal');
-              }
-            } catch {
-              if (showAlert) showAlert('Error', 'Failed to delete meal', 'error');
-              else Alert.alert('Error', 'Failed to delete meal');
+      showAppAlert(title, message, {
+        variant: 'warning',
+        secondaryButtonText: 'Cancel',
+        buttonText: 'Delete',
+        onConfirm: async () => {
+          try {
+            const response = await mealService.deleteMeal(id);
+            if (response.success) {
+              setMeals(prevMeals => prevMeals.filter(m => m.id !== id));
+              if (showAlert) showAlert('Success', 'Meal deleted successfully', 'success');
+              else showAppAlert('Success', 'Meal deleted successfully', { variant: 'success' });
+              try { await loadMealStats(); } catch { /* ignore */ }
+            } else {
+              if (showAlert) showAlert('Error', response.message || response.error || 'Failed to delete meal', 'error');
+              else showAppAlert('Error', response.message || response.error || 'Failed to delete meal', { variant: 'error' });
             }
-          },
+          } catch {
+            if (showAlert) showAlert('Error', 'Failed to delete meal', 'error');
+            else showAppAlert('Error', 'Failed to delete meal', { variant: 'error' });
+          }
         },
-      ]);
+      });
     },
     [loadMealStats, loadMeals, showAlert, getMealOwnerLabel, getMealOwnerId, isAdmin, user?.id]
   );
@@ -377,7 +373,7 @@ export const useMealManagement = (
   const handleEditMeal = useCallback(
     (mealId: string) => {
       if (showAlert) showAlert('Edit Meal', 'Edit functionality coming soon', 'info');
-      else Alert.alert('Edit Meal', 'Edit functionality coming soon');
+      else showAppAlert('Edit Meal', 'Edit functionality coming soon', { variant: 'info' });
     },
     [showAlert]
   );

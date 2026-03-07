@@ -1,37 +1,47 @@
-import { Platform, Alert } from 'react-native';
+import { Platform } from 'react-native';
+import { showAppAlert } from '@/context/AppAlertContext';
 import * as Device from 'expo-device';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { ApiResponse } from './config';
 import httpClient from './httpClient';
+import { config } from '@/config';
 
 // Lazy load expo-notifications to avoid errors in Expo Go
 let Notifications: typeof import('expo-notifications') | null = null;
 
 const getNotifications = async () => {
   if (Notifications) return Notifications;
-  
+
   // Check if running in Expo Go (SDK 53+ removed push notifications from Expo Go)
   try {
     // Expo Go detection: check if appOwnership is 'expo' or executionEnvironment indicates Expo Go
-    const isExpoGo = 
-      Constants.appOwnership === 'expo' || 
-      (Constants.executionEnvironment && Constants.executionEnvironment !== ExecutionEnvironment.Standalone);
-    
+    const isExpoGo =
+      Constants.appOwnership === 'expo' ||
+      (Constants.executionEnvironment &&
+        Constants.executionEnvironment !== ExecutionEnvironment.Standalone);
+
     if (isExpoGo && __DEV__) {
-      console.log('📱 Expo Go detected - expo-notifications not available in SDK 53+');
+      console.log(
+        '📱 Expo Go detected - expo-notifications not available in SDK 53+'
+      );
       return null;
     }
   } catch {
     // Constants might not be available, continue with import attempt
   }
-  
+
   try {
     Notifications = await import('expo-notifications');
     return Notifications;
   } catch (error: any) {
     // Check if error is about Expo Go
-    if (error?.message?.includes('Expo Go') || error?.message?.includes('SDK 53')) {
-      console.log('📱 Expo Go detected via error - expo-notifications not available');
+    if (
+      error?.message?.includes('Expo Go') ||
+      error?.message?.includes('SDK 53')
+    ) {
+      console.log(
+        '📱 Expo Go detected via error - expo-notifications not available'
+      );
       return null;
     }
     console.log('⚠️ Failed to load expo-notifications:', error);
@@ -138,11 +148,13 @@ class NotificationServiceImpl implements NotificationService {
       // Configure notification behavior
       const NotificationsModule = await getNotifications();
       if (!NotificationsModule) {
-        console.log('⚠️ expo-notifications not available, skipping configuration');
+        console.log(
+          '⚠️ expo-notifications not available, skipping configuration'
+        );
         this.isInitialized = true;
         return true;
       }
-      
+
       NotificationsModule.setNotificationHandler({
         handleNotification: async () => ({
           shouldShowAlert: true,
@@ -214,10 +226,10 @@ class NotificationServiceImpl implements NotificationService {
       }
 
       if (finalStatus !== 'granted') {
-        Alert.alert(
+        showAppAlert(
           'Notification Permission',
           'Please enable notifications in your device settings to receive important updates.',
-          [{ text: 'OK' }]
+          { variant: 'info' }
         );
         return false;
       }
@@ -334,7 +346,9 @@ class NotificationServiceImpl implements NotificationService {
         return 'dev-skip';
       }
 
-      type TriggerInput = Parameters<typeof NotificationsModule.scheduleNotificationAsync>[0]['trigger'];
+      type TriggerInput = Parameters<
+        typeof NotificationsModule.scheduleNotificationAsync
+      >[0]['trigger'];
       const identifier = await NotificationsModule.scheduleNotificationAsync({
         content: notificationContent,
         trigger: { date } as unknown as TriggerInput,
@@ -613,12 +627,30 @@ export interface NotificationsListResponse {
   limit: number;
 }
 
+/** Unwrap API response: backend returns { success, data } so use payload from data when present. */
+function unwrapData<T>(res: unknown): T | null {
+  if (res == null) return null;
+  const r = res as { data?: T };
+  const payload = r.data != null ? r.data : (res as T);
+  return payload;
+}
+
 /** Fetch paginated notifications for the authenticated user */
-export async function fetchNotifications(page = 1, limit = 30): Promise<NotificationsListResponse | null> {
+export async function fetchNotifications(
+  page = 1,
+  limit = config.notificationListPageSize
+): Promise<NotificationsListResponse | null> {
   try {
-    const res = await httpClient.get<NotificationsListResponse>(`/notifications?page=${page}&limit=${limit}`);
-    return (res.data as NotificationsListResponse) ?? null;
-  } catch {
+    const res = await httpClient.get<NotificationsListResponse | { success?: boolean; data?: NotificationsListResponse }>(
+      `/api/notifications?page=${page}&limit=${limit}`
+    );
+    const payload = unwrapData<NotificationsListResponse>(res);
+    if (payload?.notifications && Array.isArray(payload.notifications)) {
+      return payload;
+    }
+    return null;
+  } catch (e) {
+    if (__DEV__) console.warn('fetchNotifications failed', e);
     return null;
   }
 }
@@ -626,9 +658,13 @@ export async function fetchNotifications(page = 1, limit = 30): Promise<Notifica
 /** Lightweight unread count poll for badge */
 export async function fetchUnreadCount(): Promise<number> {
   try {
-    const res = await httpClient.get<{ unreadCount: number }>('/notifications/unread-count');
-    return (res.data as { unreadCount: number })?.unreadCount ?? 0;
-  } catch {
+    const res = await httpClient.get<{ unreadCount: number } | { data?: { unreadCount: number } }>(
+      '/api/notifications/unread-count'
+    );
+    const payload = unwrapData<{ unreadCount?: number }>(res);
+    return payload?.unreadCount ?? 0;
+  } catch (e) {
+    if (__DEV__) console.warn('fetchUnreadCount failed', e);
     return 0;
   }
 }
@@ -636,13 +672,17 @@ export async function fetchUnreadCount(): Promise<number> {
 /** Mark a single notification as read */
 export async function markNotificationRead(id: string): Promise<void> {
   try {
-    await httpClient.post(`/notifications/${id}/read`, {});
-  } catch { /* ignore */ }
+    await httpClient.post(`/api/notifications/${id}/read`, {});
+  } catch {
+    /* ignore */
+  }
 }
 
 /** Mark all notifications as read */
 export async function markAllNotificationsRead(): Promise<void> {
   try {
-    await httpClient.post('/notifications/read-all', {});
-  } catch { /* ignore */ }
+    await httpClient.post('/api/notifications/read-all', {});
+  } catch {
+    /* ignore */
+  }
 }

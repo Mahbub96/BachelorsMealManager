@@ -3,11 +3,11 @@ import {
   View,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   ScrollView,
   Modal,
   TextInput,
 } from 'react-native';
+import { showAppAlert } from '@/context/AppAlertContext';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from './ThemedText';
 import { ModernLoader } from './ui/ModernLoader';
@@ -109,7 +109,7 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
 
   const handleCreateBazar = async () => {
     if (!selectedUserId) {
-      Alert.alert('Error', 'Please select a user');
+      showAppAlert('Error', 'Please select a user', { variant: 'error' });
       return;
     }
 
@@ -120,14 +120,14 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
       });
 
       if (response.success) {
-        Alert.alert('Success', 'Bazar entry created successfully!');
+        showAppAlert('Success', 'Bazar entry created successfully!', { variant: 'success' });
         onSuccess?.();
         onClose();
       } else {
-        Alert.alert('Error', response.error || 'Failed to create bazar entry');
+        showAppAlert('Error', response.error || 'Failed to create bazar entry', { variant: 'error' });
       }
     } catch {
-      Alert.alert('Error', 'An unexpected error occurred');
+      showAppAlert('Error', 'An unexpected error occurred', { variant: 'error' });
     } finally {
       setLoading(false);
     }
@@ -143,14 +143,14 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
       });
 
       if (response.success) {
-        Alert.alert('Success', 'Bazar entry updated successfully!');
+        showAppAlert('Success', 'Bazar entry updated successfully!', { variant: 'success' });
         onSuccess?.();
         onClose();
       } else {
-        Alert.alert('Error', response.error || 'Failed to update bazar entry');
+        showAppAlert('Error', response.error || 'Failed to update bazar entry', { variant: 'error' });
       }
     } catch {
-      Alert.alert('Error', 'An unexpected error occurred');
+      showAppAlert('Error', 'An unexpected error occurred', { variant: 'error' });
     } finally {
       setLoading(false);
     }
@@ -170,69 +170,66 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
     const isOwn = user?.id && ownerId === user.id;
 
     if (isOwn) {
-      Alert.alert(
+      showAppAlert(
         'Confirm Delete',
         'Are you sure you want to delete this bazar entry? This action cannot be undone.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Delete',
-            style: 'destructive',
-            onPress: async () => {
-              setLoading(true);
-              try {
-                const response = await bazarService.deleteBazar(selectedBazar.id);
-                if (response.success) {
-                  Alert.alert('Success', 'Bazar entry deleted successfully!');
-                  onSuccess?.();
-                  onClose();
-                } else {
-                  Alert.alert('Error', response.error || 'Failed to delete bazar entry');
-                }
-              } catch {
-                Alert.alert('Error', 'An unexpected error occurred');
-              } finally {
-                setLoading(false);
-              }
-            },
-          },
-        ]
-      );
-      return;
-    }
-
-    Alert.alert(
-      'Request Deletion',
-      `Request deletion of ${ownerName}'s bazar entry? They will need to confirm.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Request',
-          onPress: async () => {
+          variant: 'warning',
+          secondaryButtonText: 'Cancel',
+          buttonText: 'Delete',
+          onConfirm: async () => {
             setLoading(true);
             try {
-              const response = await bazarService.createBazarDeleteRequest(selectedBazar.id);
+              const response = await bazarService.deleteBazar(selectedBazar.id);
               if (response.success) {
-                Alert.alert('Done', `${ownerName} will need to confirm to delete this entry.`);
+                showAppAlert('Success', 'Bazar entry deleted successfully!', { variant: 'success' });
                 onSuccess?.();
                 onClose();
               } else {
-                Alert.alert('Error', response.error || response.message || 'Request failed');
+                showAppAlert('Error', response.error || 'Failed to delete bazar entry', { variant: 'error' });
               }
             } catch {
-              Alert.alert('Error', 'An unexpected error occurred');
+              showAppAlert('Error', 'An unexpected error occurred', { variant: 'error' });
             } finally {
               setLoading(false);
             }
           },
+        }
+      );
+      return;
+    }
+
+    showAppAlert(
+      'Request Deletion',
+      `Request deletion of ${ownerName}'s bazar entry? They will need to confirm.`,
+      {
+        variant: 'info',
+        secondaryButtonText: 'Cancel',
+        buttonText: 'Request',
+        onConfirm: async () => {
+          setLoading(true);
+          try {
+            const response = await bazarService.createBazarDeleteRequest(selectedBazar.id);
+            if (response.success) {
+              showAppAlert('Done', `${ownerName} will need to confirm to delete this entry.`, { variant: 'success' });
+              onSuccess?.();
+              onClose();
+            } else {
+              showAppAlert('Error', response.error || response.message || 'Request failed', { variant: 'error' });
+            }
+          } catch {
+            showAppAlert('Error', 'An unexpected error occurred', { variant: 'error' });
+          } finally {
+            setLoading(false);
+          }
         },
-      ]
+      }
     );
   };
 
   const handleBulkOperation = async () => {
     if (selectedBazarIds.length === 0) {
-      Alert.alert('Error', 'Please select bazar entries to process');
+      showAppAlert('Error', 'Please select bazar entries to process', { variant: 'error' });
       return;
     }
 
@@ -244,17 +241,18 @@ export const AdminBazarOverride: React.FC<AdminBazarOverrideProps> = ({
       );
 
       if (response.success) {
-        Alert.alert('Success', `Bulk ${bulkOperation} completed successfully!`);
+        showAppAlert('Success', `Bulk ${bulkOperation} completed successfully!`, { variant: 'success' });
         onSuccess?.();
         onClose();
       } else {
-        Alert.alert(
+        showAppAlert(
           'Error',
-          response.error || `Failed to perform bulk ${bulkOperation}`
+          response.error || `Failed to perform bulk ${bulkOperation}`,
+          { variant: 'error' }
         );
       }
     } catch {
-      Alert.alert('Error', 'An unexpected error occurred');
+      showAppAlert('Error', 'An unexpected error occurred', { variant: 'error' });
     } finally {
       setLoading(false);
     }

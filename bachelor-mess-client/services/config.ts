@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { config as APP_CONFIG } from '@/config';
 
 // Environment-based configuration for security
 const getApiUrl = (): string => {
@@ -41,10 +42,10 @@ const getApiUrl = (): string => {
 
 export const config = {
   apiUrl: getApiUrl(),
-  timeout: parseInt(process.env.EXPO_PUBLIC_API_TIMEOUT || '10000'),
-  maxRetries: parseInt(process.env.EXPO_PUBLIC_API_MAX_RETRIES || '3'),
-  retryDelay: parseInt(process.env.EXPO_PUBLIC_API_RETRY_DELAY || '1000'),
-  cacheDuration: parseInt(process.env.EXPO_PUBLIC_CACHE_DURATION || '300000'), // 5 minutes
+  timeout: parseInt(process.env.EXPO_PUBLIC_API_TIMEOUT || String(APP_CONFIG.apiTimeoutMs), 10),
+  maxRetries: parseInt(process.env.EXPO_PUBLIC_API_MAX_RETRIES || String(APP_CONFIG.apiMaxRetries), 10),
+  retryDelay: parseInt(process.env.EXPO_PUBLIC_API_RETRY_DELAY || String(APP_CONFIG.apiRetryDelayMs), 10),
+  cacheDuration: parseInt(process.env.EXPO_PUBLIC_CACHE_DURATION || String(APP_CONFIG.apiCacheDurationMs), 10),
 };
 
 // Validate configuration

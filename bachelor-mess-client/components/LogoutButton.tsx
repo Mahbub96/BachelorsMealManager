@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { TouchableOpacity, Text, StyleSheet, Alert } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { showAppAlert } from '@/context/AppAlertContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/context/AuthContext';
 
@@ -11,27 +12,22 @@ export const LogoutButton: React.FC<LogoutButtonProps> = ({ style }) => {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { logout } = useAuth();
 
-  const handleLogout = async () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      {
-        text: 'Cancel',
-        style: 'cancel',
+  const handleLogout = () => {
+    showAppAlert('Logout', 'Are you sure you want to logout?', {
+      variant: 'warning',
+      buttonText: 'Logout',
+      onConfirm: async () => {
+        setIsLoggingOut(true);
+        try {
+          await logout();
+        } catch (error) {
+          console.error('Logout error:', error);
+        } finally {
+          setIsLoggingOut(false);
+        }
       },
-      {
-        text: 'Logout',
-        style: 'destructive',
-        onPress: async () => {
-          setIsLoggingOut(true);
-          try {
-            await logout();
-          } catch (error) {
-            console.error('Logout error:', error);
-          } finally {
-            setIsLoggingOut(false);
-          }
-        },
-      },
-    ]);
+      secondaryButtonText: 'Cancel',
+    });
   };
 
   return (

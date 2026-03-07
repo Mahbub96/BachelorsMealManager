@@ -5,10 +5,10 @@ import {
   TouchableOpacity,
   FlatList,
   RefreshControl,
-  Alert,
   StatusBar,
   type ViewStyle,
 } from 'react-native';
+import { showAppAlert } from '@/context/AppAlertContext';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -126,18 +126,10 @@ export default function BazarListScreen(_props: BazarListScreenProps) {
     bazarId: string,
     status: 'approved' | 'rejected'
   ) => {
-    Alert.alert(
+    showAppAlert(
       'Update Status',
       `Are you sure you want to ${status} this bazar entry?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Confirm',
-          onPress: async () => {
-            await updateBazarStatus(bazarId, status);
-          },
-        },
-      ]
+      { variant: 'info', secondaryButtonText: 'Cancel', buttonText: 'Confirm', onConfirm: async () => { await updateBazarStatus(bazarId, status); } }
     );
   };
 
@@ -163,52 +155,50 @@ export default function BazarListScreen(_props: BazarListScreenProps) {
     const isAdminUser = user?.role === 'admin' || user?.role === 'super_admin';
 
     if (isOwner) {
-      Alert.alert(
+      showAppAlert(
         'Delete Bazar Entry',
         'Are you sure you want to delete this bazar entry? This action cannot be undone.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Delete',
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                await deleteBazar(id);
-              } catch {
-                Alert.alert('Error', 'Delete failed. Please try again.');
-              }
-            },
+        {
+          variant: 'warning',
+          secondaryButtonText: 'Cancel',
+          buttonText: 'Delete',
+          onConfirm: async () => {
+            try {
+              await deleteBazar(id);
+            } catch {
+              showAppAlert('Error', 'Delete failed. Please try again.', { variant: 'error' });
+            }
           },
-        ]
+        }
       );
       return;
     }
     if (isAdminUser && bazar) {
       const ownerName = getOwnerName(bazar);
-      Alert.alert(
+      showAppAlert(
         'Request Deletion',
         `Request deletion of ${ownerName}'s bazar entry? They will need to confirm.`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Request',
-            onPress: async () => {
-              try {
-                const res = await requestBazarDeletion(id);
-                Alert.alert(
-                  res.success ? 'Done' : 'Error',
-                  res.success ? `${ownerName} will need to confirm to delete this entry.` : (res.error || res.message || 'Request failed')
-                );
-              } catch {
-                Alert.alert('Error', 'Request failed. Please try again.');
-              }
-            },
+        {
+          variant: 'info',
+          secondaryButtonText: 'Cancel',
+          buttonText: 'Request',
+          onConfirm: async () => {
+            try {
+              const res = await requestBazarDeletion(id);
+              showAppAlert(
+                res.success ? 'Done' : 'Error',
+                res.success ? `${ownerName} will need to confirm to delete this entry.` : (res.error || res.message || 'Request failed'),
+                { variant: res.success ? 'success' : 'error' }
+              );
+            } catch {
+              showAppAlert('Error', 'Request failed. Please try again.', { variant: 'error' });
+            }
           },
-        ]
+        }
       );
       return;
     }
-    Alert.alert('Error', 'You can only delete your own bazar entries.');
+    showAppAlert('Error', 'You can only delete your own bazar entries.', { variant: 'error' });
   };
 
   const renderBazarItem = ({ item: bazar }: { item: BazarEntry }) => (
@@ -297,7 +287,7 @@ export default function BazarListScreen(_props: BazarListScreenProps) {
       <>
         <PendingBazarDeleteRequests
           onResponded={refreshData}
-          onError={(msg) => Alert.alert('Error', msg)}
+          onError={(msg) => showAppAlert('Error', msg, { variant: 'error' })}
         />
         <BazarListHeader
           showFilters={showFilters}

@@ -8,10 +8,13 @@ const { sendSuccessResponse, sendErrorResponse } = require('../utils/responseHan
 async function listNotifications(req, res) {
   try {
     const userId = req.user._id;
+    if (!userId) {
+      return sendErrorResponse(res, 400, 'User ID is required');
+    }
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 30));
     const result = await notificationService.getNotificationsForUser(userId, { page, limit });
-    return sendSuccessResponse(res, result);
+    return sendSuccessResponse(res, 200, 'Notifications fetched successfully', result);
   } catch (err) {
     return sendErrorResponse(res, 500, 'Failed to fetch notifications');
   }
@@ -24,7 +27,7 @@ async function listNotifications(req, res) {
 async function getUnreadCount(req, res) {
   try {
     const count = await notificationService.getUnreadCount(req.user._id);
-    return sendSuccessResponse(res, { unreadCount: count });
+    return sendSuccessResponse(res, 200, 'Unread count fetched successfully', { unreadCount: count });
   } catch (err) {
     return sendErrorResponse(res, 500, 'Failed to fetch unread count');
   }
@@ -40,7 +43,7 @@ async function markAsRead(req, res) {
     if (!notification) {
       return sendErrorResponse(res, 404, 'Notification not found');
     }
-    return sendSuccessResponse(res, { notification });
+    return sendSuccessResponse(res, 200, 'Notification marked as read successfully', { notification });
   } catch (err) {
     return sendErrorResponse(res, 500, 'Failed to mark notification as read');
   }
@@ -53,7 +56,7 @@ async function markAsRead(req, res) {
 async function markAllAsRead(req, res) {
   try {
     await notificationService.markAllAsRead(req.user._id);
-    return sendSuccessResponse(res, { message: 'All notifications marked as read' });
+    return sendSuccessResponse(res, 200, 'All notifications marked as read successfully', { message: 'All notifications marked as read' });
   } catch (err) {
     return sendErrorResponse(res, 500, 'Failed to mark all notifications as read');
   }

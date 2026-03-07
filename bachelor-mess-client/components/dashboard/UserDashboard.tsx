@@ -16,12 +16,12 @@ import logger from '@/utils/logger';
 import { useRouter, useFocusEffect } from 'expo-router';
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
-  Alert,
   RefreshControl,
   ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
+import { showAppAlert } from '@/context/AppAlertContext';
 import { useAppRefresh } from '@/context/AppRefreshContext';
 import { ACTIVITY_FILTER_SECTIONS } from '@/constants/filterConfigs';
 import { FilterChipsPanel } from '@/components/shared/FilterChipsPanel';
@@ -238,18 +238,17 @@ export const UserDashboard: React.FC = () => {
 
   const handleChangeAdminVote = useCallback(async () => {
     if (!user) {
-      Alert.alert('Login Required', 'Please log in to use this feature', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Login', onPress: () => router.push('/LoginScreen') },
-      ]);
+      showAppAlert('Login Required', 'Please log in to use this feature', {
+        variant: 'info',
+        secondaryButtonText: 'Cancel',
+        buttonText: 'Login',
+        onConfirm: () => router.push('/LoginScreen'),
+      });
       return;
     }
 
     if (user.role !== 'member') {
-      Alert.alert(
-        'Not available',
-        'Only group members can start or vote for admin change.'
-      );
+      showAppAlert('Not available', 'Only group members can start or vote for admin change.', { variant: 'info' });
       return;
     }
 
@@ -261,10 +260,12 @@ export const UserDashboard: React.FC = () => {
 
   const handleQuickAction = (action: string) => {
     if (!user) {
-      Alert.alert('Login Required', 'Please log in to use this feature', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Login', onPress: () => router.push('/LoginScreen') },
-      ]);
+      showAppAlert('Login Required', 'Please log in to use this feature', {
+        variant: 'info',
+        secondaryButtonText: 'Cancel',
+        buttonText: 'Login',
+        onConfirm: () => router.push('/LoginScreen'),
+      });
       return;
     }
     switch (action) {
@@ -298,10 +299,12 @@ export const UserDashboard: React.FC = () => {
   // Handle stat card clicks
   const handleStatCardClick = (statType: string) => {
     if (!user) {
-      Alert.alert('Login Required', 'Please log in to access this feature', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Login', onPress: () => router.push('/LoginScreen') },
-      ]);
+      showAppAlert('Login Required', 'Please log in to access this feature', {
+        variant: 'info',
+        secondaryButtonText: 'Cancel',
+        buttonText: 'Login',
+        onConfirm: () => router.push('/LoginScreen'),
+      });
       return;
     }
 
@@ -317,9 +320,10 @@ export const UserDashboard: React.FC = () => {
         router.push('/(tabs)/explore');
         break;
       case 'Meal Rate':
-        Alert.alert(
+        showAppAlert(
           'Current Meal Rate',
-          `Meal rate (this month) = Total group bazar ÷ Total group meals. Same for everyone in your group.`
+          'Meal rate (this month) = Total group bazar ÷ Total group meals. Same for everyone in your group.',
+          { variant: 'info' }
         );
         break;
       default:
@@ -330,10 +334,12 @@ export const UserDashboard: React.FC = () => {
   // Handle activity card clicks
   const handleActivityClick = (activity: ActivityItem) => {
     if (!user) {
-      Alert.alert('Login Required', 'Please log in to access this feature', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Login', onPress: () => router.push('/LoginScreen') },
-      ]);
+      showAppAlert('Login Required', 'Please log in to access this feature', {
+        variant: 'info',
+        secondaryButtonText: 'Cancel',
+        buttonText: 'Login',
+        onConfirm: () => router.push('/LoginScreen'),
+      });
       return;
     }
 

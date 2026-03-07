@@ -7,13 +7,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
   ScrollView,
   StyleSheet,
   Switch,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { showAppAlert } from '@/context/AppAlertContext';
 
 interface SettingItem {
   id: string;
@@ -58,30 +58,28 @@ export default function SettingsScreen() {
       await loadFeatureConfig(); // Reload config
     } catch (error) {
       console.error('Error toggling feature:', error);
-      Alert.alert('Error', 'Failed to update feature setting');
+      showAppAlert('Error', 'Failed to update feature setting', { variant: 'error' });
     }
   };
 
   const handleResetSettings = () => {
-    Alert.alert(
+    showAppAlert(
       'Reset Settings',
       'Are you sure you want to reset all settings to default?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reset',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await featureManager.resetConfig();
-              await loadFeatureConfig();
-              Alert.alert('Success', 'Settings reset to default');
-            } catch {
-              Alert.alert('Error', 'Failed to reset settings');
-            }
-          },
+      {
+        variant: 'warning',
+        secondaryButtonText: 'Cancel',
+        buttonText: 'Reset',
+        onConfirm: async () => {
+          try {
+            await featureManager.resetConfig();
+            await loadFeatureConfig();
+            showAppAlert('Success', 'Settings reset to default', { variant: 'success' });
+          } catch {
+            showAppAlert('Error', 'Failed to reset settings', { variant: 'error' });
+          }
         },
-      ]
+      }
     );
   };
 
@@ -229,7 +227,7 @@ export default function SettingsScreen() {
       subtitle: 'Manage your data and privacy',
       icon: 'shield-checkmark',
       type: 'navigate',
-      onPress: () => Alert.alert('Privacy', 'Privacy settings coming soon!'),
+      onPress: () => showAppAlert('Privacy', 'Privacy settings coming soon!', { variant: 'info' }),
     },
     {
       id: 'about',
@@ -237,7 +235,7 @@ export default function SettingsScreen() {
       subtitle: 'Version 1.0.0',
       icon: 'information-circle',
       type: 'navigate',
-      onPress: () => Alert.alert('About', 'Bachelor Flat Manager v1.0.0'),
+      onPress: () => showAppAlert('About', 'Bachelor Flat Manager v1.0.0', { variant: 'info' }),
     },
     {
       id: 'reset',
@@ -376,29 +374,26 @@ export default function SettingsScreen() {
           <TouchableOpacity
             style={[styles.resetButton, { backgroundColor: theme.status?.error }]}
             onPress={async () => {
-              Alert.alert(
+              showAppAlert(
                 'Reset Database',
                 'This will clear all offline data. Are you sure?',
-                [
-                  { text: 'Cancel', style: 'cancel' },
-                  {
-                    text: 'Reset',
-                    style: 'destructive',
-                    onPress: async () => {
-                      try {
-                        console.log('🔄 Starting database reset...');
-                        await offlineStorage.resetDatabase();
-                        console.log('✅ Database reset completed');
-                        Alert.alert('Success', 'Database reset completed');
-                        // Reload settings after database reset
-                        loadFeatureConfig();
-                      } catch (error) {
-                        console.error('❌ Database reset failed:', error);
-                        Alert.alert('Error', 'Failed to reset database');
-                      }
-                    },
+                {
+                  variant: 'warning',
+                  secondaryButtonText: 'Cancel',
+                  buttonText: 'Reset',
+                  onConfirm: async () => {
+                    try {
+                      console.log('🔄 Starting database reset...');
+                      await offlineStorage.resetDatabase();
+                      console.log('✅ Database reset completed');
+                      showAppAlert('Success', 'Database reset completed', { variant: 'success' });
+                      loadFeatureConfig();
+                    } catch (error) {
+                      console.error('❌ Database reset failed:', error);
+                      showAppAlert('Error', 'Failed to reset database', { variant: 'error' });
+                    }
                   },
-                ]
+                }
               );
             }}
           >

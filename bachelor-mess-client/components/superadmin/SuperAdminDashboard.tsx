@@ -5,10 +5,10 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   RefreshControl,
   Dimensions,
 } from 'react-native';
+import { showAppAlert } from '@/context/AppAlertContext';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ModernLoader } from '../ui/ModernLoader';
@@ -133,36 +133,28 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
   };
 
   const handleUserAction = (action: string, userId: string) => {
-    Alert.alert(
+    showAppAlert(
       'Confirm Action',
       `Are you sure you want to ${action} this user?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Confirm',
-          style: action === 'delete' ? 'destructive' : 'default',
-          onPress: () => {
-            console.log(`${action} user:`, userId);
-          },
-        },
-      ]
+      {
+        variant: action === 'delete' ? 'warning' : 'info',
+        secondaryButtonText: 'Cancel',
+        buttonText: 'Confirm',
+        onConfirm: () => { console.log(`${action} user:`, userId); },
+      }
     );
   };
 
   const handleSystemAction = (action: string) => {
-    Alert.alert(
+    showAppAlert(
       'System Action',
       `Are you sure you want to ${action}? This action cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Proceed',
-          style: 'destructive',
-          onPress: () => {
-            console.log(`System action: ${action}`);
-          },
-        },
-      ]
+      {
+        variant: 'warning',
+        secondaryButtonText: 'Cancel',
+        buttonText: 'Proceed',
+        onConfirm: () => { console.log(`System action: ${action}`); },
+      }
     );
   };
 

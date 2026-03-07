@@ -3,7 +3,6 @@ import {
   View,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   ScrollView,
   Modal,
@@ -12,6 +11,7 @@ import {
   Platform,
   Dimensions,
 } from 'react-native';
+import { showAppAlert } from '@/context/AppAlertContext';
 import { Ionicons } from '@expo/vector-icons';
 import type { IconName } from '@/constants/IconTypes';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -144,29 +144,24 @@ export const BazarForm: React.FC<BazarFormProps> = ({
       const response = await bazarService.submitBazar(submissionData);
 
       if (response.success) {
-        Alert.alert('Success', 'Bazar entry submitted successfully!', [
-          {
-            text: 'OK',
-            onPress: () => {
-              onSuccess?.();
-              resetForm();
-            },
+        showAppAlert('Success', 'Bazar entry submitted successfully!', {
+          variant: 'success',
+          buttonText: 'OK',
+          onConfirm: () => {
+            onSuccess?.();
+            resetForm();
           },
-        ]);
+        });
       } else {
-        Alert.alert('Submission Error', response.error || 'Failed to submit bazar entry');
+        showAppAlert('Submission Error', response.error || 'Failed to submit bazar entry', { variant: 'error' });
       }
     } catch (error) {
-      Alert.alert('Error', 'An unexpected error occurred. Please try again.', [
-        {
-          text: 'Retry',
-          onPress: () => handleSubmit(),
-        },
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-      ]);
+      showAppAlert('Error', 'An unexpected error occurred. Please try again.', {
+        variant: 'error',
+        buttonText: 'Retry',
+        secondaryButtonText: 'Cancel',
+        onConfirm: () => handleSubmit(),
+      });
     } finally {
       setLoading(false);
     }
@@ -241,7 +236,7 @@ export const BazarForm: React.FC<BazarFormProps> = ({
       }
     } catch (error) {
       console.error('Error picking image:', error);
-      Alert.alert('Error', 'Failed to pick image. Please try again.');
+      showAppAlert('Error', 'Failed to pick image. Please try again.', { variant: 'error' });
     }
   };
 
@@ -260,7 +255,7 @@ export const BazarForm: React.FC<BazarFormProps> = ({
       today.setHours(23, 59, 59, 999);
       
       if (date > today) {
-        Alert.alert('Invalid Date', 'Cannot select future dates');
+        showAppAlert('Invalid Date', 'Cannot select future dates', { variant: 'warning' });
         return;
       }
       

@@ -25,3 +25,12 @@ export {
 
 export { mealUtils } from './mealUtils';
 export { logger } from './logger';
+
+export {
+  getNotificationTypeConfig,
+  getNotificationRoute,
+  notificationTimeAgo,
+  toRefIdString,
+  NOTIFICATION_TYPE_CONFIG,
+  type NotificationRoute,
+} from './notificationUtils';
