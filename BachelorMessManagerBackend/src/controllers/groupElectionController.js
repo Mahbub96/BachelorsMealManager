@@ -330,12 +330,10 @@ class GroupElectionController {
           id => voteCountByCandidate[id] === totalMembers
         );
         if (unanimousId) {
-          const candidate = await User.findById(unanimousId).select(
-            'role status createdBy'
-          );
-          const groupAdmin = await User.findById(
-            election.groupAdminId
-          ).select('role status');
+          const [candidate, groupAdmin] = await Promise.all([
+            User.findById(unanimousId).select('role status createdBy'),
+            User.findById(election.groupAdminId).select('role status'),
+          ]);
           if (
             candidate &&
             groupAdmin &&

@@ -107,8 +107,8 @@ async function getRequests(req, res) {
     const currentUserId = normalizeUserId(req, res);
     if (!currentUserId) return;
 
-    const user = await User.findById(currentUserId).select('role createdBy').lean();
-    const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+    const role = req.user?.role;
+    const isAdmin = role === 'admin' || role === 'super_admin';
 
     let query = {};
     if (isAdmin) {
@@ -164,13 +164,16 @@ async function approveRequest(req, res) {
     const currentUserId = normalizeUserId(req, res);
     if (!currentUserId) return;
 
-    const currentUser = await User.findById(currentUserId).select('role').lean();
-    if (currentUser?.role !== 'admin' && currentUser?.role !== 'super_admin') {
+    const role = req.user?.role;
+    if (role !== 'admin' && role !== 'super_admin') {
       return res.status(403).json({ success: false, error: 'Admin access required' });
     }
 
     const requestId = req.params.id;
-    const pr = await PaymentRequest.findById(requestId);
+    const [pr, groupMemberIds] = await Promise.all([
+      PaymentRequest.findById(requestId),
+      getGroupMemberIds(req.user),
+    ]);
     if (!pr) {
       return res.status(404).json({ success: false, error: 'Payment request not found' });
     }
@@ -178,11 +181,10 @@ async function approveRequest(req, res) {
       return res.status(400).json({ success: false, error: 'Request is not pending' });
     }
 
-    const groupMemberIds = await getGroupMemberIds(req.user);
     const inGroup =
       Array.isArray(groupMemberIds) &&
       groupMemberIds.some((id) => id && id.toString() === pr.userId.toString());
-    if (!inGroup && currentUser.role !== 'super_admin') {
+    if (!inGroup && role !== 'super_admin') {
       return res.status(403).json({ success: false, error: 'Not in your group' });
     }
 
@@ -232,13 +234,16 @@ async function rejectRequest(req, res) {
     const currentUserId = normalizeUserId(req, res);
     if (!currentUserId) return;
 
-    const currentUser = await User.findById(currentUserId).select('role').lean();
-    if (currentUser?.role !== 'admin' && currentUser?.role !== 'super_admin') {
+    const role = req.user?.role;
+    if (role !== 'admin' && role !== 'super_admin') {
       return res.status(403).json({ success: false, error: 'Admin access required' });
     }
 
     const requestId = req.params.id;
-    const pr = await PaymentRequest.findById(requestId);
+    const [pr, groupMemberIds] = await Promise.all([
+      PaymentRequest.findById(requestId),
+      getGroupMemberIds(req.user),
+    ]);
     if (!pr) {
       return res.status(404).json({ success: false, error: 'Payment request not found' });
     }
@@ -246,11 +251,10 @@ async function rejectRequest(req, res) {
       return res.status(400).json({ success: false, error: 'Request is not pending' });
     }
 
-    const groupMemberIds = await getGroupMemberIds(req.user);
     const inGroup =
       Array.isArray(groupMemberIds) &&
       groupMemberIds.some((id) => id && id.toString() === pr.userId.toString());
-    if (!inGroup && currentUser.role !== 'super_admin') {
+    if (!inGroup && role !== 'super_admin') {
       return res.status(403).json({ success: false, error: 'Not in your group' });
     }
 
@@ -285,8 +289,8 @@ async function getDuesOverview(req, res) {
     const currentUserId = normalizeUserId(req, res);
     if (!currentUserId) return;
 
-    const currentUser = await User.findById(currentUserId).select('role').lean();
-    if (currentUser?.role !== 'admin' && currentUser?.role !== 'super_admin') {
+    const role = req.user?.role;
+    if (role !== 'admin' && role !== 'super_admin') {
       return res.status(403).json({ success: false, error: 'Admin access required' });
     }
 

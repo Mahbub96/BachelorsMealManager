@@ -56,6 +56,8 @@ const superAdminController = {
       User.find({
         updatedAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
       })
+        .select('name email updatedAt lastSuperAdminAction')
+        .lean()
         .sort({ updatedAt: -1 })
         .limit(10),
     ]);
@@ -455,12 +457,18 @@ const superAdminController = {
 
   // Create system backup
   createBackup: catchAsync(async (req, res) => {
+    const [users, meals, bazar, statistics] = await Promise.all([
+      User.find().select('-password').lean(),
+      Meal.find().lean(),
+      Bazar.find().lean(),
+      Statistics.find().lean(),
+    ]);
     const backupData = {
       timestamp: new Date(),
-      users: await User.find().select('-password'),
-      meals: await Meal.find(),
-      bazar: await Bazar.find(),
-      statistics: await Statistics.find(),
+      users,
+      meals,
+      bazar,
+      statistics,
     };
 
     // In a real application, you would save this to a file or cloud storage

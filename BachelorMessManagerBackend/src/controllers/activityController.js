@@ -426,17 +426,17 @@ class ActivityController {
       // Calculate pagination
       const skip = (parseInt(page) - 1) * parseInt(limit);
 
-      // Get meals with efficient population
-      const meals = await Meal.find(query)
-        .populate('userId', 'name email')
-        .populate('approvedBy', 'name')
-        .sort({ date: -1, createdAt: -1 })
-        .skip(skip)
-        .limit(parseInt(limit))
-        .lean(); // Use lean() for better performance
-
-      // Get total count
-      const total = await Meal.countDocuments(query);
+      const [meals, total, monthlyStats] = await Promise.all([
+        Meal.find(query)
+          .populate('userId', 'name email')
+          .populate('approvedBy', 'name')
+          .sort({ date: -1, createdAt: -1 })
+          .skip(skip)
+          .limit(parseInt(limit))
+          .lean(), // Use lean() for better performance
+        Meal.countDocuments(query),
+        this.getMonthlyMealStats(userId, isAdmin, startOfMonth, endOfMonth),
+      ]);
 
       // Format meals for response
       const formattedMeals = meals.map(meal => ({
@@ -454,85 +454,6 @@ class ActivityController {
         updatedAt: meal.updatedAt,
         time: getTimeAgo(meal.createdAt),
       }));
-
-      // Get monthly statistics
-      const getMonthlyMealStats = async (
-        userId,
-        isAdmin,
-        startDate,
-        endDate
-      ) => {
-        try {
-          const query = {
-            date: { $gte: startDate, $lte: endDate },
-          };
-
-          if (!isAdmin) {
-            query.userId = userId;
-          }
-
-          const stats = await Meal.aggregate([
-            { $match: query },
-            {
-              $group: {
-                _id: null,
-                totalMeals: { $sum: 1 },
-                totalBreakfast: { $sum: { $cond: ['$breakfast', 1, 0] } },
-                totalLunch: { $sum: { $cond: ['$lunch', 1, 0] } },
-                totalDinner: { $sum: { $cond: ['$dinner', 1, 0] } },
-                pendingMeals: {
-                  $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] },
-                },
-                approvedMeals: {
-                  $sum: { $cond: [{ $eq: ['$status', 'approved'] }, 1, 0] },
-                },
-                rejectedMeals: {
-                  $sum: { $cond: [{ $eq: ['$status', 'rejected'] }, 1, 0] },
-                },
-              },
-            },
-          ]);
-
-          const result = stats[0] || {
-            totalMeals: 0,
-            totalBreakfast: 0,
-            totalLunch: 0,
-            totalDinner: 0,
-            pendingMeals: 0,
-            approvedMeals: 0,
-            rejectedMeals: 0,
-          };
-
-          return {
-            ...result,
-            efficiency:
-              result.totalMeals > 0
-                ? Math.round((result.approvedMeals / result.totalMeals) * 100)
-                : 0,
-            averageMealsPerDay: result.totalMeals / 30, // Assuming 30 days
-          };
-        } catch (error) {
-          logger.error('Error getting monthly meal stats:', error);
-          return {
-            totalMeals: 0,
-            totalBreakfast: 0,
-            totalLunch: 0,
-            totalDinner: 0,
-            pendingMeals: 0,
-            approvedMeals: 0,
-            rejectedMeals: 0,
-            efficiency: 0,
-            averageMealsPerDay: 0,
-          };
-        }
-      };
-
-      const monthlyStats = await getMonthlyMealStats(
-        userId,
-        isAdmin,
-        startOfMonth,
-        endOfMonth
-      );
 
       return sendSuccessResponse(
         res,

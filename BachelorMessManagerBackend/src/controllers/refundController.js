@@ -24,8 +24,8 @@ async function sendRefund(req, res) {
     const currentUserId = normalizeUserId(req, res);
     if (!currentUserId) return;
 
-    const currentUser = await User.findById(currentUserId).select('role').lean();
-    if (currentUser?.role !== 'admin' && currentUser?.role !== 'super_admin') {
+    const role = req.user?.role;
+    if (role !== 'admin' && role !== 'super_admin') {
       return res.status(403).json({ success: false, error: 'Admin access required' });
     }
 
@@ -44,7 +44,7 @@ async function sendRefund(req, res) {
       : new mongoose.Types.ObjectId(targetUserId);
     const groupMemberIds = await getGroupMemberIds(req.user);
     const inGroup = Array.isArray(groupMemberIds) && groupMemberIds.some((id) => id.toString() === targetId.toString());
-    if (!inGroup && currentUser.role !== 'super_admin') {
+    if (!inGroup && role !== 'super_admin') {
       return res.status(403).json({ success: false, error: 'User not in your group' });
     }
 
@@ -103,8 +103,8 @@ async function listRefunds(req, res) {
     const currentUserId = normalizeUserId(req, res);
     if (!currentUserId) return;
 
-    const currentUser = await User.findById(currentUserId).select('role').lean();
-    const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'super_admin';
+    const role = req.user?.role;
+    const isAdmin = role === 'admin' || role === 'super_admin';
 
     let query = {};
     if (isAdmin) {

@@ -261,11 +261,16 @@ function startServer() {
       })
     );
 
-    app.use(
-      databaseLogger({
-        logData: config.nodeEnv === 'development',
-      })
-    );
+    if (
+      config.nodeEnv === 'development' &&
+      process.env.ENABLE_DB_QUERY_LOGGER === 'true'
+    ) {
+      app.use(
+        databaseLogger({
+          logData: true,
+        })
+      );
+    }
 
     app.use(businessEventLogger());
   }

@@ -321,11 +321,9 @@ class BazarController {
       }
 
       await Bazar.findByIdAndDelete(bazarId);
-      try {
-        await StatisticsService.updateAfterOperation('bazar_deleted', { bazarId });
-      } catch (statsErr) {
+      StatisticsService.updateAfterOperation('bazar_deleted', { bazarId }).catch((statsErr) => {
         logger.error('Statistics update after bazar delete failed:', statsErr);
-      }
+      });
 
       logger.info(`Bazar entry deleted by owner ${req.user.email}`);
 
@@ -449,11 +447,9 @@ class BazarController {
           return sendErrorResponse(res, 404, 'Bazar entry no longer exists');
         }
         await Bazar.findByIdAndDelete(request.bazarId);
-        try {
-          await StatisticsService.updateAfterOperation('bazar_deleted', { bazarId: request.bazarId });
-        } catch (statsErr) {
+        StatisticsService.updateAfterOperation('bazar_deleted', { bazarId: request.bazarId }).catch((statsErr) => {
           logger.error('Statistics update after bazar delete failed:', statsErr);
-        }
+        });
         logger.info(`Bazar ${request.bazarId} deleted after owner ${req.user.email} accepted delete request`);
       }
 

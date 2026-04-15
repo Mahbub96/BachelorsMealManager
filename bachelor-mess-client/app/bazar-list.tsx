@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -106,11 +106,6 @@ export default function BazarListScreen(_props: BazarListScreenProps) {
   const [showFilters, setShowFilters] = useState(false);
 
   const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
-
-  useEffect(() => {
-    refreshData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once on mount
-  }, []);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -236,7 +231,7 @@ export default function BazarListScreen(_props: BazarListScreenProps) {
         {!searchQuery && filters.status === 'all' && (
           <TouchableOpacity
             style={[styles.addButton, { backgroundColor: theme.primary }]}
-            onPress={() => router.push('/new-bazar')}
+            onPress={() => router.push('./new-bazar')}
             activeOpacity={0.8}
           >
             <Ionicons name='add' size={20} color={theme.text.inverse} />

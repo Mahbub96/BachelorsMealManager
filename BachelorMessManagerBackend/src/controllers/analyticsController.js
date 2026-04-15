@@ -74,17 +74,12 @@ class AnalyticsController {
         };
       }
 
-      // Get meal distribution
-      const mealDistribution = await this.getMealDistribution(query, timeframe);
-
-      // Get expense trend
-      const expenseTrend = await this.getExpenseTrend(query, timeframe);
-
-      // Get category breakdown
-      const categoryBreakdown = await this.getCategoryBreakdown(query);
-
-      // Get monthly progress
-      const monthlyProgress = await this.getMonthlyProgress();
+      const [mealDistribution, expenseTrend, categoryBreakdown, monthlyProgress] = await Promise.all([
+        this.getMealDistribution(query, timeframe),
+        this.getExpenseTrend(query, timeframe),
+        this.getCategoryBreakdown(query),
+        this.getMonthlyProgress(),
+      ]);
 
       return {
         mealDistribution,
@@ -270,17 +265,11 @@ class AnalyticsController {
         },
       };
 
-      // Get user meal analytics
-      const mealAnalytics = await this.getUserMealAnalytics(query, timeframe);
-
-      // Get user bazar analytics
-      const bazarAnalytics = await this.getUserBazarAnalytics(query, timeframe);
-
-      // Get user performance metrics
-      const performanceMetrics = await this.getUserPerformanceMetrics(
-        userId,
-        query
-      );
+      const [mealAnalytics, bazarAnalytics, performanceMetrics] = await Promise.all([
+        this.getUserMealAnalytics(query, timeframe),
+        this.getUserBazarAnalytics(query, timeframe),
+        this.getUserPerformanceMetrics(userId, query),
+      ]);
 
       const analytics = {
         user: {
@@ -486,17 +475,11 @@ class AnalyticsController {
         },
       };
 
-      // Get system-wide meal analytics
-      const mealAnalytics = await this.getSystemMealAnalytics(query, timeframe);
-
-      // Get system-wide bazar analytics
-      const bazarAnalytics = await this.getSystemBazarAnalytics(
-        query,
-        timeframe
-      );
-
-      // Get user activity analytics
-      const userAnalytics = await this.getSystemUserAnalytics(query, timeframe);
+      const [mealAnalytics, bazarAnalytics, userAnalytics] = await Promise.all([
+        this.getSystemMealAnalytics(query, timeframe),
+        this.getSystemBazarAnalytics(query, timeframe),
+        this.getSystemUserAnalytics(query, timeframe),
+      ]);
 
       const analytics = {
         mealAnalytics,
@@ -638,35 +621,35 @@ class AnalyticsController {
         { $sort: { _id: 1 } },
       ]);
 
-      // Get active users
-      const activeUsers = await User.countDocuments({ status: 'active' });
-
-      // Get user activity
-      const userActivity = await User.aggregate([
-        {
-          $match: {
-            lastLogin: {
-              $gte: query.date.$gte,
-              $lte: query.date.$lte,
-            },
-          },
-        },
-        {
-          $group: {
-            _id: {
-              $dateToString: {
-                format: this.getDateFormat(timeframe),
-                date: '$lastLogin',
+      const [activeUsers, userActivity, totalUsers] = await Promise.all([
+        User.countDocuments({ status: 'active' }),
+        User.aggregate([
+          {
+            $match: {
+              lastLogin: {
+                $gte: query.date.$gte,
+                $lte: query.date.$lte,
               },
             },
-            count: { $sum: 1 },
           },
-        },
-        { $sort: { _id: 1 } },
+          {
+            $group: {
+              _id: {
+                $dateToString: {
+                  format: this.getDateFormat(timeframe),
+                  date: '$lastLogin',
+                },
+              },
+              count: { $sum: 1 },
+            },
+          },
+          { $sort: { _id: 1 } },
+        ]),
+        User.countDocuments(),
       ]);
 
       return {
-        totalUsers: await User.countDocuments(),
+        totalUsers,
         activeUsers,
         newUsers: userRegistration.reduce((sum, item) => sum + item.count, 0),
         userRegistration: userRegistration.map(item => ({

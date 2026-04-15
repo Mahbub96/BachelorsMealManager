@@ -37,5 +37,6 @@ const bazarDeleteRequestSchema = new mongoose.Schema(
 
 bazarDeleteRequestSchema.index({ requestedFor: 1, status: 1 });
 bazarDeleteRequestSchema.index({ bazarId: 1, status: 1 });
+bazarDeleteRequestSchema.index({ requestedFor: 1, status: 1, createdAt: -1 });
 
 module.exports = mongoose.model('BazarDeleteRequest', bazarDeleteRequestSchema);

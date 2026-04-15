@@ -127,17 +127,12 @@ class UserController {
   // Calculate user statistics
   async calculateUserStats(userId) {
     try {
-      // Get meal statistics
-      const mealStats = await this.getMealStats(userId);
-
-      // Get bazar statistics
-      const bazarStats = await this.getBazarStats(userId);
-
-      // Get payment statistics
-      const paymentStats = await this.getPaymentStats(userId);
-
-      // Get overview statistics
-      const overviewStats = await this.getOverviewStats(userId);
+      const [mealStats, bazarStats, paymentStats, overviewStats] = await Promise.all([
+        this.getMealStats(userId),
+        this.getBazarStats(userId),
+        this.getPaymentStats(userId),
+        this.getOverviewStats(userId),
+      ]);
 
       return {
         meals: mealStats,
@@ -159,46 +154,46 @@ class UserController {
       const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
-      // All meal queries only within this month
       const baseQuery = {
         userId,
         date: { $gte: firstDayOfMonth, $lte: today }
       };
-
-
-      const allMeals = await Meal.find(baseQuery);
-
-      const mealSummary = {
+      const [mealAggregates, lastMeal] = await Promise.all([
+        Meal.aggregate([
+          { $match: baseQuery },
+          {
+            $group: {
+              _id: null,
+              breakfastCount: { $sum: { $cond: ['$breakfast', 1, 0] } },
+              lunchCount: { $sum: { $cond: ['$lunch', 1, 0] } },
+              dinnerCount: { $sum: { $cond: ['$dinner', 1, 0] } },
+              approvedMeals: {
+                $sum: { $cond: [{ $eq: ['$status', 'approved'] }, 1, 0] },
+              },
+              pendingMeals: {
+                $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] },
+              },
+              rejectedMeals: {
+                $sum: { $cond: [{ $eq: ['$status', 'rejected'] }, 1, 0] },
+              },
+            },
+          },
+        ]),
+        Meal.findOne(baseQuery).sort({ date: -1 }).select('date').lean(),
+      ]);
+      const agg = mealAggregates[0] || {
+        breakfastCount: 0,
         lunchCount: 0,
         dinnerCount: 0,
-        breakfastCount: 0,
-        totalCount: function () {
-          return this.lunchCount + this.dinnerCount + this.breakfastCount;
-        }
+        approvedMeals: 0,
+        pendingMeals: 0,
+        rejectedMeals: 0,
       };
-
-
-      allMeals.forEach(meal => {
-
-        if (meal.lunch) mealSummary.lunchCount++;
-        if (meal.dinner) mealSummary.dinnerCount++;
-        if (meal.breakfast) mealSummary.breakfastCount++;
-      });
-
-      const totalMeals = mealSummary.totalCount();
-
-      const approvedMeals = await Meal.countDocuments({
-        ...baseQuery,
-        status: 'approved',
-      });
-      const pendingMeals = await Meal.countDocuments({
-        ...baseQuery,
-        status: 'pending',
-      });
-      const rejectedMeals = await Meal.countDocuments({
-        ...baseQuery,
-        status: 'rejected',
-      });
+      const totalMeals =
+        agg.breakfastCount + agg.lunchCount + agg.dinnerCount;
+      const approvedMeals = agg.approvedMeals;
+      const pendingMeals = agg.pendingMeals;
+      const rejectedMeals = agg.rejectedMeals;
 
       // Calculate efficiency percentage
       const efficiency =
@@ -209,8 +204,6 @@ class UserController {
       const averagePerDay =
         currentDay > 0 ? (totalMeals / currentDay).toFixed(1) : 0;
 
-      // Get days since last meal (relative to this month)
-      const lastMeal = await Meal.findOne(baseQuery).sort({ date: -1 });
       const daysSinceLastMeal = lastMeal
         ? Math.ceil(
           (now - new Date(lastMeal.date)) / (1000 * 60 * 60 * 24)
@@ -306,28 +299,40 @@ class UserController {
     try {
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-      // Find bazar entries for this user, from start of month to now
-      const bazarEntries = await Bazar.find({
-        userId,
-        createdAt: {
-          $gte: startOfMonth,
-          $lte: now,
+      const stats = await Bazar.aggregate([
+        {
+          $match: {
+            userId,
+            createdAt: {
+              $gte: startOfMonth,
+              $lte: now,
+            },
+          },
         },
-      });
-
-      const totalAmount = bazarEntries.reduce(
-        (sum, entry) => sum + entry.totalAmount,
-        0
-      );
-      const pendingAmount = bazarEntries
-        .filter(entry => entry.status === 'pending')
-        .reduce((sum, entry) => sum + entry.totalAmount, 0);
-      const approvedAmount = bazarEntries
-        .filter(entry => entry.status === 'approved')
-        .reduce((sum, entry) => sum + entry.totalAmount, 0);
-
-      const totalEntries = bazarEntries.length;
+        {
+          $group: {
+            _id: null,
+            totalAmount: { $sum: '$totalAmount' },
+            pendingAmount: {
+              $sum: { $cond: [{ $eq: ['$status', 'pending'] }, '$totalAmount', 0] },
+            },
+            approvedAmount: {
+              $sum: { $cond: [{ $eq: ['$status', 'approved'] }, '$totalAmount', 0] },
+            },
+            totalEntries: { $sum: 1 },
+          },
+        },
+      ]);
+      const result = stats[0] || {
+        totalAmount: 0,
+        pendingAmount: 0,
+        approvedAmount: 0,
+        totalEntries: 0,
+      };
+      const totalAmount = result.totalAmount;
+      const pendingAmount = result.pendingAmount;
+      const approvedAmount = result.approvedAmount;
+      const totalEntries = result.totalEntries;
       const averageAmount =
         totalEntries > 0 ? (totalAmount / totalEntries).toFixed(0) : 0;
 
@@ -353,20 +358,32 @@ class UserController {
   // Get bazar statistics for user
   async getAllBazarStats(userId) {
     try {
-      const bazarEntries = await Bazar.find({ userId });
-
-      const totalAmount = bazarEntries.reduce(
-        (sum, entry) => sum + entry.totalAmount,
-        0
-      );
-      const pendingAmount = bazarEntries
-        .filter(entry => entry.status === 'pending')
-        .reduce((sum, entry) => sum + entry.totalAmount, 0);
-      const approvedAmount = bazarEntries
-        .filter(entry => entry.status === 'approved')
-        .reduce((sum, entry) => sum + entry.totalAmount, 0);
-
-      const totalEntries = bazarEntries.length;
+      const stats = await Bazar.aggregate([
+        { $match: { userId } },
+        {
+          $group: {
+            _id: null,
+            totalAmount: { $sum: '$totalAmount' },
+            pendingAmount: {
+              $sum: { $cond: [{ $eq: ['$status', 'pending'] }, '$totalAmount', 0] },
+            },
+            approvedAmount: {
+              $sum: { $cond: [{ $eq: ['$status', 'approved'] }, '$totalAmount', 0] },
+            },
+            totalEntries: { $sum: 1 },
+          },
+        },
+      ]);
+      const result = stats[0] || {
+        totalAmount: 0,
+        pendingAmount: 0,
+        approvedAmount: 0,
+        totalEntries: 0,
+      };
+      const totalAmount = result.totalAmount;
+      const pendingAmount = result.pendingAmount;
+      const approvedAmount = result.approvedAmount;
+      const totalEntries = result.totalEntries;
       const averageAmount =
         totalEntries > 0 ? (totalAmount / totalEntries).toFixed(0) : 0;
 
@@ -542,29 +559,33 @@ class UserController {
   // Get overview statistics for user
   async getOverviewStats(userId) {
     try {
-      const totalMeals = await Meal.countDocuments({ userId });
-      const totalBazarEntries = await Bazar.countDocuments({ userId });
+      const [totalMeals, totalBazarEntries] = await Promise.all([
+        Meal.countDocuments({ userId }),
+        Bazar.countDocuments({ userId }),
+      ]);
       const totalActivities = totalMeals + totalBazarEntries;
 
       // Get recent activity count (last 7 days)
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-      const recentMeals = await Meal.countDocuments({
-        userId,
-        createdAt: { $gte: sevenDaysAgo },
-      });
-      const recentBazar = await Bazar.countDocuments({
-        userId,
-        createdAt: { $gte: sevenDaysAgo },
-      });
+      const [recentMeals, recentBazar, approvedMeals] = await Promise.all([
+        Meal.countDocuments({
+          userId,
+          createdAt: { $gte: sevenDaysAgo },
+        }),
+        Bazar.countDocuments({
+          userId,
+          createdAt: { $gte: sevenDaysAgo },
+        }),
+        Meal.countDocuments({
+          userId,
+          status: 'approved',
+        }),
+      ]);
       const recentActivityCount = recentMeals + recentBazar;
 
       // Calculate performance score based on efficiency and activity
-      const approvedMeals = await Meal.countDocuments({
-        userId,
-        status: 'approved',
-      });
       const efficiency =
         totalMeals > 0 ? (approvedMeals / totalMeals) * 100 : 0;
       const activityScore = Math.min((totalActivities / 30) * 100, 100); // Normalize to 30 activities
@@ -588,16 +609,12 @@ class UserController {
   // Get comprehensive user dashboard data
   async getUserDashboardData(userId) {
     try {
-      const stats = await this.calculateUserStats(userId);
-
-      // Get recent activities
-      const recentActivities = await this.getRecentActivities(userId);
-
-      // Get weekly meal data
-      const weeklyMealData = await this.getWeeklyMealData(userId);
-
-      // Get monthly bazar data
-      const monthlyBazarData = await this.getMonthlyBazarData(userId);
+      const [stats, recentActivities, weeklyMealData, monthlyBazarData] = await Promise.all([
+        this.calculateUserStats(userId),
+        this.getRecentActivities(userId),
+        this.getWeeklyMealData(userId),
+        this.getMonthlyBazarData(userId),
+      ]);
 
 
       return {
@@ -621,15 +638,10 @@ class UserController {
       const activities = [];
       const limit = 10;
 
-      // Get recent meals
-      const recentMeals = await Meal.find({ userId })
-        .sort({ createdAt: -1 })
-        .limit(limit / 2);
-
-      // Get recent bazar entries
-      const recentBazar = await Bazar.find({ userId })
-        .sort({ createdAt: -1 })
-        .limit(limit / 2);
+      const [recentMeals, recentBazar] = await Promise.all([
+        Meal.find({ userId }).sort({ createdAt: -1 }).limit(limit / 2),
+        Bazar.find({ userId }).sort({ createdAt: -1 }).limit(limit / 2),
+      ]);
 
       // Format meal activities
       recentMeals.forEach(meal => {
@@ -738,37 +750,43 @@ class UserController {
   // Get monthly bazar data for charts
   async getMonthlyBazarData(userId) {
     try {
-      const monthlyData = [];
       const currentMonth = new Date().getMonth();
       const currentYear = new Date().getFullYear();
-
-      for (let i = 0; i < 4; i++) {
-        const month = new Date(currentYear, currentMonth - i, 1);
-        const monthName = month.toLocaleDateString('en-US', { month: 'short' });
-
-        const startOfMonth = new Date(currentYear, currentMonth - i, 1);
-        const endOfMonth = new Date(currentYear, currentMonth - i + 1, 0);
-
-        const bazarEntries = await Bazar.find({
-          userId,
-          createdAt: {
-            $gte: startOfMonth,
-            $lte: endOfMonth,
+      const firstMonthStart = new Date(currentYear, currentMonth - 3, 1);
+      const lastMonthEnd = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59, 999);
+      const aggregated = await Bazar.aggregate([
+        {
+          $match: {
+            userId,
+            createdAt: {
+              $gte: firstMonthStart,
+              $lte: lastMonthEnd,
+            },
           },
-        });
-
-        const totalAmount = bazarEntries.reduce(
-          (sum, entry) => sum + entry.totalAmount,
-          0
-        );
-
+        },
+        {
+          $group: {
+            _id: {
+              y: { $year: '$createdAt' },
+              m: { $month: '$createdAt' },
+            },
+            totalAmount: { $sum: '$totalAmount' },
+          },
+        },
+      ]);
+      const byMonthKey = new Map(
+        aggregated.map(item => [`${item._id.y}-${item._id.m}`, item.totalAmount])
+      );
+      const monthlyData = [];
+      for (let i = 3; i >= 0; i--) {
+        const month = new Date(currentYear, currentMonth - i, 1);
+        const key = `${month.getFullYear()}-${month.getMonth() + 1}`;
         monthlyData.push({
-          date: monthName,
-          value: totalAmount,
+          date: month.toLocaleDateString('en-US', { month: 'short' }),
+          value: byMonthKey.get(key) || 0,
         });
       }
-
-      return monthlyData.reverse();
+      return monthlyData;
     } catch (error) {
       logger.error('Error getting monthly bazar data:', error);
       return [];

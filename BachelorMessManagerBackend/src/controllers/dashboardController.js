@@ -152,32 +152,21 @@ class DashboardController {
       const isAdmin = req.user.role === 'admin';
       const { timeframe = 'week' } = req.query;
 
-      // Get analytics data
-      const analytics = await this.getAnalyticsData(timeframe, userId, isAdmin);
-
-      // Get basic stats data directly
-      const statsData = await this.getDashboardStatsData(userId, isAdmin);
-
-      // Get recent activities data directly
-      const activitiesData = await this.getRecentActivitiesData(
-        userId,
-        isAdmin
-      );
-
-      // Get weekly meals data
-      const weeklyMealsData = await this.getWeeklyMealsData(userId, isAdmin);
-
-      // Get monthly revenue data
-      const monthlyRevenueData = await this.getMonthlyRevenueData(
-        userId,
-        isAdmin
-      );
-
-      // Get expense breakdown data
-      const expenseBreakdownData = await this.getExpenseBreakdownData(
-        userId,
-        isAdmin
-      );
+      const [
+        analytics,
+        statsData,
+        activitiesData,
+        weeklyMealsData,
+        monthlyRevenueData,
+        expenseBreakdownData,
+      ] = await Promise.all([
+        this.getAnalyticsData(timeframe, userId, isAdmin),
+        this.getDashboardStatsData(userId, isAdmin),
+        this.getRecentActivitiesData(userId, isAdmin),
+        this.getWeeklyMealsData(userId, isAdmin),
+        this.getMonthlyRevenueData(userId, isAdmin),
+        this.getExpenseBreakdownData(userId, isAdmin),
+      ]);
 
       const dashboardData = {
         message: 'Dashboard data retrieved successfully',
@@ -430,17 +419,12 @@ class DashboardController {
         };
       }
 
-      // Get meal distribution
-      const mealDistribution = await this.getMealDistribution(query, timeframe);
-
-      // Get expense trend
-      const expenseTrend = await this.getExpenseTrend(query, timeframe);
-
-      // Get category breakdown
-      const categoryBreakdown = await this.getCategoryBreakdown(query);
-
-      // Get monthly progress
-      const monthlyProgress = await this.getMonthlyProgress();
+      const [mealDistribution, expenseTrend, categoryBreakdown, monthlyProgress] = await Promise.all([
+        this.getMealDistribution(query, timeframe),
+        this.getExpenseTrend(query, timeframe),
+        this.getCategoryBreakdown(query),
+        this.getMonthlyProgress(),
+      ]);
 
       return {
         mealDistribution,

@@ -71,7 +71,14 @@ class RemovalRequestController {
         if (!userId) {
           return sendErrorResponse(res, 400, 'userId is required for admin removal request.');
         }
-        const targetUser = await User.findById(userId);
+        const [targetUser, existing] = await Promise.all([
+          User.findById(userId),
+          RemovalRequest.findOne({
+            userId,
+            type: 'admin_removal',
+            status: 'pending',
+          }),
+        ]);
         if (!targetUser) {
           return sendErrorResponse(res, 404, 'User not found.');
         }
@@ -81,11 +88,6 @@ class RemovalRequestController {
         if (currentUser.role === 'admin' && targetUser.createdBy?.toString() !== currentUser._id.toString()) {
           return sendErrorResponse(res, 403, 'You can only request removal of members you created.');
         }
-        const existing = await RemovalRequest.findOne({
-          userId: targetUser._id,
-          type: 'admin_removal',
-          status: 'pending',
-        });
         if (existing) {
           return sendErrorResponse(
             res,
@@ -140,7 +142,10 @@ class RemovalRequestController {
       if (currentUser.role === 'admin' || currentUser.role === 'super_admin') {
         let query = { status: 'pending' };
         if (currentUser.role === 'admin') {
-          const memberIds = await User.find({ createdBy: currentUser._id, role: 'member' }).distinct('_id');
+          const memberIds = await User.distinct('_id', {
+            createdBy: currentUser._id,
+            role: 'member',
+          });
           query.$or = [
             { type: 'member_leave', userId: { $in: memberIds } },
             { type: 'admin_removal', requestedBy: currentUser._id },

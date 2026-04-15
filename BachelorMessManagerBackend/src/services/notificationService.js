@@ -39,9 +39,22 @@ async function createNotification(userIds, type, title, message, ref = {}) {
         ? result.insertedIds
         : Object.values(result.insertedIds);
       const inserted = await Notification.find({ _id: { $in: insertedIds } }).lean();
+      const userObjectIds = [
+        ...new Map(inserted.map(doc => [String(doc.userId), doc.userId])).values(),
+      ];
+      const unreadCountsByUser = new Map();
+      if (userObjectIds.length > 0) {
+        const unreadCounts = await Notification.aggregate([
+          { $match: { userId: { $in: userObjectIds }, isRead: false } },
+          { $group: { _id: '$userId', count: { $sum: 1 } } },
+        ]);
+        for (const entry of unreadCounts) {
+          unreadCountsByUser.set(String(entry._id), entry.count);
+        }
+      }
       for (const doc of inserted) {
         const userIdStr = String(doc.userId);
-        const unreadCount = await Notification.countDocuments({ userId: doc.userId, isRead: false });
+        const unreadCount = unreadCountsByUser.get(userIdStr) || 0;
         const data = {
           _id: String(doc._id),
           userId: userIdStr,

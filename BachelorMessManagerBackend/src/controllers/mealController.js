@@ -177,12 +177,14 @@ class MealController {
         status: meal.status,
       });
 
-      // Update statistics after meal submission
-      await StatisticsService.updateAfterOperation('meal_submitted', {
+      // Update statistics in background so response is not blocked.
+      StatisticsService.updateAfterOperation('meal_submitted', {
         mealId: meal._id,
         userId: req.user.id,
         meals: { breakfast, lunch, dinner },
         status: meal.status,
+      }).catch((statsErr) => {
+        logger.error('Statistics update after meal submit failed:', statsErr);
       });
 
       return sendSuccessResponse(
@@ -368,12 +370,14 @@ class MealController {
         `Meal status updated by admin ${req.user.email} to ${status}`
       );
 
-      // Update statistics after meal status update
-      await StatisticsService.updateAfterOperation('meal_status_updated', {
+      // Update statistics in background so status response is fast.
+      StatisticsService.updateAfterOperation('meal_status_updated', {
         mealId: meal._id,
         adminId: req.user.id,
         oldStatus: meal.status,
         newStatus: status,
+      }).catch((statsErr) => {
+        logger.error('Statistics update after meal status update failed:', statsErr);
       });
 
       return sendSuccessResponse(
@@ -497,11 +501,9 @@ class MealController {
       }
 
       await Meal.findByIdAndDelete(mealId);
-      try {
-        await StatisticsService.updateAfterOperation('meal_deleted', { mealId });
-      } catch (statsErr) {
+      StatisticsService.updateAfterOperation('meal_deleted', { mealId }).catch((statsErr) => {
         logger.error('Statistics update after meal delete failed:', statsErr);
-      }
+      });
 
       logger.info(`Meal deleted by owner ${req.user.email}`);
 
@@ -629,11 +631,9 @@ class MealController {
           return sendErrorResponse(res, 404, 'Meal no longer exists');
         }
         await Meal.findByIdAndDelete(request.mealId);
-        try {
-          await StatisticsService.updateAfterOperation('meal_deleted', { mealId: request.mealId });
-        } catch (statsErr) {
+        StatisticsService.updateAfterOperation('meal_deleted', { mealId: request.mealId }).catch((statsErr) => {
           logger.error('Statistics update after meal delete failed (meal already deleted):', statsErr);
-        }
+        });
         logger.info(`Meal ${request.mealId} deleted after owner ${req.user.email} accepted delete request`);
       }
 

@@ -203,12 +203,10 @@ class GroupAdminController {
       }
 
       if (request.votes.length >= totalMembers) {
-        const candidate = await User.findById(request.candidateId).select(
-          'role status createdBy'
-        );
-        const groupAdmin = await User.findById(
-          request.groupAdminId
-        ).select('role status');
+        const [candidate, groupAdmin] = await Promise.all([
+          User.findById(request.candidateId).select('role status createdBy'),
+          User.findById(request.groupAdminId).select('role status'),
+        ]);
 
         if (!candidate || !groupAdmin) {
           return sendErrorResponse(
